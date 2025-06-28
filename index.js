@@ -39,23 +39,23 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 18%; min-width: 90px;">
-                Ticker <span id="buy-symbol-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 18%; min-width: 80px;">
+                Ticker <span id="buy-symbol-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')" style="width: 15%; min-width: 80px;">
-                Price <span id="buy-price-sort" class="ml-1" style="display: none;"></span>
+                Price <span id="buy-price-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 18%; min-width: 85px;">
-                Chg% <span id="buy-priceChange-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 18%; min-width: 70px;">
+                Chg% <span id="buy-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 13%; min-width: 75px;">
-                Vol <span id="buy-volume-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 13%; min-width: 80px;">
+                Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 11%; min-width: 65px;">
-                HA <span id="buy-haValue-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 11%; min-width: 70px;">
+                HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 25%; min-width: 120px;">
-                Trend <span id="buy-condition-sort" class="ml-1" style="display: none;"></span>
+                Trend <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -80,23 +80,23 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 18%; min-width: 90px;">
-                Ticker <span id="sell-symbol-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 18%; min-width: 80px;">
+                Ticker <span id="sell-symbol-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')" style="width: 15%; min-width: 80px;">
-                Price <span id="sell-price-sort" class="ml-1" style="display: none;"></span>
+                Price <span id="sell-price-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 18%; min-width: 85px;">
-                Chg% <span id="sell-priceChange-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 18%; min-width: 70px;">
+                Chg% <span id="sell-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 13%; min-width: 75px;">
-                Vol <span id="sell-volume-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 13%; min-width: 80px;">
+                Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 11%; min-width: 65px;">
-                HA <span id="sell-haValue-sort" class="ml-1" style="display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 11%; min-width: 70px;">
+                HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 25%; min-width: 120px;">
-                Trend <span id="sell-condition-sort" class="ml-1" style="display: none;"></span>
+                Trend <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -116,6 +116,17 @@ let previousData = []
 let sortState = {
   buy: { column: 'symbol', direction: 'asc' },
   sell: { column: 'symbol', direction: 'asc' }
+}
+
+function formatVolume(volume) {
+  if (!volume || volume === 'N/A') return 'N/A'
+  const num = parseFloat(volume)
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M'
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K'
+  }
+  return num.toString()
 }
 
 // Show initial sort indicators after DOM loads
@@ -225,17 +236,27 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-green-400">
-            <a href="https://www.tradingview.com/chart/?symbol=\${row.symbol}" 
-               target="_blank" 
-               class="hover:text-green-300 hover:underline cursor-pointer transition-colors duration-200"
-               title="Open \${row.symbol} chart on TradingView">
-              \${row.symbol}
-            </a>
+          <td class="py-3 px-4 font-semibold text-green-400 relative">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   viewBox="0 0 24 24" 
+                   fill="currentColor" 
+                   class="w-4 h-4 cursor-pointer hover:text-green-300 transition-colors duration-200"
+                   onmouseenter="showChart('\${row.symbol}', event)"
+                   onmouseleave="hideChart()"
+                   title="Hover for chart preview">
+                <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+              </svg>
+              <span class="hover:text-green-300 hover:underline cursor-pointer transition-colors duration-200"
+                    onclick="window.open('https://www.tradingview.com/chart/?symbol=\${row.symbol}', '_blank')"
+                    title="Click to open TradingView">
+                \${row.symbol}
+              </span>
+            </div>
           </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
           <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
@@ -260,17 +281,27 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-red-400">
-            <a href="https://www.tradingview.com/chart/?symbol=\${row.symbol}" 
-               target="_blank" 
-               class="hover:text-red-300 hover:underline cursor-pointer transition-colors duration-200"
-               title="Open \${row.symbol} chart on TradingView">
-              \${row.symbol}
-            </a>
+          <td class="py-3 px-4 font-semibold text-red-400 relative">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   viewBox="0 0 24 24" 
+                   fill="currentColor" 
+                   class="w-4 h-4 cursor-pointer hover:text-red-300 transition-colors duration-200"
+                   onmouseenter="showChart('\${row.symbol}', event)"
+                   onmouseleave="hideChart()"
+                   title="Hover for chart preview">
+                <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+              </svg>
+              <span class="hover:text-red-300 hover:underline cursor-pointer transition-colors duration-200"
+                    onclick="window.open('https://www.tradingview.com/chart/?symbol=\${row.symbol}', '_blank')"
+                    title="Click to open TradingView">
+                \${row.symbol}
+              </span>
+            </div>
           </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
           <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
@@ -283,6 +314,111 @@ async function fetchAlerts() {
 
 setInterval(fetchAlerts, 2000)
 fetchAlerts()
+
+// Chart overlay functionality
+let chartOverlay = null
+let hoverTimeout = null
+
+function showChart(symbol, event) {
+  // Clear any existing timeout
+  clearTimeout(hoverTimeout)
+  
+  // Add delay before showing chart
+  hoverTimeout = setTimeout(() => {
+    hideChart() // Hide any existing chart
+    
+    // Create overlay
+    chartOverlay = document.createElement('div')
+    chartOverlay.id = 'chart-overlay'
+    chartOverlay.style.cssText = \`
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 800px;
+      height: 500px;
+      background: #1e1e1e;
+      border: 2px solid #374151;
+      border-radius: 8px;
+      z-index: 1000;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+    \`
+    
+    // Create TradingView widget
+    const widgetContainer = document.createElement('div')
+    widgetContainer.style.cssText = 'height: 100%; width: 100%;'
+    
+    const script = document.createElement('script')
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.type = 'text/javascript'
+    script.async = true
+    script.innerHTML = JSON.stringify({
+      allow_symbol_change: false,
+      calendar: false,
+      details: false,
+      hide_side_toolbar: true,
+      hide_top_toolbar: false,
+      hide_legend: true,
+      hide_volume: false,
+      hotlist: false,
+      interval: '3',
+      locale: 'en',
+      save_image: false,
+      style: '1',
+      symbol: symbol,
+      theme: 'dark',
+      timezone: 'Etc/UTC',
+      backgroundColor: '#0F0F0F',
+      gridColor: 'rgba(242, 242, 242, 0.06)',
+      watchlist: [],
+      withdateranges: false,
+      range: '1D',
+      compareSymbols: [],
+      show_popup_button: false,
+      popup_height: '500',
+      popup_width: '800',
+      studies: ['STD;VWAP', 'STD;Stochastic'],
+      autosize: true
+    })
+    
+    widgetContainer.appendChild(script)
+    chartOverlay.appendChild(widgetContainer)
+    document.body.appendChild(chartOverlay)
+    
+    // Add backdrop
+    const backdrop = document.createElement('div')
+    backdrop.id = 'chart-backdrop'
+    backdrop.style.cssText = \`
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    \`
+    backdrop.onclick = hideChart
+    document.body.appendChild(backdrop)
+  }, 0) // 0ms delay - immediate
+}
+
+function hideChart() {
+  clearTimeout(hoverTimeout)
+  
+  const overlay = document.getElementById('chart-overlay')
+  const backdrop = document.getElementById('chart-backdrop')
+  
+  if (overlay) overlay.remove()
+  if (backdrop) backdrop.remove()
+  
+  chartOverlay = null
+}
+
+// Close chart on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideChart()
+})
 
 // Initialize sort indicators on page load
 initializeSortIndicators()
