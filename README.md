@@ -4,8 +4,8 @@ A lightweight Node.js + Express server that receives TradingView webhook alerts 
 
 ## 🚀 Features
 
-✅ Accepts TradingView webhook alerts as JSON POST requests  
-✅ Stores the latest alerts in memory (FIFO, capped at 100)  
+✅ Accepts TradingView webhook alerts as JSON POST requests
+✅ Stores the latest alerts in memory (FIFO, capped at 100)
 ✅ Provides a `/alerts` API endpoint to fetch alert data  
 ✅ Serves a Tailwind-powered dashboard at `/` that:
 - Lists Ticker, Action (BUY/SELL), Price, Message, Timestamp
@@ -70,7 +70,7 @@ https://alertrender.onrender.com
 1. In TradingView, create an alert
 2. Set your Webhook URL to:
    ```
-   https://alertrender.onrender.com/webhook
+https://alertrender.onrender.com/webhook
    ```
 3. Your Pine Script alert should use `alert()` to send JSON
 
