@@ -40,22 +40,22 @@ app.get('/', (req, res) => {
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')">
-                Ticker <span class="ml-1">↕</span>
+                Ticker <span id="buy-symbol-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')">
-                Price <span class="ml-1">↕</span>
+                Price <span id="buy-price-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')">
-                Change % <span class="ml-1">↕</span>
+                Chg% <span id="buy-priceChange-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')">
-                Volume <span class="ml-1">↕</span>
+                Vol <span id="buy-volume-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')">
-                HA Value <span class="ml-1">↕</span>
+                HA <span id="buy-haValue-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')">
-                Message <span class="ml-1">↕</span>
+                Trend <span id="buy-condition-sort" class="ml-1" style="display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -81,22 +81,22 @@ app.get('/', (req, res) => {
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')">
-                Ticker <span class="ml-1">↕</span>
+                Ticker <span id="sell-symbol-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')">
-                Price <span class="ml-1">↕</span>
+                Price <span id="sell-price-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')">
-                Change % <span class="ml-1">↕</span>
+                Chg% <span id="sell-priceChange-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')">
-                Volume <span class="ml-1">↕</span>
+                Vol <span id="sell-volume-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')">
-                HA Value <span class="ml-1">↕</span>
+                HA <span id="sell-haValue-sort" class="ml-1" style="display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')">
-                Message <span class="ml-1">↕</span>
+                Trend <span id="sell-condition-sort" class="ml-1" style="display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -118,6 +118,13 @@ let sortState = {
   sell: { column: 'symbol', direction: 'asc' }
 }
 
+// Show initial sort indicators after DOM loads
+function initializeSortIndicators() {
+  setTimeout(() => {
+    updateSortIndicators()
+  }, 100)
+}
+
 function sortTable(tableType, column) {
   const currentSort = sortState[tableType]
   
@@ -129,8 +136,30 @@ function sortTable(tableType, column) {
     currentSort.direction = 'asc'
   }
   
+  // Update sort indicators
+  updateSortIndicators()
+  
   // Trigger data refresh to apply new sorting
   fetchAlerts()
+}
+
+function updateSortIndicators() {
+  // Hide all sort indicators first
+  const allSortSpans = document.querySelectorAll('[id$="-sort"]')
+  allSortSpans.forEach(span => {
+    span.style.display = 'none'
+    span.textContent = ''
+  })
+  
+  // Show and update active sort indicators
+  Object.keys(sortState).forEach(tableType => {
+    const { column, direction } = sortState[tableType]
+    const sortSpan = document.getElementById(\`\${tableType}-\${column}-sort\`)
+    if (sortSpan) {
+      sortSpan.style.display = 'inline'
+      sortSpan.textContent = direction === 'asc' ? '↑' : '↓'
+    }
+  })
 }
 
 function applySorting(alerts, tableType) {
@@ -254,6 +283,9 @@ async function fetchAlerts() {
 
 setInterval(fetchAlerts, 2000)
 fetchAlerts()
+
+// Initialize sort indicators on page load
+initializeSortIndicators()
 </script>
 </body>
 </html>
