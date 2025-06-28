@@ -242,9 +242,8 @@ async function fetchAlerts() {
                    viewBox="0 0 24 24" 
                    fill="currentColor" 
                    class="w-4 h-4 cursor-pointer hover:text-green-300 transition-colors duration-200"
-                   onmouseenter="showChart('\${row.symbol}', event)"
-                   onmouseleave="hideChart()"
-                   title="Hover for chart preview">
+                   onclick="showChart('\${row.symbol}', event)"
+                   title="Click for chart preview">
                 <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
               </svg>
               <span class="hover:text-green-300 hover:underline cursor-pointer transition-colors duration-200"
@@ -287,9 +286,8 @@ async function fetchAlerts() {
                    viewBox="0 0 24 24" 
                    fill="currentColor" 
                    class="w-4 h-4 cursor-pointer hover:text-red-300 transition-colors duration-200"
-                   onmouseenter="showChart('\${row.symbol}', event)"
-                   onmouseleave="hideChart()"
-                   title="Hover for chart preview">
+                   onclick="showChart('\${row.symbol}', event)"
+                   title="Click for chart preview">
                 <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
               </svg>
               <span class="hover:text-red-300 hover:underline cursor-pointer transition-colors duration-200"
@@ -317,15 +315,15 @@ fetchAlerts()
 
 // Chart overlay functionality
 let chartOverlay = null
-let hoverTimeout = null
 
 function showChart(symbol, event) {
-  // Clear any existing timeout
-  clearTimeout(hoverTimeout)
+  // Prevent event bubbling to avoid conflicts
+  if (event) {
+    event.stopPropagation()
+  }
   
-  // Add delay before showing chart
-  hoverTimeout = setTimeout(() => {
-    hideChart() // Hide any existing chart
+  // Hide any existing chart first
+  hideChart()
     
     // Create overlay
     chartOverlay = document.createElement('div')
@@ -335,15 +333,44 @@ function showChart(symbol, event) {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 800px;
-      height: 500px;
-      background: #1e1e1e;
-      border: 2px solid #374151;
-      border-radius: 8px;
+      width: 95vw;
+      max-width: 1200px;
+      height: 85vh;
+      max-height: 800px;
+      background: #131722;
+      border: 2px solid #2a2e39;
+      border-radius: 12px;
       z-index: 1000;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
       overflow: hidden;
     \`
+    
+    // Create close button
+    const closeButton = document.createElement('button')
+    closeButton.innerHTML = '×'
+    closeButton.style.cssText = \`
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: rgba(239, 83, 80, 0.8);
+      border: none;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    \`
+    closeButton.onmouseover = () => closeButton.style.background = 'rgba(239, 83, 80, 1)'
+    closeButton.onmouseout = () => closeButton.style.background = 'rgba(239, 83, 80, 0.8)'
+    closeButton.onclick = hideChart
+    chartOverlay.appendChild(closeButton)
     
     // Create TradingView widget
     const widgetContainer = document.createElement('div')
@@ -356,30 +383,74 @@ function showChart(symbol, event) {
     script.innerHTML = JSON.stringify({
       allow_symbol_change: false,
       calendar: false,
-      details: false,
-      hide_side_toolbar: true,
+      details: true,
+      hide_side_toolbar: false,
       hide_top_toolbar: false,
-      hide_legend: true,
+      hide_legend: false,
       hide_volume: false,
       hotlist: false,
-      interval: '3',
+      interval: '15',
       locale: 'en',
-      save_image: false,
+      save_image: true,
       style: '1',
       symbol: symbol,
       theme: 'dark',
-      timezone: 'Etc/UTC',
-      backgroundColor: '#0F0F0F',
-      gridColor: 'rgba(242, 242, 242, 0.06)',
+      timezone: 'America/New_York',
+      backgroundColor: '#131722',
+      gridColor: 'rgba(240, 243, 250, 0.06)',
       watchlist: [],
-      withdateranges: false,
-      range: '1D',
+      withdateranges: true,
+      range: '3M',
       compareSymbols: [],
-      show_popup_button: false,
+      show_popup_button: true,
       popup_height: '500',
       popup_width: '800',
-      studies: ['STD;VWAP', 'STD;Stochastic'],
-      autosize: true
+      studies: [
+        'STD;VWAP',
+        'STD;Stochastic%1',
+        'STD;MACD%1',
+        'STD;RSI',
+        'STD;BB%1',
+        'STD;EMA%1%7%false%0',
+        'STD;EMA%1%21%false%0',
+        'STD;Volume'
+      ],
+      overrides: {
+        'paneProperties.background': '#131722',
+        'paneProperties.vertGridProperties.color': '#363c4e',
+        'paneProperties.horzGridProperties.color': '#363c4e',
+        'symbolWatermarkProperties.transparency': 90,
+        'scalesProperties.textColor': '#AAA',
+        'mainSeriesProperties.candleStyle.upColor': '#26a69a',
+        'mainSeriesProperties.candleStyle.downColor': '#ef5350',
+        'mainSeriesProperties.candleStyle.drawWick': true,
+        'mainSeriesProperties.candleStyle.drawBorder': true,
+        'mainSeriesProperties.candleStyle.borderColor': '#378658',
+        'mainSeriesProperties.candleStyle.borderUpColor': '#26a69a',
+        'mainSeriesProperties.candleStyle.borderDownColor': '#ef5350',
+        'mainSeriesProperties.candleStyle.wickUpColor': '#26a69a',
+        'mainSeriesProperties.candleStyle.wickDownColor': '#ef5350',
+        'volumePaneSize': 'medium'
+      },
+      enabled_features: [
+        'study_templates',
+        'use_localstorage_for_settings',
+        'save_chart_properties_to_local_storage',
+        'chart_property_page_style',
+        'popup_hints'
+      ],
+      disabled_features: [
+        'header_symbol_search',
+        'symbol_search_hot_key',
+        'header_resolutions',
+        'header_chart_type',
+        'header_settings',
+        'header_undo_redo',
+        'header_screenshot',
+        'header_fullscreen_button'
+      ],
+      autosize: true,
+      container_id: 'tradingview_chart'
     })
     
     widgetContainer.appendChild(script)
@@ -400,12 +471,9 @@ function showChart(symbol, event) {
     \`
     backdrop.onclick = hideChart
     document.body.appendChild(backdrop)
-  }, 0) // 0ms delay - immediate
 }
 
 function hideChart() {
-  clearTimeout(hoverTimeout)
-  
   const overlay = document.getElementById('chart-overlay')
   const backdrop = document.getElementById('chart-backdrop')
   
