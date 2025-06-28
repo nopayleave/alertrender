@@ -129,6 +129,59 @@ function formatVolume(volume) {
   return num.toString()
 }
 
+function getHAGrade(haValue) {
+  if (!haValue || haValue === 'N/A') return 'N/A'
+  const value = parseFloat(haValue)
+  
+  if (value >= 0) {
+    // Bullish grades
+    if (value >= 500) return 'S+'
+    if (value >= 350) return 'S'
+    if (value >= 200) return 'A+'
+    if (value >= 100) return 'A'
+    if (value >= 50) return 'B'
+    return 'C'
+  } else {
+    // Bearish grades
+    if (value <= -500) return 'S+'
+    if (value <= -350) return 'S'
+    if (value <= -200) return 'A+'
+    if (value <= -100) return 'A'
+    if (value <= -50) return 'B'
+    return 'C'
+  }
+}
+
+function getHAGradeStyle(haValue) {
+  if (!haValue || haValue === 'N/A') return 'bg-gray-600 text-gray-300'
+  const grade = getHAGrade(haValue)
+  const value = parseFloat(haValue)
+  
+  if (value >= 0) {
+    // Bullish styles (green tones)
+    switch(grade) {
+      case 'S+': return 'bg-green-600 text-white'
+      case 'S': return 'bg-green-500 text-white'
+      case 'A+': return 'bg-green-400 text-white'
+      case 'A': return 'bg-green-300 text-gray-800'
+      case 'B': return 'bg-yellow-400 text-gray-800'
+      case 'C': return 'bg-orange-400 text-white'
+      default: return 'bg-gray-600 text-gray-300'
+    }
+  } else {
+    // Bearish styles (red tones)
+    switch(grade) {
+      case 'S+': return 'bg-red-600 text-white'
+      case 'S': return 'bg-red-500 text-white'
+      case 'A+': return 'bg-red-400 text-white'
+      case 'A': return 'bg-red-300 text-gray-800'
+      case 'B': return 'bg-yellow-400 text-gray-800'
+      case 'C': return 'bg-orange-400 text-white'
+      default: return 'bg-gray-600 text-gray-300'
+    }
+  }
+}
+
 // Show initial sort indicators after DOM loads
 function initializeSortIndicators() {
   setTimeout(() => {
@@ -236,7 +289,7 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-green-400 relative">
+          <td class="py-3 px-4 font-semibold text-white relative">
             <div class="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" 
                    viewBox="0 0 24 24" 
@@ -246,7 +299,7 @@ async function fetchAlerts() {
                    title="Click for chart preview">
                 <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
               </svg>
-              <span class="hover:text-green-300 hover:underline cursor-pointer transition-colors duration-200"
+              <span class="hover:text-blue-300 hover:underline cursor-pointer transition-colors duration-200"
                     onclick="window.open('https://www.tradingview.com/chart/?symbol=\${row.symbol}', '_blank')"
                     title="Click to open TradingView">
                 \${row.symbol}
@@ -256,7 +309,12 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            <div class="flex items-center gap-2">
+              <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue)}">\${getHAGrade(row.haValue)}</span>
+            </div>
+          </td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`
@@ -280,7 +338,7 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-red-400 relative">
+          <td class="py-3 px-4 font-semibold text-white relative">
             <div class="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" 
                    viewBox="0 0 24 24" 
@@ -290,7 +348,7 @@ async function fetchAlerts() {
                    title="Click for chart preview">
                 <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
               </svg>
-              <span class="hover:text-red-300 hover:underline cursor-pointer transition-colors duration-200"
+              <span class="hover:text-blue-300 hover:underline cursor-pointer transition-colors duration-200"
                     onclick="window.open('https://www.tradingview.com/chart/?symbol=\${row.symbol}', '_blank')"
                     title="Click to open TradingView">
                 \${row.symbol}
@@ -300,7 +358,12 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            <div class="flex items-center gap-2">
+              <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue)}">\${getHAGrade(row.haValue)}</span>
+            </div>
+          </td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`
@@ -372,9 +435,21 @@ function showChart(symbol, event) {
     closeButton.onclick = hideChart
     chartOverlay.appendChild(closeButton)
     
-    // Create TradingView widget
+    // Create TradingView widget container
     const widgetContainer = document.createElement('div')
+    widgetContainer.className = 'tradingview-widget-container'
     widgetContainer.style.cssText = 'height: 100%; width: 100%;'
+    
+    // Create main widget div
+    const widgetDiv = document.createElement('div')
+    widgetDiv.className = 'tradingview-widget-container__widget'
+    widgetDiv.style.cssText = 'height: calc(100% - 32px); width: 100%;'
+    
+    // Create copyright div
+    const copyrightDiv = document.createElement('div')
+    copyrightDiv.className = 'tradingview-widget-copyright'
+    copyrightDiv.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span style="color: #2196F3;">Track all markets on TradingView</span></a>'
+    copyrightDiv.style.cssText = 'height: 32px; display: flex; align-items: center; justify-content: center; background: #131722;'
     
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
@@ -383,77 +458,39 @@ function showChart(symbol, event) {
     script.innerHTML = JSON.stringify({
       allow_symbol_change: false,
       calendar: false,
-      details: true,
-      hide_side_toolbar: false,
+      details: false,
+      hide_side_toolbar: true,
       hide_top_toolbar: false,
       hide_legend: false,
       hide_volume: false,
       hotlist: false,
-      interval: '15',
+      interval: '3',
       locale: 'en',
-      save_image: true,
+      save_image: false,
       style: '1',
       symbol: symbol,
       theme: 'dark',
-      timezone: 'America/New_York',
-      backgroundColor: '#131722',
-      gridColor: 'rgba(240, 243, 250, 0.06)',
+      timezone: 'Etc/UTC',
+      backgroundColor: '#0F0F0F',
+      gridColor: 'rgba(242, 242, 242, 0.06)',
       watchlist: [],
-      withdateranges: true,
-      range: '3M',
+      withdateranges: false,
+      range: '1D',
       compareSymbols: [],
       show_popup_button: true,
-      popup_height: '500',
-      popup_width: '800',
+      popup_height: '650',
+      popup_width: '1000',
       studies: [
         'STD;VWAP',
-        'STD;Stochastic%1',
-        'STD;MACD%1',
-        'STD;RSI',
-        'STD;BB%1',
-        'STD;EMA%1%7%false%0',
-        'STD;EMA%1%21%false%0',
-        'STD;Volume'
+        'STD;Stochastic',
+        'STD;MACD'
       ],
-      overrides: {
-        'paneProperties.background': '#131722',
-        'paneProperties.vertGridProperties.color': '#363c4e',
-        'paneProperties.horzGridProperties.color': '#363c4e',
-        'symbolWatermarkProperties.transparency': 90,
-        'scalesProperties.textColor': '#AAA',
-        'mainSeriesProperties.candleStyle.upColor': '#26a69a',
-        'mainSeriesProperties.candleStyle.downColor': '#ef5350',
-        'mainSeriesProperties.candleStyle.drawWick': true,
-        'mainSeriesProperties.candleStyle.drawBorder': true,
-        'mainSeriesProperties.candleStyle.borderColor': '#378658',
-        'mainSeriesProperties.candleStyle.borderUpColor': '#26a69a',
-        'mainSeriesProperties.candleStyle.borderDownColor': '#ef5350',
-        'mainSeriesProperties.candleStyle.wickUpColor': '#26a69a',
-        'mainSeriesProperties.candleStyle.wickDownColor': '#ef5350',
-        'volumePaneSize': 'medium'
-      },
-      enabled_features: [
-        'study_templates',
-        'use_localstorage_for_settings',
-        'save_chart_properties_to_local_storage',
-        'chart_property_page_style',
-        'popup_hints'
-      ],
-      disabled_features: [
-        'header_symbol_search',
-        'symbol_search_hot_key',
-        'header_resolutions',
-        'header_chart_type',
-        'header_settings',
-        'header_undo_redo',
-        'header_screenshot',
-        'header_fullscreen_button'
-      ],
-      autosize: true,
-      container_id: 'tradingview_chart'
+      autosize: true
     })
     
-    widgetContainer.appendChild(script)
+    widgetDiv.appendChild(script)
+    widgetContainer.appendChild(widgetDiv)
+    widgetContainer.appendChild(copyrightDiv)
     chartOverlay.appendChild(widgetContainer)
     document.body.appendChild(chartOverlay)
     
