@@ -9,6 +9,10 @@ app.use(express.json())
 
 let alerts = []
 
+app.get('/', (req, res) => {
+  res.send('Webhook server is running!')
+})
+
 app.post('/webhook', (req, res) => {
   const alert = req.body
   console.log('Received alert:', alert)
