@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
   
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- BUY/BULLISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden" style="width: 48vw;">
       <div class="bg-green-700 px-4 py-3">
         <h2 class="text-lg font-semibold text-white flex items-center">
           <span class="text-xl mr-2">📈</span>
@@ -39,13 +39,24 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-auto">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left">Ticker</th>
-              <th class="py-3 px-4 text-left">Timeframe</th>
-              <th class="py-3 px-4 text-left">Price</th>
-              <th class="py-3 px-4 text-left">Change %</th>
-              <th class="py-3 px-4 text-left">Volume</th>
-              <th class="py-3 px-4 text-left">HA Value</th>
-              <th class="py-3 px-4 text-left">Message</th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')">
+                Ticker <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')">
+                Price <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')">
+                Change % <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')">
+                Volume <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')">
+                HA Value <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')">
+                Message <span class="ml-1">↕</span>
+              </th>
             </tr>
           </thead>
           <tbody id="buyTable" class="divide-y divide-gray-700"></tbody>
@@ -58,7 +69,7 @@ app.get('/', (req, res) => {
     </div>
 
     <!-- SELL/BEARISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden" style="width: 48vw;">
       <div class="bg-red-700 px-4 py-3">
         <h2 class="text-lg font-semibold text-white flex items-center">
           <span class="text-xl mr-2">📉</span>
@@ -69,13 +80,24 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-auto">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left">Ticker</th>
-              <th class="py-3 px-4 text-left">Timeframe</th>
-              <th class="py-3 px-4 text-left">Price</th>
-              <th class="py-3 px-4 text-left">Change %</th>
-              <th class="py-3 px-4 text-left">Volume</th>
-              <th class="py-3 px-4 text-left">HA Value</th>
-              <th class="py-3 px-4 text-left">Message</th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')">
+                Ticker <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')">
+                Price <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')">
+                Change % <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')">
+                Volume <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')">
+                HA Value <span class="ml-1">↕</span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')">
+                Message <span class="ml-1">↕</span>
+              </th>
             </tr>
           </thead>
           <tbody id="sellTable" class="divide-y divide-gray-700"></tbody>
@@ -91,6 +113,50 @@ app.get('/', (req, res) => {
 
 <script>
 let previousData = []
+let sortState = {
+  buy: { column: 'symbol', direction: 'asc' },
+  sell: { column: 'symbol', direction: 'asc' }
+}
+
+function sortTable(tableType, column) {
+  const currentSort = sortState[tableType]
+  
+  // Toggle direction if same column, otherwise default to ascending
+  if (currentSort.column === column) {
+    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc'
+  } else {
+    currentSort.column = column
+    currentSort.direction = 'asc'
+  }
+  
+  // Trigger data refresh to apply new sorting
+  fetchAlerts()
+}
+
+function applySorting(alerts, tableType) {
+  const { column, direction } = sortState[tableType]
+  
+  return alerts.sort((a, b) => {
+    let aVal = a[column]
+    let bVal = b[column]
+    
+    // Handle numeric columns
+    if (column === 'price' || column === 'priceChange' || column === 'volume' || column === 'haValue') {
+      aVal = parseFloat(aVal) || 0
+      bVal = parseFloat(bVal) || 0
+    } else {
+      // Handle string columns
+      aVal = (aVal || '').toString().toLowerCase()
+      bVal = (bVal || '').toString().toLowerCase()
+    }
+    
+    if (direction === 'asc') {
+      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+    } else {
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    }
+  })
+}
 
 async function fetchAlerts() {
   const res = await fetch('/alerts')
@@ -100,9 +166,9 @@ async function fetchAlerts() {
   const buyAlerts = data.filter(alert => alert.signal === 'Bullish')
   const sellAlerts = data.filter(alert => alert.signal === 'Bearish')
   
-  // Sort by most recent update first
-  buyAlerts.sort((a, b) => parseInt(b.time) - parseInt(a.time))
-  sellAlerts.sort((a, b) => parseInt(b.time) - parseInt(a.time))
+  // Apply current sorting
+  const sortedBuyAlerts = applySorting([...buyAlerts], 'buy')
+  const sortedSellAlerts = applySorting([...sellAlerts], 'sell')
   
      // Update last update time
    const lastUpdate = document.getElementById('lastUpdate')
@@ -117,12 +183,12 @@ async function fetchAlerts() {
   const buyTable = document.getElementById('buyTable')
   const noBuyAlerts = document.getElementById('noBuyAlerts')
   
-  if (buyAlerts.length === 0) {
+  if (sortedBuyAlerts.length === 0) {
     buyTable.innerHTML = ''
     noBuyAlerts.classList.remove('hidden')
   } else {
     noBuyAlerts.classList.add('hidden')
-    buyTable.innerHTML = buyAlerts.map(row => {
+    buyTable.innerHTML = sortedBuyAlerts.map(row => {
       // Check if this row was just updated
       const wasUpdated = previousData.length > 0 && 
         previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
@@ -138,7 +204,6 @@ async function fetchAlerts() {
               \${row.symbol}
             </a>
           </td>
-          <td class="py-3 px-4 text-white text-xs">\${row.timeframe || 'N/A'}</td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
@@ -153,12 +218,12 @@ async function fetchAlerts() {
   const sellTable = document.getElementById('sellTable')
   const noSellAlerts = document.getElementById('noSellAlerts')
   
-  if (sellAlerts.length === 0) {
+  if (sortedSellAlerts.length === 0) {
     sellTable.innerHTML = ''
     noSellAlerts.classList.remove('hidden')
   } else {
     noSellAlerts.classList.add('hidden')
-    sellTable.innerHTML = sellAlerts.map(row => {
+    sellTable.innerHTML = sortedSellAlerts.map(row => {
       // Check if this row was just updated
       const wasUpdated = previousData.length > 0 && 
         previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
@@ -174,7 +239,6 @@ async function fetchAlerts() {
               \${row.symbol}
             </a>
           </td>
-          <td class="py-3 px-4 text-white text-xs">\${row.timeframe || 'N/A'}</td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
