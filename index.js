@@ -36,25 +36,25 @@ app.get('/', (req, res) => {
         </h2>
       </div>
       <div class="overflow-x-auto">
-        <table class="min-w-full table-auto">
+        <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 15%; min-width: 80px;">
                 Ticker <span id="buy-symbol-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')" style="width: 15%; min-width: 80px;">
                 Price <span id="buy-price-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 12%; min-width: 70px;">
                 Chg% <span id="buy-priceChange-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 15%; min-width: 80px;">
                 Vol <span id="buy-volume-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 12%; min-width: 70px;">
                 HA <span id="buy-haValue-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 31%; min-width: 120px;">
                 Trend <span id="buy-condition-sort" class="ml-1" style="display: none;"></span>
               </th>
             </tr>
@@ -77,25 +77,25 @@ app.get('/', (req, res) => {
         </h2>
       </div>
       <div class="overflow-x-auto">
-        <table class="min-w-full table-auto">
+        <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 15%; min-width: 80px;">
                 Ticker <span id="sell-symbol-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')" style="width: 15%; min-width: 80px;">
                 Price <span id="sell-price-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 12%; min-width: 70px;">
                 Chg% <span id="sell-priceChange-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 15%; min-width: 80px;">
                 Vol <span id="sell-volume-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 12%; min-width: 70px;">
                 HA <span id="sell-haValue-sort" class="ml-1" style="display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 31%; min-width: 120px;">
                 Trend <span id="sell-condition-sort" class="ml-1" style="display: none;"></span>
               </th>
             </tr>
