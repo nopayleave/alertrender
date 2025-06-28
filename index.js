@@ -20,15 +20,15 @@ app.get('/', (req, res) => {
   <title>TradingView Alerts Feed</title>
 </head>
 <body class="bg-gray-900 text-gray-100">
-<div class="max-w-7xl mx-auto mt-6 p-6">
+<div class="w-full max-w-7xl mx-auto mt-6" style="padding: 0 1vw;">
   <div class="text-center mb-6">
     <h1 class="text-2xl font-bold mb-2">Live Trading Alerts Dashboard</h1>
     <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
   </div>
   
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="flex justify-between gap-4">
     <!-- BUY/BULLISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden" style="width: 48vw;">
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
       <div class="bg-green-700 px-4 py-3">
         <h2 class="text-lg font-semibold text-white flex items-center">
           <span class="text-xl mr-2">📈</span>
@@ -69,7 +69,7 @@ app.get('/', (req, res) => {
     </div>
 
     <!-- SELL/BEARISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden" style="width: 48vw;">
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
       <div class="bg-red-700 px-4 py-3">
         <h2 class="text-lg font-semibold text-white flex items-center">
           <span class="text-xl mr-2">📉</span>
