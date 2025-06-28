@@ -43,20 +43,32 @@ async function sendTestData() {
     {
       symbol: "BTCUSD",
       signal: "Bullish",
-      condition: "Golden Cross",
-      price: 67500.00
+      condition: "HA > 0",
+      price: 67500.00,
+      timeframe: "1h",
+      priceChange: 2.45,
+      volume: 1250000,
+      haValue: 0.0234
     },
     {
       symbol: "ETHUSD", 
       signal: "Bearish",
-      condition: "RSI Overbought",
-      price: 3150.00
+      condition: "HA < 0",
+      price: 3150.00,
+      timeframe: "4h",
+      priceChange: -1.87,
+      volume: 890000,
+      haValue: -0.0156
     },
     {
       symbol: "AAPL",
       signal: "Bullish", 
-      condition: "Breakout Above Resistance",
-      price: 195.50
+      condition: "HA > 0",
+      price: 195.50,
+      timeframe: "1d",
+      priceChange: 0.98,
+      volume: 45000000,
+      haValue: 0.0089
     }
   ];
 

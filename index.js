@@ -40,7 +40,11 @@ app.get('/', (req, res) => {
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
               <th class="py-3 px-4 text-left">Ticker</th>
+              <th class="py-3 px-4 text-left">Timeframe</th>
               <th class="py-3 px-4 text-left">Price</th>
+              <th class="py-3 px-4 text-left">Change %</th>
+              <th class="py-3 px-4 text-left">Volume</th>
+              <th class="py-3 px-4 text-left">HA Value</th>
               <th class="py-3 px-4 text-left">Message</th>
             </tr>
           </thead>
@@ -66,7 +70,11 @@ app.get('/', (req, res) => {
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
               <th class="py-3 px-4 text-left">Ticker</th>
+              <th class="py-3 px-4 text-left">Timeframe</th>
               <th class="py-3 px-4 text-left">Price</th>
+              <th class="py-3 px-4 text-left">Change %</th>
+              <th class="py-3 px-4 text-left">Volume</th>
+              <th class="py-3 px-4 text-left">HA Value</th>
               <th class="py-3 px-4 text-left">Message</th>
             </tr>
           </thead>
@@ -122,9 +130,20 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-green-400">\${row.symbol}</td>
-          <td class="py-3 px-4 text-green-300">$\${parseFloat(row.price).toLocaleString()}</td>
-          <td class="py-3 px-4 text-gray-300 text-sm">\${row.condition}</td>
+          <td class="py-3 px-4 font-semibold text-green-400">
+            <a href="https://www.tradingview.com/chart/?symbol=\${row.symbol}" 
+               target="_blank" 
+               class="hover:text-green-300 hover:underline cursor-pointer transition-colors duration-200"
+               title="Open \${row.symbol} chart on TradingView">
+              \${row.symbol}
+            </a>
+          </td>
+          <td class="py-3 px-4 text-white text-xs">\${row.timeframe || 'N/A'}</td>
+          <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
+          <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`
     }).join('')
@@ -147,9 +166,20 @@ async function fetchAlerts() {
       
       return \`
         <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-red-400">\${row.symbol}</td>
-          <td class="py-3 px-4 text-red-300">$\${parseFloat(row.price).toLocaleString()}</td>
-          <td class="py-3 px-4 text-gray-300 text-sm">\${row.condition}</td>
+          <td class="py-3 px-4 font-semibold text-red-400">
+            <a href="https://www.tradingview.com/chart/?symbol=\${row.symbol}" 
+               target="_blank" 
+               class="hover:text-red-300 hover:underline cursor-pointer transition-colors duration-200"
+               title="Open \${row.symbol} chart on TradingView">
+              \${row.symbol}
+            </a>
+          </td>
+          <td class="py-3 px-4 text-white text-xs">\${row.timeframe || 'N/A'}</td>
+          <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
+          <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.volume || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.haValue || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`
     }).join('')

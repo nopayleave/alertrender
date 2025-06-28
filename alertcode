@@ -295,9 +295,14 @@ plot(showStoch and lowerHighCondition ? currentCrossUnderK : na, "Lower High", c
 bullishAlert = o.b.c > 0
 bearishAlert = o.b.c < 0
 
-// Webhook Alert Messages
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "time": "' + str.tostring(time) + '"}'
+// Calculate additional data for webhook
+priceChange1D = ((close - close[1]) / close[1]) * 100
+volume1D = volume
+haValue = o.b.c
+
+// Webhook Alert Messages with additional fields
+bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "time": "' + str.tostring(time) + '"}'
+bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "time": "' + str.tostring(time) + '"}'
 
 // Send webhook alerts on each candle
 if bullishAlert
