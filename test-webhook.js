@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
 const LIVE_SERVER = 'https://alertrender.onrender.com';
-const LOCAL_SERVER = 'http://localhost:3001';
+const LOCAL_SERVER = 'http://localhost:3000';
 
 // Function to fetch alerts from live server
 async function fetchLiveAlerts() {
@@ -217,7 +217,7 @@ async function main() {
     console.log('  node test-webhook.js --test   # Send sample test data');
     console.log('  node test-webhook.js --sync   # Sync data from live server');
     console.log('');
-    console.log('🌐 Your local server is at: http://localhost:3001');
+    console.log('🌐 Your local server is at: http://localhost:3000');
     console.log('🌍 Your live server is at: https://alertrender.onrender.com');
   }
 }

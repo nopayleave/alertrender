@@ -157,25 +157,25 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 18%; min-width: 80px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 14%; min-width: 80px;">
                 Ticker <span id="buy-symbol-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')" style="width: 15%; min-width: 80px;">
                 Price <span id="buy-price-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 18%; min-width: 70px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 9%; min-width: 50px;">
                 Chg% <span id="buy-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 13%; min-width: 80px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 9%; min-width: 80px;">
                 Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 18%; min-width: 120px;">
-                Stoch | HA vs MACD <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+                Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 17%; min-width: 100px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 23%; min-width: 120px;">
                 Trading Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -201,25 +201,25 @@ app.get('/', (req, res) => {
         <table class="min-w-full table-fixed">
           <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
             <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 18%; min-width: 80px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 14%; min-width: 80px;">
                 Ticker <span id="sell-symbol-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')" style="width: 15%; min-width: 80px;">
                 Price <span id="sell-price-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 18%; min-width: 70px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 9%; min-width: 50px;">
                 Chg% <span id="sell-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 13%; min-width: 80px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 9%; min-width: 80px;">
                 Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 18%; min-width: 120px;">
-                Stoch | HA vs MACD <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+                Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 17%; min-width: 100px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 23%; min-width: 120px;">
                 Trading Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -248,9 +248,9 @@ function formatVolume(volume) {
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M'
   } else if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K'
+    return (num / 1000).toFixed(0) + 'K'
   }
-  return num.toString()
+  return Math.round(num).toString()
 }
 
 function getHAGrade(haValue) {
@@ -310,12 +310,16 @@ function getHAZoneIndicator(haValue) {
   if (!haValue || haValue === 'N/A') return 'H?'
   const value = parseFloat(haValue)
   
-  if (value >= 500) return 'H≥500'
-  if (value >= 51) return 'H>50'
-  if (value >= -50 && value <= 50) return 'H±50'
-  if (value >= -499) return 'H<-50'
-  if (value <= -500) return 'H≤-500'
-  return 'H?'
+  if (isNaN(value)) return 'H?'
+  
+  // Handle both large integer values and small decimal values
+  if (Math.abs(value) >= 500) {
+    return value >= 500 ? 'H≥500' : 'H≤-500'
+  } else if (Math.abs(value) >= 50) {
+    return value >= 50 ? 'H>50' : 'H<-50'
+  } else {
+    return 'H±50'
+  }
 }
 
 function formatEnhancedStoch(row) {
@@ -323,24 +327,39 @@ function formatEnhancedStoch(row) {
   const haValue = row.haValue || 'N/A'
   const macdSignal = row.macdSignal || 'N/A'
   
-  if (stochStatus === 'N/A' || haValue === 'N/A' || macdSignal === 'N/A') {
-    return stochStatus
+  // Removed debug logging
+  
+  // If basic stoch is missing, return placeholder
+  if (stochStatus === 'N/A' || stochStatus === '' || !stochStatus) {
+    return 'No Stoch Data'
+  }
+  
+  // If HA or MACD missing, show basic format with available data
+  if (haValue === 'N/A' || macdSignal === 'N/A') {
+    return \`\${stochStatus} | Data Incomplete\`
   }
   
   const haZone = getHAZoneIndicator(haValue)
   const haVal = parseFloat(haValue)
   const signalVal = parseFloat(macdSignal)
   
+  // Validate numeric values
+  if (isNaN(haVal) || isNaN(signalVal)) {
+    return \`\${stochStatus} | Invalid Data\`
+  }
+  
   // Compare HA value with MACD signal
   const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
   
-  // Add range indicator based on HA value
+  // Add range indicator based on HA value (handle both large and small values)
   let rangeIndicator = ''
-  if (haVal >= 500) rangeIndicator = '>500'
-  else if (haVal >= 51) rangeIndicator = '>50'
-  else if (haVal >= -50 && haVal <= 50) rangeIndicator = '±50'
-  else if (haVal >= -499) rangeIndicator = '<-50'
-  else if (haVal <= -500) rangeIndicator = '<-500'
+  if (Math.abs(haVal) >= 500) {
+    rangeIndicator = haVal >= 500 ? '>500' : '<-500'
+  } else if (Math.abs(haVal) >= 50) {
+    rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+  } else {
+    rangeIndicator = '±50'
+  }
   
   return \`\${stochStatus} | \${haZone}\${comparison}\${rangeIndicator}\`
 }
