@@ -176,7 +176,7 @@ app.get('/', (req, res) => {
                 Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 23%; min-width: 120px;">
-                Trading Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
+                Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -220,7 +220,7 @@ app.get('/', (req, res) => {
                 Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 23%; min-width: 120px;">
-                Trading Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
+                Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -424,11 +424,11 @@ function getTradingZoneLogic(row) {
     return { display: '🔵 Extreme Bullish', tooltip: 'DO NOT SHORT' }
   } else if (haVal >= 51 && haVal <= 499) {
     if ((isHigherLow && isCrossover) || isKAboveD) {
-      return { display: '🟢 Strong Bullish', tooltip: 'Higher Low crossover detected or K>D' }
+      return { display: '🟢 SBull', tooltip: 'Higher Low crossover detected or K>D' }
     } else if ((isLowerHigh && isCrossunder) || isKBelowD) {
       return { display: '🟢 Bullish', tooltip: 'Lower High crossunder detected or K<D' }
     }
-    return { display: '🟢 Strong Bullish', tooltip: 'Maintain long bias' }
+    return { display: '🟢 SBull', tooltip: 'Maintain long bias' }
   } else if (haVal >= -50 && haVal <= 50) {
     if (isCrossover) {
       return { display: '⚪ Critical Zone tend Buy', tooltip: 'Trend decision point - Crossover detected' }
@@ -440,9 +440,9 @@ function getTradingZoneLogic(row) {
     if ((isLowerHigh && isCrossunder) || isKAboveD) {
       return { display: '🟠 Bearish', tooltip: 'Lower High crossunder detected or K>D' }
     } else if ((isHigherLow && isCrossover) || isKBelowD) {
-      return { display: '🟠 Strong Bearish', tooltip: 'Higher Low crossover detected or K<D' }
+      return { display: '🟠 SBearish', tooltip: 'Higher Low crossover detected or K<D' }
     }
-    return { display: '🟠 Strong Bearish', tooltip: 'Maintain short bias' }
+    return { display: '🟠 SBearish', tooltip: 'Maintain short bias' }
   } else if (haVal <= -500) {
     return { display: '🔴 Extreme Bearish', tooltip: 'DO NOT LONG' }
   }
