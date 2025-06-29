@@ -334,12 +334,12 @@ function formatEnhancedStoch(row) {
     return 'No Stoch Data'
   }
   
-  // Determine crossover/crossunder status
+  // Determine crossover/crossunder status or K vs D relationship
   let crossStatus = ''
-  if (lastCrossType === 'crossover') {
-    crossStatus = '↑'
-  } else if (lastCrossType === 'crossunder') {
-    crossStatus = '↓'
+  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
+    crossStatus = '↑'  // Recent crossover OR K above D
+  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
+    crossStatus = '↓'  // Recent crossunder OR K below D
   }
   
   // Determine K vs 50 relationship
