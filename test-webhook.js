@@ -56,7 +56,12 @@ async function sendTestData() {
       macdSignal: 0.0156,
       lastCrossType: "Crossover",
       lastPattern: "Higher Low",
-      lastCrossValue: 62.45
+      lastCrossValue: 62.45,
+      openCrossType: "Crossover",
+      openStochK: 68.45,
+      openStochD: 62.33,
+      openStochRefD: 48.91,
+      isPremarket: false
     },
     {
       symbol: "ETHUSD", 
@@ -74,7 +79,12 @@ async function sendTestData() {
       macdSignal: -0.0089,
       lastCrossType: "Crossunder",
       lastPattern: "Lower High",
-      lastCrossValue: -12.67
+      lastCrossValue: -12.67,
+      openCrossType: "Crossunder",
+      openStochK: 42.18,
+      openStochD: 55.67,
+      openStochRefD: 38.22,
+      isPremarket: true
     },
     {
       symbol: "AAPL",
@@ -92,7 +102,12 @@ async function sendTestData() {
       macdSignal: 0.0234,
       lastCrossType: "Crossover",
       lastPattern: "Standard",
-      lastCrossValue: 68.91
+      lastCrossValue: 68.91,
+      openCrossType: "Crossover",
+      openStochK: 35.67,
+      openStochD: 28.44,
+      openStochRefD: 52.18,
+      isPremarket: false
     },
     {
       symbol: "TSLA",
@@ -110,7 +125,12 @@ async function sendTestData() {
       macdSignal: -0.0145,
       lastCrossType: "Crossunder",
       lastPattern: "Lower Low",
-      lastCrossValue: -21.34
+      lastCrossValue: -21.34,
+      openCrossType: "Crossunder",
+      openStochK: 58.91,
+      openStochD: 65.23,
+      openStochRefD: 42.77,
+      isPremarket: false
     },
     {
       symbol: "NVDA",

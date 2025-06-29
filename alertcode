@@ -300,6 +300,60 @@ priceChange1D = ((close - close[1]) / close[1]) * 100
 volume1D = volume
 haValue = o.b.c
 
+// Market Open Cross Tracking (2-minute timeframe)
+var string openCrossType = ""
+var float openStochK = na
+var float openStochD = na
+var float openStochRefD = na
+var bool isPremarket = false
+var bool marketOpenCrossDetected = false
+
+// Check if we're in market hours (9:30 AM - 4:00 PM EST)
+// This is a simplified check - you may need to adjust for your timezone
+bool isMarketHours = hour >= 9 and (hour < 16 or (hour == 9 and minute >= 30))
+bool isPremarketHours = hour < 9 or (hour == 9 and minute < 30)
+
+// Reset at market open (9:30 AM)
+if hour == 9 and minute == 30 and not marketOpenCrossDetected[1]
+    marketOpenCrossDetected := false
+    openCrossType := ""
+    openStochK := na
+    openStochD := na
+    openStochRefD := na
+    isPremarket := false
+
+// Track first crossing after market open on 2-minute timeframe
+if timeframe.period == "2" and isMarketHours and not marketOpenCrossDetected
+    if crossOver
+        openCrossType := "Crossover"
+        openStochK := s.k
+        openStochD := s.d
+        openStochRefD := sRef.d
+        isPremarket := false
+        marketOpenCrossDetected := true
+    else if crossUnder
+        openCrossType := "Crossunder"
+        openStochK := s.k
+        openStochD := s.d
+        openStochRefD := sRef.d
+        isPremarket := false
+        marketOpenCrossDetected := true
+
+// If no crossing detected after market open, use last premarket crossing
+if isPremarketHours and (crossOver or crossUnder)
+    if crossOver
+        openCrossType := "Crossover"
+        openStochK := s.k
+        openStochD := s.d
+        openStochRefD := sRef.d
+        isPremarket := true
+    else if crossUnder
+        openCrossType := "Crossunder"
+        openStochK := s.k
+        openStochD := s.d
+        openStochRefD := sRef.d
+        isPremarket := true
+
 // Determine last crossing type and pattern
 string lastCrossType = ""
 string lastPattern = ""
@@ -383,9 +437,9 @@ else if s.k < s.d and s.k < 0 and s.k > sRef.d
 else if s.k < s.d and s.k < 0 and s.k < sRef.d
     stochStatus := "<D<0<rD"
 
-// Webhook Alert Messages with comprehensive data
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "time": "' + str.tostring(time) + '"}'
+// Webhook Alert Messages with comprehensive data including Open column
+bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
+bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
 
 // Send webhook alerts on each candle
 if bullishAlert

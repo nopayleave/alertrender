@@ -172,10 +172,13 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 18%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'openCross')" style="width: 12%; min-width: 80px;">
+                Open <span id="buy-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 16%; min-width: 120px;">
                 Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 23%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 21%; min-width: 120px;">
                 Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -216,10 +219,13 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 18%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'openCross')" style="width: 12%; min-width: 80px;">
+                Open <span id="sell-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 16%; min-width: 120px;">
                 Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 23%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 21%; min-width: 120px;">
                 Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -320,6 +326,42 @@ function getHAZoneIndicator(haValue) {
   } else {
     return 'H±50'
   }
+}
+
+function formatOpenCross(row) {
+  const openCrossType = row.openCrossType || ''
+  const openStochK = parseFloat(row.openStochK) || 0
+  const openStochD = parseFloat(row.openStochD) || 0
+  const openStochRefD = parseFloat(row.openStochRefD) || 0
+  const isPremarket = row.isPremarket || false
+  
+  // If no open cross data available
+  if (!row.openCrossType) {
+    return 'No Data'
+  }
+  
+  // Determine cross symbol
+  let crossSymbol = ''
+  if (openCrossType.toLowerCase() === 'crossover') {
+    crossSymbol = '↑'
+  } else if (openCrossType.toLowerCase() === 'crossunder') {
+    crossSymbol = '↓'
+  }
+  
+  // Build the cross status
+  let crossStatus = ''
+  if (openStochK > 50 && openStochK > openStochRefD) {
+    crossStatus = crossSymbol + '>50>rD'
+  } else if (openStochK > 50 && openStochK < openStochRefD) {
+    crossStatus = crossSymbol + '>50<rD'
+  } else if (openStochK < 50 && openStochK > openStochRefD) {
+    crossStatus = crossSymbol + '<50>rD'
+  } else {
+    crossStatus = crossSymbol + '<50<rD'
+  }
+  
+  // Add premarket prefix if applicable
+  return isPremarket ? 'P ' + crossStatus : crossStatus
 }
 
 function formatEnhancedStoch(row) {
@@ -532,7 +574,7 @@ function applySorting(alerts, tableType) {
       aVal = parseFloat(aVal) || 0
       bVal = parseFloat(bVal) || 0
     } else {
-      // Handle string columns
+      // Handle string columns (including openCross)
       aVal = (aVal || '').toString().toLowerCase()
       bVal = (bVal || '').toString().toLowerCase()
     }
@@ -609,6 +651,7 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
@@ -663,6 +706,7 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
