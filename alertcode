@@ -301,9 +301,9 @@ volume1D = volume
 haValue = o.b.c
 
 // Determine last crossing type and pattern
-lastCrossType = ""
-lastPattern = ""
-lastCrossValue = na
+string lastCrossType = ""
+string lastPattern = ""
+float lastCrossValue = na
 
 if crossOver
     lastCrossType := "Crossover"
@@ -349,7 +349,7 @@ else
     lastCrossValue := lastCrossValueStored
 
 // Generate Stochastic status string (keeping existing logic)
-stochStatus = ""
+string stochStatus = ""
 if crossOver and s.k > 0 and s.k > sRef.d
     stochStatus := "↑>0>D"
 else if crossOver and s.k > 0 and s.k < sRef.d

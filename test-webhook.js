@@ -55,7 +55,8 @@ async function sendTestData() {
       stochRefD: 45.67,
       macdSignal: 0.0156,
       lastCrossType: "Crossover",
-      lastPattern: "Higher Low"
+      lastPattern: "Higher Low",
+      lastCrossValue: 62.45
     },
     {
       symbol: "ETHUSD", 
@@ -72,7 +73,8 @@ async function sendTestData() {
       stochRefD: 12.45,
       macdSignal: -0.0089,
       lastCrossType: "Crossunder",
-      lastPattern: "Lower High"
+      lastPattern: "Lower High",
+      lastCrossValue: -12.67
     },
     {
       symbol: "AAPL",
@@ -89,7 +91,8 @@ async function sendTestData() {
       stochRefD: 56.33,
       macdSignal: 0.0234,
       lastCrossType: "Crossover",
-      lastPattern: "Standard"
+      lastPattern: "Standard",
+      lastCrossValue: 68.91
     },
     {
       symbol: "TSLA",
@@ -106,7 +109,8 @@ async function sendTestData() {
       stochRefD: -12.34,
       macdSignal: -0.0145,
       lastCrossType: "Crossunder",
-      lastPattern: "Lower Low"
+      lastPattern: "Lower Low",
+      lastCrossValue: -21.34
     },
     {
       symbol: "NVDA",
@@ -123,7 +127,8 @@ async function sendTestData() {
       stochRefD: -22.67,
       macdSignal: 0.0198,
       lastCrossType: "Crossover",
-      lastPattern: "Higher Low"
+      lastPattern: "Higher Low",
+      lastCrossValue: -11.78
     },
     {
       symbol: "MSFT",
@@ -140,7 +145,8 @@ async function sendTestData() {
       stochRefD: 45.89,
       macdSignal: -0.0067,
       lastCrossType: "Crossunder",
-      lastPattern: "Higher High"
+      lastPattern: "Higher High",
+      lastCrossValue: 28.34
     },
     {
       symbol: "GOOGL",
@@ -157,7 +163,8 @@ async function sendTestData() {
       stochRefD: 67.89,
       macdSignal: 0.0123,
       lastCrossType: "Crossover",
-      lastPattern: "Initial"
+      lastPattern: "Initial",
+      lastCrossValue: 43.21
     },
     {
       symbol: "AMZN",
@@ -174,7 +181,8 @@ async function sendTestData() {
       stochRefD: 34.56,
       macdSignal: -0.0112,
       lastCrossType: "Crossunder",
-      lastPattern: "Standard"
+      lastPattern: "Standard",
+      lastCrossValue: 16.89
     }
   ];
 
