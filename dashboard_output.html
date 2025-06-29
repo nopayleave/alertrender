@@ -1,0 +1,751 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>TradingView Alerts Feed</title>
+</head>
+<body class="bg-gray-900 text-gray-100">
+<div class="mx-auto mt-6" style="width: 98%; max-width: 100%;">
+  <div class="text-center mb-6">
+    <h1 class="text-2xl font-bold mb-2">Live Trading Alerts Dashboard</h1>
+    <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
+  </div>
+  
+  <div class="flex justify-between gap-4">
+    <!-- BUY/BULLISH TABLE -->
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
+      <div class="bg-green-700 px-4 py-3">
+        <h2 class="text-lg font-semibold text-white flex items-center">
+          <span class="text-xl mr-2">📈</span>
+          Bullish Signals (BUY)
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-fixed">
+          <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
+            <tr>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 14%; min-width: 80px;">
+                Ticker <span id="buy-symbol-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')" style="width: 15%; min-width: 80px;">
+                Price <span id="buy-price-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 9%; min-width: 50px;">
+                Chg% <span id="buy-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 9%; min-width: 80px;">
+                Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
+                HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'openCross')" style="width: 12%; min-width: 80px;">
+                Open <span id="buy-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 16%; min-width: 120px;">
+                Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 21%; min-width: 120px;">
+                Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="buyTable" class="divide-y divide-gray-700"></tbody>
+        </table>
+        <div id="noBuyAlerts" class="text-center py-8 text-gray-500 hidden">
+          <span class="text-4xl mb-2 block">📊</span>
+          No bullish signals yet
+        </div>
+      </div>
+    </div>
+
+    <!-- SELL/BEARISH TABLE -->
+    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
+      <div class="bg-red-700 px-4 py-3">
+        <h2 class="text-lg font-semibold text-white flex items-center">
+          <span class="text-xl mr-2">📉</span>
+          Bearish Signals (SELL)
+        </h2>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-fixed">
+          <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
+            <tr>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 14%; min-width: 80px;">
+                Ticker <span id="sell-symbol-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')" style="width: 15%; min-width: 80px;">
+                Price <span id="sell-price-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 9%; min-width: 50px;">
+                Chg% <span id="sell-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 9%; min-width: 80px;">
+                Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
+                HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'openCross')" style="width: 12%; min-width: 80px;">
+                Open <span id="sell-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 16%; min-width: 120px;">
+                Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 21%; min-width: 120px;">
+                Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="sellTable" class="divide-y divide-gray-700"></tbody>
+        </table>
+        <div id="noSellAlerts" class="text-center py-8 text-gray-500 hidden">
+          <span class="text-4xl mb-2 block">📊</span>
+          No bearish signals yet
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let previousData = []
+let sortState = {
+  buy: { column: 'symbol', direction: 'asc' },
+  sell: { column: 'symbol', direction: 'asc' }
+}
+
+function formatVolume(volume) {
+  if (!volume || volume === 'N/A') return 'N/A'
+  const num = parseFloat(volume)
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M'
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(0) + 'K'
+  }
+  return Math.round(num).toString()
+}
+
+function getHAGrade(haValue) {
+  if (!haValue || haValue === 'N/A') return 'N/A'
+  const value = parseFloat(haValue)
+  
+  if (value >= 0) {
+    // Bullish grades
+    if (value >= 500) return 'S+'
+    if (value >= 350) return 'S'
+    if (value >= 200) return 'A+'
+    if (value >= 100) return 'A'
+    if (value >= 50) return 'B'
+    return 'C'
+  } else {
+    // Bearish grades
+    if (value <= -500) return 'S+'
+    if (value <= -350) return 'S'
+    if (value <= -200) return 'A+'
+    if (value <= -100) return 'A'
+    if (value <= -50) return 'B'
+    return 'C'
+  }
+}
+
+function getHAGradeStyle(haValue, signal) {
+  if (!haValue || haValue === 'N/A') return 'bg-gray-600 text-black'
+  const grade = getHAGrade(haValue)
+  const isBullish = signal === 'Bullish'
+  
+  if (isBullish) {
+    // Bullish signal styles (green tones)
+    switch(grade) {
+      case 'S+': return 'bg-green-600 text-black'
+      case 'S': return 'bg-green-500 text-black'
+      case 'A+': return 'bg-green-400 text-black'
+      case 'A': return 'bg-green-300 text-black'
+      case 'B': return 'bg-yellow-400 text-black'
+      case 'C': return 'bg-orange-400 text-black'
+      default: return 'bg-gray-600 text-black'
+    }
+  } else {
+    // Bearish signal styles (red tones)
+    switch(grade) {
+      case 'S+': return 'bg-red-600 text-black'
+      case 'S': return 'bg-red-500 text-black'
+      case 'A+': return 'bg-red-400 text-black'
+      case 'A': return 'bg-red-300 text-black'
+      case 'B': return 'bg-yellow-400 text-black'
+      case 'C': return 'bg-orange-400 text-black'
+      default: return 'bg-gray-600 text-black'
+    }
+  }
+}
+
+function getHAZoneIndicator(haValue) {
+  if (!haValue || haValue === 'N/A') return 'H?'
+  const value = parseFloat(haValue)
+  
+  if (isNaN(value)) return 'H?'
+  
+  // Handle both large integer values and small decimal values
+  if (Math.abs(value) >= 500) {
+    return value >= 500 ? 'H≥500' : 'H≤-500'
+  } else if (Math.abs(value) >= 50) {
+    return value >= 50 ? 'H>50' : 'H<-50'
+  } else {
+    return 'H±50'
+  }
+}
+
+function formatOpenCross(row) {
+  const openCrossType = row.openCrossType || ''
+  const openStochK = parseFloat(row.openStochK) || 0
+  const openStochD = parseFloat(row.openStochD) || 0
+  const openStochRefD = parseFloat(row.openStochRefD) || 0
+  const isPremarket = row.isPremarket || false
+  
+  // If no open cross data available
+  if (!row.openCrossType) {
+    return 'No Data'
+  }
+  
+  // Determine cross symbol
+  let crossSymbol = ''
+  if (openCrossType.toLowerCase() === 'crossover') {
+    crossSymbol = '↑'
+  } else if (openCrossType.toLowerCase() === 'crossunder') {
+    crossSymbol = '↓'
+  }
+  
+  // Build the cross status
+  let crossStatus = ''
+  if (openStochK > 50 && openStochK > openStochRefD) {
+    crossStatus = crossSymbol + '>50>rD'
+  } else if (openStochK > 50 && openStochK < openStochRefD) {
+    crossStatus = crossSymbol + '>50<rD'
+  } else if (openStochK < 50 && openStochK > openStochRefD) {
+    crossStatus = crossSymbol + '<50>rD'
+  } else {
+    crossStatus = crossSymbol + '<50<rD'
+  }
+  
+  // Add premarket prefix if applicable
+  return isPremarket ? 'P ' + crossStatus : crossStatus
+}
+
+function formatEnhancedStoch(row) {
+  // Extract stochastic data from the row
+  const stochK = parseFloat(row.stochK) || 0
+  const stochD = parseFloat(row.stochD) || 0
+  const stochRefD = parseFloat(row.stochRefD) || 0
+  const lastCrossType = row.lastCrossType || ''
+  const haValue = row.haValue || 'N/A'
+  const macdSignal = row.macdSignal || 'N/A'
+  
+  // Check for missing stochastic data
+  if (!row.stochK || !row.stochD || !row.stochRefD) {
+    return 'No Stoch Data'
+  }
+  
+  // Determine crossover/crossunder status or K vs D relationship
+  let crossStatus = ''
+  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
+    crossStatus = '↑'  // Recent crossover OR K above D
+  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
+    crossStatus = '↓'  // Recent crossunder OR K below D
+  }
+  
+  // Build the stochastic status string
+  let stochPart = ''
+  if (crossStatus) {
+    // Recent crossover/crossunder cases
+    if (crossStatus === '↑') {
+      // Crossover cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↑>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↑>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↑<50>rD'
+      } else {
+        stochPart = '↑<50<rD'
+      }
+    } else {
+      // Crossunder cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↓>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↓>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↓<50>rD'
+      } else {
+        stochPart = '↓<50<rD'
+      }
+    }
+  } else {
+    // No recent cross - current position cases
+    if (stochK < stochD) {
+      // Below primary D cases
+      if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '<D>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<D<50>rD'
+      } else if (stochK < 50 && stochK < stochRefD) {
+        stochPart = '<D<50<rD'
+      }
+    }
+    
+    // Standard position cases (above D or no specific pattern)
+    if (!stochPart) {
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<50>rD'
+      } else {
+        stochPart = '<50<rD'
+      }
+    }
+  }
+  
+  // If HA or MACD missing, show stoch part only
+  if (haValue === 'N/A' || macdSignal === 'N/A') {
+    return stochPart + ' | Data Incomplete'
+  }
+  
+  // Build HA vs MACD comparison part
+  const haZone = getHAZoneIndicator(haValue)
+  const haVal = parseFloat(haValue)
+  const signalVal = parseFloat(macdSignal)
+  
+  // Validate numeric values
+  if (isNaN(haVal) || isNaN(signalVal)) {
+    return stochPart + ' | Invalid Data'
+  }
+  
+  // Compare HA value with MACD signal
+  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+  
+  // Add range indicator based on HA value (handle both large and small values)
+  let rangeIndicator = ''
+  if (Math.abs(haVal) >= 500) {
+    rangeIndicator = haVal >= 500 ? '>500' : '<-500'
+  } else if (Math.abs(haVal) >= 50) {
+    rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+  } else {
+    rangeIndicator = '±50'
+  }
+  
+  return stochPart + ' | ' + haZone + comparison + rangeIndicator
+}
+
+function getTradingZoneLogic(row) {
+  const haValue = row.haValue || 'N/A'
+  const stochStatus = row.stoch || ''
+  const lastPattern = row.lastPattern || ''
+  
+  if (haValue === 'N/A') return { display: row.condition || 'N/A', tooltip: '' }
+  
+  const haVal = parseFloat(haValue)
+  
+  // Detect stochastic patterns
+  const isHigherLow = lastPattern.includes('Higher Low') || stochStatus.includes('Higher Low')
+  const isLowerHigh = lastPattern.includes('Lower High') || stochStatus.includes('Lower High')
+  const isCrossover = stochStatus.includes('↑') // K crosses above D
+  const isCrossunder = stochStatus.includes('↓') // K crosses below D
+  const isKAboveD = stochStatus.includes('>D') || (!stochStatus.includes('<D') && !isCrossunder)
+  const isKBelowD = stochStatus.includes('<D') || isCrossunder
+  
+  if (haVal >= 500) {
+    return { display: '🔵 Extreme Bullish', tooltip: 'DO NOT SHORT' }
+  } else if (haVal >= 51 && haVal <= 499) {
+    if ((isHigherLow && isCrossover) || isKAboveD) {
+      return { display: '🟢 SBull', tooltip: 'Higher Low crossover detected or K>D' }
+    } else if ((isLowerHigh && isCrossunder) || isKBelowD) {
+      return { display: '🟢 Bullish', tooltip: 'Lower High crossunder detected or K<D' }
+    }
+    return { display: '🟢 SBull', tooltip: 'Maintain long bias' }
+  } else if (haVal >= -50 && haVal <= 50) {
+    if (isCrossover) {
+      return { display: '⚪ Critical Zone tend Buy', tooltip: 'Trend decision point - Crossover detected' }
+    } else if (isCrossunder) {
+      return { display: '⚪ Critical Zone tend Sell', tooltip: 'Trend decision point - Crossunder detected' }
+    }
+    return { display: '⚪ Critical Zone', tooltip: 'Trend decision point' }
+  } else if (haVal >= -499 && haVal <= -51) {
+    if ((isLowerHigh && isCrossunder) || isKAboveD) {
+      return { display: '🟠 Bearish', tooltip: 'Lower High crossunder detected or K>D' }
+    } else if ((isHigherLow && isCrossover) || isKBelowD) {
+      return { display: '🟠 SBearish', tooltip: 'Higher Low crossover detected or K<D' }
+    }
+    return { display: '🟠 SBearish', tooltip: 'Maintain short bias' }
+  } else if (haVal <= -500) {
+    return { display: '🔴 Extreme Bearish', tooltip: 'DO NOT LONG' }
+  }
+  
+  return { display: row.condition || 'N/A', tooltip: '' }
+}
+
+// Show initial sort indicators after DOM loads
+function initializeSortIndicators() {
+  setTimeout(() => {
+    updateSortIndicators()
+  }, 100)
+}
+
+function sortTable(tableType, column) {
+  const currentSort = sortState[tableType]
+  
+  // Toggle direction if same column, otherwise default to ascending
+  if (currentSort.column === column) {
+    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc'
+  } else {
+    currentSort.column = column
+    currentSort.direction = 'asc'
+  }
+  
+  // Update sort indicators
+  updateSortIndicators()
+  
+  // Trigger data refresh to apply new sorting
+  fetchAlerts()
+}
+
+function updateSortIndicators() {
+  // Hide all sort indicators first
+  const allSortSpans = document.querySelectorAll('[id$="-sort"]')
+  allSortSpans.forEach(span => {
+    span.style.display = 'none'
+    span.textContent = ''
+  })
+  
+  // Show and update active sort indicators
+  Object.keys(sortState).forEach(tableType => {
+    const { column, direction } = sortState[tableType]
+    const sortSpan = document.getElementById(`${tableType}-${column}-sort`)
+    if (sortSpan) {
+      sortSpan.style.display = 'inline'
+      sortSpan.textContent = direction === 'asc' ? '↑' : '↓'
+    }
+  })
+}
+
+function applySorting(alerts, tableType) {
+  const { column, direction } = sortState[tableType]
+  
+  return alerts.sort((a, b) => {
+    let aVal = a[column]
+    let bVal = b[column]
+    
+    // Handle numeric columns
+    if (column === 'price' || column === 'priceChange' || column === 'volume' || column === 'haValue') {
+      aVal = parseFloat(aVal) || 0
+      bVal = parseFloat(bVal) || 0
+    } else {
+      // Handle string columns (including openCross)
+      aVal = (aVal || '').toString().toLowerCase()
+      bVal = (bVal || '').toString().toLowerCase()
+    }
+    
+    if (direction === 'asc') {
+      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+    } else {
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    }
+  })
+}
+
+async function fetchAlerts() {
+  const res = await fetch('/alerts')
+  const data = await res.json()
+  
+  // Separate buy and sell signals
+  const buyAlerts = data.filter(alert => alert.signal === 'Bullish')
+  const sellAlerts = data.filter(alert => alert.signal === 'Bearish')
+  
+  // Apply current sorting
+  const sortedBuyAlerts = applySorting([...buyAlerts], 'buy')
+  const sortedSellAlerts = applySorting([...sellAlerts], 'sell')
+  
+     // Update last update time
+   const lastUpdate = document.getElementById('lastUpdate')
+   if (data.length > 0) {
+     const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
+     lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
+   } else {
+     lastUpdate.textContent = 'Last updated: Never'
+   }
+  
+  // Update buy table
+  const buyTable = document.getElementById('buyTable')
+  const noBuyAlerts = document.getElementById('noBuyAlerts')
+  
+  if (sortedBuyAlerts.length === 0) {
+    buyTable.innerHTML = ''
+    noBuyAlerts.classList.remove('hidden')
+  } else {
+    noBuyAlerts.classList.add('hidden')
+    buyTable.innerHTML = sortedBuyAlerts.map(row => {
+      // Check if this row was just updated
+      const wasUpdated = previousData.length > 0 && 
+        previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
+      const highlightClass = wasUpdated ? 'bg-green-900 bg-opacity-30' : ''
+      
+      return `
+        <tr class="transition-colors duration-500 hover:bg-gray-700 ${highlightClass}">
+          <td class="py-3 px-4 font-semibold text-white relative">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   viewBox="0 0 24 24" 
+                   fill="currentColor" 
+                   class="w-4 h-4 cursor-pointer hover:text-green-300 transition-colors duration-200"
+                   onclick="showChart('${row.symbol}', event)"
+                   title="Click for chart preview">
+                <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+              </svg>
+              <span class="hover:text-blue-300 hover:underline cursor-pointer transition-colors duration-200"
+                    onclick="window.open('https://www.tradingview.com/chart/?symbol=${row.symbol}', '_blank')"
+                    title="Click to open TradingView">
+                ${row.symbol}
+              </span>
+            </div>
+          </td>
+          <td class="py-3 px-4 text-white">$${parseFloat(row.price).toLocaleString()}</td>
+          <td class="py-3 px-4 text-white ${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 text-white text-xs">${formatVolume(row.volume)}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            <div class="flex items-center gap-2">
+              <span>${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getHAGradeStyle(row.haValue, row.signal)}">${getHAGrade(row.haValue)}</span>
+            </div>
+          </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">${formatOpenCross(row)}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">${formatEnhancedStoch(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">
+            <span title="${getTradingZoneLogic(row).tooltip}" class="cursor-help">
+              ${getTradingZoneLogic(row).display}
+            </span>
+          </td>
+        </tr>
+      `
+    }).join('')
+  }
+  
+  // Update sell table
+  const sellTable = document.getElementById('sellTable')
+  const noSellAlerts = document.getElementById('noSellAlerts')
+  
+  if (sortedSellAlerts.length === 0) {
+    sellTable.innerHTML = ''
+    noSellAlerts.classList.remove('hidden')
+  } else {
+    noSellAlerts.classList.add('hidden')
+    sellTable.innerHTML = sortedSellAlerts.map(row => {
+      // Check if this row was just updated
+      const wasUpdated = previousData.length > 0 && 
+        previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
+      const highlightClass = wasUpdated ? 'bg-red-900 bg-opacity-30' : ''
+      
+      return `
+        <tr class="transition-colors duration-500 hover:bg-gray-700 ${highlightClass}">
+          <td class="py-3 px-4 font-semibold text-white relative">
+            <div class="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   viewBox="0 0 24 24" 
+                   fill="currentColor" 
+                   class="w-4 h-4 cursor-pointer hover:text-red-300 transition-colors duration-200"
+                   onclick="showChart('${row.symbol}', event)"
+                   title="Click for chart preview">
+                <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
+              </svg>
+              <span class="hover:text-blue-300 hover:underline cursor-pointer transition-colors duration-200"
+                    onclick="window.open('https://www.tradingview.com/chart/?symbol=${row.symbol}', '_blank')"
+                    title="Click to open TradingView">
+                ${row.symbol}
+              </span>
+            </div>
+          </td>
+          <td class="py-3 px-4 text-white">$${parseFloat(row.price).toLocaleString()}</td>
+          <td class="py-3 px-4 text-white ${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 text-white text-xs">${formatVolume(row.volume)}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            <div class="flex items-center gap-2">
+              <span>${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold ${getHAGradeStyle(row.haValue, row.signal)}">${getHAGrade(row.haValue)}</span>
+            </div>
+          </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">${formatOpenCross(row)}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">${formatEnhancedStoch(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">
+            <span title="${getTradingZoneLogic(row).tooltip}" class="cursor-help">
+              ${getTradingZoneLogic(row).display}
+            </span>
+          </td>
+        </tr>
+      `
+    }).join('')
+  }
+  
+  previousData = [...data]
+}
+
+setInterval(fetchAlerts, 2000)
+fetchAlerts()
+
+// Chart overlay functionality
+let chartOverlay = null
+
+function showChart(symbol, event) {
+  // Prevent event bubbling to avoid conflicts
+  if (event) {
+    event.stopPropagation()
+  }
+  
+  // Hide any existing chart first
+  hideChart()
+    
+    // Create overlay
+    chartOverlay = document.createElement('div')
+    chartOverlay.id = 'chart-overlay'
+    chartOverlay.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 95vw;
+      max-width: 1200px;
+      height: 85vh;
+      max-height: 800px;
+      background: #131722;
+      border: 2px solid #2a2e39;
+      border-radius: 12px;
+      z-index: 1000;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    `
+    
+    // Create close button
+    const closeButton = document.createElement('button')
+    closeButton.innerHTML = '×'
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: rgba(239, 83, 80, 0.8);
+      border: none;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 1001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    `
+    closeButton.onmouseover = () => closeButton.style.background = 'rgba(239, 83, 80, 1)'
+    closeButton.onmouseout = () => closeButton.style.background = 'rgba(239, 83, 80, 0.8)'
+    closeButton.onclick = hideChart
+    chartOverlay.appendChild(closeButton)
+    
+    // Create TradingView widget container
+    const widgetContainer = document.createElement('div')
+    widgetContainer.className = 'tradingview-widget-container'
+    widgetContainer.style.cssText = 'height: 100%; width: 100%;'
+    
+    // Create main widget div
+    const widgetDiv = document.createElement('div')
+    widgetDiv.className = 'tradingview-widget-container__widget'
+    widgetDiv.style.cssText = 'height: calc(100% - 32px); width: 100%;'
+    
+    // Create copyright div
+    const copyrightDiv = document.createElement('div')
+    copyrightDiv.className = 'tradingview-widget-copyright'
+    copyrightDiv.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span style="color: #2196F3;">Track all markets on TradingView</span></a>'
+    copyrightDiv.style.cssText = 'height: 32px; display: flex; align-items: center; justify-content: center; background: #131722;'
+    
+    const script = document.createElement('script')
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.type = 'text/javascript'
+    script.async = true
+    script.innerHTML = JSON.stringify({
+      allow_symbol_change: false,
+      calendar: false,
+      details: false,
+      hide_side_toolbar: true,
+      hide_top_toolbar: false,
+      hide_legend: false,
+      hide_volume: false,
+      hotlist: false,
+      interval: '3',
+      locale: 'en',
+      save_image: false,
+      style: '1',
+      symbol: symbol,
+      theme: 'dark',
+      timezone: 'Etc/UTC',
+      backgroundColor: '#0F0F0F',
+      gridColor: 'rgba(242, 242, 242, 0.06)',
+      watchlist: [],
+      withdateranges: false,
+      range: '1D',
+      compareSymbols: [],
+      show_popup_button: true,
+      popup_height: '650',
+      popup_width: '1000',
+      studies: [
+        'STD;VWAP',
+        'STD;Stochastic',
+        'STD;MACD'
+      ],
+      autosize: true
+    })
+    
+    widgetDiv.appendChild(script)
+    widgetContainer.appendChild(widgetDiv)
+    widgetContainer.appendChild(copyrightDiv)
+    chartOverlay.appendChild(widgetContainer)
+    document.body.appendChild(chartOverlay)
+    
+    // Add backdrop
+    const backdrop = document.createElement('div')
+    backdrop.id = 'chart-backdrop'
+    backdrop.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    `
+    backdrop.onclick = hideChart
+    document.body.appendChild(backdrop)
+}
+
+function hideChart() {
+  const overlay = document.getElementById('chart-overlay')
+  const backdrop = document.getElementById('chart-backdrop')
+  
+  if (overlay) overlay.remove()
+  if (backdrop) backdrop.remove()
+  
+  chartOverlay = null
+}
+
+// Close chart on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideChart()
+})
+
+// Initialize sort indicators on page load
+initializeSortIndicators()
+</script>
+</body>
+</html>
+  
