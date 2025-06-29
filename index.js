@@ -172,11 +172,11 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 12%; min-width: 80px;">
-                Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 18%; min-width: 120px;">
+                Stoch | HA vs MACD <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 23%; min-width: 120px;">
-                Trend <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 17%; min-width: 100px;">
+                Trading Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -216,11 +216,11 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 12%; min-width: 80px;">
-                Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 18%; min-width: 120px;">
+                Stoch | HA vs MACD <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 23%; min-width: 120px;">
-                Trend <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 17%; min-width: 100px;">
+                Trading Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
           </thead>
@@ -304,6 +304,87 @@ function getHAGradeStyle(haValue, signal) {
       default: return 'bg-gray-600 text-black'
     }
   }
+}
+
+function getHAZoneIndicator(haValue) {
+  if (!haValue || haValue === 'N/A') return 'H?'
+  const value = parseFloat(haValue)
+  
+  if (value >= 500) return 'H≥500'
+  if (value >= 51) return 'H>50'
+  if (value >= -50 && value <= 50) return 'H±50'
+  if (value >= -499) return 'H<-50'
+  if (value <= -500) return 'H≤-500'
+  return 'H?'
+}
+
+function formatEnhancedStoch(row) {
+  const stochStatus = row.stoch || 'N/A'
+  const haValue = row.haValue || 'N/A'
+  const macdSignal = row.macdSignal || 'N/A'
+  
+  if (stochStatus === 'N/A' || haValue === 'N/A' || macdSignal === 'N/A') {
+    return stochStatus
+  }
+  
+  const haZone = getHAZoneIndicator(haValue)
+  const haVal = parseFloat(haValue)
+  const signalVal = parseFloat(macdSignal)
+  
+  // Compare HA value with MACD signal
+  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+  
+  // Add range indicator based on HA value
+  let rangeIndicator = ''
+  if (haVal >= 500) rangeIndicator = '>500'
+  else if (haVal >= 51) rangeIndicator = '>50'
+  else if (haVal >= -50 && haVal <= 50) rangeIndicator = '±50'
+  else if (haVal >= -499) rangeIndicator = '<-50'
+  else if (haVal <= -500) rangeIndicator = '<-500'
+  
+  return \`\${stochStatus} | \${haZone}\${comparison}\${rangeIndicator}\`
+}
+
+function getTradingZoneLogic(row) {
+  const haValue = row.haValue || 'N/A'
+  const stochStatus = row.stoch || ''
+  const lastPattern = row.lastPattern || ''
+  
+  if (haValue === 'N/A') return row.condition || 'N/A'
+  
+  const haVal = parseFloat(haValue)
+  
+  // Detect stochastic patterns
+  const isHigherLow = lastPattern.includes('Higher Low') || stochStatus.includes('Higher Low')
+  const isLowerHigh = lastPattern.includes('Lower High') || stochStatus.includes('Lower High')
+  const isCrossover = stochStatus.includes('↑') // K crosses above D
+  const isCrossunder = stochStatus.includes('↓') // K crosses below D
+  const isKAboveD = stochStatus.includes('>D') || (!stochStatus.includes('<D') && !isCrossunder)
+  const isKBelowD = stochStatus.includes('<D') || isCrossunder
+  
+  if (haVal >= 500) {
+    return '🔵 Extreme Bullish - DO NOT SHORT'
+  } else if (haVal >= 51 && haVal <= 499) {
+    if ((isHigherLow && isCrossover) || isKAboveD) {
+      return '🟢 Strong Bullish - Higher Low crossover detected or K>D'
+    } else if ((isLowerHigh && isCrossunder) || isKBelowD) {
+      return '🟢 Bullish - Lower High crossunder detected or K<D'
+    }
+    return '🟢 Strong Bullish - Maintain long bias'
+  } else if (haVal >= -50 && haVal <= 50) {
+    return '⚪ Critical Zone - Trend decision point'
+  } else if (haVal >= -499 && haVal <= -51) {
+    if ((isLowerHigh && isCrossunder) || isKAboveD) {
+      return '🟠 Bearish - Lower High crossunder detected or K>D'
+    } else if ((isHigherLow && isCrossover) || isKBelowD) {
+      return '🟠 Strong Bearish - Higher Low crossover detected or K<D'
+    }
+    return '🟠 Strong Bearish - Maintain short bias'
+  } else if (haVal <= -500) {
+    return '🔴 Extreme Bearish - DO NOT LONG'
+  }
+  
+  return row.condition || 'N/A'
 }
 
 // Show initial sort indicators after DOM loads
@@ -439,8 +520,8 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch || 'N/A'}</td>
-          <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">\${getTradingZoneLogic(row)}</td>
         </tr>
       \`
     }).join('')
@@ -489,8 +570,8 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch || 'N/A'}</td>
-          <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">\${getTradingZoneLogic(row)}</td>
         </tr>
       \`
     }).join('')
