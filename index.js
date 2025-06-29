@@ -21,6 +21,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: 2.34,
       volume: 45678901,
       haValue: 125.7,
+      stoch: "↑>0>D",
       time: Date.now().toString()
     },
     {
@@ -31,6 +32,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: -1.89,
       volume: 32145678,
       haValue: -89.2,
+      stoch: "↓<0<D",
       time: Date.now().toString()
     },
     {
@@ -41,6 +43,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: 3.67,
       volume: 28934567,
       haValue: 567.8,
+      stoch: ">0>D",
       time: Date.now().toString()
     },
     {
@@ -51,6 +54,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: -0.95,
       volume: 19876543,
       haValue: -234.5,
+      stoch: "<D<0<rD",
       time: Date.now().toString()
     },
     {
@@ -61,6 +65,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: 1.56,
       volume: 15432198,
       haValue: 78.9,
+      stoch: "↑<0>D",
       time: Date.now().toString()
     },
     {
@@ -71,6 +76,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: -2.11,
       volume: 22109876,
       haValue: -156.3,
+      stoch: "↓>0<D",
       time: Date.now().toString()
     },
     {
@@ -81,6 +87,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: 4.23,
       volume: 18765432,
       haValue: 345.6,
+      stoch: ">0<D",
       time: Date.now().toString()
     },
     {
@@ -91,6 +98,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: -1.78,
       volume: 12345678,
       haValue: -67.4,
+      stoch: "<D>0<rD",
       time: Date.now().toString()
     },
     {
@@ -101,6 +109,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: 5.12,
       volume: 35678901,
       haValue: 234.1,
+      stoch: "↑>0<D",
       time: Date.now().toString()
     },
     {
@@ -111,6 +120,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       priceChange: -3.45,
       volume: 28901234,
       haValue: -123.7,
+      stoch: "↓<0>D",
       time: Date.now().toString()
     }
   ]
@@ -159,10 +169,13 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 13%; min-width: 80px;">
                 Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 11%; min-width: 70px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 25%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 12%; min-width: 80px;">
+                Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 23%; min-width: 120px;">
                 Trend <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -200,10 +213,13 @@ app.get('/', (req, res) => {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 13%; min-width: 80px;">
                 Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 11%; min-width: 70px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
                 HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 25%; min-width: 120px;">
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 12%; min-width: 80px;">
+                Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 23%; min-width: 120px;">
                 Trend <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
             </tr>
@@ -423,6 +439,7 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`
@@ -472,6 +489,7 @@ async function fetchAlerts() {
               <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
         </tr>
       \`

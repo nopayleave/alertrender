@@ -48,7 +48,14 @@ async function sendTestData() {
       timeframe: "1h",
       priceChange: 2.45,
       volume: 1250000,
-      haValue: 0.0234
+      haValue: 0.0234,
+      stoch: "↑>0>D",
+      stochK: 65.23,
+      stochD: 58.91,
+      stochRefD: 45.67,
+      macdSignal: 0.0156,
+      lastCrossType: "Crossover",
+      lastPattern: "Higher Low"
     },
     {
       symbol: "ETHUSD", 
@@ -58,7 +65,14 @@ async function sendTestData() {
       timeframe: "4h",
       priceChange: -1.87,
       volume: 890000,
-      haValue: -0.0156
+      haValue: -0.0156,
+      stoch: "↓<0<D",
+      stochK: -15.34,
+      stochD: -8.76,
+      stochRefD: 12.45,
+      macdSignal: -0.0089,
+      lastCrossType: "Crossunder",
+      lastPattern: "Lower High"
     },
     {
       symbol: "AAPL",
@@ -68,11 +82,103 @@ async function sendTestData() {
       timeframe: "1d",
       priceChange: 0.98,
       volume: 45000000,
-      haValue: 0.0089
+      haValue: 0.0089,
+      stoch: ">0>D",
+      stochK: 72.14,
+      stochD: 69.82,
+      stochRefD: 56.33,
+      macdSignal: 0.0234,
+      lastCrossType: "Crossover",
+      lastPattern: "Standard"
+    },
+    {
+      symbol: "TSLA",
+      signal: "Bearish",
+      condition: "HA < 0",
+      price: 238.77,
+      timeframe: "15m",
+      priceChange: -2.34,
+      volume: 32000000,
+      haValue: -0.0123,
+      stoch: "<D<0<rD",
+      stochK: -25.67,
+      stochD: -18.92,
+      stochRefD: -12.34,
+      macdSignal: -0.0145,
+      lastCrossType: "Crossunder",
+      lastPattern: "Lower Low"
+    },
+    {
+      symbol: "NVDA",
+      signal: "Bullish",
+      condition: "HA > 0",
+      price: 456.23,
+      timeframe: "30m",
+      priceChange: 3.67,
+      volume: 28000000,
+      haValue: 0.0345,
+      stoch: "↑<0>D",
+      stochK: -8.45,
+      stochD: -15.23,
+      stochRefD: -22.67,
+      macdSignal: 0.0198,
+      lastCrossType: "Crossover",
+      lastPattern: "Higher Low"
+    },
+    {
+      symbol: "MSFT",
+      signal: "Bearish",
+      condition: "HA < 0",
+      price: 378.91,
+      timeframe: "2h",
+      priceChange: -0.95,
+      volume: 19000000,
+      haValue: -0.0234,
+      stoch: "↓>0<D",
+      stochK: 23.56,
+      stochD: 31.78,
+      stochRefD: 45.89,
+      macdSignal: -0.0067,
+      lastCrossType: "Crossunder",
+      lastPattern: "Higher High"
+    },
+    {
+      symbol: "GOOGL",
+      signal: "Bullish",
+      condition: "HA > 0",
+      price: 142.34,
+      timeframe: "1h",
+      priceChange: 1.56,
+      volume: 15000000,
+      haValue: 0.0178,
+      stoch: ">0<D",
+      stochK: 45.67,
+      stochD: 42.33,
+      stochRefD: 67.89,
+      macdSignal: 0.0123,
+      lastCrossType: "Crossover",
+      lastPattern: "Initial"
+    },
+    {
+      symbol: "AMZN",
+      signal: "Bearish",
+      condition: "HA < 0",
+      price: 156.78,
+      timeframe: "3h",
+      priceChange: -2.11,
+      volume: 22000000,
+      haValue: -0.0189,
+      stoch: "<D>0<rD",
+      stochK: 12.34,
+      stochD: 18.67,
+      stochRefD: 34.56,
+      macdSignal: -0.0112,
+      lastCrossType: "Crossunder",
+      lastPattern: "Standard"
     }
   ];
 
-  console.log('🧪 Sending test data to local server...');
+  console.log('🧪 Sending comprehensive test data to local server...');
   for (const alert of testAlerts) {
     await sendToLocal(alert);
     await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay

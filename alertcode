@@ -300,9 +300,92 @@ priceChange1D = ((close - close[1]) / close[1]) * 100
 volume1D = volume
 haValue = o.b.c
 
-// Webhook Alert Messages with additional fields
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "time": "' + str.tostring(time) + '"}'
+// Determine last crossing type and pattern
+lastCrossType = ""
+lastPattern = ""
+lastCrossValue = na
+
+if crossOver
+    lastCrossType := "Crossover"
+    lastCrossValue := currentCrossOverK
+    if not na(prevCrossOverK) and currentCrossOverK > prevCrossOverK
+        lastPattern := "Higher Low"
+    else if not na(prevCrossOverK) and currentCrossOverK < prevCrossOverK
+        lastPattern := "Lower Low"
+    else
+        lastPattern := "Initial"
+else if crossUnder
+    lastCrossType := "Crossunder"
+    lastCrossValue := currentCrossUnderK
+    if not na(prevCrossUnderK) and currentCrossUnderK < prevCrossUnderK
+        lastPattern := "Lower High"
+    else if not na(prevCrossUnderK) and currentCrossUnderK > prevCrossUnderK
+        lastPattern := "Higher High"
+    else
+        lastPattern := "Initial"
+else
+    // Determine based on most recent crossing
+    var string lastCrossTypeStored = "None"
+    var string lastPatternStored = "None"
+    var float lastCrossValueStored = na
+    
+    if crossOver[1]
+        lastCrossTypeStored := "Crossover"
+        lastCrossValueStored := currentCrossOverK
+        if higherLowCondition[1]
+            lastPatternStored := "Higher Low"
+        else
+            lastPatternStored := "Standard"
+    else if crossUnder[1]
+        lastCrossTypeStored := "Crossunder"
+        lastCrossValueStored := currentCrossUnderK
+        if lowerHighCondition[1]
+            lastPatternStored := "Lower High"
+        else
+            lastPatternStored := "Standard"
+    
+    lastCrossType := lastCrossTypeStored
+    lastPattern := lastPatternStored
+    lastCrossValue := lastCrossValueStored
+
+// Generate Stochastic status string (keeping existing logic)
+stochStatus = ""
+if crossOver and s.k > 0 and s.k > sRef.d
+    stochStatus := "↑>0>D"
+else if crossOver and s.k > 0 and s.k < sRef.d
+    stochStatus := "↑>0<D"
+else if crossOver and s.k < 0 and s.k > sRef.d
+    stochStatus := "↑<0>D"
+else if crossOver and s.k < 0 and s.k < sRef.d
+    stochStatus := "↑<0<D"
+else if crossUnder and s.k > 0 and s.k > sRef.d
+    stochStatus := "↓>0>D"
+else if crossUnder and s.k > 0 and s.k < sRef.d
+    stochStatus := "↓>0<D"
+else if crossUnder and s.k < 0 and s.k > sRef.d
+    stochStatus := "↓<0>D"
+else if crossUnder and s.k < 0 and s.k < sRef.d
+    stochStatus := "↓<0<D"
+else if s.k > s.d and s.k > 0 and s.k > sRef.d
+    stochStatus := ">0>D"
+else if s.k > s.d and s.k > 0 and s.k < sRef.d
+    stochStatus := ">0<D"
+else if s.k > s.d and s.k < 0 and s.k > sRef.d
+    stochStatus := "<0>D"
+else if s.k > s.d and s.k < 0 and s.k < sRef.d
+    stochStatus := "<0<D"
+else if s.k < s.d and s.k > 0 and s.k > sRef.d
+    stochStatus := "<D>0"
+else if s.k < s.d and s.k > 0 and s.k < sRef.d
+    stochStatus := "<D>0<rD"
+else if s.k < s.d and s.k < 0 and s.k > sRef.d
+    stochStatus := "<D<0>rD"
+else if s.k < s.d and s.k < 0 and s.k < sRef.d
+    stochStatus := "<D<0<rD"
+
+// Webhook Alert Messages with comprehensive data
+bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "time": "' + str.tostring(time) + '"}'
+bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "time": "' + str.tostring(time) + '"}'
 
 // Send webhook alerts on each candle
 if bullishAlert
