@@ -328,8 +328,10 @@ function formatEnhancedStoch(row) {
   const stochD = parseFloat(row.stochD) || 0
   const stochRefD = parseFloat(row.stochRefD) || 0
   const lastCrossType = row.lastCrossType || ''
+  const haValue = row.haValue || 'N/A'
+  const macdSignal = row.macdSignal || 'N/A'
   
-  // Check for missing data
+  // Check for missing stochastic data
   if (!row.stochK || !row.stochD || !row.stochRefD) {
     return 'No Stoch Data'
   }
@@ -342,39 +344,31 @@ function formatEnhancedStoch(row) {
     crossStatus = '↓'  // Recent crossunder OR K below D
   }
   
-  // Determine K vs 50 relationship
-  const kVs50 = stochK > 50 ? '>50' : '<50'
-  
-  // Determine K vs Reference D relationship
-  const kVsRefD = stochK > stochRefD ? '>rD' : '<rD'
-  
-  // Determine K vs Primary D relationship
-  const kVsD = stochK > stochD ? '>D' : '<D'
-  
-  // Build the stochastic status string based on the patterns you specified
+  // Build the stochastic status string
+  let stochPart = ''
   if (crossStatus) {
     // Recent crossover/crossunder cases
     if (crossStatus === '↑') {
       // Crossover cases
       if (stochK > 50 && stochK > stochRefD) {
-        return '↑>50>rD'
+        stochPart = '↑>50>rD'
       } else if (stochK > 50 && stochK < stochRefD) {
-        return '↑>50<rD'
+        stochPart = '↑>50<rD'
       } else if (stochK < 50 && stochK > stochRefD) {
-        return '↑<50>rD'
+        stochPart = '↑<50>rD'
       } else {
-        return '↑<50<rD'
+        stochPart = '↑<50<rD'
       }
     } else {
       // Crossunder cases
       if (stochK > 50 && stochK > stochRefD) {
-        return '↓>50>rD'
+        stochPart = '↓>50>rD'
       } else if (stochK > 50 && stochK < stochRefD) {
-        return '↓>50<rD'
+        stochPart = '↓>50<rD'
       } else if (stochK < 50 && stochK > stochRefD) {
-        return '↓<50>rD'
+        stochPart = '↓<50>rD'
       } else {
-        return '↓<50<rD'
+        stochPart = '↓<50<rD'
       }
     }
   } else {
@@ -382,25 +376,57 @@ function formatEnhancedStoch(row) {
     if (stochK < stochD) {
       // Below primary D cases
       if (stochK > 50 && stochK < stochRefD) {
-        return '<D>50<rD'
+        stochPart = '<D>50<rD'
       } else if (stochK < 50 && stochK > stochRefD) {
-        return '<D<50>rD'
+        stochPart = '<D<50>rD'
       } else if (stochK < 50 && stochK < stochRefD) {
-        return '<D<50<rD'
+        stochPart = '<D<50<rD'
       }
     }
     
     // Standard position cases (above D or no specific pattern)
-    if (stochK > 50 && stochK > stochRefD) {
-      return '>50>rD'
-    } else if (stochK > 50 && stochK < stochRefD) {
-      return '>50<rD'
-    } else if (stochK < 50 && stochK > stochRefD) {
-      return '<50>rD'
-    } else {
-      return '<50<rD'
+    if (!stochPart) {
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<50>rD'
+      } else {
+        stochPart = '<50<rD'
+      }
     }
   }
+  
+  // If HA or MACD missing, show stoch part only
+  if (haValue === 'N/A' || macdSignal === 'N/A') {
+    return stochPart + ' | Data Incomplete'
+  }
+  
+  // Build HA vs MACD comparison part
+  const haZone = getHAZoneIndicator(haValue)
+  const haVal = parseFloat(haValue)
+  const signalVal = parseFloat(macdSignal)
+  
+  // Validate numeric values
+  if (isNaN(haVal) || isNaN(signalVal)) {
+    return stochPart + ' | Invalid Data'
+  }
+  
+  // Compare HA value with MACD signal
+  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+  
+  // Add range indicator based on HA value (handle both large and small values)
+  let rangeIndicator = ''
+  if (Math.abs(haVal) >= 500) {
+    rangeIndicator = haVal >= 500 ? '>500' : '<-500'
+  } else if (Math.abs(haVal) >= 50) {
+    rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+  } else {
+    rangeIndicator = '±50'
+  }
+  
+  return stochPart + ' | ' + haZone + comparison + rangeIndicator
 }
 
 function getTradingZoneLogic(row) {
