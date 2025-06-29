@@ -277,31 +277,31 @@ function getHAGrade(haValue) {
 }
 
 function getHAGradeStyle(haValue, signal) {
-  if (!haValue || haValue === 'N/A') return 'bg-gray-600 text-gray-300'
+  if (!haValue || haValue === 'N/A') return 'bg-gray-600 text-black'
   const grade = getHAGrade(haValue)
   const isBullish = signal === 'Bullish'
   
   if (isBullish) {
     // Bullish signal styles (green tones)
     switch(grade) {
-      case 'S+': return 'bg-green-600 text-white'
-      case 'S': return 'bg-green-500 text-white'
-      case 'A+': return 'bg-green-400 text-white'
+      case 'S+': return 'bg-green-600 text-black'
+      case 'S': return 'bg-green-500 text-black'
+      case 'A+': return 'bg-green-400 text-black'
       case 'A': return 'bg-green-300 text-black'
       case 'B': return 'bg-yellow-400 text-black'
-      case 'C': return 'bg-orange-400 text-white'
-      default: return 'bg-gray-600 text-white'
+      case 'C': return 'bg-orange-400 text-black'
+      default: return 'bg-gray-600 text-black'
     }
   } else {
     // Bearish signal styles (red tones)
     switch(grade) {
-      case 'S+': return 'bg-red-600 text-white'
-      case 'S': return 'bg-red-500 text-white'
-      case 'A+': return 'bg-red-400 text-white'
+      case 'S+': return 'bg-red-600 text-black'
+      case 'S': return 'bg-red-500 text-black'
+      case 'A+': return 'bg-red-400 text-black'
       case 'A': return 'bg-red-300 text-black'
       case 'B': return 'bg-yellow-400 text-black'
-      case 'C': return 'bg-orange-400 text-white'
-      default: return 'bg-gray-600 text-white'
+      case 'C': return 'bg-orange-400 text-black'
+      default: return 'bg-gray-600 text-black'
     }
   }
 }
