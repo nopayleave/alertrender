@@ -254,32 +254,32 @@ function getHAGrade(haValue) {
   }
 }
 
-function getHAGradeStyle(haValue) {
+function getHAGradeStyle(haValue, signal) {
   if (!haValue || haValue === 'N/A') return 'bg-gray-600 text-gray-300'
   const grade = getHAGrade(haValue)
-  const value = parseFloat(haValue)
+  const isBullish = signal === 'Bullish'
   
-  if (value >= 0) {
-    // Bullish styles (green tones)
+  if (isBullish) {
+    // Bullish signal styles (green tones)
     switch(grade) {
       case 'S+': return 'bg-green-600 text-white'
       case 'S': return 'bg-green-500 text-white'
       case 'A+': return 'bg-green-400 text-white'
-      case 'A': return 'bg-green-300 text-gray-800'
-      case 'B': return 'bg-yellow-400 text-gray-800'
+      case 'A': return 'bg-green-300 text-black'
+      case 'B': return 'bg-yellow-400 text-black'
       case 'C': return 'bg-orange-400 text-white'
-      default: return 'bg-gray-600 text-gray-300'
+      default: return 'bg-gray-600 text-white'
     }
   } else {
-    // Bearish styles (red tones)
+    // Bearish signal styles (red tones)
     switch(grade) {
       case 'S+': return 'bg-red-600 text-white'
       case 'S': return 'bg-red-500 text-white'
       case 'A+': return 'bg-red-400 text-white'
-      case 'A': return 'bg-red-300 text-gray-800'
-      case 'B': return 'bg-yellow-400 text-gray-800'
+      case 'A': return 'bg-red-300 text-black'
+      case 'B': return 'bg-yellow-400 text-black'
       case 'C': return 'bg-orange-400 text-white'
-      default: return 'bg-gray-600 text-gray-300'
+      default: return 'bg-gray-600 text-white'
     }
   }
 }
@@ -414,7 +414,7 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white text-xs">
             <div class="flex items-center gap-2">
               <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
-              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue)}">\${getHAGrade(row.haValue)}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
@@ -463,7 +463,7 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white text-xs">
             <div class="flex items-center gap-2">
               <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
-              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue)}">\${getHAGrade(row.haValue)}</span>
+              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
             </div>
           </td>
           <td class="py-3 px-4 text-white text-sm">\${row.condition}</td>
