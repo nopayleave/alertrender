@@ -7,7 +7,109 @@ const port = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-let alerts = []
+// Default dummy data for testing
+let alerts = [
+  {
+    symbol: "AAPL",
+    signal: "Bullish",
+    condition: "MACD Bullish Cross",
+    price: 189.45,
+    priceChange: 2.34,
+    volume: 45678901,
+    haValue: 125.7,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "TSLA",
+    signal: "Bearish", 
+    condition: "Support Broken",
+    price: 238.77,
+    priceChange: -1.89,
+    volume: 32145678,
+    haValue: -89.2,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "NVDA",
+    signal: "Bullish",
+    condition: "Breakout Confirmed",
+    price: 456.23,
+    priceChange: 3.67,
+    volume: 28934567,
+    haValue: 567.8,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "MSFT",
+    signal: "Bearish",
+    condition: "Heikin-Ashi Downtrend",
+    price: 378.91,
+    priceChange: -0.95,
+    volume: 19876543,
+    haValue: -234.5,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "GOOGL",
+    signal: "Bullish",
+    condition: "OB Signal",
+    price: 142.34,
+    priceChange: 1.56,
+    volume: 15432198,
+    haValue: 78.9,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "AMZN",
+    signal: "Bearish",
+    condition: "OS Signal",
+    price: 156.78,
+    priceChange: -2.11,
+    volume: 22109876,
+    haValue: -156.3,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "META",
+    signal: "Bullish",
+    condition: "Bullish Trend",
+    price: 498.12,
+    priceChange: 4.23,
+    volume: 18765432,
+    haValue: 345.6,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "NFLX",
+    signal: "Bearish",
+    condition: "Bearish Trend", 
+    price: 445.67,
+    priceChange: -1.78,
+    volume: 12345678,
+    haValue: -67.4,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "AMD",
+    signal: "Bullish",
+    condition: "VWAP Breakout",
+    price: 134.56,
+    priceChange: 5.12,
+    volume: 35678901,
+    haValue: 234.1,
+    time: Date.now().toString()
+  },
+  {
+    symbol: "INTC",
+    signal: "Bearish",
+    condition: "RSI Overbought",
+    price: 45.23,
+    priceChange: -3.45,
+    volume: 28901234,
+    haValue: -123.7,
+    time: Date.now().toString()
+  }
+]
 
 app.get('/', (req, res) => {
   res.send(`
@@ -20,7 +122,7 @@ app.get('/', (req, res) => {
   <title>TradingView Alerts Feed</title>
 </head>
 <body class="bg-gray-900 text-gray-100">
-<div class="w-full max-w-7xl mx-auto mt-6" style="padding: 0 1vw;">
+<div class="mx-auto mt-6" style="width: 98%; max-width: 100%;">
   <div class="text-center mb-6">
     <h1 class="text-2xl font-bold mb-2">Live Trading Alerts Dashboard</h1>
     <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
