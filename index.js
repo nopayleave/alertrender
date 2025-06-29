@@ -323,45 +323,84 @@ function getHAZoneIndicator(haValue) {
 }
 
 function formatEnhancedStoch(row) {
-  const stochStatus = row.stoch || 'N/A'
-  const haValue = row.haValue || 'N/A'
-  const macdSignal = row.macdSignal || 'N/A'
+  // Extract stochastic data from the row
+  const stochK = parseFloat(row.stochK) || 0
+  const stochD = parseFloat(row.stochD) || 0
+  const stochRefD = parseFloat(row.stochRefD) || 0
+  const lastCrossType = row.lastCrossType || ''
   
-  // Removed debug logging
-  
-  // If basic stoch is missing, return placeholder
-  if (stochStatus === 'N/A' || stochStatus === '' || !stochStatus) {
+  // Check for missing data
+  if (!row.stochK || !row.stochD || !row.stochRefD) {
     return 'No Stoch Data'
   }
   
-  // If HA or MACD missing, show basic format with available data
-  if (haValue === 'N/A' || macdSignal === 'N/A') {
-    return \`\${stochStatus} | Data Incomplete\`
+  // Determine crossover/crossunder status
+  let crossStatus = ''
+  if (lastCrossType === 'crossover') {
+    crossStatus = '↑'
+  } else if (lastCrossType === 'crossunder') {
+    crossStatus = '↓'
   }
   
-  const haZone = getHAZoneIndicator(haValue)
-  const haVal = parseFloat(haValue)
-  const signalVal = parseFloat(macdSignal)
+  // Determine K vs 50 relationship
+  const kVs50 = stochK > 50 ? '>50' : '<50'
   
-  // Validate numeric values
-  if (isNaN(haVal) || isNaN(signalVal)) {
-    return \`\${stochStatus} | Invalid Data\`
-  }
+  // Determine K vs Reference D relationship
+  const kVsRefD = stochK > stochRefD ? '>rD' : '<rD'
   
-  // Compare HA value with MACD signal
-  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+  // Determine K vs Primary D relationship
+  const kVsD = stochK > stochD ? '>D' : '<D'
   
-  // Add range indicator based on HA value (handle both large and small values)
-  let rangeIndicator = ''
-  if (Math.abs(haVal) >= 500) {
-    rangeIndicator = haVal >= 500 ? '>500' : '<-500'
-  } else if (Math.abs(haVal) >= 50) {
-    rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+  // Build the stochastic status string based on the patterns you specified
+  if (crossStatus) {
+    // Recent crossover/crossunder cases
+    if (crossStatus === '↑') {
+      // Crossover cases
+      if (stochK > 50 && stochK > stochRefD) {
+        return '↑>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        return '↑>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        return '↑<50>rD'
+      } else {
+        return '↑<50<rD'
+      }
+    } else {
+      // Crossunder cases
+      if (stochK > 50 && stochK > stochRefD) {
+        return '↓>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        return '↓>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        return '↓<50>rD'
+      } else {
+        return '↓<50<rD'
+      }
+    }
   } else {
-    rangeIndicator = '±50'
+    // No recent cross - current position cases
+    if (stochK < stochD) {
+      // Below primary D cases
+      if (stochK > 50 && stochK < stochRefD) {
+        return '<D>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        return '<D<50>rD'
+      } else if (stochK < 50 && stochK < stochRefD) {
+        return '<D<50<rD'
+      }
+    }
+    
+    // Standard position cases (above D or no specific pattern)
+    if (stochK > 50 && stochK > stochRefD) {
+      return '>50>rD'
+    } else if (stochK > 50 && stochK < stochRefD) {
+      return '>50<rD'
+    } else if (stochK < 50 && stochK > stochRefD) {
+      return '<50>rD'
+    } else {
+      return '<50<rD'
+    }
   }
-  
-  return \`\${stochStatus} | \${haZone}\${comparison}\${rangeIndicator}\`
 }
 
 function getTradingZoneLogic(row) {
