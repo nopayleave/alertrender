@@ -350,7 +350,7 @@ function getTradingZoneLogic(row) {
   const stochStatus = row.stoch || ''
   const lastPattern = row.lastPattern || ''
   
-  if (haValue === 'N/A') return row.condition || 'N/A'
+  if (haValue === 'N/A') return { display: row.condition || 'N/A', tooltip: '' }
   
   const haVal = parseFloat(haValue)
   
@@ -363,28 +363,33 @@ function getTradingZoneLogic(row) {
   const isKBelowD = stochStatus.includes('<D') || isCrossunder
   
   if (haVal >= 500) {
-    return '🔵 Extreme Bullish - DO NOT SHORT'
+    return { display: '🔵 Extreme Bullish', tooltip: 'DO NOT SHORT' }
   } else if (haVal >= 51 && haVal <= 499) {
     if ((isHigherLow && isCrossover) || isKAboveD) {
-      return '🟢 Strong Bullish - Higher Low crossover detected or K>D'
+      return { display: '🟢 Strong Bullish', tooltip: 'Higher Low crossover detected or K>D' }
     } else if ((isLowerHigh && isCrossunder) || isKBelowD) {
-      return '🟢 Bullish - Lower High crossunder detected or K<D'
+      return { display: '🟢 Bullish', tooltip: 'Lower High crossunder detected or K<D' }
     }
-    return '🟢 Strong Bullish - Maintain long bias'
+    return { display: '🟢 Strong Bullish', tooltip: 'Maintain long bias' }
   } else if (haVal >= -50 && haVal <= 50) {
-    return '⚪ Critical Zone - Trend decision point'
+    if (isCrossover) {
+      return { display: '⚪ Critical Zone tend Buy', tooltip: 'Trend decision point - Crossover detected' }
+    } else if (isCrossunder) {
+      return { display: '⚪ Critical Zone tend Sell', tooltip: 'Trend decision point - Crossunder detected' }
+    }
+    return { display: '⚪ Critical Zone', tooltip: 'Trend decision point' }
   } else if (haVal >= -499 && haVal <= -51) {
     if ((isLowerHigh && isCrossunder) || isKAboveD) {
-      return '🟠 Bearish - Lower High crossunder detected or K>D'
+      return { display: '🟠 Bearish', tooltip: 'Lower High crossunder detected or K>D' }
     } else if ((isHigherLow && isCrossover) || isKBelowD) {
-      return '🟠 Strong Bearish - Higher Low crossover detected or K<D'
+      return { display: '🟠 Strong Bearish', tooltip: 'Higher Low crossover detected or K<D' }
     }
-    return '🟠 Strong Bearish - Maintain short bias'
+    return { display: '🟠 Strong Bearish', tooltip: 'Maintain short bias' }
   } else if (haVal <= -500) {
-    return '🔴 Extreme Bearish - DO NOT LONG'
+    return { display: '🔴 Extreme Bearish', tooltip: 'DO NOT LONG' }
   }
   
-  return row.condition || 'N/A'
+  return { display: row.condition || 'N/A', tooltip: '' }
 }
 
 // Show initial sort indicators after DOM loads
@@ -521,7 +526,11 @@ async function fetchAlerts() {
             </div>
           </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
-          <td class="py-3 px-4 text-white text-sm">\${getTradingZoneLogic(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">
+            <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
+              \${getTradingZoneLogic(row).display}
+            </span>
+          </td>
         </tr>
       \`
     }).join('')
@@ -571,7 +580,11 @@ async function fetchAlerts() {
             </div>
           </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatEnhancedStoch(row)}</td>
-          <td class="py-3 px-4 text-white text-sm">\${getTradingZoneLogic(row)}</td>
+          <td class="py-3 px-4 text-white text-sm">
+            <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
+              \${getTradingZoneLogic(row).display}
+            </span>
+          </td>
         </tr>
       \`
     }).join('')
