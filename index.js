@@ -421,19 +421,10 @@ function formatEnhancedStoch(row) {
   const stochRefD = parseFloat(row.stochRefD) || 0
   const lastCrossType = row.lastCrossType || ''
   const haValue = row.haValue || 'N/A'
-  // Provide fallback for macdSignal - if missing, use haValue * 0.7 as estimate
+  // Use only actual MACD signal values - no fallback estimation
   let macdSignal = row.macdSignal
   if (!macdSignal || macdSignal === 'N/A' || macdSignal === '' || macdSignal === 0) {
-    if (haValue !== 'N/A' && haValue !== null && haValue !== undefined) {
-      const haVal = parseFloat(haValue)
-      if (!isNaN(haVal)) {
-        macdSignal = haVal * 0.7 // Reasonable estimate for MACD signal
-      } else {
-        macdSignal = 'N/A'
-      }
-    } else {
-      macdSignal = 'N/A'
-    }
+    macdSignal = 'N/A'
   }
   
   // Debug logging for problematic cases
@@ -527,11 +518,11 @@ function formatEnhancedStoch(row) {
     return stochPart + ' | Invalid HA Data'
   }
   
-  // If MACD signal is still missing or invalid, use HA value as reference
-  let finalSignalVal = signalVal
+  // If MACD signal is missing or invalid, show data incomplete
   if (isNaN(signalVal)) {
-    finalSignalVal = haVal * 0.7 // Use 70% of HA as MACD estimate
+    return stochPart + ' | MACD Signal Missing'
   }
+  let finalSignalVal = signalVal
   
   // Compare HA value with MACD signal
   const comparison = haVal > finalSignalVal ? '>S' : haVal < finalSignalVal ? '<S' : '=S'
@@ -546,10 +537,7 @@ function formatEnhancedStoch(row) {
     rangeIndicator = '±50'
   }
   
-  // Add indicator if MACD signal was estimated
-  const macdIndicator = isNaN(signalVal) ? '~' : ''
-  
-  const result = stochPart + ' | ' + haZone + comparison + macdIndicator + rangeIndicator
+  const result = stochPart + ' | ' + haZone + comparison + rangeIndicator
   
   // Debug logging for problematic cases
   if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
