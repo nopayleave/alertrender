@@ -260,7 +260,13 @@ function formatEnhancedStoch(row) {
   
   // Use pre-calculated HA vs MACD status if available, otherwise use simple HA trend
   if (row.haVsMacdStatus) {
-    return stochPart + ' | ' + row.haVsMacdStatus
+    // Decode HTML entities and Unicode escapes
+    let decodedStatus = row.haVsMacdStatus
+      .replace(/\\u003C/g, '<')
+      .replace(/\\u003E/g, '>')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+    return stochPart + ' | ' + decodedStatus
   }
   
   // Fallback to simple HA trend indicator
@@ -600,7 +606,13 @@ function formatEnhancedStoch(row) {
   
   // Use pre-calculated HA vs MACD status if available, otherwise use simple HA trend
   if (row.haVsMacdStatus) {
-    return stochPart + ' | ' + row.haVsMacdStatus
+    // Decode HTML entities and Unicode escapes
+    let decodedStatus = row.haVsMacdStatus
+      .replace(/\\\\u003C/g, '<')
+      .replace(/\\\\u003E/g, '>')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+    return stochPart + ' | ' + decodedStatus
   }
   
   // Fallback to simple HA trend indicator
