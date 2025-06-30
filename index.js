@@ -421,24 +421,16 @@ function formatEnhancedStoch(row) {
   const stochRefD = parseFloat(row.stochRefD) || 0
   const lastCrossType = row.lastCrossType || ''
   const haValue = row.haValue || 'N/A'
-  // Provide fallback for macdSignal - if missing, use haValue * 0.7 as estimate
+  // MACD signal should always be present - no fallback estimation
   let macdSignal = row.macdSignal
   if (!macdSignal || macdSignal === 'N/A' || macdSignal === '' || macdSignal === 0) {
-    if (haValue !== 'N/A' && haValue !== null && haValue !== undefined) {
-      const haVal = parseFloat(haValue)
-      if (!isNaN(haVal)) {
-        macdSignal = haVal * 0.7 // Reasonable estimate for MACD signal
-      } else {
-        macdSignal = 'N/A'
-      }
-    } else {
-      macdSignal = 'N/A'
-    }
+    macdSignal = 'N/A'
+    console.warn(`WARNING: Missing MACD Signal for ${row.symbol} - webhook data incomplete`)
   }
   
   // Debug logging for problematic cases
   if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log(\`🔍 DEBUG \${row.symbol}:\`, {
+    console.log(`DEBUG ${row.symbol}:`, {
       stochK: row.stochK, stochD: row.stochD, stochRefD: row.stochRefD,
       haValue, macdSignal, lastCrossType,
       parsedK: stochK, parsedD: stochD, parsedRefD: stochRefD
@@ -512,31 +504,40 @@ function formatEnhancedStoch(row) {
     }
   }
   
-  // If HA missing, show stoch part only
+    // Check if we have pre-calculated HA vs MACD status from Pine Script
+  if (row.haVsMacdStatus) {
+    // Use the pre-calculated status from Pine Script
+    const result = stochPart + ' | ' + row.haVsMacdStatus
+    return result
+  }
+
+  // Fallback: If haVsMacdStatus is not available, check individual values
   if (haValue === 'N/A') {
     return stochPart + ' | HA Data Missing'
   }
-  
-  // Build HA vs MACD comparison part
+
+  if (macdSignal === 'N/A') {
+    return stochPart + ' | MACD Signal Missing'
+  }
+
+  // Build HA vs MACD comparison part (fallback method)
   const haZone = getHAZoneIndicator(haValue)
   const haVal = parseFloat(haValue)
   const signalVal = parseFloat(macdSignal)
-  
+
   // Validate numeric values
   if (isNaN(haVal)) {
     return stochPart + ' | Invalid HA Data'
   }
-  
-  // If MACD signal is still missing or invalid, use HA value as reference
-  let finalSignalVal = signalVal
+
   if (isNaN(signalVal)) {
-    finalSignalVal = haVal * 0.7 // Use 70% of HA as MACD estimate
+    return stochPart + ' | MACD Signal Missing'
   }
-  
+
   // Compare HA value with MACD signal
-  const comparison = haVal > finalSignalVal ? '>S' : haVal < finalSignalVal ? '<S' : '=S'
-  
-  // Add range indicator based on HA value (handle both large and small values)
+  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+
+  // Add range indicator based on HA value
   let rangeIndicator = ''
   if (Math.abs(haVal) >= 500) {
     rangeIndicator = haVal >= 500 ? '>500' : '<-500'
@@ -545,15 +546,12 @@ function formatEnhancedStoch(row) {
   } else {
     rangeIndicator = '±50'
   }
-  
-  // Add indicator if MACD signal was estimated
-  const macdIndicator = isNaN(signalVal) ? '~' : ''
-  
-  const result = stochPart + ' | ' + haZone + comparison + macdIndicator + rangeIndicator
+
+  const result = stochPart + ' | ' + haZone + comparison + rangeIndicator
   
   // Debug logging for problematic cases
   if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log(\`🎯 RESULT for \${row.symbol}: "\${result}"\`)
+    console.log(`RESULT for ${row.symbol}: "${result}"`)
   }
   
   return result
@@ -827,45 +825,43 @@ function showChart(symbol, event) {
     // Create overlay
     chartOverlay = document.createElement('div')
     chartOverlay.id = 'chart-overlay'
-    chartOverlay.style.cssText = \`
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 95vw;
-      max-width: 1200px;
-      height: 85vh;
-      max-height: 800px;
-      background: #131722;
-      border: 2px solid #2a2e39;
-      border-radius: 12px;
-      z-index: 1000;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
-    \`
+    chartOverlay.style.cssText = 
+      'position: fixed;' +
+      'top: 50%;' +
+      'left: 50%;' +
+      'transform: translate(-50%, -50%);' +
+      'width: 95vw;' +
+      'max-width: 1200px;' +
+      'height: 85vh;' +
+      'max-height: 800px;' +
+      'background: #131722;' +
+      'border: 2px solid #2a2e39;' +
+      'border-radius: 12px;' +
+      'z-index: 1000;' +
+      'box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);' +
+      'overflow: hidden;'
     
     // Create close button
     const closeButton = document.createElement('button')
     closeButton.innerHTML = '×'
-    closeButton.style.cssText = \`
-      position: absolute;
-      top: 10px;
-      right: 15px;
-      background: rgba(239, 83, 80, 0.8);
-      border: none;
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      cursor: pointer;
-      z-index: 1001;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-    \`
+    closeButton.style.cssText = 
+      'position: absolute;' +
+      'top: 10px;' +
+      'right: 15px;' +
+      'background: rgba(239, 83, 80, 0.8);' +
+      'border: none;' +
+      'color: white;' +
+      'font-size: 24px;' +
+      'font-weight: bold;' +
+      'width: 32px;' +
+      'height: 32px;' +
+      'border-radius: 50%;' +
+      'cursor: pointer;' +
+      'z-index: 1001;' +
+      'display: flex;' +
+      'align-items: center;' +
+      'justify-content: center;' +
+      'transition: all 0.2s ease;'
     closeButton.onmouseover = () => closeButton.style.background = 'rgba(239, 83, 80, 1)'
     closeButton.onmouseout = () => closeButton.style.background = 'rgba(239, 83, 80, 0.8)'
     closeButton.onclick = hideChart
@@ -933,15 +929,14 @@ function showChart(symbol, event) {
     // Add backdrop
     const backdrop = document.createElement('div')
     backdrop.id = 'chart-backdrop'
-    backdrop.style.cssText = \`
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-    \`
+    backdrop.style.cssText = 
+      'position: fixed;' +
+      'top: 0;' +
+      'left: 0;' +
+      'width: 100%;' +
+      'height: 100%;' +
+      'background: rgba(0, 0, 0, 0.5);' +
+      'z-index: 999;'
     backdrop.onclick = hideChart
     document.body.appendChild(backdrop)
 }
@@ -975,21 +970,21 @@ app.post('/webhook', (req, res) => {
   
   // Validate and ensure critical fields are present
   if (alert.haValue !== undefined && alert.haValue !== null) {
-    console.log(`✅ HA Value: ${alert.haValue}`)
+    console.log(`OK HA Value: ${alert.haValue}`)
   } else {
-    console.log('⚠️  Missing HA Value in webhook data')
+    console.log('WARNING: Missing HA Value in webhook data')
   }
   
   if (alert.macdSignal !== undefined && alert.macdSignal !== null) {
-    console.log(`✅ MACD Signal: ${alert.macdSignal}`)
+    console.log(`OK MACD Signal: ${alert.macdSignal}`)
   } else {
-    console.log('⚠️  Missing MACD Signal in webhook data - will use fallback')
+    console.log('WARNING: Missing MACD Signal in webhook data')
   }
   
   if (alert.stochK && alert.stochD && alert.stochRefD) {
-    console.log(`✅ Stochastic data complete: K=${alert.stochK}, D=${alert.stochD}, RefD=${alert.stochRefD}`)
+    console.log(`OK Stochastic data complete: K=${alert.stochK}, D=${alert.stochD}, RefD=${alert.stochRefD}`)
   } else {
-    console.log('⚠️  Incomplete stochastic data in webhook')
+    console.log('WARNING: Incomplete stochastic data in webhook')
   }
   
   // Find existing alert for the same symbol

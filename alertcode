@@ -300,6 +300,20 @@ priceChange1D = ((close - close[1]) / close[1]) * 100
 volume1D = volume
 haValue = o.b.c
 
+// Calculate HA vs MACD comparison directly
+haVsMacdComparison = haValue > o.s ? ">S" : haValue < o.s ? "<S" : "=S"
+
+// Calculate HA zone indicator
+haZoneIndicator = math.abs(haValue) >= 500 ? (haValue >= 500 ? "H≥500" : "H≤-500") : 
+                  math.abs(haValue) >= 50 ? (haValue >= 50 ? "H>50" : "H<-50") : "H±50"
+
+// Calculate HA range indicator
+haRangeIndicator = math.abs(haValue) >= 500 ? (haValue >= 500 ? ">500" : "<-500") :
+                   math.abs(haValue) >= 50 ? (haValue >= 50 ? ">50" : "<-50") : "±50"
+
+// Combine HA zone and comparison for complete HA vs MACD status
+haVsMacdStatus = haZoneIndicator + haVsMacdComparison + haRangeIndicator
+
 // Market Open Cross Tracking (2-minute timeframe)
 var string openCrossType = ""
 var float openStochK = na
@@ -437,9 +451,9 @@ else if s.k < s.d and s.k < 0 and s.k > sRef.d
 else if s.k < s.d and s.k < 0 and s.k < sRef.d
     stochStatus := "<D<0<rD"
 
-// Webhook Alert Messages with comprehensive data including Open column
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
+// Webhook Alert Messages with comprehensive data including Open column and HA vs MACD status
+bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
+bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
 
 // Send webhook alerts on each candle
 if bullishAlert
