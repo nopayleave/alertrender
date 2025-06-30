@@ -420,140 +420,61 @@ function formatEnhancedStoch(row) {
   const stochRefD = parseFloat(row.stochRefD) || 0
   const lastCrossType = row.lastCrossType || ''
   const haValue = row.haValue || 'N/A'
-  // MACD signal should always be present - no fallback estimation
-  let macdSignal = row.macdSignal
-  if (!macdSignal || macdSignal === 'N/A' || macdSignal === '' || macdSignal === 0) {
-    macdSignal = 'N/A'
-    console.warn('WARNING: Missing MACD Signal for ' + row.symbol + ' - webhook data incomplete')
-  }
-  
-  // Debug logging for problematic cases
-  if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log('DEBUG ' + row.symbol + ':', {
-      stochK: row.stochK, stochD: row.stochD, stochRefD: row.stochRefD,
-      haValue, macdSignal, lastCrossType,
-      parsedK: stochK, parsedD: stochD, parsedRefD: stochRefD
-    })
-  }
+  const macdSignal = row.macdSignal || 'N/A'
   
   // Check for missing stochastic data
   if (!row.stochK || !row.stochD || !row.stochRefD) {
     return 'No Stoch Data'
   }
   
-  // Determine crossover/crossunder status or K vs D relationship
-  let crossStatus = ''
-  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
-    crossStatus = '↑'  // Recent crossover OR K above D
-  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
-    crossStatus = '↓'  // Recent crossunder OR K below D
-  }
+  // Simple stochastic status
+  let stochStatus = ''
   
-  // Build the stochastic status string
-  let stochPart = ''
-  if (crossStatus) {
-    // Recent crossover/crossunder cases
-    if (crossStatus === '↑') {
-      // Crossover cases
-      if (stochK > 50 && stochK > stochRefD) {
-        stochPart = '↑>50>rD'
-      } else if (stochK > 50 && stochK < stochRefD) {
-        stochPart = '↑>50<rD'
-      } else if (stochK < 50 && stochK > stochRefD) {
-        stochPart = '↑<50>rD'
-      } else {
-        stochPart = '↑<50<rD'
-      }
+  // Determine cross direction
+  if (lastCrossType.toLowerCase() === 'crossover') {
+    stochStatus = '↑Cross'
+  } else if (lastCrossType.toLowerCase() === 'crossunder') {
+    stochStatus = '↓Cross'
+  } else {
+    // No recent cross, show K vs D relationship
+    if (stochK > stochD) {
+      stochStatus = 'K>D'
     } else {
-      // Crossunder cases
-      if (stochK > 50 && stochK > stochRefD) {
-        stochPart = '↓>50>rD'
-      } else if (stochK > 50 && stochK < stochRefD) {
-        stochPart = '↓>50<rD'
-      } else if (stochK < 50 && stochK > stochRefD) {
-        stochPart = '↓<50>rD'
-      } else {
-        stochPart = '↓<50<rD'
-      }
-    }
-  } else {
-    // No recent cross - current position cases
-    if (stochK < stochD) {
-      // Below primary D cases
-      if (stochK > 50 && stochK < stochRefD) {
-        stochPart = '<D>50<rD'
-      } else if (stochK < 50 && stochK > stochRefD) {
-        stochPart = '<D<50>rD'
-      } else if (stochK < 50 && stochK < stochRefD) {
-        stochPart = '<D<50<rD'
-      }
-    }
-    
-    // Standard position cases (above D or no specific pattern)
-    if (!stochPart) {
-      if (stochK > 50 && stochK > stochRefD) {
-        stochPart = '>50>rD'
-      } else if (stochK > 50 && stochK < stochRefD) {
-        stochPart = '>50<rD'
-      } else if (stochK < 50 && stochK > stochRefD) {
-        stochPart = '<50>rD'
-      } else {
-        stochPart = '<50<rD'
-      }
+      stochStatus = 'K<D'
     }
   }
   
-    // Check if we have pre-calculated HA vs MACD status from Pine Script
-  if (row.haVsMacdStatus) {
-    // Use the pre-calculated status from Pine Script
-    const result = stochPart + ' | ' + row.haVsMacdStatus
-    return result
+  // Add overbought/oversold context
+  if (stochK > 80) {
+    stochStatus += ' OB'
+  } else if (stochK < 20) {
+    stochStatus += ' OS'
+  } else if (stochK > 50) {
+    stochStatus += ' Bull'
+  } else {
+    stochStatus += ' Bear'
   }
-
-  // Fallback: If haVsMacdStatus is not available, check individual values
+  
+  // Simple HA trend indicator
+  let haTrend = ''
   if (haValue === 'N/A') {
-    return stochPart + ' | HA Data Missing'
-  }
-
-  if (macdSignal === 'N/A') {
-    return stochPart + ' | MACD Signal Missing'
-  }
-
-  // Build HA vs MACD comparison part (fallback method)
-  const haZone = getHAZoneIndicator(haValue)
-  const haVal = parseFloat(haValue)
-  const signalVal = parseFloat(macdSignal)
-
-  // Validate numeric values
-  if (isNaN(haVal)) {
-    return stochPart + ' | Invalid HA Data'
-  }
-
-  if (isNaN(signalVal)) {
-    return stochPart + ' | MACD Signal Missing'
-  }
-
-  // Compare HA value with MACD signal
-  const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
-
-  // Add range indicator based on HA value
-  let rangeIndicator = ''
-  if (Math.abs(haVal) >= 500) {
-    rangeIndicator = haVal >= 500 ? '>500' : '<-500'
-  } else if (Math.abs(haVal) >= 50) {
-    rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+    haTrend = 'HA:N/A'
   } else {
-    rangeIndicator = '±50'
+    const haVal = parseFloat(haValue)
+    if (isNaN(haVal)) {
+      haTrend = 'HA:Invalid'
+    } else if (Math.abs(haVal) >= 500) {
+      haTrend = haVal >= 500 ? 'HA:Extreme↑' : 'HA:Extreme↓'
+    } else if (Math.abs(haVal) >= 100) {
+      haTrend = haVal >= 100 ? 'HA:Strong↑' : 'HA:Strong↓'
+    } else if (Math.abs(haVal) >= 50) {
+      haTrend = haVal >= 50 ? 'HA:Mild↑' : 'HA:Mild↓'
+    } else {
+      haTrend = 'HA:Neutral'
+    }
   }
-
-  const result = stochPart + ' | ' + haZone + comparison + rangeIndicator
   
-  // Debug logging for problematic cases
-  if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log('RESULT for ' + row.symbol + ': "' + result + '"')
-  }
-  
-  return result
+  return stochStatus + ' | ' + haTrend
 }
 
 function getTradingZoneLogic(row) {
