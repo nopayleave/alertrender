@@ -888,22 +888,11 @@ function normalizeWebhookData(rawAlert) {
     
     if (!isNaN(haVal) && !isNaN(signalVal)) {
       const haValRounded = Math.round(haVal)
-      const haPrefix = `H${haValRounded}`
       
       // Compare HA with MACD Signal
-      const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+      const comparison = haVal > signalVal ? '>' : haVal < signalVal ? '<' : '='
       
-      // Add range indicator
-      let rangeIndicator = ''
-      if (Math.abs(haVal) >= 500) {
-        rangeIndicator = haVal >= 500 ? '>500' : '<-500'
-      } else if (Math.abs(haVal) >= 50) {
-        rangeIndicator = haVal >= 50 ? '>50' : '<-50'
-      } else {
-        rangeIndicator = '±50'
-      }
-      
-      normalized.haVsMacdStatus = haPrefix + comparison + rangeIndicator
+      normalized.haVsMacdStatus = `HA${haValRounded}${comparison}S`
     }
   } else {
     normalized.haVsMacdStatus = rawAlert.haVsMacdStatus
