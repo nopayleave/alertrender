@@ -177,9 +177,8 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
   console.log('🧪 Development mode: Loaded dummy data for testing')
 }
 
-app.get('/', (req, res) => {
-  res.send(`
-<!DOCTYPE html>
+function getMainHTML() {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -425,12 +424,12 @@ function formatEnhancedStoch(row) {
   let macdSignal = row.macdSignal
   if (!macdSignal || macdSignal === 'N/A' || macdSignal === '' || macdSignal === 0) {
     macdSignal = 'N/A'
-    console.warn(`WARNING: Missing MACD Signal for ${row.symbol} - webhook data incomplete`)
+    console.warn('WARNING: Missing MACD Signal for ' + row.symbol + ' - webhook data incomplete')
   }
   
   // Debug logging for problematic cases
   if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log(`DEBUG ${row.symbol}:`, {
+    console.log('DEBUG ' + row.symbol + ':', {
       stochK: row.stochK, stochD: row.stochD, stochRefD: row.stochRefD,
       haValue, macdSignal, lastCrossType,
       parsedK: stochK, parsedD: stochD, parsedRefD: stochRefD
@@ -551,7 +550,7 @@ function formatEnhancedStoch(row) {
   
   // Debug logging for problematic cases
   if (row.symbol && (row.symbol === 'TSLA' || row.symbol === 'INTC' || row.symbol === 'AMZN')) {
-    console.log(`RESULT for ${row.symbol}: "${result}"`)
+    console.log('RESULT for ' + row.symbol + ': "' + result + '"')
   }
   
   return result
@@ -960,8 +959,11 @@ document.addEventListener('keydown', (e) => {
 initializeSortIndicators()
 </script>
 </body>
-</html>
-  `)
+</html>`
+}
+
+app.get('/', (req, res) => {
+  res.send(getMainHTML())
 })
 
 app.post('/webhook', (req, res) => {
