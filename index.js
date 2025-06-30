@@ -427,35 +427,40 @@ function formatEnhancedStoch(row) {
     return 'No Stoch Data'
   }
   
-  // Simple stochastic status
-  let stochStatus = ''
+  // Build stochastic part - simplified format
+  let stochPart = ''
   
   // Determine cross direction
   if (lastCrossType.toLowerCase() === 'crossover') {
-    stochStatus = '↑Cross'
+    stochPart = '↑Cross'
   } else if (lastCrossType.toLowerCase() === 'crossunder') {
-    stochStatus = '↓Cross'
+    stochPart = '↓Cross'
   } else {
     // No recent cross, show K vs D relationship
     if (stochK > stochD) {
-      stochStatus = 'K>D'
+      stochPart = 'K>D'
     } else {
-      stochStatus = 'K<D'
+      stochPart = 'K<D'
     }
   }
   
   // Add overbought/oversold context
   if (stochK > 80) {
-    stochStatus += ' OB'
+    stochPart += ' OB'
   } else if (stochK < 20) {
-    stochStatus += ' OS'
+    stochPart += ' OS'
   } else if (stochK > 50) {
-    stochStatus += ' Bull'
+    stochPart += ' Bull'
   } else {
-    stochStatus += ' Bear'
+    stochPart += ' Bear'
   }
   
-  // Simple HA trend indicator
+  // Use pre-calculated HA vs MACD status if available, otherwise use simple HA trend
+  if (row.haVsMacdStatus) {
+    return stochPart + ' | ' + row.haVsMacdStatus
+  }
+  
+  // Fallback to simple HA trend indicator
   let haTrend = ''
   if (haValue === 'N/A') {
     haTrend = 'HA:N/A'
@@ -474,7 +479,7 @@ function formatEnhancedStoch(row) {
     }
   }
   
-  return stochStatus + ' | ' + haTrend
+  return stochPart + ' | ' + haTrend
 }
 
 function getTradingZoneLogic(row) {
@@ -887,27 +892,98 @@ app.get('/', (req, res) => {
   res.send(getMainHTML())
 })
 
+// Function to normalize and enhance webhook data
+function normalizeWebhookData(rawAlert) {
+  // Normalize field names to consistent camelCase
+  const normalized = {
+    symbol: rawAlert.symbol,
+    signal: rawAlert.signal,
+    condition: rawAlert.condition,
+    price: rawAlert.price,
+    timeframe: rawAlert.timeframe,
+    priceChange: rawAlert.priceChange || rawAlert.pricechange,
+    volume: rawAlert.volume,
+    haValue: rawAlert.haValue || rawAlert.havalue,
+    stoch: rawAlert.stoch,
+    stochK: rawAlert.stochK || rawAlert.stochk,
+    stochD: rawAlert.stochD || rawAlert.stochd,
+    stochRefD: rawAlert.stochRefD || rawAlert.stochrefd,
+    macdSignal: rawAlert.macdSignal || rawAlert.macdsignal,
+    lastCrossType: rawAlert.lastCrossType || rawAlert.lastcrosstype,
+    lastPattern: rawAlert.lastPattern || rawAlert.lastpattern,
+    lastCrossValue: rawAlert.lastCrossValue || rawAlert.lastcrossvalue,
+    time: rawAlert.time
+  }
+  
+  // Generate haVsMacdStatus if missing
+  if (!rawAlert.haVsMacdStatus && normalized.haValue && normalized.macdSignal) {
+    const haVal = parseFloat(normalized.haValue)
+    const signalVal = parseFloat(normalized.macdSignal)
+    
+    if (!isNaN(haVal) && !isNaN(signalVal)) {
+      // Generate HA zone indicator
+      let haZone = ''
+      if (Math.abs(haVal) >= 500) {
+        haZone = haVal >= 500 ? 'H≥500' : 'H≤-500'
+      } else if (Math.abs(haVal) >= 50) {
+        haZone = haVal >= 50 ? 'H>50' : 'H<-50'
+      } else {
+        haZone = 'H±50'
+      }
+      
+      // Compare HA with MACD Signal
+      const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
+      
+      // Add range indicator
+      let rangeIndicator = ''
+      if (Math.abs(haVal) >= 500) {
+        rangeIndicator = haVal >= 500 ? '>500' : '<-500'
+      } else if (Math.abs(haVal) >= 50) {
+        rangeIndicator = haVal >= 50 ? '>50' : '<-50'
+      } else {
+        rangeIndicator = '±50'
+      }
+      
+      normalized.haVsMacdStatus = haZone + comparison + rangeIndicator
+    }
+  } else {
+    normalized.haVsMacdStatus = rawAlert.haVsMacdStatus
+  }
+  
+  return normalized
+}
+
 app.post('/webhook', (req, res) => {
-  const alert = req.body
-  console.log('Received alert:', alert)
+  const rawAlert = req.body
+  console.log('Received raw alert:', rawAlert)
+  
+  // Normalize the webhook data
+  const alert = normalizeWebhookData(rawAlert)
+  console.log('Normalized alert:', alert)
   
   // Validate and ensure critical fields are present
   if (alert.haValue !== undefined && alert.haValue !== null) {
-    console.log(`OK HA Value: ${alert.haValue}`)
+    console.log(`✓ HA Value: ${alert.haValue}`)
   } else {
-    console.log('WARNING: Missing HA Value in webhook data')
+    console.log('⚠️ WARNING: Missing HA Value in webhook data')
   }
   
   if (alert.macdSignal !== undefined && alert.macdSignal !== null) {
-    console.log(`OK MACD Signal: ${alert.macdSignal}`)
+    console.log(`✓ MACD Signal: ${alert.macdSignal}`)
   } else {
-    console.log('WARNING: Missing MACD Signal in webhook data')
+    console.log('⚠️ WARNING: Missing MACD Signal in webhook data')
   }
   
   if (alert.stochK && alert.stochD && alert.stochRefD) {
-    console.log(`OK Stochastic data complete: K=${alert.stochK}, D=${alert.stochD}, RefD=${alert.stochRefD}`)
+    console.log(`✓ Stochastic data complete: K=${alert.stochK}, D=${alert.stochD}, RefD=${alert.stochRefD}`)
   } else {
-    console.log('WARNING: Incomplete stochastic data in webhook')
+    console.log('⚠️ WARNING: Incomplete stochastic data in webhook')
+  }
+  
+  if (alert.haVsMacdStatus) {
+    console.log(`✓ HA vs MACD Status: ${alert.haVsMacdStatus}`)
+  } else {
+    console.log('⚠️ WARNING: Could not generate HA vs MACD Status')
   }
   
   // Find existing alert for the same symbol
@@ -916,12 +992,12 @@ app.post('/webhook', (req, res) => {
   if (existingIndex !== -1) {
     // Update existing alert
     alerts[existingIndex] = { ...alert, time: Date.now().toString() }
-    console.log(`Updated existing alert for ${alert.symbol}`)
+    console.log(`🔄 Updated existing alert for ${alert.symbol}`)
   } else {
     // Add new alert
     alert.time = Date.now().toString()
     alerts.unshift(alert)
-    console.log(`Added new alert for ${alert.symbol}`)
+    console.log(`➕ Added new alert for ${alert.symbol}`)
   }
   
   // Keep only the latest 100 unique tickers
