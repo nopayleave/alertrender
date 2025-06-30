@@ -10,8 +10,8 @@ app.use(express.json())
 // Conditional dummy data - only for localhost/development
 let alerts = []
 
-// Add dummy data only in development (localhost)
-if (process.env.NODE_ENV !== 'production') {
+// Add dummy data only in development (localhost) - disabled for production
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined) {
   alerts = [
     {
       symbol: "AAPL",
@@ -1014,15 +1014,26 @@ app.get('/alerts', (req, res) => {
   res.json(alerts)
 })
 
+// Clear all alerts endpoint (for admin use)
+app.delete('/alerts', (req, res) => {
+  alerts.length = 0
+  console.log('🗑️ All alerts cleared')
+  res.json({ message: 'All alerts cleared', count: 0 })
+})
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`Alerts in memory: ${alerts.length}`)
   
-  // Recalculate stoch fields for dummy data using our detailed format
-  if (process.env.NODE_ENV !== 'production') {
+  // Recalculate stoch fields for dummy data using our detailed format (development only)
+  if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined && alerts.length > 0) {
     alerts.forEach(alert => {
       alert.stoch = formatEnhancedStoch(alert)
       alert.stochDetail = formatStochDetail(alert)
     })
     console.log('✅ Recalculated stoch fields for dummy data with detailed format')
+  } else if (process.env.NODE_ENV === 'production') {
+    console.log('🚀 Production mode: Starting with clean alerts array')
   }
 })
