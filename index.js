@@ -973,6 +973,6 @@ app.listen(port, () => {
     })
     console.log('✅ Recalculated stoch fields for dummy data with detailed format')
   } else if (process.env.NODE_ENV === 'production') {
-    console.log('🚀 Production mode: Starting with clean alerts array')
+    console.log('🚀 Production mode: Starting with clean alerts array.')
   }
 })
