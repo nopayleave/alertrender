@@ -309,8 +309,8 @@ function getMainHTML() {
             <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 12%; min-width: 80px;">
               Ticker <span id="unified-symbol-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'signal')" style="width: 8%; min-width: 60px;">
-              Signal <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600 text-gray-400" onclick="toggleSignalFilter()" style="width: 8%; min-width: 60px;" title="Click to filter: All → Bullish Only → Bearish Only">
+              Signal (All) <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
             <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 12%; min-width: 80px;">
               Price <span id="unified-price-sort" style="margin-left: 0rem; display: none;"></span>
@@ -350,6 +350,7 @@ let previousData = []
 let sortState = {
   unified: { column: 'symbol', direction: 'asc' }
 }
+let signalFilter = 'all' // 'all', 'bullish', 'bearish'
 
 function formatVolume(volume) {
   if (!volume || volume === 'N/A') return 'N/A'
@@ -552,6 +553,45 @@ function sortTable(tableType, column) {
   fetchAlerts()
 }
 
+function toggleSignalFilter() {
+  // Cycle through: all -> bullish -> bearish -> all
+  if (signalFilter === 'all') {
+    signalFilter = 'bullish'
+  } else if (signalFilter === 'bullish') {
+    signalFilter = 'bearish'
+  } else {
+    signalFilter = 'all'
+  }
+  
+  // Update the signal header to show current filter
+  updateSignalHeader()
+  
+  // Refresh the alerts display
+  fetchAlerts()
+}
+
+function updateSignalHeader() {
+  const signalHeader = document.querySelector('[onclick="toggleSignalFilter()"]')
+  if (signalHeader) {
+    let filterText = ''
+    let filterColor = ''
+    
+    if (signalFilter === 'bullish') {
+      filterText = ' (📈 Only)'
+      filterColor = 'text-green-400'
+    } else if (signalFilter === 'bearish') {
+      filterText = ' (📉 Only)'
+      filterColor = 'text-red-400'
+    } else {
+      filterText = ' (All)'
+      filterColor = 'text-gray-400'
+    }
+    
+    signalHeader.innerHTML = \`Signal\${filterText} <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>\`
+    signalHeader.className = \`py-3 px-4 text-left cursor-pointer hover:bg-gray-600 \${filterColor}\`
+  }
+}
+
 function updateSortIndicators() {
   // Hide all sort indicators first
   const allSortSpans = document.querySelectorAll('[id$="-sort"]')
@@ -600,14 +640,23 @@ async function fetchAlerts() {
   const res = await fetch('/alerts')
   const data = await res.json()
   
-  // Apply current sorting to all data
-  const sortedData = applySorting([...data], 'unified')
+  // Apply signal filter first
+  let filteredData = data
+  if (signalFilter === 'bullish') {
+    filteredData = data.filter(alert => alert.signal === 'Bullish')
+  } else if (signalFilter === 'bearish') {
+    filteredData = data.filter(alert => alert.signal === 'Bearish')
+  }
   
-  // Update last update time
+  // Apply current sorting to filtered data
+  const sortedData = applySorting([...filteredData], 'unified')
+  
+  // Update last update time (use original data, not filtered)
   const lastUpdate = document.getElementById('lastUpdate')
   if (data.length > 0) {
     const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
-    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
+    const filterInfo = signalFilter === 'all' ? '' : \` (Showing \${signalFilter} only)\`
+    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + filterInfo
   } else {
     lastUpdate.textContent = 'Last updated: Never'
   }
@@ -619,6 +668,17 @@ async function fetchAlerts() {
   if (sortedData.length === 0) {
     unifiedTable.innerHTML = ''
     noAlerts.classList.remove('hidden')
+    // Update no alerts message based on filter
+    const noAlertsSpan = noAlerts.querySelector('span:last-child')
+    if (noAlertsSpan) {
+      if (signalFilter === 'bullish') {
+        noAlertsSpan.textContent = 'No bullish alerts'
+      } else if (signalFilter === 'bearish') {
+        noAlertsSpan.textContent = 'No bearish alerts'
+      } else {
+        noAlertsSpan.textContent = 'No trading alerts yet'
+      }
+    }
   } else {
     noAlerts.classList.add('hidden')
     unifiedTable.innerHTML = sortedData.map(row => {
@@ -664,7 +724,7 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
           <td class="py-3 px-4 text-white text-xs font-bold">
             <span class="\${getHAGradeStyle(row.haValue, row.signal)} px-2 py-1 rounded text-xs">
-              \${getHAGrade(row.haValue)}
+              \${row.haVsMacdStatus || 'N/A'}
             </span>
           </td>
           <td class="py-3 px-4 text-white text-sm">
@@ -829,8 +889,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideChart()
 })
 
-// Initialize sort indicators on page load
+// Initialize sort indicators and signal header on page load
 initializeSortIndicators()
+setTimeout(() => {
+  updateSignalHeader()
+}, 200)
 </script>
 </body>
 </html>`
@@ -970,8 +1033,20 @@ app.listen(port, () => {
     alerts.forEach(alert => {
       alert.stoch = formatEnhancedStoch(alert)
       alert.stochDetail = formatStochDetail(alert)
+      
+      // Generate haVsMacdStatus in the correct format (HA{value}{comparison}S)
+      if (alert.haValue && alert.macdSignal) {
+        const haVal = parseFloat(alert.haValue)
+        const signalVal = parseFloat(alert.macdSignal)
+        
+        if (!isNaN(haVal) && !isNaN(signalVal)) {
+          const haValRounded = Math.round(haVal)
+          const comparison = haVal > signalVal ? '>' : haVal < signalVal ? '<' : '='
+          alert.haVsMacdStatus = `HA${haValRounded}${comparison}S`
+        }
+      }
     })
-    console.log('✅ Recalculated stoch fields for dummy data with detailed format')
+    console.log('✅ Recalculated stoch fields and haVsMacdStatus for dummy data with detailed format')
   } else if (process.env.NODE_ENV === 'production') {
     console.log('🚀 Production mode: Starting with clean alerts array.')
   }
