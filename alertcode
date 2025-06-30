@@ -322,7 +322,7 @@ var float openStochRefD = na
 var bool isPremarket = false
 var bool marketOpenCrossDetected = false
 
-// Check if we're in market hours (9:30 AM - 4:00 PM EST)
+// Check if were in market hours (9:30 AM - 4:00 PM EST)
 // This is a simplified check - you may need to adjust for your timezone
 bool isMarketHours = hour >= 9 and (hour < 16 or (hour == 9 and minute >= 30))
 bool isPremarketHours = hour < 9 or (hour == 9 and minute < 30)
