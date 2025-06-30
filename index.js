@@ -205,6 +205,23 @@ function formatEnhancedStoch(row) {
   return stochMomentum + ' | ' + decodedStatus;
 }
 
+// Generates a detailed stochastic relationship string, e.g., "K > D > rD < 50"
+function formatStochDetail(row) {
+  const k = parseFloat(row.stochK);
+  const d = parseFloat(row.stochD);
+  const rd = parseFloat(row.stochRefD);
+
+  if (isNaN(k) || isNaN(d) || isNaN(rd)) {
+    return 'N/A';
+  }
+
+  const k_vs_d = k > d ? '>' : '<';
+  const d_vs_rd = d > rd ? '>' : '<';
+  const k_vs_50 = k > 50 ? '>' : '<';
+
+  return `K ${k_vs_d} D ${d_vs_rd} rD ${k_vs_50} 50`;
+}
+
 function getMainHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -623,6 +640,11 @@ async function fetchAlerts() {
           </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            \${row.haVsMacdStatus}
+          </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
@@ -678,6 +700,11 @@ async function fetchAlerts() {
           </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            \${row.haVsMacdStatus}
+          </td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
+          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
@@ -911,6 +938,7 @@ function normalizeWebhookData(rawAlert) {
   
   // Always calculate fresh stoch field using detailed format
   normalized.stoch = formatEnhancedStoch(normalized)
+  normalized.stochDetail = formatStochDetail(normalized)
   
   return normalized
 }
@@ -979,6 +1007,7 @@ app.listen(port, () => {
   if (process.env.NODE_ENV !== 'production') {
     alerts.forEach(alert => {
       alert.stoch = formatEnhancedStoch(alert)
+      alert.stochDetail = formatStochDetail(alert)
     })
     console.log('✅ Recalculated stoch fields for dummy data with detailed format')
   }
