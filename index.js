@@ -27,6 +27,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       stochRefD: 65.4,
       lastCrossType: "crossover",
       stoch: "↑>0>D",
+      haVsMacdStatus: "H>50>S>50",
       time: Date.now().toString()
     },
     {
@@ -43,6 +44,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       stochRefD: 38.9,
       lastCrossType: "crossunder",
       stoch: "↓<0<D",
+      haVsMacdStatus: "H<-50<S<-50",
       time: Date.now().toString()
     },
     {
@@ -59,6 +61,7 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
       stochRefD: 76.8,
       lastCrossType: "",
       stoch: ">0>D",
+      haVsMacdStatus: "H≥500>S>500",
       time: Date.now().toString()
     },
     {
@@ -427,32 +430,67 @@ function formatEnhancedStoch(row) {
     return 'No Stoch Data'
   }
   
-  // Build stochastic part - simplified format
+  // Build detailed stochastic part - original format
   let stochPart = ''
   
-  // Determine cross direction
-  if (lastCrossType.toLowerCase() === 'crossover') {
-    stochPart = '↑Cross'
-  } else if (lastCrossType.toLowerCase() === 'crossunder') {
-    stochPart = '↓Cross'
-  } else {
-    // No recent cross, show K vs D relationship
-    if (stochK > stochD) {
-      stochPart = 'K>D'
-    } else {
-      stochPart = 'K<D'
-    }
+  // Determine crossover/crossunder status or K vs D relationship
+  let crossStatus = ''
+  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
+    crossStatus = '↑'  // Recent crossover OR K above D
+  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
+    crossStatus = '↓'  // Recent crossunder OR K below D
   }
   
-  // Add overbought/oversold context
-  if (stochK > 80) {
-    stochPart += ' OB'
-  } else if (stochK < 20) {
-    stochPart += ' OS'
-  } else if (stochK > 50) {
-    stochPart += ' Bull'
+  if (crossStatus) {
+    // Recent crossover/crossunder cases
+    if (crossStatus === '↑') {
+      // Crossover cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↑>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↑>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↑<50>rD'
+      } else {
+        stochPart = '↑<50<rD'
+      }
+    } else {
+      // Crossunder cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↓>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↓>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↓<50>rD'
+      } else {
+        stochPart = '↓<50<rD'
+      }
+    }
   } else {
-    stochPart += ' Bear'
+    // No recent cross - current position cases
+    if (stochK < stochD) {
+      // Below primary D cases
+      if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '<D>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<D<50>rD'
+      } else if (stochK < 50 && stochK < stochRefD) {
+        stochPart = '<D<50<rD'
+      }
+    }
+    
+    // Standard position cases (above D or no specific pattern)
+    if (!stochPart) {
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<50>rD'
+      } else {
+        stochPart = '<50<rD'
+      }
+    }
   }
   
   // Use pre-calculated HA vs MACD status if available, otherwise use simple HA trend
@@ -904,7 +942,7 @@ function normalizeWebhookData(rawAlert) {
     priceChange: rawAlert.priceChange || rawAlert.pricechange,
     volume: rawAlert.volume,
     haValue: rawAlert.haValue || rawAlert.havalue,
-    stoch: rawAlert.stoch,
+    // Don't use pre-calculated stoch from Pine Script - we'll calculate it fresh
     stochK: rawAlert.stochK || rawAlert.stochk,
     stochD: rawAlert.stochD || rawAlert.stochd,
     stochRefD: rawAlert.stochRefD || rawAlert.stochrefd,
@@ -949,6 +987,9 @@ function normalizeWebhookData(rawAlert) {
   } else {
     normalized.haVsMacdStatus = rawAlert.haVsMacdStatus
   }
+  
+  // Always calculate fresh stoch field using detailed format
+  normalized.stoch = formatEnhancedStoch(normalized)
   
   return normalized
 }
@@ -1012,4 +1053,12 @@ app.get('/alerts', (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
+  
+  // Recalculate stoch fields for dummy data using our detailed format
+  if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
+    alerts.forEach(alert => {
+      alert.stoch = formatEnhancedStoch(alert)
+    })
+    console.log('✅ Recalculated stoch fields for dummy data with detailed format')
+  }
 })
