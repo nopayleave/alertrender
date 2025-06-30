@@ -289,98 +289,57 @@ function getMainHTML() {
     <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
   </div>
   
-  <div class="flex justify-between gap-4">
-    <!-- BUY/BULLISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
-      <div class="bg-green-700 px-4 py-3">
-        <h2 class="text-lg font-semibold text-white flex items-center">
-          <span class="text-xl mr-2">📈</span>
-          Bullish Signals (BUY)
-        </h2>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full table-fixed">
-          <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
-            <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'symbol')" style="width: 14%; min-width: 80px;">
-                Ticker <span id="buy-symbol-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'price')" style="width: 15%; min-width: 80px;">
-                Price <span id="buy-price-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'priceChange')" style="width: 9%; min-width: 50px;">
-                Chg% <span id="buy-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 9%; min-width: 80px;">
-                Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'openCross')" style="width: 12%; min-width: 80px;">
-                Open <span id="buy-openCross-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 16%; min-width: 120px;">
-                Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
-                HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 21%; min-width: 120px;">
-                Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="buyTable" class="divide-y divide-gray-700"></tbody>
-        </table>
-        <div id="noBuyAlerts" class="text-center py-8 text-gray-500 hidden">
-          <span class="text-4xl mb-2 block">📊</span>
-          No bullish signals yet
-        </div>
-      </div>
+  <!-- UNIFIED TRADING ALERTS TABLE -->
+  <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+    <div class="bg-gradient-to-r from-blue-700 to-purple-700 px-4 py-3">
+      <h2 class="text-lg font-semibold text-white flex items-center">
+        <span class="text-xl mr-2">📊</span>
+        Live Trading Alerts
+        <span class="ml-4 text-sm bg-white bg-opacity-20 px-2 py-1 rounded">
+          <span class="text-green-300">●</span> Bull (HA>50) 
+          <span class="text-yellow-300 ml-2">●</span> Critical (HA±50) 
+          <span class="text-red-300 ml-2">●</span> Bear (HA<-50)
+        </span>
+      </h2>
     </div>
-
-    <!-- SELL/BEARISH TABLE -->
-    <div class="bg-gray-800 rounded-xl shadow-lg overflow-hidden flex-1">
-      <div class="bg-red-700 px-4 py-3">
-        <h2 class="text-lg font-semibold text-white flex items-center">
-          <span class="text-xl mr-2">📉</span>
-          Bearish Signals (SELL)
-        </h2>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full table-fixed">
-          <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
-            <tr>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'symbol')" style="width: 14%; min-width: 80px;">
-                Ticker <span id="sell-symbol-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'price')" style="width: 15%; min-width: 80px;">
-                Price <span id="sell-price-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'priceChange')" style="width: 9%; min-width: 50px;">
-                Chg% <span id="sell-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 9%; min-width: 80px;">
-                Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'openCross')" style="width: 12%; min-width: 80px;">
-                Open <span id="sell-openCross-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 16%; min-width: 120px;">
-                Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
-                HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 21%; min-width: 120px;">
-                Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
-            </tr>
-          </thead>
-          <tbody id="sellTable" class="divide-y divide-gray-700"></tbody>
-        </table>
-        <div id="noSellAlerts" class="text-center py-8 text-gray-500 hidden">
-          <span class="text-4xl mb-2 block">📊</span>
-          No bearish signals yet
-        </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full table-fixed">
+        <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
+          <tr>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 12%; min-width: 80px;">
+              Ticker <span id="unified-symbol-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'signal')" style="width: 8%; min-width: 60px;">
+              Signal <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 12%; min-width: 80px;">
+              Price <span id="unified-price-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'priceChange')" style="width: 8%; min-width: 50px;">
+              Chg% <span id="unified-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'volume')" style="width: 8%; min-width: 80px;">
+              Vol <span id="unified-volume-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openCross')" style="width: 10%; min-width: 80px;">
+              Open <span id="unified-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'stoch')" style="width: 16%; min-width: 120px;">
+              Stoch <span id="unified-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'haValue')" style="width: 8%; min-width: 70px;">
+              HA <span id="unified-haValue-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'condition')" style="width: 18%; min-width: 120px;">
+              Zone <span id="unified-condition-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="unifiedTable" class="divide-y divide-gray-700"></tbody>
+      </table>
+      <div id="noAlerts" class="text-center py-8 text-gray-500 hidden">
+        <span class="text-4xl mb-2 block">📊</span>
+        No trading alerts yet
       </div>
     </div>
   </div>
@@ -389,8 +348,7 @@ function getMainHTML() {
 <script>
 let previousData = []
 let sortState = {
-  buy: { column: 'symbol', direction: 'asc' },
-  sell: { column: 'symbol', direction: 'asc' }
+  unified: { column: 'symbol', direction: 'asc' }
 }
 
 function formatVolume(volume) {
@@ -424,6 +382,19 @@ function getHAGrade(haValue) {
     if (value <= -100) return 'A'
     if (value <= -50) return 'B'
     return 'C'
+  }
+}
+
+function getRowBackgroundClass(haValue) {
+  if (!haValue || haValue === 'N/A') return 'bg-gray-800'
+  const value = parseFloat(haValue)
+  
+  if (value > 50) {
+    return 'bg-green-900 bg-opacity-40 border-l-4 border-green-500' // Bull
+  } else if (value < -50) {
+    return 'bg-red-900 bg-opacity-40 border-l-4 border-red-500' // Bear
+  } else {
+    return 'bg-yellow-900 bg-opacity-30 border-l-4 border-yellow-500' // Critical
   }
 }
 
@@ -629,96 +600,48 @@ async function fetchAlerts() {
   const res = await fetch('/alerts')
   const data = await res.json()
   
-  // Separate buy and sell signals
-  const buyAlerts = data.filter(alert => alert.signal === 'Bullish')
-  const sellAlerts = data.filter(alert => alert.signal === 'Bearish')
+  // Apply current sorting to all data
+  const sortedData = applySorting([...data], 'unified')
   
-  // Apply current sorting
-  const sortedBuyAlerts = applySorting([...buyAlerts], 'buy')
-  const sortedSellAlerts = applySorting([...sellAlerts], 'sell')
-  
-     // Update last update time
-   const lastUpdate = document.getElementById('lastUpdate')
-   if (data.length > 0) {
-     const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
-     lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
-   } else {
-     lastUpdate.textContent = 'Last updated: Never'
-   }
-  
-  // Update buy table
-  const buyTable = document.getElementById('buyTable')
-  const noBuyAlerts = document.getElementById('noBuyAlerts')
-  
-  if (sortedBuyAlerts.length === 0) {
-    buyTable.innerHTML = ''
-    noBuyAlerts.classList.remove('hidden')
+  // Update last update time
+  const lastUpdate = document.getElementById('lastUpdate')
+  if (data.length > 0) {
+    const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
+    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
   } else {
-    noBuyAlerts.classList.add('hidden')
-    buyTable.innerHTML = sortedBuyAlerts.map(row => {
-      // Check if this row was just updated
-      const wasUpdated = previousData.length > 0 && 
-        previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
-      const highlightClass = wasUpdated ? 'bg-green-900 bg-opacity-30' : ''
-      
-      return \`
-        <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
-          <td class="py-3 px-4 font-semibold text-white relative">
-            <div class="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" 
-                   viewBox="0 0 24 24" 
-                   fill="currentColor" 
-                   class="w-4 h-4 cursor-pointer hover:text-green-300 transition-colors duration-200"
-                   onclick="showChart('\${row.symbol}', event)"
-                   title="Click for chart preview">
-                <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
-              </svg>
-              <span class="hover:text-blue-300 hover:underline cursor-pointer transition-colors duration-200"
-                    onclick="window.open('https://www.tradingview.com/chart/?symbol=\${row.symbol}', '_blank')"
-                    title="Click to open TradingView">
-                \${row.symbol}
-              </span>
-            </div>
-          </td>
-          <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
-          <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
-          <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.haVsMacdStatus || 'N/A'}</td>
-          <td class="py-3 px-4 text-white text-sm">
-            <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
-              \${getTradingZoneLogic(row).display}
-            </span>
-          </td>
-        </tr>
-      \`
-    }).join('')
+    lastUpdate.textContent = 'Last updated: Never'
   }
   
-  // Update sell table
-  const sellTable = document.getElementById('sellTable')
-  const noSellAlerts = document.getElementById('noSellAlerts')
+  // Update unified table
+  const unifiedTable = document.getElementById('unifiedTable')
+  const noAlerts = document.getElementById('noAlerts')
   
-  if (sortedSellAlerts.length === 0) {
-    sellTable.innerHTML = ''
-    noSellAlerts.classList.remove('hidden')
+  if (sortedData.length === 0) {
+    unifiedTable.innerHTML = ''
+    noAlerts.classList.remove('hidden')
   } else {
-    noSellAlerts.classList.add('hidden')
-    sellTable.innerHTML = sortedSellAlerts.map(row => {
+    noAlerts.classList.add('hidden')
+    unifiedTable.innerHTML = sortedData.map(row => {
       // Check if this row was just updated
       const wasUpdated = previousData.length > 0 && 
         previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
-      const highlightClass = wasUpdated ? 'bg-red-900 bg-opacity-30' : ''
+      const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
+      
+      // Get background color based on HA value
+      const bgClass = getRowBackgroundClass(row.haValue)
+      
+      // Get signal color
+      const signalColor = row.signal === 'Bullish' ? 'text-green-400' : 'text-red-400'
+      const signalIcon = row.signal === 'Bullish' ? '📈' : '📉'
       
       return \`
-        <tr class="transition-colors duration-500 hover:bg-gray-700 \${highlightClass}">
+        <tr class="transition-all duration-500 hover:bg-gray-700 hover:bg-opacity-60 \${bgClass} \${updateHighlight}">
           <td class="py-3 px-4 font-semibold text-white relative">
             <div class="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" 
                    viewBox="0 0 24 24" 
                    fill="currentColor" 
-                   class="w-4 h-4 cursor-pointer hover:text-red-300 transition-colors duration-200"
+                   class="w-4 h-4 cursor-pointer hover:text-blue-300 transition-colors duration-200"
                    onclick="showChart('\${row.symbol}', event)"
                    title="Click for chart preview">
                 <path d="M5 3V19H21V21H3V3H5ZM20.2929 6.29289L21.7071 7.70711L16 13.4142L13 10.415L8.70711 14.7071L7.29289 13.2929L13 7.58579L16 10.585L20.2929 6.29289Z"></path>
@@ -730,12 +653,20 @@ async function fetchAlerts() {
               </span>
             </div>
           </td>
+          <td class="py-3 px-4 font-medium \${signalColor}">
+            <span class="mr-1">\${signalIcon}</span>
+            \${row.signal}
+          </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
-          <td class="py-3 px-4 text-white text-xs">\${row.haVsMacdStatus || 'N/A'}</td>
+          <td class="py-3 px-4 text-white text-xs font-bold">
+            <span class="\${getHAGradeStyle(row.haValue, row.signal)} px-2 py-1 rounded text-xs">
+              \${getHAGrade(row.haValue)}
+            </span>
+          </td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
@@ -1019,6 +950,14 @@ app.delete('/alerts', (req, res) => {
   alerts.length = 0
   console.log('🗑️ All alerts cleared')
   res.json({ message: 'All alerts cleared', count: 0 })
+})
+
+// Alternative clear endpoint using GET (for easier access)
+app.get('/clear-alerts', (req, res) => {
+  const clearedCount = alerts.length
+  alerts.length = 0
+  console.log(`🗑️ Cleared ${clearedCount} alerts`)
+  res.json({ message: `Cleared ${clearedCount} alerts`, previousCount: clearedCount, currentCount: 0 })
 })
 
 app.listen(port, () => {
