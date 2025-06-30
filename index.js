@@ -215,11 +215,11 @@ function formatStochDetail(row) {
     return 'N/A';
   }
 
+  const k_rounded = Math.round(k);
   const k_vs_d = k > d ? '>' : '<';
   const d_vs_rd = d > rd ? '>' : '<';
-  const k_vs_50 = k > 50 ? '>' : '<';
 
-  return `K ${k_vs_d} D ${d_vs_rd} rD ${k_vs_50} 50`;
+  return `K${k_rounded} ${k_vs_d} D ${d_vs_rd} rD`;
 }
 
 function getMainHTML() {
@@ -263,14 +263,14 @@ function getMainHTML() {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'volume')" style="width: 9%; min-width: 80px;">
                 Vol <span id="buy-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
-                HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'openCross')" style="width: 12%; min-width: 80px;">
                 Open <span id="buy-openCross-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'stoch')" style="width: 16%; min-width: 120px;">
                 Stoch <span id="buy-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'haValue')" style="width: 10%; min-width: 70px;">
+                HA <span id="buy-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('buy', 'condition')" style="width: 21%; min-width: 120px;">
                 Zone <span id="buy-condition-sort" style="margin-left: 0rem; display: none;"></span>
@@ -310,14 +310,14 @@ function getMainHTML() {
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'volume')" style="width: 9%; min-width: 80px;">
                 Vol <span id="sell-volume-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
-              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
-                HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
-              </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'openCross')" style="width: 12%; min-width: 80px;">
                 Open <span id="sell-openCross-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'stoch')" style="width: 16%; min-width: 120px;">
                 Stoch <span id="sell-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+              </th>
+              <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'haValue')" style="width: 10%; min-width: 70px;">
+                HA <span id="sell-haValue-sort" style="margin-left: 0rem; display: none;"></span>
               </th>
               <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('sell', 'condition')" style="width: 21%; min-width: 120px;">
                 Zone <span id="sell-condition-sort" style="margin-left: 0rem; display: none;"></span>
@@ -630,21 +630,11 @@ async function fetchAlerts() {
             </div>
           </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
-          <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs">
-            <div class="flex items-center gap-2">
-              <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
-              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
-            </div>
-          </td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch}</td>
-          <td class="py-3 px-4 text-white text-xs">
-            \${row.haVsMacdStatus}
-          </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.haVsMacdStatus || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
@@ -690,21 +680,11 @@ async function fetchAlerts() {
             </div>
           </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
-          <td class="py-3 px-4 text-white \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
+          <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs">
-            <div class="flex items-center gap-2">
-              <span>\${row.haValue ? parseFloat(row.haValue).toFixed(1) : 'N/A'}</span>
-              <span class="px-1.5 py-0.5 rounded text-xs font-bold \${getHAGradeStyle(row.haValue, row.signal)}">\${getHAGrade(row.haValue)}</span>
-            </div>
-          </td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stoch}</td>
-          <td class="py-3 px-4 text-white text-xs">
-            \${row.haVsMacdStatus}
-          </td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
+          <td class="py-3 px-4 text-white text-xs">\${row.haVsMacdStatus || 'N/A'}</td>
           <td class="py-3 px-4 text-white text-sm">
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
@@ -907,15 +887,8 @@ function normalizeWebhookData(rawAlert) {
     const signalVal = parseFloat(normalized.macdSignal)
     
     if (!isNaN(haVal) && !isNaN(signalVal)) {
-      // Generate HA zone indicator
-      let haZone = ''
-      if (Math.abs(haVal) >= 500) {
-        haZone = haVal >= 500 ? 'H≥500' : 'H≤-500'
-      } else if (Math.abs(haVal) >= 50) {
-        haZone = haVal >= 50 ? 'H>50' : 'H<-50'
-      } else {
-        haZone = 'H±50'
-      }
+      const haValRounded = Math.round(haVal)
+      const haPrefix = `H${haValRounded}`
       
       // Compare HA with MACD Signal
       const comparison = haVal > signalVal ? '>S' : haVal < signalVal ? '<S' : '=S'
@@ -930,7 +903,7 @@ function normalizeWebhookData(rawAlert) {
         rangeIndicator = '±50'
       }
       
-      normalized.haVsMacdStatus = haZone + comparison
+      normalized.haVsMacdStatus = haPrefix + comparison + rangeIndicator
     }
   } else {
     normalized.haVsMacdStatus = rawAlert.haVsMacdStatus
