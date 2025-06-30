@@ -182,17 +182,68 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Extract formatEnhancedStoch function to main scope
 function formatEnhancedStoch(row) {
-  // Extract pre-calculated data from the row
-  const stochMomentum = row.stoch || 'No Stoch Data';
-  const haVsMacdStatus = row.haVsMacdStatus || '';
-  
-  if (stochMomentum === 'No Stoch Data') {
-    return stochMomentum;
+  // Check if we have the required stochastic data
+  if (!row.stochK || !row.stochD || !row.stochRefD) {
+    return 'No Stoch Data';
   }
   
-  // HA status is optional, so we can return just the momentum if it's not present
+  // Extract stochastic data from the row
+  const stochK = parseFloat(row.stochK) || 0;
+  const stochD = parseFloat(row.stochD) || 0;
+  const stochRefD = parseFloat(row.stochRefD) || 0;
+  const lastCrossType = row.lastCrossType || '';
+  
+  // Determine crossover/crossunder status or K vs D relationship
+  let crossStatus = '';
+  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
+    crossStatus = '↑';  // Recent crossover OR K above D
+  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
+    crossStatus = '↓';  // Recent crossunder OR K below D
+  }
+  
+  // Build the stochastic status string
+  let stochPart = '';
+  if (crossStatus !== '') {
+    if (crossStatus === '↑') {
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↑>50>rD';
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↑>50<rD';
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↑<50>rD';
+      } else {
+        stochPart = '↑<50<rD';
+      }
+    } else { // crossStatus === '↓'
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↓>50>rD';
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↓>50<rD';
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↓<50>rD';
+      } else {
+        stochPart = '↓<50<rD';
+      }
+    }
+  } else {
+    // No recent cross, show K vs D vs RefD relationship
+    if (stochK > 50 && stochK > stochRefD) {
+      stochPart = '>50>rD';
+    } else if (stochK > 50 && stochK < stochRefD) {
+      stochPart = '>50<rD';
+    } else if (stochK < 50 && stochK > stochRefD) {
+      stochPart = '<50>rD';
+    } else {
+      stochPart = '<50<rD';
+    }
+  }
+  
+  // Get HA vs MACD status
+  const haVsMacdStatus = row.haVsMacdStatus || '';
+  
+  // HA status is optional, so we can return just the stoch momentum if it's not present
   if (!haVsMacdStatus) {
-    return stochMomentum;
+    return stochPart;
   }
   
   // Decode HTML entities from haVsMacdStatus
@@ -202,7 +253,7 @@ function formatEnhancedStoch(row) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
     
-  return stochMomentum + ' | ' + decodedStatus;
+  return stochPart + ' | ' + decodedStatus;
 }
 
 // Generates a detailed stochastic relationship string, e.g., "K > D > rD < 50"
