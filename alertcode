@@ -416,40 +416,42 @@ else
     lastPattern := lastPatternStored
     lastCrossValue := lastCrossValueStored
 
-// Generate Stochastic status string (keeping existing logic)
+// Generate Stochastic status string (from index.js logic)
 string stochStatus = ""
-if crossOver and s.k > 0 and s.k > sRef.d
-    stochStatus := "↑>0>D"
-else if crossOver and s.k > 0 and s.k < sRef.d
-    stochStatus := "↑>0<D"
-else if crossOver and s.k < 0 and s.k > sRef.d
-    stochStatus := "↑<0>D"
-else if crossOver and s.k < 0 and s.k < sRef.d
-    stochStatus := "↑<0<D"
-else if crossUnder and s.k > 0 and s.k > sRef.d
-    stochStatus := "↓>0>D"
-else if crossUnder and s.k > 0 and s.k < sRef.d
-    stochStatus := "↓>0<D"
-else if crossUnder and s.k < 0 and s.k > sRef.d
-    stochStatus := "↓<0>D"
-else if crossUnder and s.k < 0 and s.k < sRef.d
-    stochStatus := "↓<0<D"
-else if s.k > s.d and s.k > 0 and s.k > sRef.d
-    stochStatus := ">0>D"
-else if s.k > s.d and s.k > 0 and s.k < sRef.d
-    stochStatus := ">0<D"
-else if s.k > s.d and s.k < 0 and s.k > sRef.d
-    stochStatus := "<0>D"
-else if s.k > s.d and s.k < 0 and s.k < sRef.d
-    stochStatus := "<0<D"
-else if s.k < s.d and s.k > 0 and s.k > sRef.d
-    stochStatus := "<D>0"
-else if s.k < s.d and s.k > 0 and s.k < sRef.d
-    stochStatus := "<D>0<rD"
-else if s.k < s.d and s.k < 0 and s.k > sRef.d
-    stochStatus := "<D<0>rD"
-else if s.k < s.d and s.k < 0 and s.k < sRef.d
-    stochStatus := "<D<0<rD"
+string crossStatus = ""
+if (lastCrossType == "Crossover" or (lastCrossType == "" and s.k > s.d))
+    crossStatus := "↑"
+else if (lastCrossType == "Crossunder" or (lastCrossType == "" and s.k < s.d))
+    crossStatus := "↓"
+
+if (crossStatus != "")
+    if (crossStatus == "↑")
+        if (s.k > 50 and s.k > sRef.d)
+            stochStatus := "↑>50>rD"
+        else if (s.k > 50 and s.k < sRef.d)
+            stochStatus := "↑>50<rD"
+        else if (s.k < 50 and s.k > sRef.d)
+            stochStatus := "↑<50>rD"
+        else
+            stochStatus := "↑<50<rD"
+    else // crossStatus == "↓"
+        if (s.k > 50 and s.k > sRef.d)
+            stochStatus := "↓>50>rD"
+        else if (s.k > 50 and s.k < sRef.d)
+            stochStatus := "↓>50<rD"
+        else if (s.k < 50 and s.k > sRef.d)
+            stochStatus := "↓<50>rD"
+        else
+            stochStatus := "↓<50<rD"
+else // No recent cross, k == d
+    if (s.k > 50 and s.k > sRef.d)
+        stochStatus := ">50>rD"
+    else if (s.k > 50 and s.k < sRef.d)
+        stochStatus := ">50<rD"
+    else if (s.k < 50 and s.k > sRef.d)
+        stochStatus := "<50>rD"
+    else
+        stochStatus := "<50<rD"
 
 // Webhook Alert Messages with comprehensive data including Open column and HA vs MACD status
 bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
