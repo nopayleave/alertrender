@@ -448,6 +448,27 @@ function getHAZoneIndicator(haValue) {
   }
 }
 
+function formatHAvsSignal(row) {
+  const haValue = row.haValue
+  const macdSignal = row.macdSignal
+  
+  if (!haValue || haValue === 'N/A' || !macdSignal || macdSignal === 'N/A') {
+    return 'N/A'
+  }
+  
+  const haVal = parseFloat(haValue)
+  const signalVal = parseFloat(macdSignal)
+  
+  if (isNaN(haVal) || isNaN(signalVal)) {
+    return 'N/A'
+  }
+  
+  const haValRounded = Math.round(haVal)
+  const comparison = haVal > signalVal ? '>' : haVal < signalVal ? '<' : '='
+  
+  return 'H' + haValRounded + comparison + 'S'
+}
+
 function formatOpenCross(row) {
   const openCrossType = row.openCrossType || ''
   const openStochK = parseFloat(row.openStochK) || 0
@@ -753,7 +774,7 @@ async function fetchAlerts() {
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
           <td class="py-3 px-4 text-white text-xs font-bold">
             <span class="\${getHAGradeStyle(row.haValue, row.signal)} px-2 py-1 rounded text-xs">
-              \${row.haVsMacdStatus || 'N/A'}
+              \${formatHAvsSignal(row)}
             </span>
           </td>
           <td class="py-3 px-4 text-white text-sm">
@@ -992,6 +1013,12 @@ app.post('/webhook', (req, res) => {
   console.log('Headers:', JSON.stringify(req.headers, null, 2))
   console.log('Raw Body:', JSON.stringify(rawAlert, null, 2))
   
+  // Validate essential fields before processing
+  if (!rawAlert.symbol || rawAlert.symbol.trim() === '') {
+    console.log('❌ REJECTED: Missing or empty symbol/ticker name')
+    return res.status(400).json({ error: 'Symbol/ticker name is required' })
+  }
+  
   const alert = normalizeWebhookData(rawAlert)
   console.log('Normalized Alert:', JSON.stringify(alert, null, 2))
   
@@ -1041,7 +1068,9 @@ app.post('/webhook', (req, res) => {
 })
 
 app.get('/alerts', (req, res) => {
-  res.json(alerts)
+  // Filter out alerts without valid symbol names
+  const validAlerts = alerts.filter(alert => alert.symbol && alert.symbol.trim() !== '')
+  res.json(validAlerts)
 })
 
 // Delete individual alert endpoint
@@ -1092,6 +1121,14 @@ app.get('/clear-alerts', (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  
+  // Clean up any invalid alerts without symbol names
+  const initialCount = alerts.length
+  alerts = alerts.filter(alert => alert.symbol && alert.symbol.trim() !== '')
+  if (initialCount !== alerts.length) {
+    console.log(`🧹 Cleaned up ${initialCount - alerts.length} invalid alerts without symbol names`)
+  }
+  
   console.log(`Alerts in memory: ${alerts.length}`)
   
   // Recalculate stoch fields for dummy data using our detailed format (development only)
