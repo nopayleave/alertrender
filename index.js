@@ -333,6 +333,9 @@ function getMainHTML() {
             <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'condition')" style="width: 18%; min-width: 120px;">
               Zone <span id="unified-condition-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
+            <th class="py-3 px-4 text-center" style="width: 5%; min-width: 50px;">
+              <span title="Delete alerts">🗑️</span>
+            </th>
           </tr>
         </thead>
         <tbody id="unifiedTable" class="divide-y divide-gray-700"></tbody>
@@ -592,6 +595,32 @@ function updateSignalHeader() {
   }
 }
 
+async function deleteAlert(symbol, timeframe) {
+  if (!confirm(\`Are you sure you want to delete the alert for \${symbol}?\`)) {
+    return
+  }
+  
+  try {
+    const response = await fetch('/delete-alert', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ symbol, timeframe })
+    })
+    
+    if (response.ok) {
+      // Refresh the alerts display
+      fetchAlerts()
+    } else {
+      alert('Failed to delete alert')
+    }
+  } catch (error) {
+    console.error('Error deleting alert:', error)
+    alert('Error deleting alert')
+  }
+}
+
 function updateSortIndicators() {
   // Hide all sort indicators first
   const allSortSpans = document.querySelectorAll('[id$="-sort"]')
@@ -731,6 +760,13 @@ async function fetchAlerts() {
             <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
               \${getTradingZoneLogic(row).display}
             </span>
+          </td>
+          <td class="py-3 px-4 text-center">
+            <button onclick="deleteAlert('\${row.symbol}', '\${row.timeframe || ''}')" 
+                    class="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-30 p-1 rounded transition-all duration-200" 
+                    title="Delete this alert">
+              🗑️
+            </button>
           </td>
         </tr>
       \`
@@ -1006,6 +1042,36 @@ app.post('/webhook', (req, res) => {
 
 app.get('/alerts', (req, res) => {
   res.json(alerts)
+})
+
+// Delete individual alert endpoint
+app.post('/delete-alert', (req, res) => {
+  const { symbol, timeframe } = req.body
+  
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' })
+  }
+  
+  // Find and remove the alert
+  const initialCount = alerts.length
+  alerts = alerts.filter(alert => {
+    // If timeframe is provided, match both symbol and timeframe
+    if (timeframe) {
+      return !(alert.symbol === symbol && alert.timeframe === timeframe)
+    }
+    // If no timeframe provided, just match symbol
+    return alert.symbol !== symbol
+  })
+  
+  const deletedCount = initialCount - alerts.length
+  
+  if (deletedCount > 0) {
+    console.log(`🗑️ Deleted ${deletedCount} alert(s) for ${symbol}${timeframe ? ` (${timeframe})` : ''}`)
+    res.json({ message: `Deleted ${deletedCount} alert(s) for ${symbol}`, deletedCount })
+  } else {
+    console.log(`⚠️ No alerts found for ${symbol}${timeframe ? ` (${timeframe})` : ''}`)
+    res.status(404).json({ error: 'Alert not found' })
+  }
 })
 
 // Clear all alerts endpoint (for admin use)
