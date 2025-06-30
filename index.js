@@ -907,11 +907,12 @@ function normalizeWebhookData(rawAlert) {
 
 app.post('/webhook', (req, res) => {
   const rawAlert = req.body
-  console.log('Received raw alert:', rawAlert)
+  console.log('--- RECEIVED WEBHOOK ---')
+  console.log('Headers:', JSON.stringify(req.headers, null, 2))
+  console.log('Raw Body:', JSON.stringify(rawAlert, null, 2))
   
-  // Normalize the webhook data
   const alert = normalizeWebhookData(rawAlert)
-  console.log('Normalized alert:', alert)
+  console.log('Normalized Alert:', JSON.stringify(alert, null, 2))
   
   // Validate and ensure critical fields are present
   if (alert.haValue !== undefined && alert.haValue !== null) {
@@ -938,8 +939,8 @@ app.post('/webhook', (req, res) => {
     console.log('⚠️ WARNING: Could not generate HA vs MACD Status')
   }
   
-  // Find existing alert for the same symbol
-  const existingIndex = alerts.findIndex(existing => existing.symbol === alert.symbol)
+  // Find existing alert for the same symbol and timeframe
+  const existingIndex = alerts.findIndex(existing => existing.symbol === alert.symbol && existing.timeframe === alert.timeframe)
   
   if (existingIndex !== -1) {
     // Update existing alert
