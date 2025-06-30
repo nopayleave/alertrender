@@ -298,23 +298,14 @@ bearishAlert = o.b.c < 0
 // Calculate additional data for webhook
 priceChange1D = ((close - close[1]) / close[1]) * 100
 volume1D = volume
+haValue = o.b.c
 
-// --- CORRECT HEIKIN-ASHI CALCULATION FOR PRICE ---
-// The original `haValue = o.b.c` was incorrect as it used the oscillator.
-// This calculates the Heikin-Ashi value for the actual price chart.
-bar priceHA = b.ha(true)
-float priceHaValue = priceHA.c
+// Calculate HA vs MACD comparison directly
+haVsMacdComparison = haValue > o.s ? ">S" : haValue < o.s ? "<S" : "=S"
 
-// Calculate HA vs MACD comparison directly using the correct price-based HA value
-haVsMacdComparison = priceHaValue > o.s ? ">S" : priceHaValue < o.s ? "<S" : "=S"
-
-// Calculate HA zone indicator using the correct price-based HA value
-haZoneIndicator = math.abs(priceHaValue) >= 500 ? (priceHaValue >= 500 ? "H≥500" : "H≤-500") : 
-                  math.abs(priceHaValue) >= 50 ? (priceHaValue >= 50 ? "H>50" : "H<-50") : "H±50"
-
-// Calculate HA range indicator using the correct price-based HA value
-haRangeIndicator = math.abs(priceHaValue) >= 500 ? (priceHaValue >= 500 ? ">500" : "<-500") :
-                   math.abs(priceHaValue) >= 50 ? (priceHaValue >= 50 ? ">50" : "<-50") : "±50"
+// Calculate HA zone indicator
+haZoneIndicator = math.abs(haValue) >= 500 ? (haValue >= 500 ? "H≥500" : "H≤-500") : 
+                  math.abs(haValue) >= 50 ? (haValue >= 50 ? "H>50" : "H<-50") : "H±50"
 
 // Combine HA zone and comparison for complete HA vs MACD status
 haVsMacdStatus = haZoneIndicator + haVsMacdComparison
@@ -459,8 +450,8 @@ else // No recent cross, k == d
         stochStatus := "<50<rD"
 
 // Webhook Alert Messages with comprehensive data including Open column and HA vs MACD status
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(priceHaValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(priceHaValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
+bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
+bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
 
 // Send webhook alerts on each candle
 if bullishAlert
