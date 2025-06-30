@@ -11,7 +11,7 @@ app.use(express.json())
 let alerts = []
 
 // Add dummy data only in development (localhost)
-if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
+if (process.env.NODE_ENV !== 'production') {
   alerts = [
     {
       symbol: "AAPL",
@@ -178,6 +178,111 @@ if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
     }
   ]
   console.log('🧪 Development mode: Loaded dummy data for testing')
+}
+
+// Extract formatEnhancedStoch function to main scope
+function formatEnhancedStoch(row) {
+  // Extract stochastic data from the row
+  const stochK = parseFloat(row.stochK) || 0
+  const stochD = parseFloat(row.stochD) || 0
+  const stochRefD = parseFloat(row.stochRefD) || 0
+  const lastCrossType = row.lastCrossType || ''
+  const haValue = row.haValue || 'N/A'
+  const macdSignal = row.macdSignal || 'N/A'
+  
+  // Check for missing stochastic data
+  if (!row.stochK || !row.stochD || !row.stochRefD) {
+    return 'No Stoch Data'
+  }
+  
+  // Build detailed stochastic part - original format
+  let stochPart = ''
+  
+  // Determine crossover/crossunder status or K vs D relationship
+  let crossStatus = ''
+  if (lastCrossType.toLowerCase() === 'crossover' || stochK > stochD) {
+    crossStatus = '↑'  // Recent crossover OR K above D
+  } else if (lastCrossType.toLowerCase() === 'crossunder' || stochK < stochD) {
+    crossStatus = '↓'  // Recent crossunder OR K below D
+  }
+  
+  if (crossStatus) {
+    // Recent crossover/crossunder cases
+    if (crossStatus === '↑') {
+      // Crossover cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↑>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↑>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↑<50>rD'
+      } else {
+        stochPart = '↑<50<rD'
+      }
+    } else {
+      // Crossunder cases
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '↓>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '↓>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '↓<50>rD'
+      } else {
+        stochPart = '↓<50<rD'
+      }
+    }
+  } else {
+    // No recent cross - current position cases
+    if (stochK < stochD) {
+      // Below primary D cases
+      if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '<D>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<D<50>rD'
+      } else if (stochK < 50 && stochK < stochRefD) {
+        stochPart = '<D<50<rD'
+      }
+    }
+    
+    // Standard position cases (above D or no specific pattern)
+    if (!stochPart) {
+      if (stochK > 50 && stochK > stochRefD) {
+        stochPart = '>50>rD'
+      } else if (stochK > 50 && stochK < stochRefD) {
+        stochPart = '>50<rD'
+      } else if (stochK < 50 && stochK > stochRefD) {
+        stochPart = '<50>rD'
+      } else {
+        stochPart = '<50<rD'
+      }
+    }
+  }
+  
+  // Use pre-calculated HA vs MACD status if available, otherwise use simple HA trend
+  if (row.haVsMacdStatus) {
+    return stochPart + ' | ' + row.haVsMacdStatus
+  }
+  
+  // Fallback to simple HA trend indicator
+  let haTrend = ''
+  if (haValue === 'N/A') {
+    haTrend = 'HA:N/A'
+  } else {
+    const haVal = parseFloat(haValue)
+    if (isNaN(haVal)) {
+      haTrend = 'HA:Invalid'
+    } else if (Math.abs(haVal) >= 500) {
+      haTrend = haVal >= 500 ? 'HA:Extreme↑' : 'HA:Extreme↓'
+    } else if (Math.abs(haVal) >= 100) {
+      haTrend = haVal >= 100 ? 'HA:Strong↑' : 'HA:Strong↓'
+    } else if (Math.abs(haVal) >= 50) {
+      haTrend = haVal >= 50 ? 'HA:Mild↑' : 'HA:Mild↓'
+    } else {
+      haTrend = 'HA:Neutral'
+    }
+  }
+  
+  return stochPart + ' | ' + haTrend
 }
 
 function getMainHTML() {
@@ -1055,7 +1160,7 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`)
   
   // Recalculate stoch fields for dummy data using our detailed format
-  if (process.env.NODE_ENV !== 'production' && !process.env.PORT) {
+  if (process.env.NODE_ENV !== 'production') {
     alerts.forEach(alert => {
       alert.stoch = formatEnhancedStoch(alert)
     })
