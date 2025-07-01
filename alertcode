@@ -474,7 +474,32 @@ barcolor(col)
 wasHaUpHistDown := haUpHistDown
 wasHaDownHistUp := haDownHistUp
 
-//Source Construction For Indicator\Strategy Exports
+// =============================
+// 🚀 SUPER ALERT BLOCK
+// =============================
+
+// Super Bullish: HA > 0 + Dual Stoch 一致 + Higher Low + 無 bearish divergence
+bool superBull = bullishAlert and bullishSignal and lastPattern == "Higher Low" and not haUpHistDown
+
+// Super Bearish: HA < 0 + Dual Stoch 一致 + Lower High + 無 bullish divergence
+bool superBear = bearishAlert and bearishSignal and lastPattern == "Lower High" and not haDownHistUp
+
+if superBull
+    alert("🚀 Super Bull Confirmed: " + bullishWebhookMsg, alert.freq_once_per_bar_close)
+
+if superBear
+    alert("🔻 Super Bear Confirmed: " + bearishWebhookMsg, alert.freq_once_per_bar_close)
+
+// Divergence Warnings
+if haUpHistDown
+    alert("⚠️ Divergence: HA ↑ but MACD ↓", alert.freq_once_per_bar_close)
+if haDownHistUp
+    alert("⚠️ Divergence: HA ↓ but MACD ↑", alert.freq_once_per_bar_close)
+
+
+// =============================
+// ✅ EXPORT: keep all your existing plots
+// =============================
 plot(o.b.o           , "open" , editable = false, display = display.none)
 plot(o.b.h           , "high" , editable = false, display = display.none)
 plot(o.b.l           , "low"  , editable = false, display = display.none)

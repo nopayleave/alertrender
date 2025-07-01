@@ -25,9 +25,16 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       stochK: 72.3,
       stochD: 68.1,
       stochRefD: 65.4,
-      lastCrossType: "crossover",
+      lastCrossType: "Crossover",
+      lastPattern: "Higher Low",
+      lastCrossValue: 72.3,
+      openCrossType: "Crossover",
+      openStochK: 68.5,
+      openStochD: 65.2,
+      openStochRefD: 62.1,
+      isPremarket: false,
       stoch: "↑>0>D",
-      haVsMacdStatus: "H>50>S>50",
+      haVsMacdStatus: "H>50>S",
       time: Date.now().toString()
     },
     {
@@ -42,9 +49,16 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       stochK: 28.7,
       stochD: 35.2,
       stochRefD: 38.9,
-      lastCrossType: "crossunder",
+      lastCrossType: "Crossunder",
+      lastPattern: "Lower High",
+      lastCrossValue: 28.7,
+      openCrossType: "Crossunder",
+      openStochK: 32.1,
+      openStochD: 38.5,
+      openStochRefD: 41.2,
+      isPremarket: false,
       stoch: "↓<0<D",
-      haVsMacdStatus: "H<-50<S<-50",
+      haVsMacdStatus: "H<-50<S",
       time: Date.now().toString()
     },
     {
@@ -60,8 +74,15 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       stochD: 79.6,
       stochRefD: 76.8,
       lastCrossType: "",
+      lastPattern: "Standard",
+      lastCrossValue: 0,
+      openCrossType: "Crossover",
+      openStochK: 78.9,
+      openStochD: 75.2,
+      openStochRefD: 71.8,
+      isPremarket: false,
       stoch: ">0>D",
-      haVsMacdStatus: "H≥500>S>500",
+      haVsMacdStatus: "H≥500>S",
       time: Date.now().toString()
     },
     {
@@ -256,6 +277,111 @@ function formatEnhancedStoch(row) {
   return stochPart + ' | ' + decodedStatus;
 }
 
+// Detect Super Alert conditions based on Pine Script logic
+function detectSuperAlert(row) {
+  const haValue = parseFloat(row.haValue) || 0;
+  const lastPattern = row.lastPattern || '';
+  const stochK = parseFloat(row.stochK) || 0;
+  const stochRefD = parseFloat(row.stochRefD) || 0;
+  const signal = row.signal || '';
+  
+  // Check for dual timeframe stochastic alignment
+  const bullishSignal = row.lastCrossType === 'Crossover' && stochK > stochRefD;
+  const bearishSignal = row.lastCrossType === 'Crossunder' && stochK < stochRefD;
+  
+  // Check for divergence conditions (simplified detection)
+  const haUp = haValue > 0;
+  const haDown = haValue < 0;
+  const haVsMacd = row.haVsMacdStatus || '';
+  const haUpHistDown = haUp && haVsMacd.includes('<S'); // HA bullish but below MACD signal
+  const haDownHistUp = haDown && haVsMacd.includes('>S'); // HA bearish but above MACD signal
+  
+  // Super Bullish: HA > 0 + Dual Stoch alignment + Higher Low + No bearish divergence
+  if (signal === 'Bullish' && bullishSignal && lastPattern === 'Higher Low' && !haUpHistDown) {
+    return { type: 'SUPER_BULL', icon: '🚀', label: 'Super Bull' };
+  }
+  
+  // Super Bearish: HA < 0 + Dual Stoch alignment + Lower High + No bullish divergence
+  if (signal === 'Bearish' && bearishSignal && lastPattern === 'Lower High' && !haDownHistUp) {
+    return { type: 'SUPER_BEAR', icon: '🔻', label: 'Super Bear' };
+  }
+  
+  // Divergence warnings
+  if (haUpHistDown) {
+    return { type: 'DIVERGENCE_WARNING', icon: '⚠️', label: 'HA ↑ MACD ↓' };
+  }
+  if (haDownHistUp) {
+    return { type: 'DIVERGENCE_WARNING', icon: '⚠️', label: 'HA ↓ MACD ↑' };
+  }
+  
+  return null;
+}
+
+// Enhanced pattern recognition display
+function formatPatternInfo(row) {
+  const lastPattern = row.lastPattern || '';
+  const lastCrossType = row.lastCrossType || '';
+  const lastCrossValue = parseFloat(row.lastCrossValue) || 0;
+  
+  if (!lastPattern || lastPattern === 'Standard' || lastPattern === 'Initial') {
+    return lastCrossType ? `${lastCrossType} @${lastCrossValue.toFixed(1)}` : 'No Pattern';
+  }
+  
+  // Enhanced pattern display with emojis
+  const patternEmojis = {
+    'Higher Low': '📈',
+    'Lower High': '📉',
+    'Higher High': '⬆️',
+    'Lower Low': '⬇️'
+  };
+  
+  const emoji = patternEmojis[lastPattern] || '🔄';
+  return `${emoji} ${lastPattern} @${lastCrossValue.toFixed(1)}`;
+}
+
+// Enhanced market open cross formatting
+function formatOpenCross(row) {
+  const openCrossType = row.openCrossType || '';
+  const openStochK = parseFloat(row.openStochK) || 0;
+  const openStochD = parseFloat(row.openStochD) || 0;
+  const openStochRefD = parseFloat(row.openStochRefD) || 0;
+  const isPremarket = row.isPremarket || false;
+  
+  // If no open cross data available
+  if (!row.openCrossType) {
+    return 'No Data';
+  }
+  
+  // Determine cross symbol and strength
+  let crossSymbol = '';
+  let strength = '';
+  
+  if (openCrossType.toLowerCase() === 'crossover') {
+    crossSymbol = '↑';
+    // Determine strength based on position relative to reference
+    if (openStochK > openStochRefD && openStochK > 50) {
+      strength = 'Strong';
+    } else if (openStochK > openStochRefD) {
+      strength = 'Mild';
+    } else {
+      strength = 'Weak';
+    }
+  } else if (openCrossType.toLowerCase() === 'crossunder') {
+    crossSymbol = '↓';
+    if (openStochK < openStochRefD && openStochK < 50) {
+      strength = 'Strong';
+    } else if (openStochK < openStochRefD) {
+      strength = 'Mild';
+    } else {
+      strength = 'Weak';
+    }
+  }
+  
+  // Build the cross status with strength indicator
+  const prefix = isPremarket ? 'P' : 'M'; // P=Premarket, M=Market
+  return `${prefix} ${crossSymbol}${strength.charAt(0)} @${openStochK.toFixed(0)}`;
+}
+
 // Generates a detailed stochastic relationship string, e.g., "K > D > rD < 50"
 function formatStochDetail(row) {
   const k = parseFloat(row.stochK);
@@ -296,9 +422,14 @@ function getMainHTML() {
         <span class="text-xl mr-2">📊</span>
         Live Trading Alerts
         <span class="ml-4 text-sm bg-white bg-opacity-20 px-2 py-1 rounded">
+          <span class="text-green-300">🚀</span> Super Bull 
+          <span class="text-red-300 ml-2">🔻</span> Super Bear 
+          <span class="text-yellow-300 ml-2">⚠️</span> Divergence
+        </span>
+        <span class="ml-2 text-xs bg-black bg-opacity-30 px-2 py-1 rounded">
           <span class="text-green-300">●</span> Bull (HA>50) 
-          <span class="text-yellow-300 ml-2">●</span> Critical (HA±50) 
-          <span class="text-red-300 ml-2">●</span> Bear (HA<-50)
+          <span class="text-yellow-300 ml-1">●</span> Critical (HA±50) 
+          <span class="text-red-300 ml-1">●</span> Bear (HA<-50)
         </span>
       </h2>
     </div>
@@ -306,31 +437,34 @@ function getMainHTML() {
       <table class="min-w-full table-fixed">
         <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
           <tr>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 12%; min-width: 80px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 10%; min-width: 70px;">
               Ticker <span id="unified-symbol-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
             <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600 text-gray-400" onclick="toggleSignalFilter()" style="width: 8%; min-width: 60px;" title="Click to filter: All → Bullish Only → Bearish Only">
               Signal (All) <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 12%; min-width: 80px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 10%; min-width: 70px;">
               Price <span id="unified-price-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'priceChange')" style="width: 8%; min-width: 50px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'priceChange')" style="width: 6%; min-width: 45px;">
               Chg% <span id="unified-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'volume')" style="width: 8%; min-width: 80px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'volume')" style="width: 6%; min-width: 60px;">
               Vol <span id="unified-volume-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openCross')" style="width: 10%; min-width: 80px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openCross')" style="width: 8%; min-width: 70px;">
               Open <span id="unified-openCross-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'stoch')" style="width: 16%; min-width: 120px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'stoch')" style="width: 14%; min-width: 110px;">
               Stoch <span id="unified-stoch-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'haValue')" style="width: 8%; min-width: 70px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'lastPattern')" style="width: 10%; min-width: 80px;">
+              Pattern <span id="unified-lastPattern-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'haValue')" style="width: 7%; min-width: 60px;">
               HA <span id="unified-haValue-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'condition')" style="width: 18%; min-width: 120px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'condition')" style="width: 16%; min-width: 120px;">
               Zone <span id="unified-condition-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
             <th class="py-3 px-4 text-center" style="width: 5%; min-width: 50px;">
@@ -353,7 +487,7 @@ let previousData = []
 let sortState = {
   unified: { column: 'symbol', direction: 'asc' }
 }
-let signalFilter = 'all' // 'all', 'bullish', 'bearish'
+let signalFilter = 'all' // 'all', 'bullish', 'bearish', 'super'
 
 function formatVolume(volume) {
   if (!volume || volume === 'N/A') return 'N/A'
@@ -469,42 +603,6 @@ function formatHAvsSignal(row) {
   return 'H' + haValRounded + comparison + 'S'
 }
 
-function formatOpenCross(row) {
-  const openCrossType = row.openCrossType || ''
-  const openStochK = parseFloat(row.openStochK) || 0
-  const openStochD = parseFloat(row.openStochD) || 0
-  const openStochRefD = parseFloat(row.openStochRefD) || 0
-  const isPremarket = row.isPremarket || false
-  
-  // If no open cross data available
-  if (!row.openCrossType) {
-    return 'No Data'
-  }
-  
-  // Determine cross symbol
-  let crossSymbol = ''
-  if (openCrossType.toLowerCase() === 'crossover') {
-    crossSymbol = '↑'
-  } else if (openCrossType.toLowerCase() === 'crossunder') {
-    crossSymbol = '↓'
-  }
-  
-  // Build the cross status
-  let crossStatus = ''
-  if (openStochK > 50 && openStochK > openStochRefD) {
-    crossStatus = crossSymbol + '>50>rD'
-  } else if (openStochK > 50 && openStochK < openStochRefD) {
-    crossStatus = crossSymbol + '>50<rD'
-  } else if (openStochK < 50 && openStochK > openStochRefD) {
-    crossStatus = crossSymbol + '<50>rD'
-  } else {
-    crossStatus = crossSymbol + '<50<rD'
-  }
-  
-  // Add premarket prefix if applicable
-  return isPremarket ? 'P ' + crossStatus : crossStatus
-}
-
 function getTradingZoneLogic(row) {
   const haValue = row.haValue || 'N/A'
   const stochStatus = row.stoch || ''
@@ -578,11 +676,13 @@ function sortTable(tableType, column) {
 }
 
 function toggleSignalFilter() {
-  // Cycle through: all -> bullish -> bearish -> all
+  // Cycle through: all -> bullish -> bearish -> super -> all
   if (signalFilter === 'all') {
     signalFilter = 'bullish'
   } else if (signalFilter === 'bullish') {
     signalFilter = 'bearish'
+  } else if (signalFilter === 'bearish') {
+    signalFilter = 'super'
   } else {
     signalFilter = 'all'
   }
@@ -606,6 +706,9 @@ function updateSignalHeader() {
     } else if (signalFilter === 'bearish') {
       filterText = ' (📉 Only)'
       filterColor = 'text-red-400'
+    } else if (signalFilter === 'super') {
+      filterText = ' (🚀 Super Only)'
+      filterColor = 'text-purple-400'
     } else {
       filterText = ' (All)'
       filterColor = 'text-gray-400'
@@ -669,11 +772,11 @@ function applySorting(alerts, tableType) {
     let bVal = b[column]
     
     // Handle numeric columns
-    if (column === 'price' || column === 'priceChange' || column === 'volume' || column === 'haValue') {
+    if (column === 'price' || column === 'priceChange' || column === 'volume' || column === 'haValue' || column === 'lastCrossValue') {
       aVal = parseFloat(aVal) || 0
       bVal = parseFloat(bVal) || 0
     } else {
-      // Handle string columns (including openCross)
+      // Handle string columns (including openCross, lastPattern)
       aVal = (aVal || '').toString().toLowerCase()
       bVal = (bVal || '').toString().toLowerCase()
     }
@@ -696,6 +799,11 @@ async function fetchAlerts() {
     filteredData = data.filter(alert => alert.signal === 'Bullish')
   } else if (signalFilter === 'bearish') {
     filteredData = data.filter(alert => alert.signal === 'Bearish')
+  } else if (signalFilter === 'super') {
+    filteredData = data.filter(alert => {
+      const superAlert = detectSuperAlert(alert)
+      return superAlert && (superAlert.type === 'SUPER_BULL' || superAlert.type === 'SUPER_BEAR')
+    })
   }
   
   // Apply current sorting to filtered data
@@ -725,6 +833,8 @@ async function fetchAlerts() {
         noAlertsSpan.textContent = 'No bullish alerts'
       } else if (signalFilter === 'bearish') {
         noAlertsSpan.textContent = 'No bearish alerts'
+      } else if (signalFilter === 'super') {
+        noAlertsSpan.textContent = 'No super alerts detected'
       } else {
         noAlertsSpan.textContent = 'No trading alerts yet'
       }
@@ -737,12 +847,36 @@ async function fetchAlerts() {
         previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
       const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
       
-      // Get background color based on HA value
-      const bgClass = getRowBackgroundClass(row.haValue)
+      // Detect Super Alert conditions
+      const superAlert = detectSuperAlert(row)
       
-      // Get signal color
-      const signalColor = row.signal === 'Bullish' ? 'text-green-400' : 'text-red-400'
-      const signalIcon = row.signal === 'Bullish' ? '📈' : '📉'
+      // Get background color based on HA value and Super Alert
+      let bgClass = getRowBackgroundClass(row.haValue)
+      if (superAlert) {
+        if (superAlert.type === 'SUPER_BULL') {
+          bgClass = 'bg-green-900 bg-opacity-60 border-l-4 border-green-400 ring-2 ring-green-400 ring-opacity-50'
+        } else if (superAlert.type === 'SUPER_BEAR') {
+          bgClass = 'bg-red-900 bg-opacity-60 border-l-4 border-red-400 ring-2 ring-red-400 ring-opacity-50'
+        } else if (superAlert.type === 'DIVERGENCE_WARNING') {
+          bgClass = 'bg-yellow-900 bg-opacity-40 border-l-4 border-yellow-400 ring-2 ring-yellow-400 ring-opacity-30'
+        }
+      }
+      
+      // Get signal color and icon
+      let signalColor = row.signal === 'Bullish' ? 'text-green-400' : 'text-red-400'
+      let signalIcon = row.signal === 'Bullish' ? '📈' : '📉'
+      
+      // Override with Super Alert if detected
+      if (superAlert) {
+        signalIcon = superAlert.icon
+        if (superAlert.type === 'SUPER_BULL') {
+          signalColor = 'text-green-300 font-bold'
+        } else if (superAlert.type === 'SUPER_BEAR') {
+          signalColor = 'text-red-300 font-bold'
+        } else if (superAlert.type === 'DIVERGENCE_WARNING') {
+          signalColor = 'text-yellow-300 font-bold'
+        }
+      }
       
       return \`
         <tr class="transition-all duration-500 hover:bg-gray-700 hover:bg-opacity-60 \${bgClass} \${updateHighlight}">
@@ -764,14 +898,24 @@ async function fetchAlerts() {
             </div>
           </td>
           <td class="py-3 px-4 font-medium \${signalColor}">
-            <span class="mr-1">\${signalIcon}</span>
-            \${row.signal}
+            <div class="flex items-center gap-1">
+              <span class="text-lg">\${signalIcon}</span>
+              <div class="flex flex-col">
+                <span class="text-sm">\${superAlert ? superAlert.label : row.signal}</span>
+                \${superAlert && superAlert.type === 'DIVERGENCE_WARNING' ? '<span class="text-xs text-yellow-200">Warning</span>' : ''}
+              </div>
+            </div>
           </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
           <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
+          <td class="py-3 px-4 text-white text-xs">
+            <span title="Pattern: \${row.lastPattern || 'None'} | Cross: \${row.lastCrossType || 'None'}" class="cursor-help">
+              \${formatPatternInfo(row)}
+            </span>
+          </td>
           <td class="py-3 px-4 text-white text-xs font-bold">
             <span class="\${getHAGradeStyle(row.haValue, row.signal)} px-2 py-1 rounded text-xs">
               \${formatHAvsSignal(row)}
@@ -980,6 +1124,12 @@ function normalizeWebhookData(rawAlert) {
     lastCrossType: rawAlert.lastCrossType || rawAlert.lastcrosstype,
     lastPattern: rawAlert.lastPattern || rawAlert.lastpattern,
     lastCrossValue: rawAlert.lastCrossValue || rawAlert.lastcrossvalue,
+    // Market open cross tracking fields
+    openCrossType: rawAlert.openCrossType || rawAlert.opencrosstype,
+    openStochK: rawAlert.openStochK || rawAlert.openstochk,
+    openStochD: rawAlert.openStochD || rawAlert.openstochd,
+    openStochRefD: rawAlert.openStochRefD || rawAlert.openstochrefd,
+    isPremarket: rawAlert.isPremarket || rawAlert.ispremarket || false,
     time: rawAlert.time
   }
   
@@ -1134,6 +1284,15 @@ app.listen(port, () => {
   // Recalculate stoch fields for dummy data using our detailed format (development only)
   if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined && alerts.length > 0) {
     alerts.forEach(alert => {
+      // Add missing fields for dummy data if not present
+      if (!alert.lastPattern) alert.lastPattern = "Standard"
+      if (!alert.lastCrossValue) alert.lastCrossValue = 0
+      if (!alert.openCrossType) alert.openCrossType = alert.lastCrossType || "Crossover"
+      if (!alert.openStochK) alert.openStochK = alert.stochK || 50
+      if (!alert.openStochD) alert.openStochD = alert.stochD || 50
+      if (!alert.openStochRefD) alert.openStochRefD = alert.stochRefD || 50
+      if (alert.isPremarket === undefined) alert.isPremarket = false
+      
       alert.stoch = formatEnhancedStoch(alert)
       alert.stochDetail = formatStochDetail(alert)
       
