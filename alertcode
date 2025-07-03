@@ -454,32 +454,43 @@ barcolor(col)
 wasHaUpHistDown := haUpHistDown
 wasHaDownHistUp := haDownHistUp
 
-// Basic Alert System
+// Comprehensive Alert System
 if ta.change(time) // On each new bar
-    // Create comprehensive webhook message with all data
+    // Create comprehensive webhook message with all specified fields
     webhookMsg = '{"symbol": "' + syminfo.ticker + 
-                 '", "timestamp": "' + str.tostring(time) + 
-                 '", "open": ' + str.tostring(open) + 
+                 '", "timeframe": "' + timeframe.period + 
+                 '", "time": "' + str.tostring(time) + 
+                 '", "price": ' + str.tostring(close) + 
+                 ', "open": ' + str.tostring(open) + 
                  ', "high": ' + str.tostring(high) + 
                  ', "low": ' + str.tostring(low) + 
                  ', "close": ' + str.tostring(close) + 
-                 ', "volume": ' + str.tostring(volume) + 
                  ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
                  ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
-                 ', "openSignal": ' + str.tostring(openSignal, "#.####") + 
+                 ', "volume": ' + str.tostring(volume1D) + 
+                 ', "haValue": ' + str.tostring(o.b.c, "#.####") + 
+                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
+                 ', "stochK": ' + str.tostring(s.k, "#.##") + 
+                 ', "stochD": ' + str.tostring(s.d, "#.##") + 
+                 ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + 
+                 ', "lastCrossType": "' + lastCrossType + 
+                 '", "lastPattern": "' + lastPattern + 
+                 '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + 
+                 ', "openCrossType": "' + openCrossType + 
+                 '", "openStochK": ' + str.tostring(openStochK, "#.##") + 
+                 ', "openStochD": ' + str.tostring(openStochD, "#.##") + 
+                 ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + 
+                 ', "isPremarket": ' + str.tostring(isPremarket) + 
+                 ', "stoch": "' + stochStatus + 
+                 '", "haVsMacdStatus": "' + haVsMacdStatus + 
+                 '", "openSignal": ' + str.tostring(openSignal, "#.####") + 
                  ', "openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + 
                  ', "s30sSignal": ' + str.tostring(s30sSignal, "#.####") + 
                  ', "s1mSignal": ' + str.tostring(s1mSignal, "#.####") + 
                  ', "s5mSignal": ' + str.tostring(s5mSignal, "#.####") + 
                  ', "sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + 
-                 ', "haValue": ' + str.tostring(haValue, "#.####") + 
-                 ', "stochK": ' + str.tostring(s.k, "#.##") + 
-                 ', "stochD": ' + str.tostring(s.d, "#.##") + 
-                 ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + 
-                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
-                 ', "timeframe": "' + timeframe.period + '"}'
-    
-    // Send alert with all data
+                 '"}'
+    // Send comprehensive alert
     alert(webhookMsg, alert.freq_once_per_bar_close)
 
 

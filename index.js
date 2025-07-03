@@ -15,8 +15,8 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
   alerts = [
     {
       symbol: "AAPL",
-      signal: "Bullish",
-      condition: "MACD Bullish Cross",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 189.45,
       open: 187.12,
       high: 190.25,
@@ -25,33 +25,19 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       priceChange: 2.34,
       priceChangeCandle: 1.24,
       volume: 45678901,
-      haValue: 125.7,
-      macdSignal: 98.5,
+      macdSignal: 0.0234,
       stochK: 72.3,
-      stochD: 68.1,
-      stochRefD: 65.4,
-      lastCrossType: "Crossover",
-      lastPattern: "Higher Low",
-      lastCrossValue: 72.3,
-      openCrossType: "Crossover",
-      openStochK: 68.5,
-      openStochD: 65.2,
-      openStochRefD: 62.1,
-      isPremarket: false,
-      stoch: "↑>0>D",
-      haVsMacdStatus: "H>50>S",
-      openSignal: 45.2,
-      openTrendSignal: 67.8,
-      s30sSignal: 123.4,
-      s1mSignal: 156.7,
-      s5mSignal: 189.2,
-      sk2mDiff: 3.4,
-      time: Date.now().toString()
+      openSignal: 0.0045,
+      openTrendSignal: 0.0067,
+      s30sSignal: 0.0123,
+      s1mSignal: 0.0156,
+      s5mSignal: 0.0189,
+      sk2mDiff: 3.4
     },
     {
       symbol: "TSLA",
-      signal: "Bearish", 
-      condition: "Support Broken",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 238.77,
       open: 241.50,
       high: 242.10,
@@ -60,164 +46,182 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       priceChange: -1.89,
       priceChangeCandle: -1.13,
       volume: 32145678,
-      haValue: -89.2,
-      macdSignal: -45.8,
+      macdSignal: -0.0458,
       stochK: 28.7,
-      stochD: 35.2,
-      stochRefD: 38.9,
-      lastCrossType: "Crossunder",
-      lastPattern: "Lower High",
-      lastCrossValue: 28.7,
-      openCrossType: "Crossunder",
-      openStochK: 32.1,
-      openStochD: 38.5,
-      openStochRefD: 41.2,
-      isPremarket: false,
-      stoch: "↓<0<D",
-      haVsMacdStatus: "H<-50<S",
-      openSignal: -23.4,
-      openTrendSignal: -45.6,
-      s30sSignal: -156.7,
-      s1mSignal: -89.3,
-      s5mSignal: -234.5,
-      sk2mDiff: -2.8,
-      time: Date.now().toString()
+      openSignal: -0.0234,
+      openTrendSignal: -0.0456,
+      s30sSignal: -0.0156,
+      s1mSignal: -0.0089,
+      s5mSignal: -0.0234,
+      sk2mDiff: -2.8
     },
     {
       symbol: "NVDA",
-      signal: "Bullish",
-      condition: "Breakout Confirmed",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 456.23,
+      open: 453.12,
+      high: 458.90,
+      low: 452.45,
+      close: 456.23,
       priceChange: 3.67,
+      priceChangeCandle: 0.68,
       volume: 28934567,
-      haValue: 567.8,
-      macdSignal: 423.2,
+      macdSignal: 0.0423,
       stochK: 83.4,
-      stochD: 79.6,
-      stochRefD: 76.8,
-      lastCrossType: "",
-      lastPattern: "Standard",
-      lastCrossValue: 0,
-      openCrossType: "Crossover",
-      openStochK: 78.9,
-      openStochD: 75.2,
-      openStochRefD: 71.8,
-      isPremarket: false,
-      stoch: ">0>D",
-      haVsMacdStatus: "H≥500>S",
-      time: Date.now().toString()
+      openSignal: 0.0234,
+      openTrendSignal: 0.0345,
+      s30sSignal: 0.0423,
+      s1mSignal: 0.0398,
+      s5mSignal: 0.0456,
+      sk2mDiff: 5.2
     },
     {
       symbol: "MSFT",
-      signal: "Bearish",
-      condition: "Heikin-Ashi Downtrend",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 378.91,
+      open: 380.12,
+      high: 381.45,
+      low: 378.23,
+      close: 378.91,
       priceChange: -0.95,
+      priceChangeCandle: -0.32,
       volume: 19876543,
-      haValue: -234.5,
-      macdSignal: -189.7,
+      macdSignal: -0.0189,
       stochK: 23.1,
-      stochD: 31.5,
-      stochRefD: 29.8,
-      lastCrossType: "",
-      stoch: "<D<0<rD",
-      time: Date.now().toString()
+      openSignal: -0.0123,
+      openTrendSignal: -0.0234,
+      s30sSignal: -0.0189,
+      s1mSignal: -0.0156,
+      s5mSignal: -0.0267,
+      sk2mDiff: -4.1
     },
     {
       symbol: "GOOGL",
-      signal: "Bullish",
-      condition: "OB Signal",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 142.34,
+      open: 141.89,
+      high: 142.78,
+      low: 141.45,
+      close: 142.34,
       priceChange: 1.56,
+      priceChangeCandle: 0.32,
       volume: 15432198,
-      haValue: 78.9,
-      macdSignal: 56.3,
+      macdSignal: 0.0056,
       stochK: 45.2,
-      stochD: 52.8,
-      stochRefD: 48.6,
-      lastCrossType: "crossover",
-      stoch: "↑<0>D",
-      time: Date.now().toString()
+      openSignal: 0.0023,
+      openTrendSignal: 0.0034,
+      s30sSignal: 0.0056,
+      s1mSignal: 0.0048,
+      s5mSignal: 0.0067,
+      sk2mDiff: 1.8
     },
     {
       symbol: "AMZN",
-      signal: "Bearish",
-      condition: "OS Signal",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 156.78,
+      open: 158.34,
+      high: 159.12,
+      low: 156.45,
+      close: 156.78,
       priceChange: -2.11,
+      priceChangeCandle: -0.98,
       volume: 22109876,
-      haValue: -156.3,
-      macdSignal: -98.7,
+      macdSignal: -0.0098,
       stochK: 67.4,
-      stochD: 58.9,
-      stochRefD: 62.1,
-      lastCrossType: "crossunder",
-      stoch: "↓>0<D",
-      time: Date.now().toString()
+      openSignal: -0.0045,
+      openTrendSignal: -0.0067,
+      s30sSignal: -0.0098,
+      s1mSignal: -0.0089,
+      s5mSignal: -0.0123,
+      sk2mDiff: -3.2
     },
     {
       symbol: "META",
-      signal: "Bullish",
-      condition: "Bullish Trend",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 498.12,
+      open: 495.67,
+      high: 499.45,
+      low: 494.23,
+      close: 498.12,
       priceChange: 4.23,
+      priceChangeCandle: 0.49,
       volume: 18765432,
-      haValue: 345.6,
-      macdSignal: 289.4,
+      macdSignal: 0.0289,
       stochK: 76.8,
-      stochD: 71.3,
-      stochRefD: 68.9,
-      lastCrossType: "",
-      stoch: ">0<D",
-      time: Date.now().toString()
+      openSignal: 0.0156,
+      openTrendSignal: 0.0234,
+      s30sSignal: 0.0289,
+      s1mSignal: 0.0267,
+      s5mSignal: 0.0345,
+      sk2mDiff: 4.6
     },
     {
       symbol: "NFLX",
-      signal: "Bearish",
-      condition: "Bearish Trend", 
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 445.67,
+      open: 447.89,
+      high: 448.23,
+      low: 445.12,
+      close: 445.67,
       priceChange: -1.78,
+      priceChangeCandle: -0.50,
       volume: 12345678,
-      haValue: -67.4,
-      macdSignal: -34.2,
+      macdSignal: -0.0034,
       stochK: 38.9,
-      stochD: 45.6,
-      stochRefD: 41.7,
-      lastCrossType: "",
-      stoch: "<D>0<rD",
-      time: Date.now().toString()
+      openSignal: -0.0023,
+      openTrendSignal: -0.0045,
+      s30sSignal: -0.0034,
+      s1mSignal: -0.0029,
+      s5mSignal: -0.0056,
+      sk2mDiff: -2.1
     },
     {
       symbol: "AMD",
-      signal: "Bullish",
-      condition: "VWAP Breakout",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 134.56,
+      open: 132.89,
+      high: 135.12,
+      low: 132.45,
+      close: 134.56,
       priceChange: 5.12,
+      priceChangeCandle: 1.26,
       volume: 35678901,
-      haValue: 234.1,
-      macdSignal: 187.6,
+      macdSignal: 0.0187,
       stochK: 89.2,
-      stochD: 84.7,
-      stochRefD: 81.3,
-      lastCrossType: "crossover",
-      stoch: "↑>0<D",
-      time: Date.now().toString()
+      openSignal: 0.0089,
+      openTrendSignal: 0.0123,
+      s30sSignal: 0.0187,
+      s1mSignal: 0.0178,
+      s5mSignal: 0.0234,
+      sk2mDiff: 6.3
     },
     {
       symbol: "INTC",
-      signal: "Bearish",
-      condition: "RSI Overbought",
+      timeframe: "30S",
+      time: Date.now().toString(),
       price: 45.23,
+      open: 46.78,
+      high: 47.12,
+      low: 45.01,
+      close: 45.23,
       priceChange: -3.45,
+      priceChangeCandle: -3.31,
       volume: 28901234,
-      haValue: -123.7,
-      macdSignal: -87.9,
+      macdSignal: -0.0087,
       stochK: 32.6,
-      stochD: 41.8,
-      stochRefD: 39.2,
-      lastCrossType: "crossunder",
-      stoch: "↓<0>D",
-      time: Date.now().toString()
+      openSignal: -0.0056,
+      openTrendSignal: -0.0078,
+      s30sSignal: -0.0087,
+      s1mSignal: -0.0079,
+      s5mSignal: -0.0123,
+      sk2mDiff: -5.4
     }
   ]
   console.log('🧪 Development mode: Loaded dummy data for testing')
@@ -1027,14 +1031,29 @@ function normalizeWebhookData(rawAlert) {
     condition: rawAlert.condition,
     price: rawAlert.price,
     timeframe: rawAlert.timeframe,
+    // OHLC data from Pine Script
+    open: rawAlert.open,
+    high: rawAlert.high,
+    low: rawAlert.low,
+    close: rawAlert.close,
+    // Price change data
     priceChange: rawAlert.priceChange || rawAlert.pricechange,
+    priceChangeCandle: rawAlert.priceChangeCandle || rawAlert.pricechangecandle,
     volume: rawAlert.volume,
-    haValue: rawAlert.haValue || rawAlert.havalue,
-    // Don't use pre-calculated stoch from Pine Script - we'll calculate it fresh
+    // Technical indicators
+    macdSignal: rawAlert.macdSignal || rawAlert.macdsignal,
     stochK: rawAlert.stochK || rawAlert.stochk,
     stochD: rawAlert.stochD || rawAlert.stochd,
     stochRefD: rawAlert.stochRefD || rawAlert.stochrefd,
-    macdSignal: rawAlert.macdSignal || rawAlert.macdsignal,
+    // Pine Script specific signals
+    openSignal: rawAlert.openSignal || rawAlert.opensignal,
+    openTrendSignal: rawAlert.openTrendSignal || rawAlert.opentrendsignal,
+    s30sSignal: rawAlert.s30sSignal || rawAlert.s30ssignal,
+    s1mSignal: rawAlert.s1mSignal || rawAlert.s1msignal,
+    s5mSignal: rawAlert.s5mSignal || rawAlert.s5msignal,
+    sk2mDiff: rawAlert.sk2mDiff || rawAlert.sk2mdiff,
+    // Legacy fields for backward compatibility
+    haValue: rawAlert.haValue || rawAlert.havalue,
     lastCrossType: rawAlert.lastCrossType || rawAlert.lastcrosstype,
     lastPattern: rawAlert.lastPattern || rawAlert.lastpattern,
     lastCrossValue: rawAlert.lastCrossValue || rawAlert.lastcrossvalue,
@@ -1087,28 +1106,72 @@ app.post('/webhook', (req, res) => {
   console.log('Normalized Alert:', JSON.stringify(alert, null, 2))
   
   // Validate and ensure critical fields are present
-  if (alert.haValue !== undefined && alert.haValue !== null) {
-    console.log(`✓ HA Value: ${alert.haValue}`)
+  console.log('--- FIELD VALIDATION ---')
+  
+  // Core price data
+  if (alert.price !== undefined && alert.price !== null) {
+    console.log(`✓ Price: ${alert.price}`)
   } else {
-    console.log('⚠️ WARNING: Missing HA Value in webhook data')
+    console.log('⚠️ WARNING: Missing Price in webhook data')
   }
   
+  // OHLC data
+  if (alert.open && alert.high && alert.low && alert.close) {
+    console.log(`✓ OHLC data complete: O=${alert.open}, H=${alert.high}, L=${alert.low}, C=${alert.close}`)
+  } else {
+    console.log('⚠️ WARNING: Incomplete OHLC data in webhook')
+  }
+  
+  // Technical indicators
   if (alert.macdSignal !== undefined && alert.macdSignal !== null) {
     console.log(`✓ MACD Signal: ${alert.macdSignal}`)
   } else {
     console.log('⚠️ WARNING: Missing MACD Signal in webhook data')
   }
   
-  if (alert.stochK && alert.stochD && alert.stochRefD) {
-    console.log(`✓ Stochastic data complete: K=${alert.stochK}, D=${alert.stochD}, RefD=${alert.stochRefD}`)
+  if (alert.stochK !== undefined && alert.stochK !== null) {
+    console.log(`✓ Stochastic K: ${alert.stochK}`)
   } else {
-    console.log('⚠️ WARNING: Incomplete stochastic data in webhook')
+    console.log('⚠️ WARNING: Missing Stochastic K in webhook data')
+  }
+  
+  // Multi-timeframe signals
+  const mtfSignals = ['s30sSignal', 's1mSignal', 's5mSignal']
+  mtfSignals.forEach(signal => {
+    if (alert[signal] !== undefined && alert[signal] !== null) {
+      console.log(`✓ ${signal}: ${alert[signal]}`)
+    } else {
+      console.log(`⚠️ WARNING: Missing ${signal} in webhook data`)
+    }
+  })
+  
+  // Open signals
+  if (alert.openSignal !== undefined && alert.openSignal !== null) {
+    console.log(`✓ Open Signal: ${alert.openSignal}`)
+  } else {
+    console.log('⚠️ WARNING: Missing Open Signal in webhook data')
+  }
+  
+  if (alert.openTrendSignal !== undefined && alert.openTrendSignal !== null) {
+    console.log(`✓ Open Trend Signal: ${alert.openTrendSignal}`)
+  } else {
+    console.log('⚠️ WARNING: Missing Open Trend Signal in webhook data')
+  }
+  
+  // SK2M difference
+  if (alert.sk2mDiff !== undefined && alert.sk2mDiff !== null) {
+    console.log(`✓ SK2M Diff: ${alert.sk2mDiff}`)
+  } else {
+    console.log('⚠️ WARNING: Missing SK2M Diff in webhook data')
+  }
+  
+  // Legacy fields (for backward compatibility)
+  if (alert.haValue !== undefined && alert.haValue !== null) {
+    console.log(`✓ HA Value (legacy): ${alert.haValue}`)
   }
   
   if (alert.haVsMacdStatus) {
     console.log(`✓ HA vs MACD Status: ${alert.haVsMacdStatus}`)
-  } else {
-    console.log('⚠️ WARNING: Could not generate HA vs MACD Status')
   }
   
   // Find existing alert for the same symbol and timeframe
@@ -1195,34 +1258,29 @@ app.listen(port, () => {
   
   console.log(`Alerts in memory: ${alerts.length}`)
   
-  // Recalculate stoch fields for dummy data using our detailed format (development only)
+  // Process dummy data for development mode
   if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined && alerts.length > 0) {
     alerts.forEach(alert => {
-      // Add missing fields for dummy data if not present
+      // Ensure all dummy alerts have the required fields matching Pine Script structure
+      if (!alert.timeframe) alert.timeframe = "30S"
+      if (!alert.time) alert.time = Date.now().toString()
+      
+      // Add legacy fields for backward compatibility with existing UI functions
+      if (!alert.stochD) alert.stochD = alert.stochK ? alert.stochK - 5 : 50
+      if (!alert.stochRefD) alert.stochRefD = alert.stochD ? alert.stochD - 3 : 47
       if (!alert.lastPattern) alert.lastPattern = "Standard"
       if (!alert.lastCrossValue) alert.lastCrossValue = 0
-      if (!alert.openCrossType) alert.openCrossType = alert.lastCrossType || "Crossover"
+      if (!alert.openCrossType) alert.openCrossType = "Crossover"
       if (!alert.openStochK) alert.openStochK = alert.stochK || 50
       if (!alert.openStochD) alert.openStochD = alert.stochD || 50
       if (!alert.openStochRefD) alert.openStochRefD = alert.stochRefD || 50
       if (alert.isPremarket === undefined) alert.isPremarket = false
       
+      // Generate stoch and stochDetail for UI compatibility
       alert.stoch = formatEnhancedStoch(alert)
       alert.stochDetail = formatStochDetail(alert)
-      
-      // Generate haVsMacdStatus in the correct format (HA{value}{comparison}S)
-      if (alert.haValue && alert.macdSignal) {
-        const haVal = parseFloat(alert.haValue)
-        const signalVal = parseFloat(alert.macdSignal)
-        
-        if (!isNaN(haVal) && !isNaN(signalVal)) {
-          const haValRounded = Math.round(haVal)
-          const comparison = haVal > signalVal ? '>' : haVal < signalVal ? '<' : '='
-          alert.haVsMacdStatus = `HA${haValRounded}${comparison}S`
-        }
-      }
     })
-    console.log('✅ Recalculated stoch fields and haVsMacdStatus for dummy data with detailed format')
+    console.log('✅ Processed dummy data to match Pine Script webhook structure')
   } else if (process.env.NODE_ENV === 'production') {
     console.log('🚀 Production mode: Starting with clean alerts array.')
   }

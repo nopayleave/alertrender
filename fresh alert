@@ -1,0 +1,383 @@
+// This Pine Script™ code is subject to the terms of the Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © EliCobra
+
+//@version=5
+indicator("Recode", "recode", false, dynamic_requests = true)
+
+type bar
+    float o = na
+    float h = na
+    float l = na
+    float c = na
+
+type osc
+    bar   b = na
+    float s = na
+    float h = na
+
+type alerts
+    bool  s = na
+    bool  b = na
+    bool  u = na
+    bool  d = na
+    bool  p = na
+    bool  n = na
+    bool  x = na
+    bool  y = na
+    bool  st_bull = na
+    bool  st_bear = na
+    bool  st_hl = na
+    bool  st_lh = na
+
+type prompt
+    string s = ''
+    bool   c = false
+
+method notify(prompt p) =>
+    if p.c
+        alert(p.s, alert.freq_once_per_bar_close)
+        
+method any(alerts a) =>
+    string s = switch
+        a.s => 'OB Signal'              
+        a.b => 'OS Signal'              
+        a.u => 'Bullish Trend'          
+        a.d => 'Bearish Trend'          
+        a.p => 'Heikin-Ashi Uptrend  '  
+        a.n => 'Heikin-Ashi Downtrend' 
+        a.x => 'MACD Bullish Cross'   
+        a.y => 'MACD Bearish Cross'    
+        a.st_bull => 'Stoch Bull Signal'
+        a.st_bear => 'Stoch Bear Signal'
+        a.st_hl => 'Stoch Higher Low'
+        a.st_lh => 'Stoch Lower High'
+        =>      na
+
+    prompt.new(s, not na(s))
+
+method src(bar b, simple string src) =>
+    float x = switch src
+        'open'  =>          b.o
+        'high'  =>          b.h
+        'low'   =>          b.l
+        'close' =>          b.c
+        'oc2'   => math.avg(b.o, b.c          )
+        'hl2'   => math.avg(b.h, b.l          )
+        'hlc3'  => math.avg(b.h, b.l, b.c     )
+        'ohlc4' => math.avg(b.o, b.h, b.l, b.c)
+        'hlcc4' => math.avg(b.h, b.l, b.c, b.c)
+
+    x
+
+method ha(bar b, simple bool p = true) =>
+    var bar x = bar.new(       )
+    x.c      := b  .src('ohlc4')
+    x        := bar.new(
+         na(x.o[1]) ? 
+             b.src('oc2') : nz(x.src('oc2')[1]),
+         math.max(b.h, math.max(x.o, x.c))     ,
+         math.min(b.l, math.min(x.o, x.c))     ,
+         x.c                                   )
+
+    p ? x : b
+
+method stmc(bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
+    float x = (ta.ema(b.src(src), flen)  - 
+               ta.ema(b.src(src), slen)) / 
+              (ta.ema(b.h - b.l , slen)) * 100
+
+    bar   z = bar.new(
+             x[1]             ,
+             math.max(x, x[1]),
+             math.min(x, x[1]),
+             x                ).ha()
+
+    float s = ta.ema(z.src(sig), clen)
+
+    osc.new(z, s, z.c - s)
+
+
+const string gm = "MACD Settings", const string gu = "UI Options", const string gs = "Stochastic Settings"
+src  = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'],               group = gm)
+fast = input.int   (12      , "Fast Length"        ,                                                                                         group = gm)
+slow = input.int   (26      , "Slow Length"        ,                                                                                         group = gm)
+sigb = input.bool  (true    , "Signal"             ,                                                                           inline = '1', group = gm)
+sigs = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'], inline = '1', group = gm)
+sigl = input.int   (9       , "Length"             ,                                                                           inline = '1', group = gm)
+mode = input.string('Hybrid', "Display Mode"       , ['Hybrid',                       'MACD',                    'Histogram'],               group = gu)
+revs = input.bool  (true    , ""                   ,                                                                           inline = '0', group = gu)
+revt = input.int   (100     , "Reversion Threshold", [100,                                                               150], inline = '0', group = gu)
+colb = input.string('None'  , "Bar Coloring"       , ['None', 'MidLine', 'Candles', 'Sig Cross', 'Extremities', 'Reversions'],               group = gu)
+hol  = input.bool  (true    , "Hollow Candles"     ,                                                                                         group = gu)
+
+// Dual Stochastic Input Parameters
+enableStoch = input.bool(true, "Enable Dual Stochastic", group = gs)
+primaryLen = input.int(12, "Primary Stoch K Length", minval=1, group = gs)
+primarySmooth = input.int(12, "Primary Stoch K Smoothing", minval=1, group = gs)
+primaryDLen = input.int(12, "Primary Stoch D Length", minval=1, group = gs)
+primaryRes = input.timeframe("15S", "Primary Timeframe", group = gs)
+refLen = input.int(12, "Reference Stoch K Length", minval=1, group = gs)
+refSmooth = input.int(15, "Reference Stoch K Smoothing", minval=1, group = gs)
+refDLen = input.int(30, "Reference Stoch D Length", minval=1, group = gs)
+refRes = input.timeframe("15S", "Reference Timeframe", group = gs)
+
+bar   b = bar.new (open, high, low , close      )
+osc   o = b  .stmc(src , fast, slow, sigs , sigl)
+
+// Dual Stochastic Calculations
+var float primaryK_tf = na
+var float primaryD_tf = na
+var float refK_tf = na
+var float refD_tf = na
+
+if enableStoch
+    primaryHighest = ta.highest(high, primaryLen)
+    primaryLowest = ta.lowest(low, primaryLen)
+    primaryK_raw = 100 * (close - primaryLowest) / (primaryHighest - primaryLowest)
+    primaryK = ta.sma(primaryK_raw, primarySmooth)
+    primaryD = ta.sma(primaryK, primaryDLen)
+    [primaryK_tf_calc, primaryD_tf_calc] = request.security(syminfo.tickerid, primaryRes, [primaryK, primaryD])
+    primaryK_tf := primaryK_tf_calc
+    primaryD_tf := primaryD_tf_calc
+    
+    refHighest = ta.highest(high, refLen)
+    refLowest = ta.lowest(low, refLen)
+    refK_raw = 100 * (close - refLowest) / (refHighest - refLowest)
+    refK = ta.sma(refK_raw, refSmooth)
+    refD = ta.sma(refK, refDLen)
+    [refK_tf_calc, refD_tf_calc] = request.security(syminfo.tickerid, refRes, [refK, refD])
+    refK_tf := refK_tf_calc
+    refD_tf := refD_tf_calc
+
+// Stochastic Signal Logic
+var float currentCrossOverK = na
+var float currentCrossUnderK = na
+var float prevCrossOverK = na
+var float prevCrossUnderK = na
+
+crossOver = enableStoch ? ta.crossover(primaryK_tf, primaryD_tf) : false
+crossUnder = enableStoch ? ta.crossunder(primaryK_tf, primaryD_tf) : false
+
+if crossOver
+    prevCrossOverK := currentCrossOverK
+    currentCrossOverK := primaryK_tf
+if crossUnder
+    prevCrossUnderK := currentCrossUnderK
+    currentCrossUnderK := primaryK_tf
+
+higherLowCondition = enableStoch ? crossOver and not na(prevCrossOverK) and currentCrossOverK > prevCrossOverK : false
+lowerHighCondition = enableStoch ? crossUnder and not na(prevCrossUnderK) and currentCrossUnderK < prevCrossUnderK : false
+
+bullishStochSignal = enableStoch ? crossOver and primaryK_tf > refD_tf : false
+bearishStochSignal = enableStoch ? crossUnder and primaryK_tf < refD_tf : false
+
+const color colup = #369b85
+const color coldn = #fc1f1f
+const color colhu = #8ac3f5
+const color colhd = #ffa7b6
+var   color colnt = chart.fg_color
+
+// Add divergence coloring inputs
+useDivergenceColoring = input.bool(true, "Enable HA/Histogram Divergence Coloring", group=gu)
+haUpColor = input.color(#369b85, "Heikin-Ashi Up Color", group=gu)
+haDownColor = input.color(#f44336, "Heikin-Ashi Down Color", group=gu)
+haUpHistDownColor = input.color(#fdbeff, "HA D ↓", group=gu, tooltip="Heikin-Ashi bullish but MACD momentum weakening")
+haDownHistUpColor = input.color(#befff1, "HA D ↑", group=gu, tooltip="Heikin-Ashi bearish but MACD momentum strengthening")
+histUpIncColor = input.color(#369b85, "Histogram Up-Increasing", group=gu)
+histUpDecColor = input.color(#f44336, "Histogram Up-Decreasing", group=gu)
+histDnIncColor = input.color(#369b85, "Histogram Down-Increasing", group=gu)
+histDnDecColor = input.color(#f44336, "Histogram Down-Decreasing", group=gu)
+
+// Detect Heikin-Ashi and Histogram conditions
+bool haUp = o.b.c > o.b.o
+bool haDown = o.b.c < o.b.o
+bool histIncreasing = o.h > o.h[1]
+bool histDecreasing = o.h < o.h[1]
+
+// Divergence conditions
+bool haUpHistDown = haUp and histDecreasing      // HA bullish but momentum weakening
+bool haDownHistUp = haDown and histIncreasing    // HA bearish but momentum strengthening
+
+// Track divergence state changes
+var bool wasHaUpHistDown = false
+var bool wasHaDownHistUp = false
+
+// Detect when divergence ends (turns back to normal)
+bool haUpHistDownEnded = wasHaUpHistDown and not haUpHistDown and haUp
+bool haDownHistUpEnded = wasHaDownHistUp and not haDownHistUp and haDown
+
+// Apply divergence coloring if enabled
+color haColor = switch
+    useDivergenceColoring and haUpHistDown => haUpHistDownColor
+    useDivergenceColoring and haDownHistUp => haDownHistUpColor
+    haUp => haUpColor
+    haDown => haDownColor
+    => haUpColor
+
+color       colh  = 
+                      o.h > 0                              ?
+                     (o.h > o.h[1]                         ? 
+                                     color.new(colhu, 20)  : 
+                                     color.new(colhu, 30)) :
+                     (o.h > o.h[1]                         ? 
+                                     color.new(colhd, 20)  : 
+                                     color.new(colhd, 30))
+
+// Enhanced histogram coloring with 4-state system
+color histColor = na
+if o.h > 0
+    histColor := o.h > o.h[1] ? histUpIncColor : histUpDecColor
+else if o.h < 0
+    histColor := o.h > o.h[1] ? histDnIncColor : histDnDecColor
+
+m   = hline(0                                      , "Mid Line", chart.fg_color,    hline.style_solid )
+min = hline(mode != 'Histogram' ? -200 : -100      ,                   display =    display.none      )
+ll  = hline(mode != 'Histogram' ? -150 : -75       ,                   display =    display.none      )
+hl  = hline(mode != 'Histogram' ? -100 : -50       ,                   display =    display.none      )
+max = hline(mode != 'Histogram' ? +200 : +100      ,                   display =    display.none      )
+hh  = hline(mode != 'Histogram' ? +150 : +75       ,                   display =    display.none      )
+lh  = hline(mode != 'Histogram' ? +100 : +50       ,                   display =    display.none      )
+h   = plot (mode != 'Histogram' and sigb ? o.s : na, "Signal"  , colnt                                )
+mc  = plot (mode != 'MACD'               ? o.h : na, "H"       , histColor          , 1, plot.style_columns)
+
+// Stochastic Plotting
+plot(enableStoch ? primaryK_tf : na, "Primary %K", color=color.white, linewidth=1)
+plot(enableStoch ? primaryD_tf : na, "Primary %D", color=color.orange, linewidth=1)
+plot(enableStoch ? refK_tf : na, "Reference %K", color=color.navy, linewidth=1)
+plot(enableStoch ? refD_tf : na, "Reference %D", color=color.rgb(33, 233, 243), linewidth=2)
+
+// Plot stochastic signals
+plot(enableStoch and bullishStochSignal ? primaryK_tf : na, "Bullish Stoch Signal", color=color.green, style=plot.style_cross, linewidth=2)
+plot(enableStoch and bearishStochSignal ? primaryK_tf : na, "Bearish Stoch Signal", color=color.red, style=plot.style_cross, linewidth=2)
+
+// Plot pattern markers
+plot(enableStoch and higherLowCondition ? currentCrossOverK : na, "Higher Low", color=color.green, style=plot.style_cross, linewidth=2)
+plot(enableStoch and lowerHighCondition ? currentCrossUnderK : na, "Lower High", color=color.red, style=plot.style_cross, linewidth=2)
+
+// Background fill zones with updated colors
+fill(lh, hh , color.new(coldn, 90))
+fill(hh, max, color.new(coldn, 80))
+fill(ll, hl , color.new(colup, 80))
+fill(ll, min, color.new(colup, 80))
+
+// Determine fill color - solid for divergence conditions, hollow for normal
+color haFillColor = (useDivergenceColoring and (haUpHistDown or haDownHistUp)) ? haColor : hol ? (o.b.c > o.b.o ? na : haColor) : haColor
+
+plotcandle(mode != 'Histogram' ? o.b.o  : na                                                    ,
+           mode != 'Histogram' ? o.b.h  : na                                                    ,
+           mode != 'Histogram' ? o.b.l  : na                                                    ,
+           mode != 'Histogram' ? o.b.c  : na                                                    ,
+           "𝗠𝗔𝗖𝗗", haFillColor, haColor, bordercolor = haColor)
+
+alerts a = alerts.new(
+                      ta.crossunder(o.b.c, o.b.o) and     (o.b.h >  revt),
+                      ta.crossover (o.b.c, o.b.o) and     (o.b.l < -revt),
+                      ta.crossover (o.b.c,     0)                        ,
+                      ta.crossunder(o.b.c,     0)                        ,
+                      ta.crossunder(o.b.c, o.b.o) and not (o.b.h >  revt),
+                      ta.crossover (o.b.c, o.b.o) and not (o.b.l < -revt),
+                      ta.crossover (o.b.c, o.s  )                        ,
+                      ta.crossunder(o.b.c, o.s  )                        ,
+                      bullishStochSignal                                  ,
+                      bearishStochSignal                                  ,
+                      higherLowCondition                                  ,
+                      lowerHighCondition                                  )
+
+plotshape(mode != 'Histogram' ? revs ? a.s ? o.b.h + 40 : na : na : na, "OB", shape.triangledown, location.absolute, coldn, size = size.tiny)
+plotshape(mode != 'Histogram' ? revs ? a.b ? o.b.l - 40 : na : na : na, "OS", shape.triangleup  , location.absolute, colup, size = size.tiny)
+
+
+alertcondition(a.s, "Overbought"          , 'OB Signal'            )
+alertcondition(a.b, "Oversold  "          , 'OS Signal'            )
+alertcondition(a.u, "Midline Crossover "  , 'Bullish Trend'        )
+alertcondition(a.d, "Midline Crossunder"  , 'Bearish Trend'        )
+alertcondition(a.p, "Positive Heikin-Ashi", 'Heikin-Ashi Uptrend  ')
+alertcondition(a.n, "Negative Heikin-Ashi", 'Heikin-Ashi Downtrend')
+alertcondition(a.x, "MACD Bull Cross"     , 'MACD Bullish Cross'   )
+alertcondition(a.y, "MACD Bear Cross"     , 'MACD Bearish Cross'   )
+alertcondition(a.st_bull, "Stoch Bull Signal", 'Stoch Bull Signal'  )
+alertcondition(a.st_bear, "Stoch Bear Signal", 'Stoch Bear Signal'  )
+alertcondition(a.st_hl, "Stoch Higher Low", 'Stoch Higher Low'     )
+alertcondition(a.st_lh, "Stoch Lower High", 'Stoch Lower High'     )
+
+a.any().notify()
+
+color col = switch colb
+    'MidLine'     => o.b.c > 0     ? colup                         : coldn
+    'Candles'     => haColor
+    'Sig Cross'   => o.s   > o.b.c ? coldn                         : colup
+    'Extremities' => o.b.c > revt  ? coldn : o.b.c < -revt ? colup : color.new(colnt, 25)
+    'Reversions'  => a.b           ? coldn : a.s           ? colup : color.new(colnt, 25)
+    'None'        => na
+
+barcolor(col)
+
+// Calculate additional data for webhook
+priceChange1D = ((close - close[1]) / close[1]) * 100
+priceChangeCandle = ((close - open) / open) * 100  // Change % within current candle
+volume1D = volume
+
+// Multi-timeframe signal line values
+signal930 = request.security(syminfo.tickerid, "2", o.s[1], lookahead=barmerge.lookahead_off)  // 9:30am signal value
+signal932 = request.security(syminfo.tickerid, "2", o.s, lookahead=barmerge.lookahead_off)    // 9:32am signal value
+openSignal = signal932 - signal930  // 9:32am signal minus 9:30am signal
+openTrendSignal = request.security(syminfo.tickerid, "2", ta.sma(o.s, 15), lookahead=barmerge.lookahead_off)  // 10:00-09:32am trend
+s30sSignal = request.security(syminfo.tickerid, "30S", o.s, lookahead=barmerge.lookahead_off)  // 30s signal
+s1mSignal = request.security(syminfo.tickerid, "1", o.s, lookahead=barmerge.lookahead_off)   // 1m signal
+s5mSignal = request.security(syminfo.tickerid, "5", o.s, lookahead=barmerge.lookahead_off)   // 5m signal
+
+// 2m Stochastic K difference
+currentSK = request.security(syminfo.tickerid, "2", primaryK_tf, lookahead=barmerge.lookahead_off)
+previousSK = request.security(syminfo.tickerid, "2", primaryK_tf[1], lookahead=barmerge.lookahead_off)
+sk2mDiff = currentSK - previousSK
+
+// Comprehensive Alert System
+if ta.change(time) // On each new bar
+    // Create comprehensive webhook message with all specified fields
+    webhookMsg = '{"symbol": "' + syminfo.ticker + 
+                 '", "timeframe": "' + timeframe.period + 
+                 '", "time": "' + str.tostring(time) + 
+                 '", "price": ' + str.tostring(close) + 
+                 ', "open": ' + str.tostring(open) + 
+                 ', "high": ' + str.tostring(high) + 
+                 ', "low": ' + str.tostring(low) + 
+                 ', "close": ' + str.tostring(close) + 
+                 ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
+                 ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
+                 ', "volume": ' + str.tostring(volume1D) + 
+                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
+                 ', "stochK": ' + str.tostring(primaryK_tf, "#.##") + 
+                 ', "openSignal": ' + str.tostring(openSignal, "#.####") + 
+                 ', "openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + 
+                 ', "s30sSignal": ' + str.tostring(s30sSignal, "#.####") + 
+                 ', "s1mSignal": ' + str.tostring(s1mSignal, "#.####") + 
+                 ', "s5mSignal": ' + str.tostring(s5mSignal, "#.####") + 
+                 ', "sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + 
+                 '"}'
+    // Send comprehensive alert
+    alert(webhookMsg, alert.freq_once_per_bar_close)
+
+//Source Construction For Indicator\Strategy Exports
+plot(o.b.o           , "open" , editable = false, display = display.none)
+plot(o.b.h           , "high" , editable = false, display = display.none)
+plot(o.b.l           , "low"  , editable = false, display = display.none)
+plot(o.b.c           , "close", editable = false, display = display.none)
+plot(o.b.src('hl2'  ), "hl2"  , editable = false, display = display.none)
+plot(o.b.src('hlc3' ), "hlc3" , editable = false, display = display.none)
+plot(o.b.src('ohlc4'), "ohlc4", editable = false, display = display.none)
+plot(o.b.src('hlcc4'), "hlcc4", editable = false, display = display.none)
+
+// Export additional data fields
+plot(volume1D        , "volume", editable = false, display = display.none)
+plot(priceChange1D   , "priceChange", editable = false, display = display.none)
+plot(priceChangeCandle, "priceChangeCandle", editable = false, display = display.none)
+plot(openSignal      , "openSignal", editable = false, display = display.none)
+plot(openTrendSignal , "openTrendSignal", editable = false, display = display.none)
+plot(s30sSignal      , "s30sSignal", editable = false, display = display.none)
+plot(s1mSignal       , "s1mSignal", editable = false, display = display.none)
+plot(s5mSignal       , "s5mSignal", editable = false, display = display.none)
+plot(sk2mDiff        , "sk2mDiff", editable = false, display = display.none)
+
+// Update divergence state tracking for next bar
+wasHaUpHistDown := haUpHistDown
+wasHaDownHistUp := haDownHistUp

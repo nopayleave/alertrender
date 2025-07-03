@@ -1,0 +1,47 @@
+//@version=5
+indicator("Webhook Data Alert", overlay=false)
+
+// 基本資料
+symbol_name      = syminfo.ticker
+chart_timeframe  = timeframe.period
+alert_time       = str.tostring(time)
+
+// 價格資料
+price            = close
+open_price       = open
+high_price       = high
+low_price        = low
+close_price      = close
+price_change     = na(close[1]) ? na : ((close - close[1]) / close[1]) * 100
+price_change_cdl = ((close - open) / open) * 100
+vol              = volume
+
+// 技術指標 (MACD: 10,75,20，Stoch: 10,10,10)
+[macdLine, signalLine, _] = ta.macd(close, 10, 75, 20)
+macd_signal        = signalLine
+stoch_k            = ta.stoch(close, high, low, 10)
+stoch_d            = ta.sma(stoch_k, 10)
+
+// 多時間框架信號
+s30s_signal        = request.security(syminfo.tickerid, "30S", signalLine)
+s1m_signal         = request.security(syminfo.tickerid, "1", signalLine)
+s5m_signal         = request.security(syminfo.tickerid, "5", signalLine)
+sk_now             = ta.stoch(close, high, low, 10)
+sk_2m_last         = request.security(syminfo.tickerid, "2", ta.stoch(close, high, low, 10)[1])
+sk2m_diff          = sk_now - sk_2m_last
+
+// 注意：以下 openSignal、openTrendSignal 係示範（有延遲），實盤未必即時。
+// （如果你唔需要，可以唔要，否則照保留）
+macd_2m            = request.security(syminfo.tickerid, "2", signalLine)
+macd_2m_1          = request.security(syminfo.tickerid, "2", signalLine[1])
+macd_2m_2          = request.security(syminfo.tickerid, "2", signalLine[2])
+open_signal        = macd_2m - macd_2m_1
+open_trend_signal  = macd_2m_1 - macd_2m_2
+
+// JSON 字串
+webhookMsg = '{"symbol":"' + symbol_name + '","timeframe":"' + chart_timeframe + '","time":"' + alert_time + '","price":' + str.tostring(price) + ',"open":' + str.tostring(open_price) + ',"high":' + str.tostring(high_price) + ',"low":' + str.tostring(low_price) + ',"close":' + str.tostring(close_price) + ',"priceChange":' + str.tostring(price_change) + ',"priceChangeCandle":' + str.tostring(price_change_cdl) + ',"volume":' + str.tostring(vol) + ',"macdSignal":' + str.tostring(macd_signal) + ',"stochK":' + str.tostring(stoch_k) + ',"openSignal":' + str.tostring(open_signal) + ',"openTrendSignal":' + str.tostring(open_trend_signal) + ',"s30sSignal":' + str.tostring(s30s_signal) + ',"s1mSignal":' + str.tostring(s1m_signal) + ',"s5mSignal":' + str.tostring(s5m_signal) + ',"sk2mDiff":' + str.tostring(sk2m_diff) + '}'
+
+// 每收一支K線就 send
+if barstate.isconfirmed
+    alert(webhookMsg, alert.freq_once_per_bar_close)
+
