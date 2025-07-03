@@ -10,51 +10,8 @@ app.use(express.static('public'));
 // Store webhook data
 let stockData = [];
 
-// Sample data for demonstration
-const sampleData = [
-  {
-    symbol: "AAPL",
-    price: 150.25,
-    priceChange: 2.35,
-    volume: 1250000,
-    "2m930signal": 45,
-    "2m932signal": 52,
-    "2m1000signal": 48,
-    s30sSignal: 75,
-    s1mSignal: -100,
-    s5mSignal: 300,
-    sk2mDiff: 5.2
-  },
-  {
-    symbol: "TSLA",
-    price: 248.90,
-    priceChange: -1.85,
-    volume: 890000,
-    "2m930signal": 30,
-    "2m932signal": 25,
-    "2m1000signal": 35,
-    s30sSignal: -180,
-    s1mSignal: 120,
-    s5mSignal: -300,
-    sk2mDiff: -2.1
-  },
-  {
-    symbol: "MSFT",
-    price: 338.15,
-    priceChange: 0.95,
-    volume: 675000,
-    "2m930signal": 60,
-    "2m932signal": 58,
-    "2m1000signal": 65,
-    s30sSignal: 280,
-    s1mSignal: 45,
-    s5mSignal: -75,
-    sk2mDiff: 1.8
-  }
-];
-
-// Initialize with sample data
-stockData = sampleData;
+// Initialize with empty data
+stockData = [];
 
 // Webhook endpoint to receive data from Pine Script
 app.post('/webhook', (req, res) => {
@@ -88,10 +45,10 @@ app.get('/api/webhook-data', (req, res) => {
 
 // Reset endpoint to clear all stock data
 app.delete('/api/reset-data', (req, res) => {
-  console.log('Resetting stock data...');
-  stockData = sampleData; // Reset to sample data
-  console.log('Stock data reset to sample data');
-  res.json({ message: 'Stock data has been reset to sample data', count: stockData.length });
+  console.log('Clearing all stock data...');
+  stockData = []; // Clear all data
+  console.log('Stock data cleared');
+  res.json({ message: 'All stock data has been cleared', count: stockData.length });
 });
 
 // Serve the main dashboard
@@ -178,9 +135,9 @@ app.get('/alerts', (req, res) => {
          <div class="mb-6 flex justify-between items-center">
              <h1 class="text-3xl font-bold text-gray-100">Stock Alert Dashboard</h1>
              <div class="flex gap-3">
-                 <button onclick="resetData()" class="refresh-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
-                     🗑️ Reset Data
-                 </button>
+                                 <button onclick="resetData()" class="refresh-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
+                    🗑️ Clear Data
+                </button>
                  <button onclick="fetchData()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
                      🔄 Refresh Data
                  </button>
@@ -263,7 +220,7 @@ app.get('/alerts', (req, res) => {
                 tableBody.innerHTML = \`
                     <tr>
                         <td colspan="10" class="px-4 py-8 text-center text-gray-400">
-                            No stock data available. Click "Refresh Data" to load data.
+                            No stock data available. Waiting for webhook alerts from Pine Script...
                         </td>
                     </tr>
                 \`;
@@ -322,53 +279,13 @@ app.get('/alerts', (req, res) => {
                 lastUpdate.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
                 
             } catch (err) {
-                // If API fails, show sample data
-                stockData = [
-                    {
-                        symbol: "AAPL",
-                        price: 150.25,
-                        priceChange: 2.35,
-                        volume: 1250000,
-                        "2m930signal": 45,
-                        "2m932signal": 52,
-                        "2m1000signal": 48,
-                        s30sSignal: 75,
-                        s1mSignal: -100,
-                        s5mSignal: 300,
-                        sk2mDiff: 5.2
-                    },
-                    {
-                        symbol: "TSLA",
-                        price: 248.90,
-                        priceChange: -1.85,
-                        volume: 890000,
-                        "2m930signal": 30,
-                        "2m932signal": 25,
-                        "2m1000signal": 35,
-                        s30sSignal: -180,
-                        s1mSignal: 120,
-                        s5mSignal: -300,
-                        sk2mDiff: -2.1
-                    },
-                    {
-                        symbol: "MSFT",
-                        price: 338.15,
-                        priceChange: 0.95,
-                        volume: 675000,
-                        "2m930signal": 60,
-                        "2m932signal": 58,
-                        "2m1000signal": 65,
-                        s30sSignal: 280,
-                        s1mSignal: 45,
-                        s5mSignal: -75,
-                        sk2mDiff: 1.8
-                    }
-                ];
+                // If API fails, show empty table
+                stockData = [];
                 
                 renderTable();
-                error.textContent = 'Using sample data. API Error: ' + err.message;
+                error.textContent = 'Failed to load data. API Error: ' + err.message;
                 error.classList.remove('hidden');
-                lastUpdate.textContent = 'Sample data loaded: ' + new Date().toLocaleTimeString();
+                lastUpdate.textContent = 'No data available: ' + new Date().toLocaleTimeString();
                 console.error('Error fetching data:', err);
             }
             
@@ -381,7 +298,7 @@ app.get('/alerts', (req, res) => {
             const error = document.getElementById('error');
             const lastUpdate = document.getElementById('lastUpdate');
             
-            if (!confirm('Are you sure you want to reset all stock data? This will clear all webhook data and reset to sample data.')) {
+            if (!confirm('Are you sure you want to clear all stock data? This will permanently remove all webhook data.')) {
                 return;
             }
             
@@ -405,10 +322,10 @@ app.get('/alerts', (req, res) => {
                 // Refresh the display
                 await fetchData();
                 
-                lastUpdate.textContent = 'Data reset successful: ' + new Date().toLocaleTimeString();
+                lastUpdate.textContent = 'Data cleared successfully: ' + new Date().toLocaleTimeString();
                 
                 // Show success message
-                error.textContent = result.message + ' (' + result.count + ' sample records)';
+                error.textContent = result.message + ' (' + result.count + ' records remaining)';
                 error.classList.remove('hidden');
                 error.classList.remove('bg-red-900', 'border-red-600', 'text-red-200');
                 error.classList.add('bg-green-900', 'border-green-600', 'text-green-200');
@@ -429,57 +346,17 @@ app.get('/alerts', (req, res) => {
             loading.classList.add('hidden');
         }
 
-        // Initialize with sample data immediately
-        stockData = [
-            {
-                symbol: "AAPL",
-                price: 150.25,
-                priceChange: 2.35,
-                volume: 1250000,
-                "2m930signal": 45,
-                "2m932signal": 52,
-                "2m1000signal": 48,
-                s30sSignal: 75,
-                s1mSignal: -100,
-                s5mSignal: 300,
-                sk2mDiff: 5.2
-            },
-            {
-                symbol: "TSLA",
-                price: 248.90,
-                priceChange: -1.85,
-                volume: 890000,
-                "2m930signal": 30,
-                "2m932signal": 25,
-                "2m1000signal": 35,
-                s30sSignal: -180,
-                s1mSignal: 120,
-                s5mSignal: -300,
-                sk2mDiff: -2.1
-            },
-            {
-                symbol: "MSFT",
-                price: 338.15,
-                priceChange: 0.95,
-                volume: 675000,
-                "2m930signal": 60,
-                "2m932signal": 58,
-                "2m1000signal": 65,
-                s30sSignal: 280,
-                s1mSignal: 45,
-                s5mSignal: -75,
-                sk2mDiff: 1.8
-            }
-        ];
+        // Initialize with empty data
+        stockData = [];
         
-        // Show table immediately
+        // Show empty table initially
         renderTable();
-        document.getElementById('lastUpdate').textContent = 'Sample data loaded: ' + new Date().toLocaleTimeString();
+        document.getElementById('lastUpdate').textContent = 'Waiting for data...';
         
         // Auto-refresh every 30 seconds
         setInterval(fetchData, 30000);
         
-        // Initial fetch (will update sample data if API is available)
+        // Initial fetch
         fetchData();
     </script>
 </body>
