@@ -108,6 +108,17 @@ app.get('/', (req, res) => {
           return 'bg-red-800'; // Deep red
         }
 
+        function getSignalBackgroundColor(signal) {
+          const value = parseFloat(signal);
+          if (isNaN(value)) return '';
+          
+          if (value >= 250) return 'bg-green-800'; // Deep green
+          if (value >= 50) return 'bg-green-300'; // Light green
+          if (value >= -50) return 'bg-white'; // White
+          if (value >= -250) return 'bg-red-300'; // Light red
+          return 'bg-red-800'; // Deep red
+        }
+
         function formatSignal(signal) {
           if (!signal && signal !== 0) return 'N/A';
           return parseFloat(signal).toFixed(2);
@@ -137,15 +148,18 @@ app.get('/', (req, res) => {
             
             alertTable.innerHTML = data.map(alert => {
               const bgColor = getBackgroundColor(alert.priceChange);
+              const s30sBg = getSignalBackgroundColor(alert.s30_signal);
+              const s1mBg = getSignalBackgroundColor(alert.s1m_signal);
+              const s5mBg = getSignalBackgroundColor(alert.s5m_signal);
               return \`
                 <tr class="\${bgColor}">
                   <td class="font-bold">\${alert.symbol || 'N/A'}</td>
                   <td>$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                   <td class="\${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
                   <td>\${formatVolume(alert.volume)}</td>
-                  <td>\${formatSignal(alert.s30_signal)}</td>
-                  <td>\${formatSignal(alert.s1m_signal)}</td>
-                  <td>\${formatSignal(alert.s5m_signal)}</td>
+                  <td class="\${s30sBg}">\${formatSignal(alert.s30_signal)}</td>
+                  <td class="\${s1mBg}">\${formatSignal(alert.s1m_signal)}</td>
+                  <td class="\${s5mBg}">\${formatSignal(alert.s5m_signal)}</td>
                 </tr>
               \`;
             }).join('');
