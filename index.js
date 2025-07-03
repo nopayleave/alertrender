@@ -88,10 +88,7 @@ app.get('/', (req, res) => {
         
         <div class="bg-card rounded-lg border border-border shadow-sm">
           <div class="p-6">
-            <div class="flex justify-between items-center mb-6">
-              <h2 class="text-2xl font-semibold text-card-foreground">Active Alerts</h2>
-              <div class="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium" id="alertCount">0 alerts</div>
-            </div>
+
             
             <div class="overflow-x-auto">
               <table class="w-full">
@@ -133,11 +130,22 @@ app.get('/', (req, res) => {
           const value = parseFloat(signal);
           if (isNaN(value)) return 'px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded';
           
-          if (value >= 250) return 'px-2 py-1 text-xs font-medium bg-green-200 text-green-800 rounded'; // Light green
-          if (value >= 50) return 'px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded'; // Very light green
+          if (value >= 250) return 'px-2 py-1 text-xs font-medium rounded'; // Deep green
+          if (value >= 50) return 'px-2 py-1 text-xs font-medium rounded'; // Light green
           if (value >= -50) return 'px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded'; // Light grey
-          if (value >= -250) return 'px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded'; // Very light red
-          return 'px-2 py-1 text-xs font-medium bg-red-200 text-red-800 rounded'; // Light red
+          if (value >= -250) return 'px-2 py-1 text-xs font-medium rounded'; // Light red
+          return 'px-2 py-1 text-xs font-medium rounded'; // Deep red
+        }
+
+        function getSignalBgColor(signal) {
+          const value = parseFloat(signal);
+          if (isNaN(value)) return '';
+          
+          if (value >= 250) return 'background-color: oklch(0.7 0.1 163); color: black;'; // Deep green
+          if (value >= 50) return 'background-color: oklch(0.85 0.05 163); color: black;'; // Light green
+          if (value >= -50) return ''; // Light grey (default)
+          if (value >= -250) return 'background-color: oklch(0.8 0.12 25.331); color: black;'; // Light red
+          return 'background-color: oklch(0.637 0.237 25.331); color: white;'; // Deep red
         }
 
         function formatSignal(signal) {
@@ -171,15 +179,18 @@ app.get('/', (req, res) => {
               const s30sClass = getSignalLabelClass(alert.s30_signal);
               const s1mClass = getSignalLabelClass(alert.s1m_signal);
               const s5mClass = getSignalLabelClass(alert.s5m_signal);
+              const s30sStyle = getSignalBgColor(alert.s30_signal);
+              const s1mStyle = getSignalBgColor(alert.s1m_signal);
+              const s5mStyle = getSignalBgColor(alert.s5m_signal);
               return \`
                 <tr class="border-b border-border hover:bg-muted/50 transition-colors">
                   <td class="py-3 px-4 font-semibold text-foreground">\${alert.symbol || 'N/A'}</td>
                   <td class="py-3 px-4 font-mono text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                   <td class="py-3 px-4 font-mono \${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
                   <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
-                  <td class="py-3 px-4"><span class="\${s30sClass}">\${formatSignal(alert.s30_signal)}</span></td>
-                  <td class="py-3 px-4"><span class="\${s1mClass}">\${formatSignal(alert.s1m_signal)}</span></td>
-                  <td class="py-3 px-4"><span class="\${s5mClass}">\${formatSignal(alert.s5m_signal)}</span></td>
+                  <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
+                  <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
+                  <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
                 </tr>
               \`;
             }).join('');
