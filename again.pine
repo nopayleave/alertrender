@@ -1,143 +1,66 @@
 //@version=5
-indicator("Again", overlay=false)
+indicator("again", overlay=false)
 
-// ==== bar, osc, stoch type definitions ====
-type bar
+// 用 type 定義
+type Bar
     float o
     float h
     float l
     float c
 
-type osc
-    bar   b
-    float s
-    float h
-
-type stoch
-    float k
-    float d
-
-// ==== src function ====
-src(b, srcType) =>
-    switch srcType
+// 自定 method 放 struct 之後
+method src(Bar b, simple string src) =>
+    switch src
         'open'  => b.o
         'high'  => b.h
         'low'   => b.l
         'close' => b.c
-        'hl2'   => (b.h + b.l) / 2
-        'hlc3'  => (b.h + b.l + b.c) / 3
-        'ohlc4' => (b.o + b.h + b.l + b.c) / 4
-        'hlcc4' => (b.h + b.l + b.c + b.c) / 4
         => na
 
-// ==== method src for bar type ====
-method src(bar b, string srcType) =>
-    switch srcType
-        'open'  => b.o
-        'high'  => b.h
-        'low'   => b.l
-        'close' => b.c
-        'hl2'   => (b.h + b.l) / 2
-        'hlc3'  => (b.h + b.l + b.c) / 3
-        'ohlc4' => (b.o + b.h + b.l + b.c) / 4
-        'hlcc4' => (b.h + b.l + b.c + b.c) / 4
-        => na
-
-// ==== method ha for bar type ====
-method ha(bar b) =>
-    bar.new(math.avg(b.o[1], b.c[1]), math.max(b.h, b.o, b.c), math.min(b.l, b.o, b.c), math.avg(b.o, b.h, b.l, b.c))
-
-// ==== stmc MACD function ====
-method stmc(bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
-    float x = (ta.ema(b.src(src), flen)  - 
-               ta.ema(b.src(src), slen)) / 
-              (ta.ema(b.h - b.l , slen)) * 100
-
-    bar   z = bar.new(x[1], math.max(x, x[1]), math.min(x, x[1]), x).ha()
-
+// 你 custom stmc method
+method stmc(Bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
+    float x = (ta.ema(b.src(src), flen)  - ta.ema(b.src(src), slen)) / (ta.ema(b.h - b.l , slen)) * 100
+    float prev_x = nz(x[1])
+    Bar z = Bar.new(prev_x, math.max(x, prev_x), math.min(x, prev_x), x)
     float s = ta.ema(z.src(sig), clen)
+    s
 
-    osc.new(z, s, z.c - s)
+// 組 Bar struct
+bar_from_ohlc() =>
+    Bar.new(open, high, low, close)
 
-// ==== calcStoch function ====
-calcStoch(len, smooth, dlen, timeframe) =>
-    [stochHigh, stochLow, stochClose] = request.security(syminfo.tickerid, timeframe, [high, low, close])
-    highest_high = ta.highest(stochHigh, len)
-    lowest_low = ta.lowest(stochLow, len)
-    rawK = 100 * (stochClose - lowest_low) / (highest_high - lowest_low)
-    smoothK = ta.sma(rawK, smooth)
-    d = ta.sma(smoothK, dlen)
-    [smoothK, d]
+// MACD input
+src  = input.string('close' , "Source"             )
+fast = input.int   (12      , "Fast Length"        )
+slow = input.int   (26      , "Slow Length"        )
+sigs = input.string('close' , "Signal Source"      )
+sigl = input.int   (9       , "Signal Length"      )
 
-// ==== Input Settings ====
-const string gm = "MACD Settings", const string gu = "UI Options", const string gs = "Stochastic Settings"
-src_input  = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'],               group = gm)
-fast = input.int   (10      , "Fast Length"        ,                                                                                         group = gm)
-slow = input.int   (75      , "Slow Length"        ,                                                                                         group = gm)
-sigb = input.bool  (true    , "Signal"             ,                                                                           inline = '1', group = gm)
-sigs = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'], inline = '1', group = gm)
-sigl = input.int   (20      , "Length"             ,                                                                           inline = '1', group = gm)
-mode = input.string('Hybrid', "Display Mode"       , ['Hybrid',                       'MACD',                    'Histogram'],               group = gu)
-revs = input.bool  (true    , ""                   ,                                                                           inline = '0', group = gu)
-revt = input.int   (100     , "Reversion Threshold", [100,                                                               150], inline = '0', group = gu)
-colb = input.string('None'  , "Bar Coloring"       , ['None', 'MidLine', 'Candles', 'Sig Cross', 'Extremities', 'Reversions'],               group = gu)
-hol  = input.bool  (true    , "Hollow Candles"     ,                                                                                         group = gu)
-showTurnArrows = input.bool(true, "Show Turn Arrows", group=gu)
-turnUpColor = input.color(color.yellow, "Turn Up Color", group=gu)
-turnDnColor = input.color(color.white, "Turn Down Color", group=gu)
-histUpIncColor = input.color(#369b85, "Histogram Up-Increasing", group=gu)
-histUpDecColor = input.color(#f44336, "Histogram Up-Decreasing", group=gu)
-histDnIncColor = input.color(#369b85, "Histogram Down-Increasing", group=gu)
-histDnDecColor = input.color(#f44336, "Histogram Down-Decreasing", group=gu)
-haUpColor = input.color(#369b85, "Heikin-Ashi Up Color", group=gu)
-haDownColor = input.color(#f44336, "Heikin-Ashi Down Color", group=gu)
+// 定義同一 set MACD 設定
+getSignal(_tf) =>
+    request.security(syminfo.tickerid, _tf, bar_from_ohlc().stmc(src, fast, slow, sigs, sigl))
 
-// ==== Stochastic Settings ====
-stochLen    = input.int(10, "Stoch K Length", group=gs)
-stochSmooth = input.int(10, "K Smoothing", group=gs)
-stochDLen   = input.int(10, "D Length", group=gs)
-stochTf     = input.timeframe("", "Timeframe (empty=current)", group=gs)
-showStoch   = input.bool(true, "Show Stoch", group=gs)
+symbol = syminfo.ticker
+timeframeStr = timeframe.period
+epoch = time
+humantime = str.format("{0,date,yyyy-MM-dd HH:mm}", timestamp("GMT+8", year, month, dayofmonth, hour, minute))
+price = close
+vol = volume
 
-// ==== Calculations ====
-b = bar.new(open, high, low, close)
-o = b.stmc(src_input, fast, slow, sigs, sigl)
-[stochK, stochD] = calcStoch(stochLen, stochSmooth, stochDLen, stochTf)
-stochObj = stoch.new(stochK, stochD)
+s30_signal = getSignal("30S")
+s1m_signal = getSignal("1")
+s5m_signal = getSignal("5")
 
-// ==== Helper: Human readable time ====
-f_humantime(ts) =>
-    y = str.tostring(year(ts))
-    m = str.format("{0,number,00}", month(ts))
-    d = str.format("{0,number,00}", dayofmonth(ts))
-    h = str.format("{0,number,00}", hour(ts))
-    min = str.format("{0,number,00}", minute(ts))
-    y + '-' + m + '-' + d + ' ' + h + ':' + min
+jsonMsg = '{' +
+  '"symbol": "' + symbol + '",' +
+  '"timeframe": "' + timeframeStr + '",' +
+  '"time": "' + str.tostring(epoch) + '",' +
+  '"humantime": "' + humantime + '",' +
+  '"price": ' + str.tostring(price) + ',' +
+  '"volume": ' + str.tostring(vol) + ',' +
+  '"s30_signal": ' + str.tostring(s30_signal) + ',' +
+  '"s1m_signal": ' + str.tostring(s1m_signal) + ',' +
+  '"s5m_signal": ' + str.tostring(s5m_signal) + '}'
 
-// ==== Multi-Timeframe Signals ====
-s30sSignal = request.security(syminfo.tickerid, "30S", b.stmc(src_input, fast, slow, sigs, sigl).s)
-s1mSignal = request.security(syminfo.tickerid, "1", b.stmc(src_input, fast, slow, sigs, sigl).s)
-s5mSignal = request.security(syminfo.tickerid, "5", b.stmc(src_input, fast, slow, sigs, sigl).s)
-[sk2m, _] = calcStoch(stochLen, stochSmooth, stochDLen, "2")
-[sk2m_2ago_val, _] = request.security(syminfo.tickerid, "2", calcStoch(stochLen, stochSmooth, stochDLen, "2"))
-sk2m_2ago = sk2m_2ago_val[2]
-sk2mDiff = sk2m - sk2m_2ago
-
-// ==== Price change vs previous day close ====
-yestclose = request.security(syminfo.tickerid, "D", close[1])
-priceChange = na(yestclose) ? na : (close - yestclose) / yestclose * 100
-
-// ==== 2m MACD signal at specific bar ====
-get_2m_signal(bars_ago) =>
-    request.security(syminfo.tickerid, "2", b.stmc(src_input, fast, slow, sigs, sigl).s[bars_ago])
-
-_2m930signal = get_2m_signal(0)
-_2m932signal = get_2m_signal(1)
-_2m1000signal = get_2m_signal(15) // According to your chart, this index should be checked for 10:00am
-
-// ==== Assemble Webhook JSON ====
-webhookMsg = '{' + '"symbol":"' + syminfo.ticker + '",' + '"timeframe":"' + timeframe.period + '",' + '"time":"' + str.tostring(time) + '",' + '"humantime":"' + f_humantime(time) + '",' + '"price":' + str.tostring(close) + ',' + '"priceChange":' + str.tostring(priceChange) + ',' + '"volume":' + str.tostring(volume) + ',' + '"stochK":' + str.tostring(stochK) + ',' + '"2m930signal":' + str.tostring(_2m930signal) + ',' + '"2m932signal":' + str.tostring(_2m932signal) + ',' + '"2m1000signal":' + str.tostring(_2m1000signal) + ',' + '"s30sSignal":' + str.tostring(s30sSignal) + ',' + '"s1mSignal":' + str.tostring(s1mSignal) + ',' + '"s5mSignal":' + str.tostring(s5mSignal) + ',' + '"sk2mDiff":' + str.tostring(sk2mDiff) + '}'
-
-// ==== Alert ====
-if ta.change(time) != 0
-    alert(webhookMsg, alert.freq_once_per_bar_close)
+if barstate.isconfirmed
+    alert(jsonMsg, alert.freq_once_per_bar_close)
