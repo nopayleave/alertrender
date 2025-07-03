@@ -86,8 +86,8 @@ app.get('/', (req, res) => {
           <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
         </div>
         
-                <div class="bg-card rounded-lg border border-border shadow-sm">
-          <div class="p-6">
+                <div class="bg-card rounded-lg shadow-sm">
+          <div>
             <div class="mb-4 relative">
               <input 
                 type="text" 
