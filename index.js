@@ -82,8 +82,8 @@ app.get('/', (req, res) => {
     <body class="bg-background min-h-screen">
       <div class="container mx-auto p-6 max-w-7xl">
         <div class="mb-8">
-          <h1 class="text-4xl font-bold text-foreground mb-2">Trading Alert Dashboard</h1>
-          <p class="text-muted-foreground text-lg">Real-time alert data with color-coded price changes</p>
+          <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
+          <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
         </div>
         
         <div class="bg-card rounded-lg border border-border shadow-sm">
@@ -94,25 +94,25 @@ app.get('/', (req, res) => {
               <table class="w-full">
                 <thead>
                   <tr class="border-b border-border">
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('symbol')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('symbol')">
                       Ticker <span id="sort-symbol" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
                       Price <span id="sort-price" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('priceChange')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('priceChange')">
                       Chg% <span id="sort-priceChange" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       Vol <span id="sort-volume" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s30_signal')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s30_signal')">
                       S30s <span id="sort-s30_signal" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s1m_signal')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s1m_signal')">
                       S1m <span id="sort-s1m_signal" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s5m_signal')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s5m_signal')">
                       S5m <span id="sort-s5m_signal" class="ml-1 text-xs">⇅</span>
                     </th>
                   </tr>
