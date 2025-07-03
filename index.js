@@ -109,73 +109,128 @@ app.get('/alerts', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Alert Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .refresh-btn {
-            transition: transform 0.2s ease;
-        }
-        .refresh-btn:hover {
-            transform: scale(1.05);
-        }
-    </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <div class="mb-6 flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-gray-800">Stock Alert Dashboard</h1>
-            <div class="flex gap-3">
-                <button onclick="resetData()" class="refresh-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold">
-                    🗑️ Reset Data
-                </button>
-                <button onclick="fetchData()" class="refresh-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
-                    🔄 Refresh Data
-                </button>
-            </div>
-        </div>
-        
-        <div id="loading" class="text-center py-8 hidden">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <p class="mt-2 text-gray-600">Loading stock data...</p>
-        </div>
-        
-        <div id="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 hidden"></div>
-        
-        <div id="tableContainer" class="bg-white rounded-lg shadow-lg overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full">
-                    <thead>
-                        <tr class="bg-gray-100 text-sm font-semibold text-gray-700">
-                            <th class="px-4 py-3 text-left">Ticker</th>
-                            <th class="px-4 py-3 text-center">Price</th>
-                            <th class="px-4 py-3 text-center">Chg%</th>
-                            <th class="px-4 py-3 text-center">Vol</th>
-                            <th class="px-4 py-3 text-center">Open</th>
-                            <th class="px-4 py-3 text-center">Open Trend</th>
-                            <th class="px-4 py-3 text-center">S30s</th>
-                            <th class="px-4 py-3 text-center">S1m</th>
-                            <th class="px-4 py-3 text-center">S5m</th>
-                            <th class="px-4 py-3 text-center">Trend</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <!-- Data will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div id="lastUpdate" class="text-center text-gray-500 text-sm mt-4"></div>
-    </div>
+         <style>
+         .refresh-btn {
+             transition: transform 0.2s ease;
+         }
+         .refresh-btn:hover {
+             transform: scale(1.05);
+         }
+         
+         /* Dark theme overrides */
+         body.dark {
+             background-color: #0f172a;
+             color: #e2e8f0;
+         }
+         
+         .dark-card {
+             background-color: #1e293b;
+             border: 1px solid #334155;
+         }
+         
+         .dark-table-header {
+             background-color: #334155;
+             color: #f1f5f9;
+         }
+         
+         .dark-table-row:hover {
+             background-color: #475569;
+         }
+         
+         .dark-table-row-alt {
+             background-color: #1e293b;
+         }
+         
+         .dark-loading {
+             background-color: #1e293b;
+             border: 1px solid #334155;
+         }
+         
+         /* Signal color overrides for dark theme */
+         .signal-green-light-dark {
+             background-color: #065f46;
+             color: #d1fae5;
+         }
+         
+         .signal-green-dark-dark {
+             background-color: #064e3b;
+             color: #a7f3d0;
+         }
+         
+         .signal-white-dark {
+             background-color: #374151;
+             color: #f3f4f6;
+         }
+         
+         .signal-red-light-dark {
+             background-color: #7f1d1d;
+             color: #fecaca;
+         }
+         
+         .signal-red-dark-dark {
+             background-color: #991b1b;
+             color: #fca5a5;
+         }
+     </style>
+ </head>
+ <body class="dark bg-gray-900 min-h-screen text-gray-100">
+         <div class="container mx-auto px-4 py-8">
+         <div class="mb-6 flex justify-between items-center">
+             <h1 class="text-3xl font-bold text-gray-100">Stock Alert Dashboard</h1>
+             <div class="flex gap-3">
+                 <button onclick="resetData()" class="refresh-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
+                     🗑️ Reset Data
+                 </button>
+                 <button onclick="fetchData()" class="refresh-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
+                     🔄 Refresh Data
+                 </button>
+             </div>
+         </div>
+         
+         <div id="loading" class="text-center py-8 hidden dark-loading rounded-lg">
+             <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+             <p class="mt-2 text-gray-300">Loading stock data...</p>
+         </div>
+         
+         <div id="error" class="bg-red-900 border border-red-600 text-red-200 px-4 py-3 rounded mb-4 hidden"></div>
+         
+         <div id="tableContainer" class="dark-card rounded-lg shadow-xl overflow-hidden">
+             <div class="overflow-x-auto">
+                 <table class="min-w-full">
+                     <thead>
+                         <tr class="dark-table-header text-sm font-semibold">
+                             <th class="px-4 py-3 text-left">Ticker</th>
+                             <th class="px-4 py-3 text-center">Price</th>
+                             <th class="px-4 py-3 text-center">Chg%</th>
+                             <th class="px-4 py-3 text-center">Vol</th>
+                             <th class="px-4 py-3 text-center">Open</th>
+                             <th class="px-4 py-3 text-center">Open Trend</th>
+                             <th class="px-4 py-3 text-center">S30s</th>
+                             <th class="px-4 py-3 text-center">S1m</th>
+                             <th class="px-4 py-3 text-center">S5m</th>
+                             <th class="px-4 py-3 text-center">Trend</th>
+                         </tr>
+                     </thead>
+                     <tbody id="tableBody">
+                         <!-- Data will be populated here -->
+                     </tbody>
+                 </table>
+             </div>
+         </div>
+         
+         <div id="lastUpdate" class="text-center text-gray-400 text-sm mt-4"></div>
+     </div>
 
     <script>
         let stockData = [];
 
-        // Get background color based on signal value
+        // Get background color based on signal value (dark theme)
         function getBgColor(value) {
-            if (value >= 250) return "bg-green-700 text-white";
-            if (value >= 50) return "bg-green-200 text-gray-800";
-            if (value > -50) return "bg-white text-gray-800";
-            if (value >= -250) return "bg-red-200 text-gray-800";
-            return "bg-red-700 text-white";
+            if (value >= 250) return "signal-green-dark-dark";
+            if (value >= 50) return "signal-green-light-dark";
+            if (value > -50) return "signal-white-dark";
+            if (value >= -250) return "signal-red-light-dark";
+            return "signal-red-dark-dark";
         }
 
         // Format trend direction
@@ -207,7 +262,7 @@ app.get('/alerts', (req, res) => {
             if (stockData.length === 0) {
                 tableBody.innerHTML = \`
                     <tr>
-                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="10" class="px-4 py-8 text-center text-gray-400">
                             No stock data available. Click "Refresh Data" to load data.
                         </td>
                     </tr>
@@ -228,17 +283,17 @@ app.get('/alerts', (req, res) => {
                 const trendDirection = getTrendDirection(row.sk2mDiff || 0);
 
                 return \`
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="px-4 py-3 font-bold text-gray-800">\${row.symbol || '-'}</td>
-                        <td class="px-4 py-3 text-center">\${formatPrice(row.price)}</td>
-                        <td class="px-4 py-3 text-center \${(row.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${formatPercentage(row.priceChange)}</td>
-                        <td class="px-4 py-3 text-center text-sm">\${formatNumber(row.volume)}</td>
-                        <td class="px-4 py-3 text-center text-sm">\${openDirection}</td>
-                        <td class="px-4 py-3 text-center text-sm">\${openTrendDirection}</td>
-                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s30sSignal || 0)}">\${row.s30sSignal || '-'}</td>
-                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s1mSignal || 0)}">\${row.s1mSignal || '-'}</td>
-                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s5mSignal || 0)}">\${row.s5mSignal || '-'}</td>
-                        <td class="px-4 py-3 text-center text-sm">\${trendDirection}</td>
+                    <tr class="dark-table-row border-b border-gray-700 hover:bg-gray-700 transition-colors">
+                        <td class="px-4 py-3 font-bold text-gray-100">\${row.symbol || '-'}</td>
+                        <td class="px-4 py-3 text-center text-gray-200">\${formatPrice(row.price)}</td>
+                        <td class="px-4 py-3 text-center \${(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${formatPercentage(row.priceChange)}</td>
+                        <td class="px-4 py-3 text-center text-sm text-gray-300">\${formatNumber(row.volume)}</td>
+                        <td class="px-4 py-3 text-center text-sm text-gray-300">\${openDirection}</td>
+                        <td class="px-4 py-3 text-center text-sm text-gray-300">\${openTrendDirection}</td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s30sSignal || 0)} rounded">\${row.s30sSignal || '-'}</td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s1mSignal || 0)} rounded">\${row.s1mSignal || '-'}</td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold \${getBgColor(row.s5mSignal || 0)} rounded">\${row.s5mSignal || '-'}</td>
+                        <td class="px-4 py-3 text-center text-sm text-gray-300">\${trendDirection}</td>
                     </tr>
                 \`;
             }).join('');
@@ -355,14 +410,14 @@ app.get('/alerts', (req, res) => {
                 // Show success message
                 error.textContent = result.message + ' (' + result.count + ' sample records)';
                 error.classList.remove('hidden');
-                error.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
-                error.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+                error.classList.remove('bg-red-900', 'border-red-600', 'text-red-200');
+                error.classList.add('bg-green-900', 'border-green-600', 'text-green-200');
                 
                 // Hide success message after 3 seconds
                 setTimeout(() => {
                     error.classList.add('hidden');
-                    error.classList.remove('bg-green-100', 'border-green-400', 'text-green-700');
-                    error.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+                    error.classList.remove('bg-green-900', 'border-green-600', 'text-green-200');
+                    error.classList.add('bg-red-900', 'border-red-600', 'text-red-200');
                 }, 3000);
                 
             } catch (err) {
