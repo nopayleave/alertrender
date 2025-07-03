@@ -38,15 +38,16 @@ if (process.env.NODE_ENV !== 'production') {
   alerts = [
     {
       symbol: "AAPL", timeframe: "30S", time: Date.now().toString(), price: 189.45,
-      priceChange: 2.34, volume: 45678901, openSignal: 15.25, openTrendSignal: 75.80,
+      priceChange: 1.24, volume: 45678901, openSignal: 15.25, openTrendSignal: 75.80,
       s30sSignal: 125.45, s1mSignal: -75.20, s5mSignal: 275.60, sk2mDiff: 3.4,
-      // These 3 field will be replaced dynamically in /alerts API!
+      // priceChange = daily change vs previous trading day close
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
     },
     {
       symbol: "TSLA", timeframe: "30S", time: Date.now().toString(), price: 238.77,
-      priceChange: -1.89, volume: 32145678, openSignal: -25.45, openTrendSignal: -85.30,
+      priceChange: -2.15, volume: 32145678, openSignal: -25.45, openTrendSignal: -85.30,
       s30sSignal: -125.80, s1mSignal: 45.60, s5mSignal: -275.90, sk2mDiff: -2.8,
+      // priceChange = daily change vs previous trading day close
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
     }
   ]
@@ -114,13 +115,8 @@ function getMainHTML() {
     <p id="marketStatus" class="text-xs text-gray-500 mt-1">Market Status: Loading...</p>
   </div>
   <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex justify-between items-center">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
       <h2 class="text-xl font-semibold text-white">Live Trading Data</h2>
-      <button onclick="clearAllData()" 
-              class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
-              title="Clear all trading data">
-        🗑️ Clear Data
-      </button>
     </div>
     <div class="table-container">
       <table class="w-full">
@@ -269,9 +265,9 @@ function updateSortIndicators() {
   
   // Show active sort indicator
   const sortSpan = document.getElementById(\`\${sortState.column}-sort\`)
-  if (sortSpan) {
+    if (sortSpan) {
     sortSpan.textContent = sortState.direction === 'asc' ? '↑' : '↓'
-  }
+    }
 }
 
 function applySorting(alerts) {
@@ -325,75 +321,52 @@ async function deleteAlert(symbol, timeframe) {
   }
 }
 
-async function clearAllData() {
-  if (!confirm('Are you sure you want to clear ALL trading data? This action cannot be undone.')) {
-    return
-  }
-  
-  try {
-    const response = await fetch('/clear-alerts', {
-      method: 'GET'
-    })
-    
-    if (response.ok) {
-      const result = await response.json()
-      alert(\`Successfully cleared \${result.previousCount} alerts\`)
-      fetchAlerts()
-    } else {
-      alert('Failed to clear data')
-    }
-  } catch (error) {
-    console.error('Error clearing data:', error)
-    alert('Error clearing data')
-  }
-}
-
 async function fetchAlerts() {
   try {
     const response = await fetch('/alerts')
     const data = await response.json()
-    
-    // Apply current sorting to data
+  
+  // Apply current sorting to data
     const sortedData = applySorting([...data])
     
     // Update market status
     updateMarketStatus()
-    
-    // Update last update time
-    const lastUpdate = document.getElementById('lastUpdate')
-    if (data.length > 0) {
-      const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
-      lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
-    } else {
-      lastUpdate.textContent = 'Last updated: Never'
-    }
-    
+  
+  // Update last update time
+  const lastUpdate = document.getElementById('lastUpdate')
+  if (data.length > 0) {
+    const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
+    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
+  } else {
+    lastUpdate.textContent = 'Last updated: Never'
+  }
+  
     // Update table
     const alertsTable = document.getElementById('alertsTable')
-    const noAlerts = document.getElementById('noAlerts')
-    
-    if (sortedData.length === 0) {
+  const noAlerts = document.getElementById('noAlerts')
+  
+  if (sortedData.length === 0) {
       alertsTable.innerHTML = ''
-      noAlerts.classList.remove('hidden')
-    } else {
-      noAlerts.classList.add('hidden')
+    noAlerts.classList.remove('hidden')
+  } else {
+    noAlerts.classList.add('hidden')
       alertsTable.innerHTML = sortedData.map(alert => {
-        // Check if this row was just updated
-        const wasUpdated = previousData.length > 0 && 
+      // Check if this row was just updated
+      const wasUpdated = previousData.length > 0 && 
           previousData.find(prev => prev.symbol === alert.symbol && prev.time !== alert.time)
-        const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
-        
-        return \`
+      const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
+      
+      return \`
           <tr class="hover:bg-gray-700 transition-colors duration-200 \${updateHighlight}">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <span class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer"
                       onclick="window.open('https://www.tradingview.com/chart/?symbol=\${alert.symbol}', '_blank')"
-                      title="Click to open TradingView">
+                    title="Click to open TradingView">
                   \${alert.symbol}
-                </span>
-              </div>
-            </td>
+              </span>
+            </div>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
               $\${parseFloat(alert.price || 0).toFixed(2)}
             </td>
@@ -412,34 +385,34 @@ async function fetchAlerts() {
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s30sSignal)}">
                 \${parseFloat(alert.s30sSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s1mSignal)}">
                 \${parseFloat(alert.s1mSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s5mSignal)}">
                 \${parseFloat(alert.s5mSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
               \${formatTrend(alert.sk2mDiff)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <button onclick="deleteAlert('\${alert.symbol}', '\${alert.timeframe || ''}')" 
                       class="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-30 p-2 rounded transition-all duration-200" 
-                      title="Delete this alert">
-                🗑️
-              </button>
-            </td>
-          </tr>
-        \`
-      }).join('')
-    }
-    
-    previousData = [...data]
+                    title="Delete this alert">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      \`
+    }).join('')
+  }
+  
+  previousData = [...data]
   } catch (error) {
     console.error('Error fetching alerts:', error)
   }
@@ -448,7 +421,7 @@ async function fetchAlerts() {
 // Initialize sort indicators and start fetching
 function initializePage() {
   updateSortIndicators()
-  fetchAlerts()
+fetchAlerts()
 }
 
 // Auto-refresh every 2 seconds
@@ -473,7 +446,7 @@ app.post('/webhook', (req, res) => {
     timeframe: rawAlert.timeframe || "30S",
     time: rawAlert.time || Date.now().toString(),
     price: parseFloat(rawAlert.price) || 0,
-    priceChange: parseFloat(rawAlert.priceChange) || 0,
+    priceChange: parseFloat(rawAlert.priceChange) || 0, // Daily change vs previous trading day close
     volume: rawAlert.volume || 0,
     openSignal: parseFloat(rawAlert.openSignal) || 0,
     openTrendSignal: parseFloat(rawAlert.openTrendSignal) || 0,

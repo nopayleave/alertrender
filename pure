@@ -82,8 +82,12 @@ osc o = b.stmc(src, fast, slow, sigs, sigl)
 [stochK, stochD] = calcStoch(stochLen, stochSmooth, stochDLen, stochTf)
 stochObj = stoch.new(stochK, stochD)
 
-// ==== Price Change/Volume ====
-priceChange = ((close - close[1]) / close[1]) * 100
+// ==== Price Change/Volume (Fixed: Previous Trading Day) ====
+// Get previous trading day's close (1D timeframe)
+prevDayClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
+// Calculate price change from previous trading day
+priceChange = ((close - prevDayClose) / prevDayClose) * 100
+// Price change within current candle (unchanged)
 priceChangeCandle = ((close - open) / open) * 100
 volume1D = volume
 
