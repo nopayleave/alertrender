@@ -114,8 +114,13 @@ function getMainHTML() {
     <p id="marketStatus" class="text-xs text-gray-500 mt-1">Market Status: Loading...</p>
   </div>
   <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex justify-between items-center">
       <h2 class="text-xl font-semibold text-white">Live Trading Data</h2>
+      <button onclick="clearAllData()" 
+              class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center gap-2"
+              title="Clear all trading data">
+        🗑️ Clear Data
+      </button>
     </div>
     <div class="table-container">
       <table class="w-full">
@@ -317,6 +322,29 @@ async function deleteAlert(symbol, timeframe) {
   } catch (error) {
     console.error('Error deleting alert:', error)
     alert('Error deleting alert')
+  }
+}
+
+async function clearAllData() {
+  if (!confirm('Are you sure you want to clear ALL trading data? This action cannot be undone.')) {
+    return
+  }
+  
+  try {
+    const response = await fetch('/clear-alerts', {
+      method: 'GET'
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      alert(\`Successfully cleared \${result.previousCount} alerts\`)
+      fetchAlerts()
+    } else {
+      alert('Failed to clear data')
+    }
+  } catch (error) {
+    console.error('Error clearing data:', error)
+    alert('Error clearing data')
   }
 }
 
