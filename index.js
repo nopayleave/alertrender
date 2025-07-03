@@ -7,17 +7,16 @@ const port = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-// 方案一：object of arrays，每隻股票+timeframe一組歷史
+// 用 object of arrays，每隻股票+timeframe一組歷史
 let alerts = {} // { 'AAPL_30S': [ {}, {}, ... ], 'TSLA_30S': [ {}, ... ] }
 
-// Helper（可以複用你舊 code）
 function parseOrNull(value) {
   if (value === undefined || value === null || value === 'na' || value === 'NA' || value === 'NaN') return null
   const num = parseFloat(value)
   return isNaN(num) ? null : num
 }
 
-// API: TradingView webhook
+// TradingView webhook：收資料同時記錄 humanTime
 app.post('/webhook', (req, res) => {
   const rawAlert = req.body
   const symbol = rawAlert.symbol
@@ -38,6 +37,7 @@ app.post('/webhook', (req, res) => {
     symbol,
     timeframe,
     time: rawAlert.time || Date.now().toString(),
+    humanTime: rawAlert.humanTime || null,        // <<<<<< 人睇明的時間
     price: parseFloat(rawAlert.price) || 0,
     priceChange: parseFloat(rawAlert.priceChange) || 0,
     volume: rawAlert.volume || 0,
@@ -58,29 +58,27 @@ app.post('/webhook', (req, res) => {
   res.sendStatus(200)
 })
 
-// API: 最新 alerts（每隻股票 timeframe 各1條，顯示用）
+// 最新 alerts（每隻股票 timeframe 各1條）
 app.get('/alerts', (req, res) => {
-  // 只出最新一條
   const latestAlerts = Object.values(alerts)
     .map(arr => arr[arr.length - 1])
     .filter(Boolean)
   res.json(latestAlerts)
 })
 
-// API: 全部歷史 alerts（trace back 用）
+// 全部歷史 alerts（trace back 用）
 app.get('/alerts/history', (req, res) => {
-  // 返 object，前端可以 filter
   res.json(alerts)
 })
 
-// API: 指定symbol、timeframe歷史（可選）
+// 指定symbol、timeframe歷史（可選）
 app.get('/alerts/history/:symbol/:timeframe', (req, res) => {
   const key = `${req.params.symbol}_${req.params.timeframe}`
   if (!alerts[key]) return res.status(404).json({ error: 'No history found' })
   res.json(alerts[key])
 })
 
-// 其他：刪除單條、清空（同你舊code相同，可用唔用）
+// 刪除單隻symbol、timeframe
 app.post('/delete-alert', (req, res) => {
   const { symbol, timeframe } = req.body
   if (!symbol) return res.status(400).json({ error: 'Symbol is required' })
@@ -89,6 +87,7 @@ app.post('/delete-alert', (req, res) => {
   alerts[key] = []
   res.json({ message: `Deleted ${before} alerts for ${key}` })
 })
+// 清空所有
 app.delete('/alerts', (req, res) => {
   const count = Object.values(alerts).reduce((a, b) => a + b.length, 0)
   alerts = {}
@@ -100,7 +99,7 @@ app.get('/clear-alerts', (req, res) => {
   res.json({ message: `Cleared ${count} alerts`, previousCount: count, currentCount: 0 })
 })
 
-// 頁面/前端HTML（你可以用返現有code不變，只要fetch /alerts或者 /alerts/history）
+// 簡單首頁
 app.get('/', (req, res) => {
   res.send(`<html><body><h1>API Ready</h1><p>/alerts 最新 | /alerts/history 全部</p></body></html>`)
 })
