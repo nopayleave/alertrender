@@ -48,30 +48,30 @@ app.get('/', (req, res) => {
           theme: {
             extend: {
               colors: {
-                border: "hsl(214.3 31.8% 91.4%)",
-                input: "hsl(214.3 31.8% 91.4%)",
-                ring: "hsl(222.2 84% 4.9%)",
-                background: "hsl(0 0% 100%)",
-                foreground: "hsl(222.2 84% 4.9%)",
+                border: "hsl(217.2 32.6% 17.5%)",
+                input: "hsl(217.2 32.6% 17.5%)",
+                ring: "hsl(212.7 26.8% 83.9%)",
+                background: "hsl(222.2 84% 4.9%)",
+                foreground: "hsl(210 40% 98%)",
                 primary: {
-                  DEFAULT: "hsl(222.2 47.4% 11.2%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(210 40% 98%)",
+                  foreground: "hsl(222.2 47.4% 11.2%)",
                 },
                 secondary: {
-                  DEFAULT: "hsl(210 40% 96%)",
-                  foreground: "hsl(222.2 84% 4.9%)",
+                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
+                  foreground: "hsl(210 40% 98%)",
                 },
                 muted: {
-                  DEFAULT: "hsl(210 40% 96%)",
-                  foreground: "hsl(215.4 16.3% 46.9%)",
+                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
+                  foreground: "hsl(215 20.2% 65.1%)",
                 },
                 accent: {
-                  DEFAULT: "hsl(210 40% 96%)",
-                  foreground: "hsl(222.2 84% 4.9%)",
+                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
+                  foreground: "hsl(210 40% 98%)",
                 },
                 card: {
-                  DEFAULT: "hsl(0 0% 100%)",
-                  foreground: "hsl(222.2 84% 4.9%)",
+                  DEFAULT: "hsl(222.2 84% 4.9%)",
+                  foreground: "hsl(210 40% 98%)",
                 },
               }
             }
@@ -151,7 +151,7 @@ app.get('/', (req, res) => {
           
           if (value >= 250) return 'px-2 py-1 text-xs font-semibold rounded'; // Deep green
           if (value >= 50) return 'px-2 py-1 text-xs font-semibold rounded'; // Light green
-          if (value >= -50) return 'px-2 py-1 text-xs font-semibold bg-gray-200 text-gray-700 rounded'; // Light grey
+          if (value >= -50) return 'px-2 py-1 text-xs font-semibold bg-gray-600 text-gray-100 rounded'; // Dark grey
           if (value >= -250) return 'px-2 py-1 text-xs font-semibold rounded'; // Light red
           return 'px-2 py-1 text-xs font-semibold rounded'; // Deep red
         }
@@ -160,11 +160,11 @@ app.get('/', (req, res) => {
           const value = parseFloat(signal);
           if (isNaN(value)) return '';
           
-          if (value >= 250) return 'background-color: oklch(0.7 0.1 163); color: black;'; // Deep green
-          if (value >= 50) return 'background-color: oklch(0.85 0.05 163); color: black;'; // Light green
+          if (value >= 250) return 'background-color: oklch(0.6 0.15 163); color: white;'; // Deep green
+          if (value >= 50) return 'background-color: oklch(0.5 0.1 163); color: white;'; // Medium green
           if (value >= -50) return ''; // Light grey (default)
-          if (value >= -250) return 'background-color: oklch(0.8 0.12 25.331); color: black;'; // Light red
-          return 'background-color: oklch(0.637 0.237 25.331); color: white;'; // Deep red
+          if (value >= -250) return 'background-color: oklch(0.5 0.15 25.331); color: white;'; // Medium red
+          return 'background-color: oklch(0.4 0.2 25.331); color: white;'; // Deep red
         }
 
         function sortTable(field) {
@@ -256,7 +256,7 @@ app.get('/', (req, res) => {
                              <tr class="border-b border-border hover:bg-muted/50 transition-colors">
                  <td class="py-3 px-4 font-medium text-foreground">\${alert.symbol || 'N/A'}</td>
                  <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                 <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.7 0.1 163);' : 'color: oklch(0.637 0.237 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
+                                   <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
                  <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
                  <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
                  <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
@@ -281,7 +281,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-600 py-12">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-12">Error loading alerts</td></tr>';
           }
         }
 
