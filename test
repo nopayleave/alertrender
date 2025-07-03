@@ -1,7 +1,9 @@
 //@version=5
-indicator("test", overlay=false)
+indicator("Enhanced Trading Alert System", overlay=false)
 
-// ==== Data Types ====
+// ================================
+// DATA TYPES
+// ================================
 type bar
     float o = na
     float h = na
@@ -17,7 +19,9 @@ type stoch
     float k = na
     float d = na
 
-// ==== Helper Methods ====
+// ================================
+// HELPER METHODS
+// ================================
 method src(bar b, simple string src) =>
     float x = switch src
         'open'  => b.o
@@ -29,131 +33,193 @@ method src(bar b, simple string src) =>
         'hlc3'  => math.avg(b.h, b.l, b.c)
         'ohlc4' => math.avg(b.o, b.h, b.l, b.c)
         'hlcc4' => math.avg(b.h, b.l, b.c, b.c)
+        => na
     x
 
 method ha(bar b, simple bool p = true) =>
     var bar x = bar.new()
-    x.c      := b.src('ohlc4')
-    x        := bar.new(
+    x.c := b.src('ohlc4')
+    x := bar.new(
          na(x.o[1]) ? b.src('oc2') : nz(x.src('oc2')[1]),
          math.max(b.h, math.max(x.o, x.c)),
          math.min(b.l, math.min(x.o, x.c)),
          x.c)
     p ? x : b
 
-// ==== stmc MACD method ====
+// ================================
+// STMC MACD METHOD
+// ================================
 method stmc(bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
-    float x = (ta.ema(b.src(src), flen) - ta.ema(b.src(src), slen)) / (ta.ema(b.h - b.l , slen)) * 100
-    bar   z = bar.new(x[1], math.max(x, x[1]), math.min(x, x[1]), x).ha()
+    float x = (ta.ema(b.src(src), flen) - ta.ema(b.src(src), slen)) / ta.ema(b.h - b.l, slen) * 100
+    bar z = bar.new(x[1], math.max(x, x[1]), math.min(x, x[1]), x).ha()
     float s = ta.ema(z.src(sig), clen)
     osc.new(z, s, z.c - s)
 
-// ==== Dual Timeframe Stochastic (單 timeframe 版) ====
-method calcStoch(simple int len, simple int smooth, simple int dlen, simple string timeframe) =>
-    [stochHigh, stochLow, stochClose] = request.security(syminfo.tickerid, timeframe, [high, low, close])
+// ================================
+// STOCHASTIC CALCULATION
+// ================================
+method calcStoch(simple int len, simple int smooth, simple int dlen, simple string tf) =>
+    [stochHigh, stochLow, stochClose] = request.security(syminfo.tickerid, tf, [high, low, close], lookahead=barmerge.lookahead_off)
     float highest_high = ta.highest(stochHigh, len)
     float lowest_low = ta.lowest(stochLow, len)
-    float rawK = 100 * (stochClose - lowest_low) / (highest_high - lowest_low)
+    float rawK = na(highest_high - lowest_low) or (highest_high - lowest_low) == 0 ? 0 : 100 * (stochClose - lowest_low) / (highest_high - lowest_low)
     float smoothK = ta.sma(rawK, smooth)
     float d = ta.sma(smoothK, dlen)
     [smoothK, d]
 
-// ==== MACD Settings ====
+// ================================
+// INPUT SETTINGS
+// ================================
+// MACD Settings
 groupMacd = "MACD Settings"
-src  = input.string('close', "Source", ['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
-fast = input.int(10, "Fast Length", group=groupMacd)
-slow = input.int(75, "Slow Length", group=groupMacd)
-sigs = input.string('close', "Signal Source", ['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
-sigl = input.int(20, "Signal Length", group=groupMacd)
+src = input.string('close', "Source", options=['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
+fast = input.int(10, "Fast Length", minval=1, group=groupMacd)
+slow = input.int(75, "Slow Length", minval=1, group=groupMacd)
+sigs = input.string('close', "Signal Source", options=['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
+sigl = input.int(20, "Signal Length", minval=1, group=groupMacd)
 
-// ==== Stochastic Settings (預設 10, 10, 10) ====
+// Stochastic Settings
 groupStoch = "Stochastic Settings"
-stochLen    = input.int(10, "Stoch K Length", group=groupStoch)
-stochSmooth = input.int(10, "K Smoothing", group=groupStoch)
-stochDLen   = input.int(10, "D Length", group=groupStoch)
-stochTf     = input.timeframe("", "Timeframe (empty=現時)", group=groupStoch)
-showStoch   = input.bool(true, "Show Stoch", group=groupStoch)
+stochLen = input.int(10, "Stoch K Length", minval=1, group=groupStoch)
+stochSmooth = input.int(10, "K Smoothing", minval=1, group=groupStoch)
+stochDLen = input.int(10, "D Length", minval=1, group=groupStoch)
+stochTf = input.timeframe("", "Timeframe (empty=current)", group=groupStoch)
+showStoch = input.bool(true, "Show Stochastic", group=groupStoch)
 
-// ==== Calculate stmc MACD ====
+// Webhook Settings
+groupWebhook = "Webhook Settings"
+enableWebhook = input.bool(true, "Enable Webhook Alerts", group=groupWebhook)
+alertFreq = input.string("Once Per Bar Close", "Alert Frequency", options=["Once Per Bar Close", "Once Per Bar"], group=groupWebhook)
+
+// ================================
+// CALCULATIONS
+// ================================
+// Initialize bar and calculate MACD
 bar b = bar.new(open, high, low, close)
 osc o = b.stmc(src, fast, slow, sigs, sigl)
 
-// ==== Calculate Stochastic ====
-[stochK, stochD] = calcStoch(stochLen, stochSmooth, stochDLen, stochTf)
+// Calculate Stochastic
+useCurrentTf = stochTf == "" ? timeframe.period : stochTf
+[stochK, stochD] = calcStoch(stochLen, stochSmooth, stochDLen, useCurrentTf)
 stochObj = stoch.new(stochK, stochD)
 
-// ==== Price Change/Volume (Fixed: Previous Trading Day) ====
+// ================================
+// PRICE & VOLUME DATA
+// ================================
+// Fixed: Previous trading day close
 prevDayClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
-priceChange = ((close - prevDayClose) / prevDayClose) * 100
-priceChangeCandle = ((close - open) / open) * 100
+priceChange = na(prevDayClose) ? 0 : ((close - prevDayClose) / prevDayClose) * 100
+priceChangeCandle = na(open) ? 0 : ((close - open) / open) * 100
 volume1D = request.security(syminfo.tickerid, "1D", volume, lookahead=barmerge.lookahead_off)
 
-// ==== 強制 fetch 2分鐘 timeframe 特定時刻 signal ====
-get2mSignalAt(hourTarget, minTarget) =>
+// ================================
+// MULTI-TIMEFRAME SIGNALS
+// ================================
+// Helper function for specific time signals
+get2mSignalAt(int hourTarget, int minTarget) =>
     request.security(syminfo.tickerid, "2", hour == hourTarget and minute == minTarget ? o.s : na, lookahead=barmerge.lookahead_on)
 
-// 2m timeframe 09:30、09:32、10:00 bar close 嘅 MACD signal
+// Key timing signals
 signal930 = get2mSignalAt(9, 30)
 signal932 = get2mSignalAt(9, 32)
 signal1000 = get2mSignalAt(10, 0)
 
-// ==== 其他 Multi-timeframe signals（本 timeframe）====
+// Store signals for session
 var float stored930Signal = na
 var float stored932Signal = na
 var float stored1000Signal = na
 
-if hour == 9 and minute == 30
+// Update stored signals at specific times
+if hour == 9 and minute == 30 and na(stored930Signal[1])
     stored930Signal := o.s
-if hour == 9 and minute == 32
+if hour == 9 and minute == 32 and na(stored932Signal[1])
     stored932Signal := o.s
-if hour == 10 and minute == 0
+if hour == 10 and minute == 0 and na(stored1000Signal[1])
     stored1000Signal := o.s
 
-openSignal = stored932Signal - stored930Signal
-openTrendSignal = stored1000Signal - stored932Signal
+// Calculate derived signals
+openSignal = na(stored932Signal) or na(stored930Signal) ? na : stored932Signal - stored930Signal
+openTrendSignal = na(stored1000Signal) or na(stored932Signal) ? na : stored1000Signal - stored932Signal
 
+// Multi-timeframe signals
 s30sSignal = request.security(syminfo.tickerid, "30S", o.s[1], lookahead=barmerge.lookahead_off)
 s1mSignal = request.security(syminfo.tickerid, "1", o.s[1], lookahead=barmerge.lookahead_off)
 s5mSignal = request.security(syminfo.tickerid, "5", o.s[1], lookahead=barmerge.lookahead_off)
 
+// Stochastic 2m difference
 currentSK = request.security(syminfo.tickerid, "2", stochObj.k, lookahead=barmerge.lookahead_off)
 previousSK = request.security(syminfo.tickerid, "2", stochObj.k[1], lookahead=barmerge.lookahead_off)
-sk2mDiff = currentSK - previousSK
+sk2mDiff = na(currentSK) or na(previousSK) ? na : currentSK - previousSK
 
-// ==== Plots ====
-plot(o.s, "stmc Signal Line", color=color.fuchsia, linewidth=2)
-plot(o.h, "stmc Histogram", color=o.h >= 0 ? color.green : color.red, style=plot.style_columns, linewidth=2)
-plot(o.b.c, "stmc HA MACD Value", color=color.blue, linewidth=1)
+// ================================
+// PLOTTING
+// ================================
+// MACD plots
+plot(o.s, "STMC Signal Line", color=color.fuchsia, linewidth=2)
+plot(o.h, "STMC Histogram", color=o.h >= 0 ? color.green : color.red, style=plot.style_columns, linewidth=2)
+plot(o.b.c, "STMC HA MACD Value", color=color.blue, linewidth=1)
+
+// Stochastic plots
 plot(showStoch ? stochObj.k : na, "Stoch %K", color=color.white, linewidth=1)
 plot(showStoch ? stochObj.d : na, "Stoch %D", color=color.orange, linewidth=1)
 
-// ==== Webhook Alert ====
-if ta.change(time)
+// Reference lines
+hline(0, "Zero Line", color=color.gray, linestyle=hline.style_dashed)
+hline(250, "Overbought", color=color.red, linestyle=hline.style_dotted)
+hline(-250, "Oversold", color=color.green, linestyle=hline.style_dotted)
+
+// ================================
+// WEBHOOK ALERTS
+// ================================
+if enableWebhook and ta.change(time)
     humanTime = str.tostring(year) + '-' + str.tostring(month, "00") + '-' + str.tostring(dayofmonth, "00") + ' ' + str.tostring(hour, "00") + ':' + str.tostring(minute, "00") + ':' + str.tostring(second, "00") + ' ET'
-    webhookMsg =
-      '{' +
-      '"symbol":"' + syminfo.ticker + '",' +
-      '"timeframe":"' + timeframe.period + '",' +
-      '"time":"' + str.tostring(time) + '",' +
-      '"humanTime":"' + humanTime + '",' +
-      '"price":' + str.tostring(close) + ',' +
-      '"open":' + str.tostring(open) + ',' +
-      '"high":' + str.tostring(high) + ',' +
-      '"low":' + str.tostring(low) + ',' +
-      '"close":' + str.tostring(close) + ',' +
-      '"priceChange":' + str.tostring(priceChange, "#.##") + ',' +
-      '"priceChangeCandle":' + str.tostring(priceChangeCandle, "#.##") + ',' +
-      '"volume":' + str.tostring(volume1D) + ',' +
-      '"macdSignal":' + str.tostring(o.s, "#.####") + ',' +
-      '"stochK":' + str.tostring(stochObj.k, "#.##") + ',' +
-      '"signal930":' + str.tostring(signal930, "#.####") + ',' +
-      '"signal932":' + str.tostring(signal932, "#.####") + ',' +
-      '"signal1000":' + str.tostring(signal1000, "#.####") + ',' +
-      '"openSignal":' + str.tostring(openSignal, "#.####") + ',' +
-      '"openTrendSignal":' + str.tostring(openTrendSignal, "#.####") + ',' +
-      '"s30sSignal":' + str.tostring(s30sSignal, "#.####") + ',' +
-      '"s1mSignal":' + str.tostring(s1mSignal, "#.####") + ',' +
-      '"s5mSignal":' + str.tostring(s5mSignal, "#.####") + ',' +
-      '"sk2mDiff":' + str.tostring(sk2mDiff, "#.####") +
-      '}'
-    alert(webhookMsg, alert.freq_once_per_bar_close)
+    
+    webhookMsg = '{' + 
+                 '"symbol":"' + syminfo.ticker + '",' + 
+                 '"timeframe":"' + timeframe.period + '",' + 
+                 '"time":"' + str.tostring(time) + '",' + 
+                 '"humanTime":"' + humanTime + '",' + 
+                 '"price":' + str.tostring(close, "#.##") + ',' + 
+                 '"open":' + str.tostring(open, "#.##") + ',' + 
+                 '"high":' + str.tostring(high, "#.##") + ',' + 
+                 '"low":' + str.tostring(low, "#.##") + ',' + 
+                 '"priceChange":' + str.tostring(priceChange, "#.##") + ',' + 
+                 '"priceChangeCandle":' + str.tostring(priceChangeCandle, "#.##") + ',' + 
+                 '"volume":' + str.tostring(volume1D, "#") + ',' + 
+                 '"macdSignal":' + str.tostring(o.s, "#.####") + ',' + 
+                 '"stochK":' + str.tostring(stochObj.k, "#.##") + ',' + 
+                 '"signal930":' + str.tostring(nz(signal930, 0), "#.####") + ',' + 
+                 '"signal932":' + str.tostring(nz(signal932, 0), "#.####") + ',' + 
+                 '"signal1000":' + str.tostring(nz(signal1000, 0), "#.####") + ',' + 
+                 '"openSignal":' + str.tostring(nz(openSignal, 0), "#.####") + ',' + 
+                 '"openTrendSignal":' + str.tostring(nz(openTrendSignal, 0), "#.####") + ',' + 
+                 '"s30sSignal":' + str.tostring(nz(s30sSignal, 0), "#.####") + ',' + 
+                 '"s1mSignal":' + str.tostring(nz(s1mSignal, 0), "#.####") + ',' + 
+                 '"s5mSignal":' + str.tostring(nz(s5mSignal, 0), "#.####") + ',' + 
+                 '"sk2mDiff":' + str.tostring(nz(sk2mDiff, 0), "#.####") + 
+                 '}'
+    
+    alertFrequency = alertFreq == "Once Per Bar Close" ? alert.freq_once_per_bar_close : alert.freq_once_per_bar
+    alert(webhookMsg, alertFrequency)
+
+// ================================
+// TABLE DISPLAY (Optional)
+// ================================
+if barstate.islast and showStoch
+    var table infoTable = table.new(position.top_right, 2, 8, bgcolor=color.white, border_width=1)
+    table.cell(infoTable, 0, 0, "Indicator", text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 1, 0, "Value", text_color=color.black, text_size=size.small)
+    table.cell(infoTable, 0, 1, "MACD Signal", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 1, str.tostring(o.s, "#.##"), text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 2, "Stoch K", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 2, str.tostring(stochObj.k, "#.##"), text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 3, "Stoch D", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 3, str.tostring(stochObj.d, "#.##"), text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 4, "Price Change", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 4, str.tostring(priceChange, "#.##") + "%", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 5, "Volume", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 5, str.tostring(volume1D, "#.##"), text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 6, "Open Signal", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 6, str.tostring(nz(openSignal, 0), "#.##"), text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 0, 7, "Trend Signal", text_color=color.black, text_size=size.tiny)
+    table.cell(infoTable, 1, 7, str.tostring(nz(openTrendSignal, 0), "#.##"), text_color=color.black, text_size=size.tiny)
