@@ -326,7 +326,7 @@ app.get('/', (req, res) => {
 
         function formatSignal(signal) {
           if (!signal && signal !== 0) return 'N/A';
-          return parseFloat(signal).toFixed(2);
+          return Math.round(parseFloat(signal)).toString();
         }
 
         async function fetchAlerts() {
