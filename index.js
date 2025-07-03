@@ -4,12 +4,15 @@ import cors from 'cors'
 const app = express()
 const port = process.env.PORT || 3000
 
-app.use(cors())
+// Middleware，支援 TradingView 預設 Content-Type
+app.use(express.text({ type: 'text/plain' }))
 app.use(express.json())
+app.use(cors())
 
-// 方案一：object of arrays，每隻股票+timeframe一組歷史
-let alerts = {} // { 'AAPL_30S': [ {}, {}, ... ], 'TSLA_30S': [ {}, ... ] }
+// ========== Data Storage ==========
+let alerts = {} // { 'AAPL_30S': [ {}, {}, ... ], ... }
 
+// ========== Helper Functions ==========
 function isCurrentlyPremarket() {
   const now = new Date()
   const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }))
@@ -33,88 +36,41 @@ function isCurrentlyPast10AM() {
   return hour >= 10
 }
 
-// Helper（可以複用你舊 code）
 function parseOrNull(value) {
   if (value === undefined || value === null || value === 'na' || value === 'NA' || value === 'NaN') return null
   const num = parseFloat(value)
   return isNaN(num) ? null : num
 }
 
-// Dummy data for dev
+// ========== Dummy Data for Dev Mode ==========
 if (process.env.NODE_ENV !== 'production') {
   const currentlyPremarket = isCurrentlyPremarket()
   const currentlyPast10AM = isCurrentlyPast10AM()
-  
-  // Initialize with some test data
   alerts['AAPL_30S'] = [
     {
       symbol: "AAPL", timeframe: "30S", time: Date.now().toString(),
       humanTime: "2024-07-04 09:30:00 ET",
-      price: 189.45, priceChange: 1.24, volume: 45678901, 
-      signal930: 12.50, signal932: 27.75, signal1000: 103.55,
+      price: 189.45, priceChange: 1.24, volume: 45678901,
+      signal930: 12.5, signal932: 27.75, signal1000: 103.55,
       openSignal: 15.25, openTrendSignal: 75.80,
-      s30sSignal: 125.45, s1mSignal: -75.20, s5mSignal: 275.60, sk2mDiff: 3.4,
+      s30sSignal: 125.45, s1mSignal: -75.2, s5mSignal: 275.6, sk2mDiff: 3.4,
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
     }
   ]
-  
   alerts['TSLA_30S'] = [
     {
       symbol: "TSLA", timeframe: "30S", time: Date.now().toString(),
       humanTime: "2024-07-04 09:30:00 ET",
       price: 238.77, priceChange: -2.15, volume: 32145678,
-      signal930: -15.20, signal932: -40.65, signal1000: -125.95,
-      openSignal: -25.45, openTrendSignal: -85.30,
-      s30sSignal: -125.80, s1mSignal: 45.60, s5mSignal: -275.90, sk2mDiff: -2.8,
+      signal930: -15.2, signal932: -40.65, signal1000: -125.95,
+      openSignal: -25.45, openTrendSignal: -85.3,
+      s30sSignal: -125.8, s1mSignal: 45.6, s5mSignal: -275.9, sk2mDiff: -2.8,
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
     }
   ]
 }
 
-// -------- Helper Functions (Format/Color) --------
-function formatVolume(volume) {
-  if (!volume || volume === 'N/A') return 'N/A'
-  const num = parseFloat(volume)
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-  if (num >= 1000) return (num / 1000).toFixed(0) + 'K'
-  return Math.round(num).toString()
-}
-
-function formatOpenValue(value, isPremarket) {
-  if (isPremarket) return 'Not Yet'
-  if (value === undefined || value === null || value === '' || value === 'N/A') return 'N/A'
-  const val = parseFloat(value)
-  if (isNaN(val)) return 'N/A'
-  return val > 0 ? 'Up' : 'Down'
-}
-
-function formatOpenTrendValue(value, isPast10AM) {
-  if (!isPast10AM) return 'Not Yet'
-  if (value === undefined || value === null || value === '' || value === 'N/A') return 'N/A'
-  const val = parseFloat(value)
-  if (isNaN(val)) return 'N/A'
-  return val > 0 ? 'Up' : 'Down'
-}
-
-function formatTrend(sk2mDiff) {
-  if (sk2mDiff === undefined || sk2mDiff === null || sk2mDiff === '' || sk2mDiff === 'N/A') return 'N/A'
-  const val = parseFloat(sk2mDiff)
-  if (isNaN(val)) return 'N/A'
-  return val > 0 ? 'Up' : 'Down'
-}
-
-function getSignalBgColor(value) {
-  if (value === undefined || value === null || value === '' || value === 'N/A') return 'bg-white text-black'
-  const val = parseFloat(value)
-  if (isNaN(val)) return 'bg-white text-black'
-  if (val >= 250) return 'bg-green-600 text-white'
-  if (val >= 50) return 'bg-green-300 text-black'
-  if (val >= -50) return 'bg-white text-black'
-  if (val >= -250) return 'bg-red-300 text-black'
-  return 'bg-red-600 text-white'
-}
-
-// --------- HTML (front-end) ---------
+// ========== FRONTEND HTML ==========
 function getMainHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -238,23 +194,15 @@ function updateMarketStatus() {
   const minute = etTime.getMinutes()
   const dayOfWeek = etTime.getDay()
   const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
-  
+
   let status = ''
-  
-  if (!isWeekday) {
-    status = 'Market Closed (Weekend)'
-  } else if (hour < 4) {
-    status = 'Market Closed (Overnight)'
-  } else if (hour < 9 || (hour === 9 && minute < 30)) {
-    status = 'Premarket Hours (4:00 AM - 9:30 AM ET)'
-  } else if (hour < 16) {
-    status = 'Market Open (9:30 AM - 4:00 PM ET)'
-  } else if (hour < 20) {
-    status = 'After Hours (4:00 PM - 8:00 PM ET)'
-  } else {
-    status = 'Market Closed (Evening)'
-  }
-  
+  if (!isWeekday) status = 'Market Closed (Weekend)'
+  else if (hour < 4) status = 'Market Closed (Overnight)'
+  else if (hour < 9 || (hour === 9 && minute < 30)) status = 'Premarket Hours (4:00 AM - 9:30 AM ET)'
+  else if (hour < 16) status = 'Market Open (9:30 AM - 4:00 PM ET)'
+  else if (hour < 20) status = 'After Hours (4:00 PM - 8:00 PM ET)'
+  else status = 'Market Closed (Evening)'
+
   const statusElement = document.getElementById('marketStatus')
   if (statusElement) {
     statusElement.textContent = \`Market Status: \${status} | ET: \${etTime.toLocaleTimeString()}\`
@@ -268,30 +216,21 @@ function sortTable(column) {
     sortState.column = column
     sortState.direction = 'asc'
   }
-  
   updateSortIndicators()
   fetchAlerts()
 }
 
 function updateSortIndicators() {
   const allSortSpans = document.querySelectorAll('[id$="-sort"]')
-  allSortSpans.forEach(span => {
-    span.textContent = ''
-  })
-  
+  allSortSpans.forEach(span => { span.textContent = '' })
   const sortSpan = document.getElementById(\`\${sortState.column}-sort\`)
-  if (sortSpan) {
-    sortSpan.textContent = sortState.direction === 'asc' ? '↑' : '↓'
-  }
+  if (sortSpan) sortSpan.textContent = sortState.direction === 'asc' ? '↑' : '↓'
 }
 
 function applySorting(alerts) {
   const { column, direction } = sortState
-  
   return alerts.sort((a, b) => {
-    let aVal = a[column]
-    let bVal = b[column]
-    
+    let aVal = a[column], bVal = b[column]
     if (['price', 'priceChange', 'volume', 'openSignal', 'openTrendSignal', 
          's30sSignal', 's1mSignal', 's5mSignal', 'sk2mDiff'].includes(column)) {
       aVal = parseFloat(aVal) || 0
@@ -300,36 +239,22 @@ function applySorting(alerts) {
       aVal = (aVal || '').toString().toLowerCase()
       bVal = (bVal || '').toString().toLowerCase()
     }
-    
-    if (direction === 'asc') {
-      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-    } else {
-      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
-    }
+    if (direction === 'asc') return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+    else return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
   })
 }
 
 async function deleteAlert(symbol, timeframe) {
-  if (!confirm(\`Are you sure you want to delete the alert for \${symbol}?\`)) {
-    return
-  }
-  
+  if (!confirm(\`Are you sure you want to delete the alert for \${symbol}?\`)) return
   try {
     const response = await fetch('/delete-alert', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ symbol, timeframe })
     })
-    
-    if (response.ok) {
-      fetchAlerts()
-    } else {
-      alert('Failed to delete alert')
-    }
+    if (response.ok) fetchAlerts()
+    else alert('Failed to delete alert')
   } catch (error) {
-    console.error('Error deleting alert:', error)
     alert('Error deleting alert')
   }
 }
@@ -338,11 +263,8 @@ async function fetchAlerts() {
   try {
     const response = await fetch('/alerts')
     const data = await response.json()
-  
     const sortedData = applySorting([...data])
-    
     updateMarketStatus()
-  
     const lastUpdate = document.getElementById('lastUpdate')
     if (data.length > 0) {
       const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
@@ -350,29 +272,21 @@ async function fetchAlerts() {
     } else {
       lastUpdate.textContent = 'Last updated: Never'
     }
-  
     const alertsTable = document.getElementById('alertsTable')
     const noAlerts = document.getElementById('noAlerts')
-  
     if (sortedData.length === 0) {
       alertsTable.innerHTML = ''
       noAlerts.classList.remove('hidden')
     } else {
       noAlerts.classList.add('hidden')
       alertsTable.innerHTML = sortedData.map(alert => {
-        const wasUpdated = previousData.length > 0 && 
-            previousData.find(prev => prev.symbol === alert.symbol && prev.time !== alert.time)
-        const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
-        
         return \`
-          <tr class="hover:bg-gray-700 transition-colors duration-200 \${updateHighlight}">
+          <tr class="hover:bg-gray-700 transition-colors duration-200">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <span class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer"
                       onclick="window.open('https://www.tradingview.com/chart/?symbol=\${alert.symbol}', '_blank')"
-                      title="Click to open TradingView">
-                  \${alert.symbol}
-                </span>
+                      title="Click to open TradingView">\${alert.symbol}</span>
               </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
@@ -411,15 +325,12 @@ async function fetchAlerts() {
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <button onclick="deleteAlert('\${alert.symbol}', '\${alert.timeframe || ''}')" 
                       class="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-30 p-2 rounded transition-all duration-200" 
-                      title="Delete this alert">
-                🗑️
-              </button>
+                      title="Delete this alert">🗑️</button>
             </td>
           </tr>
         \`
       }).join('')
     }
-    
     previousData = [...data]
   } catch (error) {
     console.error('Error fetching alerts:', error)
@@ -438,28 +349,28 @@ initializePage()
 </html>`
 }
 
-// --------- Express routes ---------
+// ========== BACKEND ROUTES ==========
+// Dashboard
 app.get('/', (req, res) => {
   res.send(getMainHTML())
 })
 
-// API: TradingView webhook - 新的歷史追蹤實現
+// TradingView Webhook（支援 text/plain + JSON）
 app.post('/webhook', (req, res) => {
-  const rawAlert = req.body
+  let rawAlert = req.body
+  if (typeof rawAlert === 'string') {
+    try { rawAlert = JSON.parse(rawAlert) } catch (e) { return res.status(400).json({ error: 'Invalid JSON' }) }
+  }
   const symbol = rawAlert.symbol
   const timeframe = rawAlert.timeframe || '30S'
   if (!symbol) return res.status(400).json({ error: 'Symbol is required' })
-
   const key = `${symbol}_${timeframe}`
   if (!alerts[key]) alerts[key] = []
-
-  // parse signals
   const signal930 = parseOrNull(rawAlert.signal930)
   const signal932 = parseOrNull(rawAlert.signal932)
   const signal1000 = parseOrNull(rawAlert.signal1000)
   const openSignal = (signal932 !== null && signal930 !== null) ? signal932 - signal930 : null
   const openTrendSignal = (signal1000 !== null && signal932 !== null) ? signal1000 - signal932 : null
-
   const alert = {
     symbol,
     timeframe,
@@ -478,20 +389,15 @@ app.post('/webhook', (req, res) => {
     s5mSignal: parseOrNull(rawAlert.s5mSignal),
     sk2mDiff: parseOrNull(rawAlert.sk2mDiff)
   }
-  
   alerts[key].push(alert)
-
-  // 限定每組最多保存3000條（按需調整）
   if (alerts[key].length > 3000) alerts[key].shift()
   res.sendStatus(200)
 })
 
-// API: 最新 alerts（每隻股票 timeframe 各1條，顯示用）
+// 最新每隻股票一條（UI）
 app.get('/alerts', (req, res) => {
   const premarket = isCurrentlyPremarket()
   const past10am = isCurrentlyPast10AM()
-  
-  // 只出最新一條
   const latestAlerts = Object.values(alerts)
     .map(arr => arr[arr.length - 1])
     .filter(Boolean)
@@ -501,35 +407,32 @@ app.get('/alerts', (req, res) => {
       isPremarket: premarket,
       isPast10AM: past10am
     }))
-  
   res.json(latestAlerts)
 })
 
-// API: 全部歷史 alerts（trace back 用）
+// 所有歷史
 app.get('/alerts/history', (req, res) => {
-  // 返 object，前端可以 filter
   res.json(alerts)
 })
 
-// API: 指定symbol、timeframe歷史（可選）
+// 指定symbol、timeframe歷史
 app.get('/alerts/history/:symbol/:timeframe', (req, res) => {
   const key = `${req.params.symbol}_${req.params.timeframe}`
   if (!alerts[key]) return res.status(404).json({ error: 'No history found' })
   res.json(alerts[key])
 })
 
-// 其他：刪除單條、清空
+// 刪除單條symbol
 app.post('/delete-alert', (req, res) => {
   const { symbol, timeframe } = req.body
   if (!symbol) return res.status(400).json({ error: 'Symbol is required' })
   const key = `${symbol}_${timeframe || '30S'}`
   const before = alerts[key]?.length || 0
-  if (alerts[key]) {
-    alerts[key] = []
-  }
+  if (alerts[key]) alerts[key] = []
   res.json({ message: `Deleted ${before} alerts for ${key}` })
 })
 
+// 清空全部
 app.delete('/alerts', (req, res) => {
   const count = Object.values(alerts).reduce((a, b) => a + b.length, 0)
   alerts = {}
@@ -542,6 +445,7 @@ app.get('/clear-alerts', (req, res) => {
   res.json({ message: `Cleared ${count} alerts`, previousCount: count, currentCount: 0 })
 })
 
+// ========== START ==========
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
 })
