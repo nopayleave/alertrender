@@ -1,5 +1,5 @@
 //@version=5
-indicator("Webhook Alert (stmc MACD + Stoch, Advanced Webhook)", overlay=false)
+indicator("Pure)", overlay=false)
 
 // ==== Data Types ====
 type bar
@@ -89,13 +89,32 @@ prevDayClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barm
 priceChange = ((close - prevDayClose) / prevDayClose) * 100
 // Price change within current candle (unchanged)
 priceChangeCandle = ((close - open) / open) * 100
-volume1D = volume
+// Get cumulative daily volume
+volume1D = request.security(syminfo.tickerid, "1D", volume, lookahead=barmerge.lookahead_off)
 
 // ==== Multi-timeframe signals ====
-signal930 = request.security(syminfo.tickerid, "2", o.s[1], lookahead=barmerge.lookahead_off)  // 9:30am signal value
-signal932 = request.security(syminfo.tickerid, "2", o.s, lookahead=barmerge.lookahead_off)    // 9:32am signal value
-openSignal = signal932 - signal930  // 9:32am signal minus 9:30am signal
-openTrendSignal = request.security(syminfo.tickerid, "2", ta.sma(o.s, 15), lookahead=barmerge.lookahead_off)  // 10:00-09:32am trend
+// Store fixed signal values at specific times
+var float stored930Signal = na
+var float stored932Signal = na
+var float stored1000Signal = na
+
+// Capture 9:30 AM signal (when hour is 9 and minute is 30)
+if hour == 9 and minute == 30
+    stored930Signal := o.s
+
+// Capture 9:32 AM signal (when hour is 9 and minute is 32)
+if hour == 9 and minute == 32
+    stored932Signal := o.s
+
+// Capture 10:00 AM signal (when hour is 10 and minute is 0)
+if hour == 10 and minute == 0
+    stored1000Signal := o.s
+
+// Calculate Open: 9:32 AM signal minus 9:30 AM signal (fixed values)
+openSignal = stored932Signal - stored930Signal
+
+// Calculate Open Trend: 10:00 AM signal minus 9:32 AM signal (fixed values)
+openTrendSignal = stored1000Signal - stored932Signal
 s30sSignal = request.security(syminfo.tickerid, "30S", o.s, lookahead=barmerge.lookahead_off)  // 30s signal
 s1mSignal = request.security(syminfo.tickerid, "1", o.s, lookahead=barmerge.lookahead_off)   // 1m signal
 s5mSignal = request.security(syminfo.tickerid, "5", o.s, lookahead=barmerge.lookahead_off)   // 5m signal
@@ -128,6 +147,9 @@ if ta.change(time)
                  '"volume": ' + str.tostring(volume1D) + ',' + 
                  '"macdSignal": ' + str.tostring(o.s, "#.####") + ',' + 
                  '"stochK": ' + str.tostring(stochObj.k, "#.##") + ',' + 
+                 '"signal930": ' + str.tostring(stored930Signal, "#.####") + ',' + 
+                 '"signal932": ' + str.tostring(stored932Signal, "#.####") + ',' + 
+                 '"signal1000": ' + str.tostring(stored1000Signal, "#.####") + ',' + 
                  '"openSignal": ' + str.tostring(openSignal, "#.####") + ',' + 
                  '"openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + ',' + 
                  '"s30sSignal": ' + str.tostring(s30sSignal, "#.####") + ',' + 

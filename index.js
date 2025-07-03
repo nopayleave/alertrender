@@ -38,14 +38,18 @@ if (process.env.NODE_ENV !== 'production') {
   alerts = [
     {
       symbol: "AAPL", timeframe: "30S", time: Date.now().toString(), price: 189.45,
-      priceChange: 1.24, volume: 45678901, openSignal: 15.25, openTrendSignal: 75.80,
+      priceChange: 1.24, volume: 45678901, 
+      signal930: 12.50, signal932: 27.75, signal1000: 103.55,
+      openSignal: 15.25, openTrendSignal: 75.80,
       s30sSignal: 125.45, s1mSignal: -75.20, s5mSignal: 275.60, sk2mDiff: 3.4,
       // priceChange = daily change vs previous trading day close
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
     },
     {
       symbol: "TSLA", timeframe: "30S", time: Date.now().toString(), price: 238.77,
-      priceChange: -2.15, volume: 32145678, openSignal: -25.45, openTrendSignal: -85.30,
+      priceChange: -2.15, volume: 32145678,
+      signal930: -15.20, signal932: -40.65, signal1000: -125.95,
+      openSignal: -25.45, openTrendSignal: -85.30,
       s30sSignal: -125.80, s1mSignal: 45.60, s5mSignal: -275.90, sk2mDiff: -2.8,
       // priceChange = daily change vs previous trading day close
       isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
@@ -441,6 +445,16 @@ app.get('/', (req, res) => {
 app.post('/webhook', (req, res) => {
   const rawAlert = req.body
   if (!rawAlert.symbol || rawAlert.symbol.trim() === '') return res.status(400).json({ error: 'Symbol is required' })
+  
+  // Extract individual signal values from webhook
+  const signal930 = parseFloat(rawAlert.signal930) || 0
+  const signal932 = parseFloat(rawAlert.signal932) || 0
+  const signal1000 = parseFloat(rawAlert.signal1000) || 0
+  
+  // Calculate openSignal and openTrendSignal in Node.js
+  const openSignal = signal932 - signal930
+  const openTrendSignal = signal1000 - signal932
+  
   const alert = {
     symbol: rawAlert.symbol,
     timeframe: rawAlert.timeframe || "30S",
@@ -448,8 +462,11 @@ app.post('/webhook', (req, res) => {
     price: parseFloat(rawAlert.price) || 0,
     priceChange: parseFloat(rawAlert.priceChange) || 0, // Daily change vs previous trading day close
     volume: rawAlert.volume || 0,
-    openSignal: parseFloat(rawAlert.openSignal) || 0,
-    openTrendSignal: parseFloat(rawAlert.openTrendSignal) || 0,
+    signal930: signal930,
+    signal932: signal932,
+    signal1000: signal1000,
+    openSignal: openSignal,
+    openTrendSignal: openTrendSignal,
     s30sSignal: parseFloat(rawAlert.s30sSignal) || 0,
     s1mSignal: parseFloat(rawAlert.s1mSignal) || 0,
     s5mSignal: parseFloat(rawAlert.s5mSignal) || 0,
