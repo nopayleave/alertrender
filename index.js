@@ -13,11 +13,16 @@ let alerts = []
 // Webhook for TradingView POST
 app.post('/webhook', (req, res) => {
   const alert = req.body
-  // 可加資料驗證/防重覆
+  
+  // Remove any existing alerts for the same symbol
+  alerts = alerts.filter(existingAlert => existingAlert.symbol !== alert.symbol)
+  
+  // Add the new alert to the front
   alerts.unshift({
     ...alert,
     receivedAt: Date.now()
   })
+  
   // 只保留最新 500 筆
   alerts = alerts.slice(0, 500)
   res.json({ status: 'ok' })
