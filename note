@@ -1,0 +1,178 @@
+{
+  "symbol": "TICKER_NAME",           // syminfo.ticker
+  "signal": "Bullish|Bearish",       // Based on haValue > 0 
+  "condition": "MACD Bullish Cross|MACD Bearish Cross", // Based on haValue > 0
+  "price": 123.45,                   // close price
+  "timeframe": "1|2|5|30S|etc",      // timeframe.period
+  "time": "1751536444020"            // str.tostring(time)
+}
+
+{
+  "open": 99.25,                     // open price
+  "high": 101.75,                    // high price  
+  "low": 98.80,                      // low price
+  "close": 100.50,                   // close price (duplicate of price)
+  "priceChange": 1.25,               // ((close - close[1]) / close[1]) * 100
+  "priceChangeCandle": 0.75,         // ((close - open) / open) * 100
+  "volume": 1000000                  // volume
+}
+
+{
+  "haValue": 75.5,                   // o.b.c (Heikin-Ashi close value)
+  "macdSignal": 68.2,                // o.s (MACD Signal line)
+  "stochK": 72.3,                    // s.k (Primary Stochastic %K)
+  "stochD": 68.1,                    // s.d (Primary Stochastic %D)
+  "stochRefD": 65.4                  // sRef.d (Reference Stochastic %D)
+}
+
+{
+  "lastCrossType": "Crossover|Crossunder|None",     // Most recent cross type
+  "lastPattern": "Higher Low|Lower High|Standard|Initial", // Cross pattern
+  "lastCrossValue": 72.3,            // K value at last cross
+  "openCrossType": "Crossover|Crossunder",          // Market open cross type
+  "openStochK": 68.5,                // Stoch K at market open cross
+  "openStochD": 65.2,                // Stoch D at market open cross
+  "openStochRefD": 62.1,             // Stoch RefD at market open cross
+  "isPremarket": false               // Whether open cross was premarket
+}
+
+{
+  "stoch": "↑>50>rD | H>50>S>50",    // Formatted stochastic with HA status
+  "haVsMacdStatus": "H>50>S>50"      // HA vs MACD status (e.g., H>50>S>50)
+}
+
+{
+  "openSignal": 45.2,                // signal932 - signal930 (9:32am - 9:30am)
+  "openTrendSignal": 67.8,           // 15-period SMA of o.s on 2-minute
+  "s30sSignal": 123.4,               // 30-second timeframe o.s
+  "s1mSignal": 156.7,                // 1-minute timeframe o.s
+  "s5mSignal": 189.2,                // 5-minute timeframe o.s
+  "sk2mDiff": 3.4                    // Current 2m stochK - previous 2m stochK
+}
+
+
+
+{
+  // === BASIC IDENTIFICATION ===
+  "symbol": "AAPL",                    // Stock/crypto ticker symbol (syminfo.ticker)
+  "timeframe": "1",                    // Chart timeframe: "1", "2", "5", "30S", etc. (timeframe.period)
+  "time": "1751536444020",            // Pine Script timestamp when alert was generated (str.tostring(time))
+
+  // === PRICE DATA (OHLC) ===
+  "price": 189.45,                    // Current close price (close) - primary price reference
+  "open": 187.12,                     // Opening price of current candle (open)
+  "high": 190.25,                     // Highest price of current candle (high)
+  "low": 186.80,                      // Lowest price of current candle (low)
+  "close": 189.45,                    // Closing price of current candle (close) - duplicate of price
+  "priceChange": 2.34,                // Price change % from previous candle: ((close - close[1]) / close[1]) * 100
+  "priceChangeCandle": 1.24,          // Price change % within current candle: ((close - open) / open) * 100
+  "volume": 45678901,                 // Trading volume for current candle (volume)
+
+  // === TECHNICAL INDICATORS ===
+  "macdSignal": 98.5,                 // MACD Signal line value (o.s) - momentum indicator
+  "stochK": 72.3,                     // Primary Stochastic %K (s.k) - momentum oscillator
+
+
+  // === MULTI-TIMEFRAME SIGNALS ===
+  "openSignal": 45.2,                 // Market open signal difference: 9:32am macd signal - 9:30am macd signal on 2-minute chart
+  "openTrendSignal": 67.8,            // Market open trend: 10am MACD signal -  9:32am macd signal on 2-minute chart
+  "s30sSignal": 123.4,                // MACD signal value from 30-second timeframe
+  "s1mSignal": 156.7,                 // MACD signal value from 1-minute timeframe
+  "s5mSignal": 189.2,                 // MACD signal value from 5-minute timeframe
+  "sk2mDiff": 3.4                     // Stochastic K momentum: current Primary Stochastic %K - last Primary Stochastic %K  on 2-minute chart
+}
+
+
+
+
+
+
+    // Create comprehensive webhook message with all specified fields
+    webhookMsg = '{"symbol": "' + syminfo.ticker + 
+                 '", "timeframe": "' + timeframe.period + 
+                 '", "time": "' + str.tostring(time) + 
+                 '", "price": ' + str.tostring(close) + 
+                 ', "open": ' + str.tostring(open) + 
+                 ', "high": ' + str.tostring(high) + 
+                 ', "low": ' + str.tostring(low) + 
+                 ', "close": ' + str.tostring(close) + 
+                 ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
+                 ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
+                 ', "volume": ' + str.tostring(volume) + 
+                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
+                 ', "stochK": ' + str.tostring(s.k, "#.##") + 
+                 ', "openSignal": ' + str.tostring(openSignal, "#.####") + 
+                 ', "openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + 
+                 ', "s30sSignal": ' + str.tostring(s30sSignal, "#.####") + 
+                 ', "s1mSignal": ' + str.tostring(s1mSignal, "#.####") + 
+                 ', "s5mSignal": ' + str.tostring(s5mSignal, "#.####") + 
+                 ', "sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + '"}'
+    
+
+
+
+
+
+
+
+
+
+                 ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
+                 ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
+                 ', "volume": ' + str.tostring(volume1D) + 
+                 ', "haValue": ' + str.tostring(o.b.c, "#.####") + 
+                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
+                 ', "stochK": ' + str.tostring(s.k, "#.##") + 
+                 ', "stochD": ' + str.tostring(s.d, "#.##") + 
+                 ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + 
+                 ', "lastCrossType": "' + lastCrossType + 
+                 '", "lastPattern": "' + lastPattern + 
+                 '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + 
+                 ', "openCrossType": "' + openCrossType + 
+                 '", "openStochK": ' + str.tostring(openStochK, "#.##") + 
+                 ', "openStochD": ' + str.tostring(openStochD, "#.##") + 
+                 ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + 
+                 ', "isPremarket": ' + str.tostring(isPremarket) + 
+                 ', "stoch": "' + stochStatus + 
+                 '", "haVsMacdStatus": "' + haVsMacdStatus + 
+                 '", "openSignal": ' + str.tostring(openSignal, "#.####") + 
+                 ', "openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + 
+                 ', "s30sSignal": ' + str.tostring(s30sSignal, "#.####") + 
+                 ', "s1mSignal": ' + str.tostring(s1mSignal, "#.####") + 
+                 ', "s5mSignal": ' + str.tostring(s5mSignal, "#.####") + 
+                 ', "sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + 
+
+
+
+
+
+
+                 {
+  // === BASIC IDENTIFICATION ===
+  "symbol": "AAPL",                    // Stock/crypto ticker symbol (syminfo.ticker)
+  "timeframe": "1",                    // Chart timeframe: "1", "2", "5", "30S", etc. (timeframe.period)
+  "time": "1751536444020",            // Pine Script timestamp when alert was generated (str.tostring(time))
+
+  // === PRICE DATA (OHLC) ===
+  "price": 189.45,                    // Current close price (close) - primary price reference
+  "open": 187.12,                     // Opening price of current candle (open)
+  "high": 190.25,                     // Highest price of current candle (high)
+  "low": 186.80,                      // Lowest price of current candle (low)
+  "close": 189.45,                    // Closing price of current candle (close) - duplicate of price
+  "priceChange": 2.34,                // Price change % from previous candle: ((close - close[1]) / close[1]) * 100
+  "priceChangeCandle": 1.24,          // Price change % within current candle: ((close - open) / open) * 100
+  "volume": 45678901,                 // Trading volume for current candle (volume)
+
+  // === TECHNICAL INDICATORS ===
+  "macdSignal": 98.5,                 // MACD Signal line value (o.s) - momentum indicator
+  "stochK": 72.3,                     // Primary Stochastic %K (s.k) - momentum oscillator
+
+
+  // === MULTI-TIMEFRAME SIGNALS ===
+  "openSignal": 45.2,                 // Market open signal difference: 9:32am macd signal - 9:30am macd signal on 2-minute chart
+  "openTrendSignal": 67.8,            // Market open trend: 10am MACD signal -  9:32am macd signal on 2-minute chart
+  "s30sSignal": 123.4,                // MACD signal value from 30-second timeframe
+  "s1mSignal": 156.7,                 // MACD signal value from 1-minute timeframe
+  "s5mSignal": 189.2,                 // MACD signal value from 5-minute timeframe
+  "sk2mDiff": 3.4                     // Stochastic K momentum: current Primary Stochastic %K - last Primary Stochastic %K  on 2-minute chart
+}

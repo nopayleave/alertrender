@@ -10,8 +10,46 @@ app.use(express.json())
 // Store alerts in memory
 let alerts = []
 
+// Helper function to check if it's currently premarket hours (Eastern Time)
+function isCurrentlyPremarket() {
+  const now = new Date()
+  const etTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+  const hour = etTime.getHours()
+  const minute = etTime.getMinutes()
+  
+  // Check if it's a weekday (Monday = 1, Sunday = 0)
+  const dayOfWeek = etTime.getDay()
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+  
+  if (!isWeekday) return false
+  
+  // Premarket: 4:00 AM - 9:30 AM ET
+  const afterPreStart = hour >= 4
+  const beforeMarketOpen = hour < 9 || (hour === 9 && minute < 30)
+  
+  return afterPreStart && beforeMarketOpen
+}
+
+// Helper function to check if it's past 10:00 AM ET
+function isCurrentlyPast10AM() {
+  const now = new Date()
+  const etTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+  const hour = etTime.getHours()
+  
+  // Check if it's a weekday
+  const dayOfWeek = etTime.getDay()
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+  
+  if (!isWeekday) return false
+  
+  return hour >= 10
+}
+
 // Add dummy data for development
 if (process.env.NODE_ENV !== 'production') {
+  const currentlyPremarket = isCurrentlyPremarket()
+  const currentlyPast10AM = isCurrentlyPast10AM()
+  
   alerts = [
     {
       symbol: "AAPL",
@@ -25,7 +63,10 @@ if (process.env.NODE_ENV !== 'production') {
       s30sSignal: 125.45,
       s1mSignal: -75.20,
       s5mSignal: 275.60,
-      sk2mDiff: 3.4
+      sk2mDiff: 3.4,
+      isPremarket: currentlyPremarket,
+      isMarketHours: !currentlyPremarket,
+      isPast10AM: currentlyPast10AM
     },
     {
       symbol: "TSLA",
@@ -39,7 +80,10 @@ if (process.env.NODE_ENV !== 'production') {
       s30sSignal: -125.80,
       s1mSignal: 45.60,
       s5mSignal: -275.90,
-      sk2mDiff: -2.8
+      sk2mDiff: -2.8,
+      isPremarket: currentlyPremarket,
+      isMarketHours: !currentlyPremarket,
+      isPast10AM: currentlyPast10AM
     },
     {
       symbol: "NVDA",
@@ -53,10 +97,14 @@ if (process.env.NODE_ENV !== 'production') {
       s30sSignal: 85.20,
       s1mSignal: 165.80,
       s5mSignal: 25.30,
-      sk2mDiff: 5.2
+      sk2mDiff: 5.2,
+      isPremarket: currentlyPremarket,
+      isMarketHours: !currentlyPremarket,
+      isPast10AM: currentlyPast10AM
     }
   ]
   console.log('🧪 Development mode: Loaded dummy data')
+  console.log(`📊 Current market status: Premarket=${currentlyPremarket}, Past10AM=${currentlyPast10AM}`)
 }
 
 // Helper functions for formatting
@@ -71,7 +119,20 @@ function formatVolume(volume) {
   return Math.round(num).toString()
 }
 
-function formatOpenValue(value) {
+function formatOpenValue(value, isPremarket) {
+  // If it's premarket hours, show "Not Yet"
+  if (isPremarket) return 'Not Yet'
+  
+  if (!value || value === 'N/A') return 'N/A'
+  const val = parseFloat(value)
+  if (isNaN(val)) return 'N/A'
+  return val > 0 ? 'Up' : 'Down'
+}
+
+function formatOpenTrendValue(value, isPast10AM) {
+  // If it's not past 10AM yet, show "Not Yet"
+  if (!isPast10AM) return 'Not Yet'
+  
   if (!value || value === 'N/A') return 'N/A'
   const val = parseFloat(value)
   if (isNaN(val)) return 'N/A'
@@ -121,6 +182,7 @@ function getMainHTML() {
   <div class="text-center mb-6">
     <h1 class="text-3xl font-bold mb-2">Trading Dashboard</h1>
     <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
+    <p id="marketStatus" class="text-xs text-gray-500 mt-1">Market Status: Loading...</p>
   </div>
   
   <div class="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
@@ -171,7 +233,20 @@ function formatVolume(volume) {
   return Math.round(num).toString()
 }
 
-function formatOpenValue(value) {
+function formatOpenValue(value, isPremarket) {
+  // If it's premarket hours, show "Not Yet"
+  if (isPremarket) return 'Not Yet'
+  
+  if (!value || value === 'N/A') return 'N/A'
+  const val = parseFloat(value)
+  if (isNaN(val)) return 'N/A'
+  return val > 0 ? 'Up' : 'Down'
+}
+
+function formatOpenTrendValue(value, isPast10AM) {
+  // If it's not past 10AM yet, show "Not Yet"
+  if (!isPast10AM) return 'Not Yet'
+  
   if (!value || value === 'N/A') return 'N/A'
   const val = parseFloat(value)
   if (isNaN(val)) return 'N/A'
@@ -196,6 +271,36 @@ function getSignalBgColor(value) {
   if (val >= -50) return 'bg-white text-black'          // White
   if (val >= -250) return 'bg-red-300 text-black'       // Light red
   return 'bg-red-600 text-white'                        // Deep red
+}
+
+function updateMarketStatus() {
+  const now = new Date()
+  const etTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}))
+  const hour = etTime.getHours()
+  const minute = etTime.getMinutes()
+  const dayOfWeek = etTime.getDay()
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
+  
+  let status = ''
+  
+  if (!isWeekday) {
+    status = 'Market Closed (Weekend)'
+  } else if (hour < 4) {
+    status = 'Market Closed (Overnight)'
+  } else if (hour < 9 || (hour === 9 && minute < 30)) {
+    status = 'Premarket Hours (4:00 AM - 9:30 AM ET)'
+  } else if (hour < 16) {
+    status = 'Market Open (9:30 AM - 4:00 PM ET)'
+  } else if (hour < 20) {
+    status = 'After Hours (4:00 PM - 8:00 PM ET)'
+  } else {
+    status = 'Market Closed (Evening)'
+  }
+  
+  const statusElement = document.getElementById('marketStatus')
+  if (statusElement) {
+    statusElement.textContent = \`Market Status: \${status} | ET: \${etTime.toLocaleTimeString()}\`
+  }
 }
 
 async function deleteAlert(symbol, timeframe) {
@@ -227,6 +332,9 @@ async function fetchAlerts() {
   try {
     const response = await fetch('/alerts')
     const data = await response.json()
+    
+    // Update market status
+    updateMarketStatus()
     
     // Update last update time
     const lastUpdate = document.getElementById('lastUpdate')
@@ -273,10 +381,10 @@ async function fetchAlerts() {
               \${formatVolume(alert.volume)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
-              \${formatOpenValue(alert.openSignal)}
+              \${formatOpenValue(alert.openSignal, alert.isPremarket)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
-              \${formatOpenValue(alert.openTrendSignal)}
+              \${formatOpenTrendValue(alert.openTrendSignal, alert.isPast10AM)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s30sSignal)}">
@@ -351,8 +459,17 @@ app.post('/webhook', (req, res) => {
     s30sSignal: parseFloat(rawAlert.s30sSignal) || 0,
     s1mSignal: parseFloat(rawAlert.s1mSignal) || 0,
     s5mSignal: parseFloat(rawAlert.s5mSignal) || 0,
-    sk2mDiff: parseFloat(rawAlert.sk2mDiff) || 0
+    sk2mDiff: parseFloat(rawAlert.sk2mDiff) || 0,
+    isPremarket: rawAlert.isPremarket === 'true' || rawAlert.isPremarket === true,
+    isMarketHours: rawAlert.isMarketHours === 'true' || rawAlert.isMarketHours === true,
+    isPast10AM: rawAlert.isPast10AM === 'true' || rawAlert.isPast10AM === true
   }
+  
+  console.log('📊 Market Status:', {
+    premarket: alert.isPremarket,
+    marketHours: alert.isMarketHours,
+    past10AM: alert.isPast10AM
+  })
   
   // Find existing alert for the same symbol and timeframe
   const existingIndex = alerts.findIndex(existing => 
