@@ -143,9 +143,9 @@ app.get('/', (req, res) => {
                   <td>$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                   <td class="\${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
                   <td>\${formatVolume(alert.volume)}</td>
-                  <td>\${formatSignal(alert.s30sSignal)}</td>
-                  <td>\${formatSignal(alert.s1mSignal)}</td>
-                  <td>\${formatSignal(alert.s5mSignal)}</td>
+                  <td>\${formatSignal(alert.s30_signal)}</td>
+                  <td>\${formatSignal(alert.s1m_signal)}</td>
+                  <td>\${formatSignal(alert.s5m_signal)}</td>
                 </tr>
               \`;
             }).join('');
