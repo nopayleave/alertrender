@@ -254,18 +254,110 @@ app.get('/alerts', (req, res) => {
                 lastUpdate.textContent = \`Last updated: \${new Date().toLocaleTimeString()}\`;
                 
             } catch (err) {
-                error.textContent = \`Error: \${err.message}\`;
+                // If API fails, show sample data
+                stockData = [
+                    {
+                        symbol: "AAPL",
+                        price: 150.25,
+                        priceChange: 2.35,
+                        volume: 1250000,
+                        "2m930signal": 45,
+                        "2m932signal": 52,
+                        "2m1000signal": 48,
+                        s30sSignal: 75,
+                        s1mSignal: -100,
+                        s5mSignal: 300,
+                        sk2mDiff: 5.2
+                    },
+                    {
+                        symbol: "TSLA",
+                        price: 248.90,
+                        priceChange: -1.85,
+                        volume: 890000,
+                        "2m930signal": 30,
+                        "2m932signal": 25,
+                        "2m1000signal": 35,
+                        s30sSignal: -180,
+                        s1mSignal: 120,
+                        s5mSignal: -300,
+                        sk2mDiff: -2.1
+                    },
+                    {
+                        symbol: "MSFT",
+                        price: 338.15,
+                        priceChange: 0.95,
+                        volume: 675000,
+                        "2m930signal": 60,
+                        "2m932signal": 58,
+                        "2m1000signal": 65,
+                        s30sSignal: 280,
+                        s1mSignal: 45,
+                        s5mSignal: -75,
+                        sk2mDiff: 1.8
+                    }
+                ];
+                
+                renderTable();
+                error.textContent = \`Using sample data. API Error: \${err.message}\`;
                 error.classList.remove('hidden');
+                lastUpdate.textContent = \`Sample data loaded: \${new Date().toLocaleTimeString()}\`;
                 console.error('Error fetching data:', err);
             }
             
             loading.classList.add('hidden');
         }
 
+        // Initialize with sample data immediately
+        stockData = [
+            {
+                symbol: "AAPL",
+                price: 150.25,
+                priceChange: 2.35,
+                volume: 1250000,
+                "2m930signal": 45,
+                "2m932signal": 52,
+                "2m1000signal": 48,
+                s30sSignal: 75,
+                s1mSignal: -100,
+                s5mSignal: 300,
+                sk2mDiff: 5.2
+            },
+            {
+                symbol: "TSLA",
+                price: 248.90,
+                priceChange: -1.85,
+                volume: 890000,
+                "2m930signal": 30,
+                "2m932signal": 25,
+                "2m1000signal": 35,
+                s30sSignal: -180,
+                s1mSignal: 120,
+                s5mSignal: -300,
+                sk2mDiff: -2.1
+            },
+            {
+                symbol: "MSFT",
+                price: 338.15,
+                priceChange: 0.95,
+                volume: 675000,
+                "2m930signal": 60,
+                "2m932signal": 58,
+                "2m1000signal": 65,
+                s30sSignal: 280,
+                s1mSignal: 45,
+                s5mSignal: -75,
+                sk2mDiff: 1.8
+            }
+        ];
+        
+        // Show table immediately
+        renderTable();
+        document.getElementById('lastUpdate').textContent = 'Sample data loaded: ' + new Date().toLocaleTimeString();
+        
         // Auto-refresh every 30 seconds
         setInterval(fetchData, 30000);
         
-        // Initial load
+        // Initial fetch (will update sample data if API is available)
         fetchData();
     </script>
 </body>
