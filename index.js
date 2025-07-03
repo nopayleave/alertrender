@@ -86,6 +86,14 @@ app.get('/api/webhook-data', (req, res) => {
   res.json(stockData);
 });
 
+// Reset endpoint to clear all stock data
+app.delete('/api/reset-data', (req, res) => {
+  console.log('Resetting stock data...');
+  stockData = sampleData; // Reset to sample data
+  console.log('Stock data reset to sample data');
+  res.json({ message: 'Stock data has been reset to sample data', count: stockData.length });
+});
+
 // Serve the main dashboard
 app.get('/', (req, res) => {
   res.redirect('/alerts');
@@ -114,9 +122,14 @@ app.get('/alerts', (req, res) => {
     <div class="container mx-auto px-4 py-8">
         <div class="mb-6 flex justify-between items-center">
             <h1 class="text-3xl font-bold text-gray-800">Stock Alert Dashboard</h1>
-            <button onclick="fetchData()" class="refresh-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
-                🔄 Refresh Data
-            </button>
+            <div class="flex gap-3">
+                <button onclick="resetData()" class="refresh-btn bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold">
+                    🗑️ Reset Data
+                </button>
+                <button onclick="fetchData()" class="refresh-btn bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
+                    🔄 Refresh Data
+                </button>
+            </div>
         </div>
         
         <div id="loading" class="text-center py-8 hidden">
@@ -251,7 +264,7 @@ app.get('/alerts', (req, res) => {
                 stockData = Array.isArray(data) ? data : [data];
                 
                 renderTable();
-                lastUpdate.textContent = \`Last updated: \${new Date().toLocaleTimeString()}\`;
+                lastUpdate.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
                 
             } catch (err) {
                 // If API fails, show sample data
@@ -298,10 +311,64 @@ app.get('/alerts', (req, res) => {
                 ];
                 
                 renderTable();
-                error.textContent = \`Using sample data. API Error: \${err.message}\`;
+                error.textContent = 'Using sample data. API Error: ' + err.message;
                 error.classList.remove('hidden');
-                lastUpdate.textContent = \`Sample data loaded: \${new Date().toLocaleTimeString()}\`;
+                lastUpdate.textContent = 'Sample data loaded: ' + new Date().toLocaleTimeString();
                 console.error('Error fetching data:', err);
+            }
+            
+            loading.classList.add('hidden');
+        }
+
+        // Reset data function
+        async function resetData() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const lastUpdate = document.getElementById('lastUpdate');
+            
+            if (!confirm('Are you sure you want to reset all stock data? This will clear all webhook data and reset to sample data.')) {
+                return;
+            }
+            
+            loading.classList.remove('hidden');
+            error.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/reset-data', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to reset data');
+                }
+                
+                const result = await response.json();
+                
+                // Refresh the display
+                await fetchData();
+                
+                lastUpdate.textContent = 'Data reset successful: ' + new Date().toLocaleTimeString();
+                
+                // Show success message
+                error.textContent = result.message + ' (' + result.count + ' sample records)';
+                error.classList.remove('hidden');
+                error.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
+                error.classList.add('bg-green-100', 'border-green-400', 'text-green-700');
+                
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    error.classList.add('hidden');
+                    error.classList.remove('bg-green-100', 'border-green-400', 'text-green-700');
+                    error.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+                }, 3000);
+                
+            } catch (err) {
+                error.textContent = 'Reset failed: ' + err.message;
+                error.classList.remove('hidden');
+                console.error('Error resetting data:', err);
             }
             
             loading.classList.add('hidden');
