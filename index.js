@@ -115,13 +115,13 @@ app.get('/', (req, res) => {
 
         function getSignalLabelClass(signal) {
           const value = parseFloat(signal);
-          if (isNaN(value)) return 'badge badge-ghost';
+          if (isNaN(value)) return 'badge badge-ghost text-black';
           
-          if (value >= 250) return 'badge bg-green-800 text-white'; // Deep green
-          if (value >= 50) return 'badge bg-green-300 text-black'; // Light green
-          if (value >= -50) return 'badge bg-gray-300 text-black'; // Light grey
-          if (value >= -250) return 'badge bg-red-300 text-black'; // Light red
-          return 'badge bg-red-800 text-white'; // Deep red
+          if (value >= 250) return 'badge bg-green-200 text-black'; // Light green
+          if (value >= 50) return 'badge bg-green-100 text-black'; // Very light green
+          if (value >= -50) return 'badge bg-gray-200 text-black'; // Light grey
+          if (value >= -250) return 'badge bg-red-100 text-black'; // Very light red
+          return 'badge bg-red-200 text-black'; // Light red
         }
 
         function formatSignal(signal) {
