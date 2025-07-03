@@ -37,51 +37,78 @@ app.get('/alerts', (req, res) => {
 app.get('/', (req, res) => {
   res.send(`
     <!DOCTYPE html>
-    <html lang="en" data-theme="dim">
+    <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
-      <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
       <script>
         tailwind.config = {
           theme: {
-            extend: {}
+            extend: {
+              colors: {
+                border: "hsl(214.3 31.8% 91.4%)",
+                input: "hsl(214.3 31.8% 91.4%)",
+                ring: "hsl(222.2 84% 4.9%)",
+                background: "hsl(0 0% 100%)",
+                foreground: "hsl(222.2 84% 4.9%)",
+                primary: {
+                  DEFAULT: "hsl(222.2 47.4% 11.2%)",
+                  foreground: "hsl(210 40% 98%)",
+                },
+                secondary: {
+                  DEFAULT: "hsl(210 40% 96%)",
+                  foreground: "hsl(222.2 84% 4.9%)",
+                },
+                muted: {
+                  DEFAULT: "hsl(210 40% 96%)",
+                  foreground: "hsl(215.4 16.3% 46.9%)",
+                },
+                accent: {
+                  DEFAULT: "hsl(210 40% 96%)",
+                  foreground: "hsl(222.2 84% 4.9%)",
+                },
+                card: {
+                  DEFAULT: "hsl(0 0% 100%)",
+                  foreground: "hsl(222.2 84% 4.9%)",
+                },
+              }
+            }
           }
         }
       </script>
     </head>
-    <body class="bg-base-100 min-h-screen">
-      <div class="container mx-auto p-6">
-        <div class="mb-6">
-          <h1 class="text-3xl font-bold text-base-content mb-2">Trading Alert Dashboard</h1>
-          <p class="text-base-content/70">Real-time alert data with color-coded price changes</p>
+    <body class="bg-background min-h-screen">
+      <div class="container mx-auto p-6 max-w-7xl">
+        <div class="mb-8">
+          <h1 class="text-4xl font-bold text-foreground mb-2">Trading Alert Dashboard</h1>
+          <p class="text-muted-foreground text-lg">Real-time alert data with color-coded price changes</p>
         </div>
         
-        <div class="card bg-base-200 shadow-xl">
-          <div class="card-body">
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="card-title text-base-content">Active Alerts</h2>
-              <div class="badge badge-primary" id="alertCount">0 alerts</div>
+        <div class="bg-card rounded-lg border border-border shadow-sm">
+          <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-2xl font-semibold text-card-foreground">Active Alerts</h2>
+              <div class="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm font-medium" id="alertCount">0 alerts</div>
             </div>
             
             <div class="overflow-x-auto">
-              <table class="table table-zebra w-full">
+              <table class="w-full">
                 <thead>
-                  <tr>
-                    <th class="text-base-content">Ticker</th>
-                    <th class="text-base-content">Price</th>
-                    <th class="text-base-content">Chg%</th>
-                    <th class="text-base-content">Vol</th>
-                    <th class="text-base-content">S30s</th>
-                    <th class="text-base-content">S1m</th>
-                    <th class="text-base-content">S5m</th>
+                  <tr class="border-b border-border">
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Ticker</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Price</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Chg%</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Vol</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S30s</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S1m</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S5m</th>
                   </tr>
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="7" class="text-center text-base-content/50 py-8">Loading alerts...</td>
+                    <td colspan="7" class="text-center text-muted-foreground py-12">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -90,7 +117,7 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="mt-6 text-center">
-          <div class="text-sm text-base-content/70" id="lastUpdate">Last updated: Never</div>
+          <div class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</div>
         </div>
       </div>
 
@@ -102,26 +129,15 @@ app.get('/', (req, res) => {
           return vol.toString();
         }
 
-        function getBackgroundColor(changePercent) {
-          const change = parseFloat(changePercent);
-          if (isNaN(change)) return '';
-          
-          if (change >= 250) return 'bg-green-800'; // Deep green
-          if (change >= 50) return 'bg-green-300'; // Light green
-          if (change >= -50) return 'bg-base-100'; // White/default
-          if (change >= -250) return 'bg-red-300'; // Light red
-          return 'bg-red-800'; // Deep red
-        }
-
         function getSignalLabelClass(signal) {
           const value = parseFloat(signal);
-          if (isNaN(value)) return 'badge badge-ghost text-black rounded py-1';
+          if (isNaN(value)) return 'px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded';
           
-          if (value >= 250) return 'badge bg-green-200 text-black rounded py-1'; // Light green
-          if (value >= 50) return 'badge bg-green-100 text-black rounded py-1'; // Very light green
-          if (value >= -50) return 'badge bg-gray-200 text-black rounded py-1'; // Light grey
-          if (value >= -250) return 'badge bg-red-100 text-black rounded py-1'; // Very light red
-          return 'badge bg-red-200 text-black rounded py-1'; // Light red
+          if (value >= 250) return 'px-2 py-1 text-xs font-medium bg-green-200 text-green-800 rounded'; // Light green
+          if (value >= 50) return 'px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded'; // Very light green
+          if (value >= -50) return 'px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded'; // Light grey
+          if (value >= -250) return 'px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded'; // Very light red
+          return 'px-2 py-1 text-xs font-medium bg-red-200 text-red-800 rounded'; // Light red
         }
 
         function formatSignal(signal) {
@@ -139,7 +155,7 @@ app.get('/', (req, res) => {
             const lastUpdate = document.getElementById('lastUpdate');
             
             if (data.length === 0) {
-              alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-base-content/50 py-8">No alerts available</td></tr>';
+              alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No alerts available</td></tr>';
               alertCount.textContent = '0 alerts';
               lastUpdate.textContent = 'Last updated: Never';
               return;
@@ -152,26 +168,25 @@ app.get('/', (req, res) => {
             lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString();
             
             alertTable.innerHTML = data.map(alert => {
-              const bgColor = getBackgroundColor(alert.priceChange);
               const s30sClass = getSignalLabelClass(alert.s30_signal);
               const s1mClass = getSignalLabelClass(alert.s1m_signal);
               const s5mClass = getSignalLabelClass(alert.s5m_signal);
               return \`
-                <tr class="\${bgColor}">
-                  <td class="font-bold">\${alert.symbol || 'N/A'}</td>
-                  <td>$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                  <td class="\${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
-                  <td>\${formatVolume(alert.volume)}</td>
-                  <td><span class="\${s30sClass}">\${formatSignal(alert.s30_signal)}</span></td>
-                  <td><span class="\${s1mClass}">\${formatSignal(alert.s1m_signal)}</span></td>
-                  <td><span class="\${s5mClass}">\${formatSignal(alert.s5m_signal)}</span></td>
+                <tr class="border-b border-border hover:bg-muted/50 transition-colors">
+                  <td class="py-3 px-4 font-semibold text-foreground">\${alert.symbol || 'N/A'}</td>
+                  <td class="py-3 px-4 font-mono text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
+                  <td class="py-3 px-4 font-mono \${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
+                  <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+                  <td class="py-3 px-4"><span class="\${s30sClass}">\${formatSignal(alert.s30_signal)}</span></td>
+                  <td class="py-3 px-4"><span class="\${s1mClass}">\${formatSignal(alert.s1m_signal)}</span></td>
+                  <td class="py-3 px-4"><span class="\${s5mClass}">\${formatSignal(alert.s5m_signal)}</span></td>
                 </tr>
               \`;
             }).join('');
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-error py-8">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-600 py-12">Error loading alerts</td></tr>';
           }
         }
 
