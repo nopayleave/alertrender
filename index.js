@@ -86,9 +86,26 @@ app.get('/', (req, res) => {
           <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
         </div>
         
-        <div class="bg-card rounded-lg border border-border shadow-sm">
+                <div class="bg-card rounded-lg border border-border shadow-sm">
           <div class="p-6">
-
+            <div class="mb-4 relative">
+              <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search tickers..." 
+                class="w-full px-3 py-2 pr-10 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                onkeyup="filterAlerts()"
+                oninput="toggleClearButton()"
+              />
+              <button 
+                id="clearButton" 
+                onclick="clearSearch()" 
+                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            </div>
             
             <div class="overflow-x-auto">
               <table class="w-full">
@@ -137,6 +154,9 @@ app.get('/', (req, res) => {
         let currentSortField = null;
         let currentSortDirection = 'asc';
         let alertsData = [];
+        
+        // Search state
+        let searchTerm = '';
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
@@ -214,6 +234,29 @@ app.get('/', (req, res) => {
           }
         }
 
+                                 function filterAlerts() {
+          searchTerm = document.getElementById('searchInput').value.toLowerCase();
+          renderTable();
+        }
+
+        function toggleClearButton() {
+          const searchInput = document.getElementById('searchInput');
+          const clearButton = document.getElementById('clearButton');
+          
+          if (searchInput.value.length > 0) {
+            clearButton.classList.remove('hidden');
+          } else {
+            clearButton.classList.add('hidden');
+          }
+        }
+
+        function clearSearch() {
+          document.getElementById('searchInput').value = '';
+          searchTerm = '';
+          document.getElementById('clearButton').classList.add('hidden');
+          renderTable();
+        }
+
         function renderTable() {
           const alertTable = document.getElementById('alertTable');
           const lastUpdate = document.getElementById('lastUpdate');
@@ -224,10 +267,17 @@ app.get('/', (req, res) => {
             return;
           }
 
-          // Sort data
-          const sortedData = [...alertsData];
+          // Filter data by search term
+          let filteredData = alertsData;
+          if (searchTerm) {
+            filteredData = alertsData.filter(alert => 
+              (alert.symbol || '').toLowerCase().includes(searchTerm)
+            );
+          }
+
+          // Sort filtered data
           if (currentSortField) {
-            sortedData.sort((a, b) => {
+            filteredData.sort((a, b) => {
               const aVal = getSortValue(a, currentSortField);
               const bVal = getSortValue(b, currentSortField);
               
@@ -241,11 +291,19 @@ app.get('/', (req, res) => {
             });
           }
 
-          // Update last update time
-          const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
-          lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString();
+          // Show "No results" message if search returns no results
+          if (filteredData.length === 0 && searchTerm) {
+            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No tickers match your search</td></tr>';
+            lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
+            return;
+          }
 
-          alertTable.innerHTML = sortedData.map(alert => {
+          // Update last update time with search info
+          const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
+          const searchInfo = searchTerm ? \` • Showing \${filteredData.length} of \${alertsData.length}\` : '';
+          lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo;
+
+          alertTable.innerHTML = filteredData.map(alert => {
             const s30sClass = getSignalLabelClass(alert.s30_signal);
             const s1mClass = getSignalLabelClass(alert.s1m_signal);
             const s5mClass = getSignalLabelClass(alert.s5m_signal);
@@ -253,15 +311,15 @@ app.get('/', (req, res) => {
             const s1mStyle = getSignalBgColor(alert.s1m_signal);
             const s5mStyle = getSignalBgColor(alert.s5m_signal);
             return \`
-                             <tr class="border-b border-border hover:bg-muted/50 transition-colors">
-                 <td class="py-3 px-4 font-medium text-foreground">\${alert.symbol || 'N/A'}</td>
-                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                                   <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
-                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
-                 <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
-                 <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
-                 <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
-               </tr>
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors">
+                <td class="py-3 px-4 font-medium text-foreground">\${alert.symbol || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
+                <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+                <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
+                <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
+                <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
+              </tr>
             \`;
           }).join('');
         }
