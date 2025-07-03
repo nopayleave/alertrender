@@ -88,6 +88,11 @@ app.get('/api/webhook-data', (req, res) => {
 
 // Serve the main dashboard
 app.get('/', (req, res) => {
+  res.redirect('/alerts');
+});
+
+// Serve the alerts dashboard
+app.get('/alerts', (req, res) => {
   const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
@@ -274,6 +279,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Dashboard: http://localhost:${PORT}`);
+  console.log(`Dashboard: http://localhost:${PORT}/alerts`);
   console.log(`Webhook endpoint: http://localhost:${PORT}/webhook`);
+  console.log(`API endpoint: http://localhost:${PORT}/api/webhook-data`);
 });
