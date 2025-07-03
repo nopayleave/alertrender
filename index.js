@@ -18,7 +18,12 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       signal: "Bullish",
       condition: "MACD Bullish Cross",
       price: 189.45,
+      open: 187.12,
+      high: 190.25,
+      low: 186.80,
+      close: 189.45,
       priceChange: 2.34,
+      priceChangeCandle: 1.24,
       volume: 45678901,
       haValue: 125.7,
       macdSignal: 98.5,
@@ -35,6 +40,12 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       isPremarket: false,
       stoch: "↑>0>D",
       haVsMacdStatus: "H>50>S",
+      openSignal: 45.2,
+      openTrendSignal: 67.8,
+      s30sSignal: 123.4,
+      s1mSignal: 156.7,
+      s5mSignal: 189.2,
+      sk2mDiff: 3.4,
       time: Date.now().toString()
     },
     {
@@ -42,7 +53,12 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       signal: "Bearish", 
       condition: "Support Broken",
       price: 238.77,
+      open: 241.50,
+      high: 242.10,
+      low: 237.90,
+      close: 238.77,
       priceChange: -1.89,
+      priceChangeCandle: -1.13,
       volume: 32145678,
       haValue: -89.2,
       macdSignal: -45.8,
@@ -59,6 +75,12 @@ if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== undefined)
       isPremarket: false,
       stoch: "↓<0<D",
       haVsMacdStatus: "H<-50<S",
+      openSignal: -23.4,
+      openTrendSignal: -45.6,
+      s30sSignal: -156.7,
+      s1mSignal: -89.3,
+      s5mSignal: -234.5,
+      sk2mDiff: -2.8,
       time: Date.now().toString()
     },
     {
@@ -277,45 +299,7 @@ function formatEnhancedStoch(row) {
   return stochPart + ' | ' + decodedStatus;
 }
 
-// Detect Super Alert conditions based on Pine Script logic
-function detectSuperAlert(row) {
-  const haValue = parseFloat(row.haValue) || 0;
-  const lastPattern = row.lastPattern || '';
-  const stochK = parseFloat(row.stochK) || 0;
-  const stochRefD = parseFloat(row.stochRefD) || 0;
-  const signal = row.signal || '';
-  
-  // Check for dual timeframe stochastic alignment
-  const bullishSignal = row.lastCrossType === 'Crossover' && stochK > stochRefD;
-  const bearishSignal = row.lastCrossType === 'Crossunder' && stochK < stochRefD;
-  
-  // Check for divergence conditions (simplified detection)
-  const haUp = haValue > 0;
-  const haDown = haValue < 0;
-  const haVsMacd = row.haVsMacdStatus || '';
-  const haUpHistDown = haUp && haVsMacd.includes('<S'); // HA bullish but below MACD signal
-  const haDownHistUp = haDown && haVsMacd.includes('>S'); // HA bearish but above MACD signal
-  
-  // Super Bullish: HA > 0 + Dual Stoch alignment + Higher Low + No bearish divergence
-  if (signal === 'Bullish' && bullishSignal && lastPattern === 'Higher Low' && !haUpHistDown) {
-    return { type: 'SUPER_BULL', icon: '🚀', label: 'Super Bull' };
-  }
-  
-  // Super Bearish: HA < 0 + Dual Stoch alignment + Lower High + No bullish divergence
-  if (signal === 'Bearish' && bearishSignal && lastPattern === 'Lower High' && !haDownHistUp) {
-    return { type: 'SUPER_BEAR', icon: '🔻', label: 'Super Bear' };
-  }
-  
-  // Divergence warnings
-  if (haUpHistDown) {
-    return { type: 'DIVERGENCE_WARNING', icon: '⚠️', label: 'HA ↑ MACD ↓' };
-  }
-  if (haDownHistUp) {
-    return { type: 'DIVERGENCE_WARNING', icon: '⚠️', label: 'HA ↓ MACD ↑' };
-  }
-  
-  return null;
-}
+
 
 // Enhanced pattern recognition display
 function formatPatternInfo(row) {
@@ -399,6 +383,36 @@ function formatStochDetail(row) {
   return `K${k_rounded} ${k_vs_d} D ${d_vs_rd} rD`;
 }
 
+// Get signal background color based on value ranges
+function getSignalBgColor(value) {
+  if (!value || value === 'N/A') return 'bg-white text-black';
+  
+  const val = parseFloat(value);
+  if (isNaN(val)) return 'bg-white text-black';
+  
+  if (val >= 250) return 'bg-green-600 text-white';      // Deep green
+  if (val >= 50) return 'bg-green-300 text-black';       // Light green
+  if (val >= -50) return 'bg-white text-black';          // White
+  if (val >= -250) return 'bg-red-300 text-black';       // Light red
+  return 'bg-red-600 text-white';                        // Deep red
+}
+
+// Format Open and Open Trend values
+function formatOpenValue(value) {
+  if (!value || value === 'N/A') return 'N/A';
+  const val = parseFloat(value);
+  if (isNaN(val)) return 'N/A';
+  return val > 0 ? 'Up' : 'Down';
+}
+
+// Format trend based on 2m SK difference
+function formatTrend(sk2mDiff) {
+  if (!sk2mDiff || sk2mDiff === 'N/A') return 'N/A';
+  const val = parseFloat(sk2mDiff);
+  if (isNaN(val)) return 'N/A';
+  return val > 0 ? 'Up' : 'Down';
+}
+
 function getMainHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -411,7 +425,7 @@ function getMainHTML() {
 <body class="bg-gray-900 text-gray-100">
 <div class="mx-auto mt-6" style="width: 98%; max-width: 100%;">
   <div class="text-center mb-6">
-    <h1 class="text-2xl font-bold mb-2">Live Trading Alerts Dashboard</h1>
+    <h1 class="text-2xl font-bold mb-2">Live Trading Data Dashboard</h1>
     <p id="lastUpdate" class="text-sm text-gray-400">Last updated: Never</p>
   </div>
   
@@ -420,12 +434,8 @@ function getMainHTML() {
     <div class="bg-gradient-to-r from-blue-700 to-purple-700 px-4 py-3">
       <h2 class="text-lg font-semibold text-white flex items-center">
         <span class="text-xl mr-2">📊</span>
-        Live Trading Alerts
-        <span class="ml-4 text-sm bg-white bg-opacity-20 px-2 py-1 rounded">
-          <span class="text-green-300">🚀</span> Super Bull 
-          <span class="text-red-300 ml-2">🔻</span> Super Bear 
-          <span class="text-yellow-300 ml-2">⚠️</span> Divergence
-        </span>
+        Live Trading Data
+
         <span class="ml-2 text-xs bg-black bg-opacity-30 px-2 py-1 rounded">
           <span class="text-green-300">●</span> Bull (HA>50) 
           <span class="text-yellow-300 ml-1">●</span> Critical (HA±50) 
@@ -437,37 +447,37 @@ function getMainHTML() {
       <table class="min-w-full table-fixed">
         <thead class="text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
           <tr>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 10%; min-width: 70px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'symbol')" style="width: 8%; min-width: 60px;">
               Ticker <span id="unified-symbol-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600 text-gray-400" onclick="toggleSignalFilter()" style="width: 8%; min-width: 60px;" title="Click to filter: All → Bullish Only → Bearish Only">
-              Signal (All) <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>
-            </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 10%; min-width: 70px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'price')" style="width: 8%; min-width: 70px;">
               Price <span id="unified-price-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'priceChange')" style="width: 6%; min-width: 45px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'priceChange')" style="width: 6%; min-width: 50px;">
               Chg% <span id="unified-priceChange-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'volume')" style="width: 6%; min-width: 60px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'volume')" style="width: 6%; min-width: 50px;">
               Vol <span id="unified-volume-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openCross')" style="width: 8%; min-width: 70px;">
-              Open <span id="unified-openCross-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openSignal')" style="width: 6%; min-width: 50px;">
+              Open <span id="unified-openSignal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'stoch')" style="width: 14%; min-width: 110px;">
-              Stoch <span id="unified-stoch-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'openTrendSignal')" style="width: 8%; min-width: 70px;">
+              Open Trend <span id="unified-openTrendSignal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'lastPattern')" style="width: 10%; min-width: 80px;">
-              Pattern <span id="unified-lastPattern-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 's30sSignal')" style="width: 6%; min-width: 50px;">
+              S30s <span id="unified-s30sSignal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'haValue')" style="width: 7%; min-width: 60px;">
-              HA <span id="unified-haValue-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 's1mSignal')" style="width: 6%; min-width: 50px;">
+              S1m <span id="unified-s1mSignal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'condition')" style="width: 16%; min-width: 120px;">
-              Zone <span id="unified-condition-sort" style="margin-left: 0rem; display: none;"></span>
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 's5mSignal')" style="width: 6%; min-width: 50px;">
+              S5m <span id="unified-s5mSignal-sort" style="margin-left: 0rem; display: none;"></span>
             </th>
-            <th class="py-3 px-4 text-center" style="width: 5%; min-width: 50px;">
+            <th class="py-3 px-4 text-left cursor-pointer hover:bg-gray-600" onclick="sortTable('unified', 'sk2mDiff')" style="width: 6%; min-width: 50px;">
+              Trend <span id="unified-sk2mDiff-sort" style="margin-left: 0rem; display: none;"></span>
+            </th>
+            <th class="py-3 px-4 text-center" style="width: 4%; min-width: 40px;">
               <span title="Delete alerts">🗑️</span>
             </th>
           </tr>
@@ -476,7 +486,7 @@ function getMainHTML() {
       </table>
       <div id="noAlerts" class="text-center py-8 text-gray-500 hidden">
         <span class="text-4xl mb-2 block">📊</span>
-        No trading alerts yet
+        No trading data yet
       </div>
     </div>
   </div>
@@ -487,7 +497,7 @@ let previousData = []
 let sortState = {
   unified: { column: 'symbol', direction: 'asc' }
 }
-let signalFilter = 'all' // 'all', 'bullish', 'bearish', 'super'
+
 
 function formatVolume(volume) {
   if (!volume || volume === 'N/A') return 'N/A'
@@ -675,49 +685,7 @@ function sortTable(tableType, column) {
   fetchAlerts()
 }
 
-function toggleSignalFilter() {
-  // Cycle through: all -> bullish -> bearish -> super -> all
-  if (signalFilter === 'all') {
-    signalFilter = 'bullish'
-  } else if (signalFilter === 'bullish') {
-    signalFilter = 'bearish'
-  } else if (signalFilter === 'bearish') {
-    signalFilter = 'super'
-  } else {
-    signalFilter = 'all'
-  }
-  
-  // Update the signal header to show current filter
-  updateSignalHeader()
-  
-  // Refresh the alerts display
-  fetchAlerts()
-}
 
-function updateSignalHeader() {
-  const signalHeader = document.querySelector('[onclick="toggleSignalFilter()"]')
-  if (signalHeader) {
-    let filterText = ''
-    let filterColor = ''
-    
-    if (signalFilter === 'bullish') {
-      filterText = ' (📈 Only)'
-      filterColor = 'text-green-400'
-    } else if (signalFilter === 'bearish') {
-      filterText = ' (📉 Only)'
-      filterColor = 'text-red-400'
-    } else if (signalFilter === 'super') {
-      filterText = ' (🚀 Super Only)'
-      filterColor = 'text-purple-400'
-    } else {
-      filterText = ' (All)'
-      filterColor = 'text-gray-400'
-    }
-    
-    signalHeader.innerHTML = \`Signal\${filterText} <span id="unified-signal-sort" style="margin-left: 0rem; display: none;"></span>\`
-    signalHeader.className = \`py-3 px-4 text-left cursor-pointer hover:bg-gray-600 \${filterColor}\`
-  }
-}
 
 async function deleteAlert(symbol, timeframe) {
   if (!confirm(\`Are you sure you want to delete the alert for \${symbol}?\`)) {
@@ -772,11 +740,14 @@ function applySorting(alerts, tableType) {
     let bVal = b[column]
     
     // Handle numeric columns
-    if (column === 'price' || column === 'priceChange' || column === 'volume' || column === 'haValue' || column === 'lastCrossValue') {
+    if (column === 'price' || column === 'priceChange' || column === 'volume' || 
+        column === 'openSignal' || column === 'openTrendSignal' || 
+        column === 's30sSignal' || column === 's1mSignal' || column === 's5mSignal' || 
+        column === 'sk2mDiff') {
       aVal = parseFloat(aVal) || 0
       bVal = parseFloat(bVal) || 0
     } else {
-      // Handle string columns (including openCross, lastPattern)
+      // Handle string columns
       aVal = (aVal || '').toString().toLowerCase()
       bVal = (bVal || '').toString().toLowerCase()
     }
@@ -793,28 +764,14 @@ async function fetchAlerts() {
   const res = await fetch('/alerts')
   const data = await res.json()
   
-  // Apply signal filter first
-  let filteredData = data
-  if (signalFilter === 'bullish') {
-    filteredData = data.filter(alert => alert.signal === 'Bullish')
-  } else if (signalFilter === 'bearish') {
-    filteredData = data.filter(alert => alert.signal === 'Bearish')
-  } else if (signalFilter === 'super') {
-    filteredData = data.filter(alert => {
-      const superAlert = detectSuperAlert(alert)
-      return superAlert && (superAlert.type === 'SUPER_BULL' || superAlert.type === 'SUPER_BEAR')
-    })
-  }
+  // Apply current sorting to data
+  const sortedData = applySorting([...data], 'unified')
   
-  // Apply current sorting to filtered data
-  const sortedData = applySorting([...filteredData], 'unified')
-  
-  // Update last update time (use original data, not filtered)
+  // Update last update time
   const lastUpdate = document.getElementById('lastUpdate')
   if (data.length > 0) {
     const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
-    const filterInfo = signalFilter === 'all' ? '' : \` (Showing \${signalFilter} only)\`
-    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + filterInfo
+    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
   } else {
     lastUpdate.textContent = 'Last updated: Never'
   }
@@ -826,18 +783,10 @@ async function fetchAlerts() {
   if (sortedData.length === 0) {
     unifiedTable.innerHTML = ''
     noAlerts.classList.remove('hidden')
-    // Update no alerts message based on filter
+    // Update no alerts message
     const noAlertsSpan = noAlerts.querySelector('span:last-child')
     if (noAlertsSpan) {
-      if (signalFilter === 'bullish') {
-        noAlertsSpan.textContent = 'No bullish alerts'
-      } else if (signalFilter === 'bearish') {
-        noAlertsSpan.textContent = 'No bearish alerts'
-      } else if (signalFilter === 'super') {
-        noAlertsSpan.textContent = 'No super alerts detected'
-      } else {
-        noAlertsSpan.textContent = 'No trading alerts yet'
-      }
+      noAlertsSpan.textContent = 'No trading data yet'
     }
   } else {
     noAlerts.classList.add('hidden')
@@ -847,36 +796,12 @@ async function fetchAlerts() {
         previousData.find(prev => prev.symbol === row.symbol && prev.time !== row.time)
       const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
       
-      // Detect Super Alert conditions
-      const superAlert = detectSuperAlert(row)
-      
-      // Get background color based on HA value and Super Alert
-      let bgClass = getRowBackgroundClass(row.haValue)
-      if (superAlert) {
-        if (superAlert.type === 'SUPER_BULL') {
-          bgClass = 'bg-green-900 bg-opacity-60 border-l-4 border-green-400 ring-2 ring-green-400 ring-opacity-50'
-        } else if (superAlert.type === 'SUPER_BEAR') {
-          bgClass = 'bg-red-900 bg-opacity-60 border-l-4 border-red-400 ring-2 ring-red-400 ring-opacity-50'
-        } else if (superAlert.type === 'DIVERGENCE_WARNING') {
-          bgClass = 'bg-yellow-900 bg-opacity-40 border-l-4 border-yellow-400 ring-2 ring-yellow-400 ring-opacity-30'
-        }
-      }
+      // Get background color based on HA value
+      const bgClass = getRowBackgroundClass(row.haValue)
       
       // Get signal color and icon
-      let signalColor = row.signal === 'Bullish' ? 'text-green-400' : 'text-red-400'
-      let signalIcon = row.signal === 'Bullish' ? '📈' : '📉'
-      
-      // Override with Super Alert if detected
-      if (superAlert) {
-        signalIcon = superAlert.icon
-        if (superAlert.type === 'SUPER_BULL') {
-          signalColor = 'text-green-300 font-bold'
-        } else if (superAlert.type === 'SUPER_BEAR') {
-          signalColor = 'text-red-300 font-bold'
-        } else if (superAlert.type === 'DIVERGENCE_WARNING') {
-          signalColor = 'text-yellow-300 font-bold'
-        }
-      }
+      const signalColor = row.signal === 'Bullish' ? 'text-green-400' : 'text-red-400'
+      const signalIcon = row.signal === 'Bullish' ? '📈' : '📉'
       
       return \`
         <tr class="transition-all duration-500 hover:bg-gray-700 hover:bg-opacity-60 \${bgClass} \${updateHighlight}">
@@ -897,35 +822,27 @@ async function fetchAlerts() {
               </span>
             </div>
           </td>
-          <td class="py-3 px-4 font-medium \${signalColor}">
-            <div class="flex items-center gap-1">
-              <span class="text-lg">\${signalIcon}</span>
-              <div class="flex flex-col">
-                <span class="text-sm">\${superAlert ? superAlert.label : row.signal}</span>
-                \${superAlert && superAlert.type === 'DIVERGENCE_WARNING' ? '<span class="text-xs text-yellow-200">Warning</span>' : ''}
-              </div>
-            </div>
-          </td>
           <td class="py-3 px-4 text-white">$\${parseFloat(row.price).toLocaleString()}</td>
           <td class="py-3 px-4 \${parseFloat(row.priceChange || 0) >= 0 ? 'text-green-400' : 'text-red-400'}">\${row.priceChange || 'N/A'}%</td>
           <td class="py-3 px-4 text-white text-xs">\${formatVolume(row.volume)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${formatOpenCross(row)}</td>
-          <td class="py-3 px-4 text-white text-xs font-mono">\${row.stochDetail}</td>
-          <td class="py-3 px-4 text-white text-xs">
-            <span title="Pattern: \${row.lastPattern || 'None'} | Cross: \${row.lastCrossType || 'None'}" class="cursor-help">
-              \${formatPatternInfo(row)}
+          <td class="py-3 px-4 text-white text-xs">\${formatOpenValue(row.openSignal)}</td>
+          <td class="py-3 px-4 text-white text-xs">\${formatOpenValue(row.openTrendSignal)}</td>
+          <td class="py-3 px-4 text-xs">
+            <span class="\${getSignalBgColor(row.s30sSignal)} px-2 py-1 rounded font-semibold">
+              \${parseFloat(row.s30sSignal || 0).toFixed(1)}
             </span>
           </td>
-          <td class="py-3 px-4 text-white text-xs font-bold">
-            <span class="\${getHAGradeStyle(row.haValue, row.signal)} px-2 py-1 rounded text-xs">
-              \${formatHAvsSignal(row)}
+          <td class="py-3 px-4 text-xs">
+            <span class="\${getSignalBgColor(row.s1mSignal)} px-2 py-1 rounded font-semibold">
+              \${parseFloat(row.s1mSignal || 0).toFixed(1)}
             </span>
           </td>
-          <td class="py-3 px-4 text-white text-sm">
-            <span title="\${getTradingZoneLogic(row).tooltip}" class="cursor-help">
-              \${getTradingZoneLogic(row).display}
+          <td class="py-3 px-4 text-xs">
+            <span class="\${getSignalBgColor(row.s5mSignal)} px-2 py-1 rounded font-semibold">
+              \${parseFloat(row.s5mSignal || 0).toFixed(1)}
             </span>
           </td>
+          <td class="py-3 px-4 text-white text-xs font-semibold">\${formatTrend(row.sk2mDiff)}</td>
           <td class="py-3 px-4 text-center">
             <button onclick="deleteAlert('\${row.symbol}', '\${row.timeframe || ''}')" 
                     class="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-30 p-1 rounded transition-all duration-200" 
@@ -1090,11 +1007,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideChart()
 })
 
-// Initialize sort indicators and signal header on page load
+// Initialize sort indicators on page load
 initializeSortIndicators()
-setTimeout(() => {
-  updateSignalHeader()
-}, 200)
 </script>
 </body>
 </html>`

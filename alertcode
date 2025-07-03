@@ -19,39 +19,7 @@ type stoch
     float k = na
     float d = na
 
-type alerts
-    bool  s = na
-    bool  b = na
-    bool  u = na
-    bool  d = na
-    bool  p = na
-    bool  n = na
-    bool  x = na
-    bool  y = na
-    bool  kc = na  // K crosses above D
-    bool  kd = na  // K crosses below D
 
-type prompt
-    string s = ''
-    bool   c = false
-
-method notify(prompt p) =>
-    if p.c
-        alert(p.s, alert.freq_once_per_bar_close)
-        
-method any(alerts a) =>
-    string s = switch
-        a.s => 'OB Signal'              
-        a.b => 'OS Signal'              
-        a.u => 'Bullish Trend'          
-        a.d => 'Bearish Trend'          
-        a.p => 'Heikin-Ashi Uptrend  '  
-        a.n => 'Heikin-Ashi Downtrend' 
-        a.x => 'MACD Bullish Cross'   
-        a.y => 'MACD Bearish Cross'    
-        =>      na
-
-    prompt.new(s, not na(s))
 
 method src(bar b, simple string src) =>
     float x = switch src
@@ -140,17 +108,19 @@ showDivergenceEnd = input.bool(true, "Show Divergence End", group=gu, tooltip="D
 
 // Background Fill Options
 showBackgroundFills = input.bool(true, "Show Background Fills", group=gu)
-upperZoneColor = input.color(color.new(#fc1f1f, 85), "Upper Zone Color", group=gu, tooltip="Background color for overbought/extreme high zones")
-lowerZoneColor = input.color(color.new(#369b85, 80), "Lower Zone Color", group=gu, tooltip="Background color for oversold/extreme low zones")
-upperZone1 = input.int(50, "Upper Zone 1 Level", group=gu, tooltip="First upper background zone threshold")
-upperZone2 = input.int(500, "Upper Zone 2 Level", group=gu, tooltip="Second upper background zone threshold") 
-lowerZone1 = input.int(-50, "Lower Zone 1 Level", group=gu, tooltip="First lower background zone threshold")
-lowerZone2 = input.int(-500, "Lower Zone 2 Level", group=gu, tooltip="Second lower background zone threshold")
+upperZoneColor = input.color(color.new(#369b85, 80), "Upper Zone Color", group=gu, tooltip="Background color for overbought/extreme high zones")
+lowerZoneColor = input.color(color.new(#fc1f1f, 85), "Lower Zone Color", group=gu, tooltip="Background color for oversold/extreme low zones")
+
+// Fixed background zone levels (separate from level settings)
+upperZone1 = 50    // Fixed upper zone start
+upperZone2 = 500   // Fixed upper zone end
+lowerZone1 = -50   // Fixed lower zone start
+lowerZone2 = -500  // Fixed lower zone end
 
 // Dual Timeframe Stochastic Settings
-primaryLen = input.int(9, "Primary Stoch K Length", minval=1, group=gs)
-primarySmooth = input.int(8, "Primary Stoch K Smoothing", minval=1, group=gs)
-primaryDLen = input.int(7, "Primary Stoch D Length", minval=1, group=gs)
+primaryLen = input.int(10, "Primary Stoch K Length", minval=1, group=gs)
+primarySmooth = input.int(10, "Primary Stoch K Smoothing", minval=1, group=gs)
+primaryDLen = input.int(5, "Primary Stoch D Length", minval=1, group=gs)
 primaryRes = input.timeframe("", "Primary Timeframe", group=gs)
 
 refLen = input.int(18, "Reference Stoch K Length", minval=1, group=gs)
@@ -243,14 +213,22 @@ color haColor = switch
     haDown => haDownColor
     => haUpColor
 
-m   = hline(0                                      , "Mid Line", chart.fg_color,    hline.style_solid )
-// Dynamic background zone levels
+// Dynamic background zone levels (must be defined first)
 uz1 = hline(upperZone1                             ,                   display =    display.none      )
 uz2 = hline(upperZone2                             ,                   display =    display.none      )
 lz1 = hline(lowerZone1                             ,                   display =    display.none      )
 lz2 = hline(lowerZone2                             ,                   display =    display.none      )
+
+// Background fills (must be applied immediately after hlines)
+fill(uz1, uz2, showBackgroundFills ? upperZoneColor : na)
+fill(lz2, lz1, showBackgroundFills ? lowerZoneColor : na)
+
+// Mid line and level lines (defined after background zones)
+m   = hline(0                                      , "Mid Line", chart.fg_color,    hline.style_solid )
 dns = hline(doNotShortLevel                        , "Do Not Short", color.yellow, hline.style_dotted, 3)
 dnl = hline(doNotLongLevel                         , "Do Not Long", color.yellow, hline.style_dotted, 3)
+smu = hline(250                                    , "Semi Line Upper", color.yellow, hline.style_dotted, 2)
+sml = hline(-250                                   , "Semi Line Lower", color.yellow, hline.style_dotted, 2)
 h   = plot (mode != 'Histogram' and sigb ? o.s : na, "Signal"  , colnt                                )
 color histColor = na
 if o.h > 0
@@ -258,10 +236,6 @@ if o.h > 0
 else if o.h < 0
     histColor := o.h > o.h[1] ? histDnIncColor : histDnDecColor
 mc  = plot (mode != 'MACD' ? o.h : na, "H", histColor, 1, plot.style_columns)
-
-// Optional background fills (using conditional expressions for global scope)
-fill(uz1, uz2, showBackgroundFills ? upperZoneColor : na)
-fill(lz2, lz1, showBackgroundFills ? lowerZoneColor : na)
 
 // Determine fill color - solid for divergence conditions, hollow for normal
 color haFillColor = (useDivergenceColoring and (haUpHistDown or haDownHistUp)) ? haColor : na
@@ -291,14 +265,27 @@ plot(showStoch and lowerHighCondition ? currentCrossUnderK : na, "Lower High", c
 
 // All previous levels removed
 
-// Heikin-Ashi Alert Rules
-bullishAlert = o.b.c > 0
-bearishAlert = o.b.c < 0
+
 
 // Calculate additional data for webhook
 priceChange1D = ((close - close[1]) / close[1]) * 100
+priceChangeCandle = ((close - open) / open) * 100  // Change % to previous candle
 volume1D = volume
 haValue = o.b.c
+
+// Multi-timeframe signal line values
+signal930 = request.security(syminfo.tickerid, "2", o.s[1], lookahead=barmerge.lookahead_off)  // 9:30am signal value
+signal932 = request.security(syminfo.tickerid, "2", o.s, lookahead=barmerge.lookahead_off)    // 9:32am signal value
+openSignal = signal932 - signal930  // 9:32am signal minus 9:30am signal
+openTrendSignal = request.security(syminfo.tickerid, "2", ta.sma(o.s, 15), lookahead=barmerge.lookahead_off)  // 10:00-09:32am trend
+s30sSignal = request.security(syminfo.tickerid, "30S", o.s, lookahead=barmerge.lookahead_off)  // 30s signal
+s1mSignal = request.security(syminfo.tickerid, "1", o.s, lookahead=barmerge.lookahead_off)   // 1m signal
+s5mSignal = request.security(syminfo.tickerid, "5", o.s, lookahead=barmerge.lookahead_off)   // 5m signal
+
+// 2m Stochastic K difference
+currentSK = request.security(syminfo.tickerid, "2", s.k, lookahead=barmerge.lookahead_off)
+previousSK = request.security(syminfo.tickerid, "2", s.k[1], lookahead=barmerge.lookahead_off)
+sk2mDiff = currentSK - previousSK
 
 // Calculate HA vs MACD comparison directly
 haVsMacdComparison = haValue > o.s ? ">S" : haValue < o.s ? "<S" : "=S"
@@ -449,20 +436,13 @@ else // No recent cross, k == d
     else
         stochStatus := "<50<rD"
 
-// Webhook Alert Messages with comprehensive data including Open column and HA vs MACD status
-bullishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bullish", "condition": "HA > 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
-bearishWebhookMsg = '{"symbol": "' + syminfo.ticker + '", "signal": "Bearish", "condition": "HA < 0", "price": ' + str.tostring(close) + ', "timeframe": "' + timeframe.period + '", "priceChange": ' + str.tostring(priceChange1D, "#.##") + ', "volume": ' + str.tostring(volume1D) + ', "haValue": ' + str.tostring(haValue, "#.####") + ', "stoch": "' + stochStatus + '", "stochK": ' + str.tostring(s.k, "#.##") + ', "stochD": ' + str.tostring(s.d, "#.##") + ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + ', "macdSignal": ' + str.tostring(o.s, "#.####") + ', "haVsMacdStatus": "' + haVsMacdStatus + '", "lastCrossType": "' + lastCrossType + '", "lastPattern": "' + lastPattern + '", "lastCrossValue": ' + str.tostring(lastCrossValue, "#.##") + ', "openCrossType": "' + openCrossType + '", "openStochK": ' + str.tostring(openStochK, "#.##") + ', "openStochD": ' + str.tostring(openStochD, "#.##") + ', "openStochRefD": ' + str.tostring(openStochRefD, "#.##") + ', "isPremarket": ' + str.tostring(isPremarket) + ', "time": "' + str.tostring(time) + '"}'
 
-// Send webhook alerts on each candle
-if bullishAlert
-    alert(bullishWebhookMsg, alert.freq_once_per_bar_close)
 
-if bearishAlert
-    alert(bearishWebhookMsg, alert.freq_once_per_bar_close)
+
 
 color col = switch colb
     'MidLine'     => o.b.c > 0     ? colup                         : coldn
-    'Candles'     => o.b.c > o.b.o ? colup                         : coldn
+    'Candles'     => haColor
     'Sig Cross'   => o.s   > o.b.c ? coldn                         : colup
     'Extremities' => o.b.c > revt  ? coldn : o.b.c < -revt ? colup : color.new(colnt, 25)
     'Reversions'  => o.h > 0       ? colup : o.h < 0       ? coldn : color.new(colnt, 25)
@@ -474,27 +454,37 @@ barcolor(col)
 wasHaUpHistDown := haUpHistDown
 wasHaDownHistUp := haDownHistUp
 
-// =============================
-// 🚀 SUPER ALERT BLOCK
-// =============================
+// Basic Alert System
+if ta.change(time) // On each new bar
+    // Create comprehensive webhook message with all data
+    webhookMsg = '{"symbol": "' + syminfo.ticker + 
+                 '", "timestamp": "' + str.tostring(time) + 
+                 '", "open": ' + str.tostring(open) + 
+                 ', "high": ' + str.tostring(high) + 
+                 ', "low": ' + str.tostring(low) + 
+                 ', "close": ' + str.tostring(close) + 
+                 ', "volume": ' + str.tostring(volume) + 
+                 ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
+                 ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
+                 ', "openSignal": ' + str.tostring(openSignal, "#.####") + 
+                 ', "openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + 
+                 ', "s30sSignal": ' + str.tostring(s30sSignal, "#.####") + 
+                 ', "s1mSignal": ' + str.tostring(s1mSignal, "#.####") + 
+                 ', "s5mSignal": ' + str.tostring(s5mSignal, "#.####") + 
+                 ', "sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + 
+                 ', "haValue": ' + str.tostring(haValue, "#.####") + 
+                 ', "stochK": ' + str.tostring(s.k, "#.##") + 
+                 ', "stochD": ' + str.tostring(s.d, "#.##") + 
+                 ', "stochRefD": ' + str.tostring(sRef.d, "#.##") + 
+                 ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
+                 ', "timeframe": "' + timeframe.period + '"}'
+    
+    // Send alert with all data
+    alert(webhookMsg, alert.freq_once_per_bar_close)
 
-// Super Bullish: HA > 0 + Dual Stoch 一致 + Higher Low + 無 bearish divergence
-bool superBull = bullishAlert and bullishSignal and lastPattern == "Higher Low" and not haUpHistDown
 
-// Super Bearish: HA < 0 + Dual Stoch 一致 + Lower High + 無 bullish divergence
-bool superBear = bearishAlert and bearishSignal and lastPattern == "Lower High" and not haDownHistUp
 
-if superBull
-    alert("🚀 Super Bull Confirmed: " + bullishWebhookMsg, alert.freq_once_per_bar_close)
 
-if superBear
-    alert("🔻 Super Bear Confirmed: " + bearishWebhookMsg, alert.freq_once_per_bar_close)
-
-// Divergence Warnings
-if haUpHistDown
-    alert("⚠️ Divergence: HA ↑ but MACD ↓", alert.freq_once_per_bar_close)
-if haDownHistUp
-    alert("⚠️ Divergence: HA ↓ but MACD ↑", alert.freq_once_per_bar_close)
 
 
 // =============================
@@ -508,3 +498,14 @@ plot(o.b.src('hl2'  ), "hl2"  , editable = false, display = display.none)
 plot(o.b.src('hlc3' ), "hlc3" , editable = false, display = display.none)
 plot(o.b.src('ohlc4'), "ohlc4", editable = false, display = display.none)
 plot(o.b.src('hlcc4'), "hlcc4", editable = false, display = display.none)
+
+// Export additional data fields
+plot(volume1D        , "volume", editable = false, display = display.none)
+plot(priceChange1D   , "priceChange", editable = false, display = display.none)
+plot(priceChangeCandle, "priceChangeCandle", editable = false, display = display.none)
+plot(openSignal      , "openSignal", editable = false, display = display.none)
+plot(openTrendSignal , "openTrendSignal", editable = false, display = display.none)
+plot(s30sSignal      , "s30sSignal", editable = false, display = display.none)
+plot(s1mSignal       , "s1mSignal", editable = false, display = display.none)
+plot(s5mSignal       , "s5mSignal", editable = false, display = display.none)
+plot(sk2mDiff        , "sk2mDiff", editable = false, display = display.none)
