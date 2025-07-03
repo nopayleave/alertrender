@@ -111,7 +111,7 @@ app.get('/', (req, res) => {
               <table class="w-full">
                 <thead>
                   <tr class="border-b border-border">
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('symbol')">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors sticky left-0 bg-card z-10 md:relative md:bg-transparent shadow-[2px_0_4px_rgba(0,0,0,0.1)] md:shadow-none" onclick="sortTable('symbol')">
                       Ticker <span id="sort-symbol" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
@@ -136,7 +136,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="7" class="text-center text-muted-foreground py-12">Loading alerts...</td>
+                    <td colspan="7" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -262,7 +262,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -293,7 +293,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -312,7 +312,7 @@ app.get('/', (req, res) => {
             const s5mStyle = getSignalBgColor(alert.s5m_signal);
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors">
-                <td class="py-3 px-4 font-medium text-foreground">\${alert.symbol || 'N/A'}</td>
+                <td class="py-3 px-4 font-medium text-foreground sticky left-0 bg-card z-10 md:relative md:bg-transparent shadow-[2px_0_4px_rgba(0,0,0,0.1)] md:shadow-none">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
@@ -339,7 +339,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-12">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
