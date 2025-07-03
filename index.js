@@ -113,15 +113,15 @@ app.get('/', (req, res) => {
           return 'bg-red-800'; // Deep red
         }
 
-        function getSignalBackgroundColor(signal) {
+        function getSignalLabelClass(signal) {
           const value = parseFloat(signal);
-          if (isNaN(value)) return '';
+          if (isNaN(value)) return 'badge badge-ghost';
           
-          if (value >= 250) return 'bg-green-800'; // Deep green
-          if (value >= 50) return 'bg-green-300'; // Light green
-          if (value >= -50) return 'bg-white'; // White
-          if (value >= -250) return 'bg-red-300'; // Light red
-          return 'bg-red-800'; // Deep red
+          if (value >= 250) return 'badge bg-green-800 text-white'; // Deep green
+          if (value >= 50) return 'badge bg-green-300 text-black'; // Light green
+          if (value >= -50) return 'badge bg-gray-300 text-black'; // Light grey
+          if (value >= -250) return 'badge bg-red-300 text-black'; // Light red
+          return 'badge bg-red-800 text-white'; // Deep red
         }
 
         function formatSignal(signal) {
@@ -153,18 +153,18 @@ app.get('/', (req, res) => {
             
             alertTable.innerHTML = data.map(alert => {
               const bgColor = getBackgroundColor(alert.priceChange);
-              const s30sBg = getSignalBackgroundColor(alert.s30_signal);
-              const s1mBg = getSignalBackgroundColor(alert.s1m_signal);
-              const s5mBg = getSignalBackgroundColor(alert.s5m_signal);
+              const s30sClass = getSignalLabelClass(alert.s30_signal);
+              const s1mClass = getSignalLabelClass(alert.s1m_signal);
+              const s5mClass = getSignalLabelClass(alert.s5m_signal);
               return \`
                 <tr class="\${bgColor}">
                   <td class="font-bold">\${alert.symbol || 'N/A'}</td>
                   <td>$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                   <td class="\${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
                   <td>\${formatVolume(alert.volume)}</td>
-                  <td class="\${s30sBg}">\${formatSignal(alert.s30_signal)}</td>
-                  <td class="\${s1mBg}">\${formatSignal(alert.s1m_signal)}</td>
-                  <td class="\${s5mBg}">\${formatSignal(alert.s5m_signal)}</td>
+                  <td><span class="\${s30sClass}">\${formatSignal(alert.s30_signal)}</span></td>
+                  <td><span class="\${s1mClass}">\${formatSignal(alert.s1m_signal)}</span></td>
+                  <td><span class="\${s5mClass}">\${formatSignal(alert.s5m_signal)}</span></td>
                 </tr>
               \`;
             }).join('');
