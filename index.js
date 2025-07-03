@@ -94,13 +94,27 @@ app.get('/', (req, res) => {
               <table class="w-full">
                 <thead>
                   <tr class="border-b border-border">
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Ticker</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Price</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Chg%</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">Vol</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S30s</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S1m</th>
-                    <th class="text-left py-3 px-4 font-medium text-muted-foreground">S5m</th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('symbol')">
+                      Ticker <span id="sort-symbol" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
+                      Price <span id="sort-price" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('priceChange')">
+                      Chg% <span id="sort-priceChange" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
+                      Vol <span id="sort-volume" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s30_signal')">
+                      S30s <span id="sort-s30_signal" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s1m_signal')">
+                      S1m <span id="sort-s1m_signal" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s5m_signal')">
+                      S5m <span id="sort-s5m_signal" class="ml-1 text-xs">⇅</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody id="alertTable">
@@ -119,6 +133,11 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
+        // Sorting state
+        let currentSortField = null;
+        let currentSortDirection = 'asc';
+        let alertsData = [];
+
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
           if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
@@ -148,6 +167,105 @@ app.get('/', (req, res) => {
           return 'background-color: oklch(0.637 0.237 25.331); color: white;'; // Deep red
         }
 
+        function sortTable(field) {
+          if (currentSortField === field) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSortField = field;
+            currentSortDirection = 'asc';
+          }
+          
+          updateSortIndicators();
+          renderTable();
+        }
+
+        function updateSortIndicators() {
+          // Reset all indicators
+          const indicators = ['symbol', 'price', 'priceChange', 'volume', 's30_signal', 's1m_signal', 's5m_signal'];
+          indicators.forEach(field => {
+            document.getElementById('sort-' + field).textContent = '⇅';
+          });
+          
+          // Set current sort indicator
+          if (currentSortField) {
+            const indicator = document.getElementById('sort-' + currentSortField);
+            indicator.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
+          }
+        }
+
+        function getSortValue(alert, field) {
+          switch(field) {
+            case 'symbol':
+              return alert.symbol || '';
+            case 'price':
+              return parseFloat(alert.price) || 0;
+            case 'priceChange':
+              return parseFloat(alert.priceChange) || 0;
+            case 'volume':
+              return parseInt(alert.volume) || 0;
+            case 's30_signal':
+              return parseFloat(alert.s30_signal) || 0;
+            case 's1m_signal':
+              return parseFloat(alert.s1m_signal) || 0;
+            case 's5m_signal':
+              return parseFloat(alert.s5m_signal) || 0;
+            default:
+              return '';
+          }
+        }
+
+        function renderTable() {
+          const alertTable = document.getElementById('alertTable');
+          const lastUpdate = document.getElementById('lastUpdate');
+          
+          if (alertsData.length === 0) {
+            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No alerts available</td></tr>';
+            lastUpdate.textContent = 'Last updated: Never';
+            return;
+          }
+
+          // Sort data
+          const sortedData = [...alertsData];
+          if (currentSortField) {
+            sortedData.sort((a, b) => {
+              const aVal = getSortValue(a, currentSortField);
+              const bVal = getSortValue(b, currentSortField);
+              
+              if (typeof aVal === 'string') {
+                const result = aVal.localeCompare(bVal);
+                return currentSortDirection === 'asc' ? result : -result;
+              } else {
+                const result = aVal - bVal;
+                return currentSortDirection === 'asc' ? result : -result;
+              }
+            });
+          }
+
+          // Update last update time
+          const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
+          lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString();
+
+          alertTable.innerHTML = sortedData.map(alert => {
+            const s30sClass = getSignalLabelClass(alert.s30_signal);
+            const s1mClass = getSignalLabelClass(alert.s1m_signal);
+            const s5mClass = getSignalLabelClass(alert.s5m_signal);
+            const s30sStyle = getSignalBgColor(alert.s30_signal);
+            const s1mStyle = getSignalBgColor(alert.s1m_signal);
+            const s5mStyle = getSignalBgColor(alert.s5m_signal);
+            return \`
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors">
+                <td class="py-3 px-4 font-semibold text-foreground">\${alert.symbol || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.7 0.1 163);' : 'color: oklch(0.637 0.237 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
+                <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+                <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
+                <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
+                <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
+              </tr>
+            \`;
+          }).join('');
+        }
+
         function formatSignal(signal) {
           if (!signal && signal !== 0) return 'N/A';
           return parseFloat(signal).toFixed(2);
@@ -158,42 +276,8 @@ app.get('/', (req, res) => {
             const response = await fetch('/alerts');
             const data = await response.json();
             
-            const alertTable = document.getElementById('alertTable');
-            const alertCount = document.getElementById('alertCount');
-            const lastUpdate = document.getElementById('lastUpdate');
-            
-            if (data.length === 0) {
-              alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12">No alerts available</td></tr>';
-              alertCount.textContent = '0 alerts';
-              lastUpdate.textContent = 'Last updated: Never';
-              return;
-            }
-            
-            alertCount.textContent = data.length + ' alert' + (data.length > 1 ? 's' : '');
-            
-            // Update last update time
-            const mostRecent = Math.max(...data.map(alert => alert.receivedAt || 0));
-            lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString();
-            
-            alertTable.innerHTML = data.map(alert => {
-              const s30sClass = getSignalLabelClass(alert.s30_signal);
-              const s1mClass = getSignalLabelClass(alert.s1m_signal);
-              const s5mClass = getSignalLabelClass(alert.s5m_signal);
-              const s30sStyle = getSignalBgColor(alert.s30_signal);
-              const s1mStyle = getSignalBgColor(alert.s1m_signal);
-              const s5mStyle = getSignalBgColor(alert.s5m_signal);
-              return \`
-                <tr class="border-b border-border hover:bg-muted/50 transition-colors">
-                  <td class="py-3 px-4 font-semibold text-foreground">\${alert.symbol || 'N/A'}</td>
-                  <td class="py-3 px-4 font-mono text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                  <td class="py-3 px-4 font-mono \${parseFloat(alert.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}">\${alert.priceChange || 'N/A'}%</td>
-                  <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
-                  <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
-                  <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
-                  <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
-                </tr>
-              \`;
-            }).join('');
+            alertsData = data;
+            renderTable();
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
