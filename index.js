@@ -128,7 +128,7 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="mt-6 text-center">
-          <div class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</div>
+          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</p>
         </div>
       </div>
 
@@ -147,13 +147,13 @@ app.get('/', (req, res) => {
 
         function getSignalLabelClass(signal) {
           const value = parseFloat(signal);
-          if (isNaN(value)) return 'px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded';
+          if (isNaN(value)) return 'px-2 py-1 text-xs font-semibold bg-muted text-muted-foreground rounded';
           
-          if (value >= 250) return 'px-2 py-1 text-xs font-medium rounded'; // Deep green
-          if (value >= 50) return 'px-2 py-1 text-xs font-medium rounded'; // Light green
-          if (value >= -50) return 'px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded'; // Light grey
-          if (value >= -250) return 'px-2 py-1 text-xs font-medium rounded'; // Light red
-          return 'px-2 py-1 text-xs font-medium rounded'; // Deep red
+          if (value >= 250) return 'px-2 py-1 text-xs font-semibold rounded'; // Deep green
+          if (value >= 50) return 'px-2 py-1 text-xs font-semibold rounded'; // Light green
+          if (value >= -50) return 'px-2 py-1 text-xs font-semibold bg-gray-200 text-gray-700 rounded'; // Light grey
+          if (value >= -250) return 'px-2 py-1 text-xs font-semibold rounded'; // Light red
+          return 'px-2 py-1 text-xs font-semibold rounded'; // Deep red
         }
 
         function getSignalBgColor(signal) {
@@ -253,15 +253,15 @@ app.get('/', (req, res) => {
             const s1mStyle = getSignalBgColor(alert.s1m_signal);
             const s5mStyle = getSignalBgColor(alert.s5m_signal);
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors">
-                <td class="py-3 px-4 font-semibold text-foreground">\${alert.symbol || 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.7 0.1 163);' : 'color: oklch(0.637 0.237 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
-                <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
-                <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
-                <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
-                <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
-              </tr>
+                             <tr class="border-b border-border hover:bg-muted/50 transition-colors">
+                 <td class="py-3 px-4 font-medium text-foreground">\${alert.symbol || 'N/A'}</td>
+                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
+                 <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.7 0.1 163);' : 'color: oklch(0.637 0.237 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
+                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+                 <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
+                 <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
+                 <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
+               </tr>
             \`;
           }).join('');
         }
