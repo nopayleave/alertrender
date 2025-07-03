@@ -79,21 +79,22 @@ app.get('/', (req, res) => {
         }
       </script>
     </head>
-    <body class="bg-background min-h-screen">
+    <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
       <div class="container mx-auto p-6 max-w-7xl">
         <div class="mb-8">
           <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
           <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
         </div>
         
-                <div class="bg-card rounded-lg shadow-sm">
-          <div>
-            <div class="mb-4 relative">
+                <!-- Search bar - sticky on top for desktop, bottom for mobile -->
+        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border p-4 md:p-6">
+          <div class="container mx-auto max-w-7xl">
+            <div class="relative">
               <input 
                 type="text" 
                 id="searchInput" 
                 placeholder="Search tickers..." 
-                class="w-full px-3 py-2 pr-10 bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                class="w-full px-3 py-2 pr-10 bg-card border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
                 onkeyup="filterAlerts()"
                 oninput="toggleClearButton()"
               />
@@ -106,7 +107,11 @@ app.get('/', (req, res) => {
                 ✕
               </button>
             </div>
-            
+          </div>
+        </div>
+
+        <div class="bg-card rounded-lg shadow-sm">
+          <div>
             <div class="overflow-x-auto">
               <table class="w-full table-auto">
                 <thead>
