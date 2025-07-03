@@ -1,198 +1,212 @@
-import express from 'express'
-import cors from 'cors'
+import React, { useState, useEffect } from "react";
 
-const app = express()
-const port = process.env.PORT || 3000
+// Stock Alert Dashboard with data fetching
+export default function StockTable() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-// Middleware for webhook JSON parsing
-app.use(express.text({ type: 'text/plain' }))
-app.use(express.json())
-app.use(cors())
+  // Get background color based on signal value
+  const getBg = (v) => {
+    if (v >= 250) return "bg-green-700 text-white";
+    if (v >= 50) return "bg-green-200 text-gray-800";
+    if (v > -50) return "bg-white text-gray-800";
+    if (v >= -250) return "bg-red-200 text-gray-800";
+    return "bg-red-700 text-white";
+  };
 
-// 方案一：object of arrays，每隻股票+timeframe一組歷史
-let alerts = {} // { 'AAPL_30S': [ {}, {}, ... ], 'TSLA_30S': [ {}, ... ] }
+  // Format trend direction
+  const getTrendDirection = (value) => {
+    if (value > 0) return "↑ Up";
+    if (value < 0) return "↓ Down";
+    return "- Flat";
+  };
 
-function isCurrentlyPremarket() {
-  const now = new Date()
-  const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }))
-  const hour = etTime.getHours()
-  const minute = etTime.getMinutes()
-  const dayOfWeek = etTime.getDay()
-  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
-  if (!isWeekday) return false
-  const afterPreStart = hour >= 4
-  const beforeMarketOpen = hour < 9 || (hour === 9 && minute < 30)
-  return afterPreStart && beforeMarketOpen
-}
-
-function isCurrentlyPast10AM() {
-  const now = new Date()
-  const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }))
-  const hour = etTime.getHours()
-  const dayOfWeek = etTime.getDay()
-  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
-  if (!isWeekday) return false
-  return hour >= 10
-}
-
-// Helper（可以複用你舊 code）
-function parseOrNull(value) {
-  if (value === undefined || value === null || value === 'na' || value === 'NA' || value === 'NaN') return null
-  const num = parseFloat(value)
-  return isNaN(num) ? null : num
-}
-
-// Dummy data for dev
-if (process.env.NODE_ENV !== 'production') {
-  const currentlyPremarket = isCurrentlyPremarket()
-  const currentlyPast10AM = isCurrentlyPast10AM()
-  
-  alerts['AAPL_30S'] = [
-    {
-      symbol: "AAPL", timeframe: "30S", time: Date.now().toString(),
-      humanTime: "2024-07-04 09:30:00 ET",
-      price: 189.45, priceChange: 1.24, volume: 45678901, 
-      signal930: 12.50, signal932: 27.75, signal1000: 103.55,
-      openSignal: 15.25, openTrendSignal: 75.80,
-      s30sSignal: 125.45, s1mSignal: -75.20, s5mSignal: 275.60, sk2mDiff: 3.4,
-      isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
-    }
-  ]
-  
-  alerts['TSLA_30S'] = [
-    {
-      symbol: "TSLA", timeframe: "30S", time: Date.now().toString(),
-      humanTime: "2024-07-04 09:30:00 ET",
-      price: 238.77, priceChange: -2.15, volume: 32145678,
-      signal930: -15.20, signal932: -40.65, signal1000: -125.95,
-      openSignal: -25.45, openTrendSignal: -85.30,
-      s30sSignal: -125.80, s1mSignal: 45.60, s5mSignal: -275.90, sk2mDiff: -2.8,
-      isPremarket: currentlyPremarket, isMarketHours: !currentlyPremarket, isPast10AM: currentlyPast10AM
-    }
-  ]
-}
-
-// --------- HTML (front-end) ---------
-function getMainHTML() {
-  // ...（原本 HTML 前端 code 不變，請直接 copy 返你自己貼嗰段 getMainHTML function）...
-  // 你可以直接用返你上面一大段 getMainHTML
-  // 如果要我補貼一次都得
-  // 下面略過，專注 backend
-  return `<!DOCTYPE html> ...完整HTML省略... </html>`
-}
-
-// --------- Express routes ---------
-app.get('/', (req, res) => {
-  res.send(getMainHTML())
-})
-
-// API: TradingView webhook - 支援 text/plain + JSON
-app.post('/webhook', (req, res) => {
-  let rawAlert = req.body
-  // 如果 req.body 係 string（即 text/plain），就 JSON.parse
-  if (typeof rawAlert === 'string') {
+  // Fetch data from webhook/API endpoint
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      rawAlert = JSON.parse(rawAlert)
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid JSON' })
+      let response;
+      
+      // Try to fetch from webhook endpoint
+      try {
+        response = await fetch('/api/webhook-data');
+        if (!response.ok) throw new Error('Webhook endpoint not available');
+      } catch (webhookError) {
+        // Try to fetch from local JSON file
+        try {
+          response = await fetch('/stock-data.json');
+          if (!response.ok) throw new Error('Local JSON file not available');
+        } catch (localError) {
+          // Use sample data for demonstration
+          throw new Error('No data source available');
+        }
+      }
+      
+      const fetchedData = await response.json();
+      setData(Array.isArray(fetchedData) ? fetchedData : [fetchedData]);
+      setLastUpdate(new Date().toLocaleTimeString());
+      
+    } catch (err) {
+      // Use sample data for demonstration
+      setData([
+        {
+          symbol: "AAPL",
+          price: 150.25,
+          priceChange: 2.35,
+          volume: 1250000,
+          "2m930signal": 45,
+          "2m932signal": 52,
+          "2m1000signal": 48,
+          s30sSignal: 75,
+          s1mSignal: -100,
+          s5mSignal: 300,
+          sk2mDiff: 5.2
+        },
+        {
+          symbol: "TSLA",
+          price: 248.90,
+          priceChange: -1.85,
+          volume: 890000,
+          "2m930signal": 30,
+          "2m932signal": 25,
+          "2m1000signal": 35,
+          s30sSignal: -180,
+          s1mSignal: 120,
+          s5mSignal: -300,
+          sk2mDiff: -2.1
+        },
+        {
+          symbol: "MSFT",
+          price: 338.15,
+          priceChange: 0.95,
+          volume: 675000,
+          "2m930signal": 60,
+          "2m932signal": 58,
+          "2m1000signal": 65,
+          s30sSignal: 280,
+          s1mSignal: 45,
+          s5mSignal: -75,
+          sk2mDiff: 1.8
+        }
+      ]);
+      setError(`Using sample data. Error: ${err.message}`);
+      setLastUpdate(new Date().toLocaleTimeString());
     }
+    
+    setLoading(false);
+  };
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-4 text-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <p className="mt-2 text-gray-600">Loading stock data...</p>
+      </div>
+    );
   }
 
-  const symbol = rawAlert.symbol
-  const timeframe = rawAlert.timeframe || '30S'
-  if (!symbol) return res.status(400).json({ error: 'Symbol is required' })
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6 flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-800">Stock Alert Dashboard</h1>
+          <button 
+            onClick={fetchData}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition-transform hover:scale-105"
+          >
+            🔄 Refresh Data
+          </button>
+        </div>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gray-100 text-sm font-semibold text-gray-700">
+                  <th className="px-4 py-3 text-left">Ticker</th>
+                  <th className="px-4 py-3 text-center">Price</th>
+                  <th className="px-4 py-3 text-center">Chg%</th>
+                  <th className="px-4 py-3 text-center">Vol</th>
+                  <th className="px-4 py-3 text-center">Open</th>
+                  <th className="px-4 py-3 text-center">Open Trend</th>
+                  <th className="px-4 py-3 text-center">S30s</th>
+                  <th className="px-4 py-3 text-center">S1m</th>
+                  <th className="px-4 py-3 text-center">S5m</th>
+                  <th className="px-4 py-3 text-center">Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
+                      No stock data available. Click "Refresh Data" to load data.
+                    </td>
+                  </tr>
+                ) : (
+                  data.map((row, i) => {
+                    // Open: 2m932signal - 2m930signal
+                    const openValue = (row["2m932signal"] ?? 0) - (row["2m930signal"] ?? 0);
+                    const openStr = getTrendDirection(openValue);
+                    
+                    // Open Trend: 2m1000signal - 2m932signal
+                    const openTrendValue = (row["2m1000signal"] ?? 0) - (row["2m932signal"] ?? 0);
+                    const openTrendStr = getTrendDirection(openTrendValue);
+                    
+                    // Trend: sk2mDiff
+                    const trendStr = getTrendDirection(row.sk2mDiff ?? 0);
 
-  const key = `${symbol}_${timeframe}`
-  if (!alerts[key]) alerts[key] = []
-
-  // parse signals
-  const signal930 = parseOrNull(rawAlert.signal930)
-  const signal932 = parseOrNull(rawAlert.signal932)
-  const signal1000 = parseOrNull(rawAlert.signal1000)
-  const openSignal = (signal932 !== null && signal930 !== null) ? signal932 - signal930 : null
-  const openTrendSignal = (signal1000 !== null && signal932 !== null) ? signal1000 - signal932 : null
-
-  const alert = {
-    symbol,
-    timeframe,
-    time: rawAlert.time || Date.now().toString(),
-    humanTime: rawAlert.humanTime || '',
-    price: parseFloat(rawAlert.price) || 0,
-    priceChange: parseFloat(rawAlert.priceChange) || 0,
-    volume: rawAlert.volume || 0,
-    signal930,
-    signal932,
-    signal1000,
-    openSignal,
-    openTrendSignal,
-    s30sSignal: parseOrNull(rawAlert.s30sSignal),
-    s1mSignal: parseOrNull(rawAlert.s1mSignal),
-    s5mSignal: parseOrNull(rawAlert.s5mSignal),
-    sk2mDiff: parseOrNull(rawAlert.sk2mDiff)
-  }
-  
-  alerts[key].push(alert)
-
-  // 限定每組最多保存3000條（按需調整）
-  if (alerts[key].length > 3000) alerts[key].shift()
-  res.sendStatus(200)
-})
-
-// API: 最新 alerts（每隻股票 timeframe 各1條，顯示用）
-app.get('/alerts', (req, res) => {
-  const premarket = isCurrentlyPremarket()
-  const past10am = isCurrentlyPast10AM()
-  
-  // 只出最新一條
-  const latestAlerts = Object.values(alerts)
-    .map(arr => arr[arr.length - 1])
-    .filter(Boolean)
-    .filter(alert => alert.symbol && alert.symbol.trim() !== '')
-    .map(alert => ({
-      ...alert,
-      isPremarket: premarket,
-      isPast10AM: past10am
-    }))
-  
-  res.json(latestAlerts)
-})
-
-// API: 全部歷史 alerts（trace back 用）
-app.get('/alerts/history', (req, res) => {
-  res.json(alerts)
-})
-
-// API: 指定symbol、timeframe歷史（可選）
-app.get('/alerts/history/:symbol/:timeframe', (req, res) => {
-  const key = `${req.params.symbol}_${req.params.timeframe}`
-  if (!alerts[key]) return res.status(404).json({ error: 'No history found' })
-  res.json(alerts[key])
-})
-
-// 其他：刪除單條、清空
-app.post('/delete-alert', (req, res) => {
-  const { symbol, timeframe } = req.body
-  if (!symbol) return res.status(400).json({ error: 'Symbol is required' })
-  const key = `${symbol}_${timeframe || '30S'}`
-  const before = alerts[key]?.length || 0
-  if (alerts[key]) {
-    alerts[key] = []
-  }
-  res.json({ message: `Deleted ${before} alerts for ${key}` })
-})
-
-app.delete('/alerts', (req, res) => {
-  const count = Object.values(alerts).reduce((a, b) => a + b.length, 0)
-  alerts = {}
-  res.json({ message: `Cleared ${count} alerts`, count })
-})
-
-app.get('/clear-alerts', (req, res) => {
-  const count = Object.values(alerts).reduce((a, b) => a + b.length, 0)
-  alerts = {}
-  res.json({ message: `Cleared ${count} alerts`, previousCount: count, currentCount: 0 })
-})
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`)
-})
+                    return (
+                      <tr key={i} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-bold text-gray-800">{row.symbol || '-'}</td>
+                        <td className="px-4 py-3 text-center">{row.price?.toFixed(2) || '-'}</td>
+                        <td className={`px-4 py-3 text-center ${(row.priceChange || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {row.priceChange?.toFixed(2) + '%' || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm">{row.volume?.toLocaleString() || '-'}</td>
+                        <td className="px-4 py-3 text-center text-sm">{openStr}</td>
+                        <td className="px-4 py-3 text-center text-sm">{openTrendStr}</td>
+                        <td className={`px-4 py-3 text-center text-sm font-semibold ${getBg(row.s30sSignal ?? 0)}`}>
+                          {row.s30sSignal ?? '-'}
+                        </td>
+                        <td className={`px-4 py-3 text-center text-sm font-semibold ${getBg(row.s1mSignal ?? 0)}`}>
+                          {row.s1mSignal ?? '-'}
+                        </td>
+                        <td className={`px-4 py-3 text-center text-sm font-semibold ${getBg(row.s5mSignal ?? 0)}`}>
+                          {row.s5mSignal ?? '-'}
+                        </td>
+                        <td className="px-4 py-3 text-center text-sm">{trendStr}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        {lastUpdate && (
+          <div className="text-center text-gray-500 text-sm mt-4">
+            Last updated: {lastUpdate}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
