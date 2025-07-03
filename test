@@ -1,5 +1,5 @@
 //@version=5
-indicator("Pure)", overlay=false)
+indicator("test", overlay=false)
 
 // ==== Data Types ====
 type bar
@@ -83,45 +83,39 @@ osc o = b.stmc(src, fast, slow, sigs, sigl)
 stochObj = stoch.new(stochK, stochD)
 
 // ==== Price Change/Volume (Fixed: Previous Trading Day) ====
-// Get previous trading day's close (1D timeframe)
 prevDayClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
-// Calculate price change from previous trading day
 priceChange = ((close - prevDayClose) / prevDayClose) * 100
-// Price change within current candle (unchanged)
 priceChangeCandle = ((close - open) / open) * 100
-// Get cumulative daily volume
 volume1D = request.security(syminfo.tickerid, "1D", volume, lookahead=barmerge.lookahead_off)
 
-// ==== Multi-timeframe signals ====
-// Store fixed signal values at specific times
+// ==== 強制 fetch 2分鐘 timeframe 特定時刻 signal ====
+get2mSignalAt(hourTarget, minTarget) =>
+    request.security(syminfo.tickerid, "2", hour == hourTarget and minute == minTarget ? o.s : na, lookahead=barmerge.lookahead_on)
+
+// 2m timeframe 09:30、09:32、10:00 bar close 嘅 MACD signal
+signal930 = get2mSignalAt(9, 30)
+signal932 = get2mSignalAt(9, 32)
+signal1000 = get2mSignalAt(10, 0)
+
+// ==== 其他 Multi-timeframe signals（本 timeframe）====
 var float stored930Signal = na
 var float stored932Signal = na
 var float stored1000Signal = na
 
-// Capture 9:30 AM signal (when hour is 9 and minute is 30)
 if hour == 9 and minute == 30
     stored930Signal := o.s
-
-// Capture 9:32 AM signal (when hour is 9 and minute is 32)
 if hour == 9 and minute == 32
     stored932Signal := o.s
-
-// Capture 10:00 AM signal (when hour is 10 and minute is 0)
 if hour == 10 and minute == 0
     stored1000Signal := o.s
 
-// Calculate Open: 9:32 AM signal minus 9:30 AM signal (fixed values)
 openSignal = stored932Signal - stored930Signal
-
-// Calculate Open Trend: 10:00 AM signal minus 9:32 AM signal (fixed values)
 openTrendSignal = stored1000Signal - stored932Signal
 
-// ==== Fetch previous bar close value for multi-timeframe signals ====
-s30sSignal = request.security(syminfo.tickerid, "30S", o.s[1], lookahead=barmerge.lookahead_off)  // 30s 上一bar
-s1mSignal = request.security(syminfo.tickerid, "1", o.s[1], lookahead=barmerge.lookahead_off)     // 1m 上一bar
-s5mSignal = request.security(syminfo.tickerid, "5", o.s[1], lookahead=barmerge.lookahead_off)     // 5m 上一bar
+s30sSignal = request.security(syminfo.tickerid, "30S", o.s[1], lookahead=barmerge.lookahead_off)
+s1mSignal = request.security(syminfo.tickerid, "1", o.s[1], lookahead=barmerge.lookahead_off)
+s5mSignal = request.security(syminfo.tickerid, "5", o.s[1], lookahead=barmerge.lookahead_off)
 
-// 2m Stochastic K difference
 currentSK = request.security(syminfo.tickerid, "2", stochObj.k, lookahead=barmerge.lookahead_off)
 previousSK = request.security(syminfo.tickerid, "2", stochObj.k[1], lookahead=barmerge.lookahead_off)
 sk2mDiff = currentSK - previousSK
@@ -133,7 +127,33 @@ plot(o.b.c, "stmc HA MACD Value", color=color.blue, linewidth=1)
 plot(showStoch ? stochObj.k : na, "Stoch %K", color=color.white, linewidth=1)
 plot(showStoch ? stochObj.d : na, "Stoch %D", color=color.orange, linewidth=1)
 
-// ==== Webhook Alert (每新 bar send JSON) ====
+// ==== Webhook Alert ====
 if ta.change(time)
-    webhookMsg = '{' + '"symbol": "' + syminfo.ticker + '",' + '"timeframe": "' + timeframe.period + '",' + '"time": "' + str.tostring(time) + '",' + '"price": ' + str.tostring(close) + ',' + '"open": ' + str.tostring(open) + ',' + '"high": ' + str.tostring(high) + ',' + '"low": ' + str.tostring(low) + ',' + '"close": ' + str.tostring(close) + ',' + '"priceChange": ' + str.tostring(priceChange, "#.##") + ',' + '"priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + ',' + '"volume": ' + str.tostring(volume1D) + ',' + '"macdSignal": ' + str.tostring(o.s, "#.####") + ',' + '"stochK": ' + str.tostring(stochObj.k, "#.##") + ',' + '"signal930": ' + str.tostring(stored930Signal, "#.####") + ',' + '"signal932": ' + str.tostring(stored932Signal, "#.####") + ',' + '"signal1000": ' + str.tostring(stored1000Signal, "#.####") + ',' + '"openSignal": ' + str.tostring(openSignal, "#.####") + ',' + '"openTrendSignal": ' + str.tostring(openTrendSignal, "#.####") + ',' + '"s30sSignal": ' + str.tostring(s30sSignal, "#.####") + ',' + '"s1mSignal": ' + str.tostring(s1mSignal, "#.####") + ',' + '"s5mSignal": ' + str.tostring(s5mSignal, "#.####") + ',' + '"sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + '}'
+    humanTime = str.tostring(year) + '-' + str.tostring(month, "00") + '-' + str.tostring(dayofmonth, "00") + ' ' + str.tostring(hour, "00") + ':' + str.tostring(minute, "00") + ':' + str.tostring(second, "00") + ' ET'
+    webhookMsg =
+      '{' +
+      '"symbol":"' + syminfo.ticker + '",' +
+      '"timeframe":"' + timeframe.period + '",' +
+      '"time":"' + str.tostring(time) + '",' +
+      '"humanTime":"' + humanTime + '",' +
+      '"price":' + str.tostring(close) + ',' +
+      '"open":' + str.tostring(open) + ',' +
+      '"high":' + str.tostring(high) + ',' +
+      '"low":' + str.tostring(low) + ',' +
+      '"close":' + str.tostring(close) + ',' +
+      '"priceChange":' + str.tostring(priceChange, "#.##") + ',' +
+      '"priceChangeCandle":' + str.tostring(priceChangeCandle, "#.##") + ',' +
+      '"volume":' + str.tostring(volume1D) + ',' +
+      '"macdSignal":' + str.tostring(o.s, "#.####") + ',' +
+      '"stochK":' + str.tostring(stochObj.k, "#.##") + ',' +
+      '"signal930":' + str.tostring(signal930, "#.####") + ',' +
+      '"signal932":' + str.tostring(signal932, "#.####") + ',' +
+      '"signal1000":' + str.tostring(signal1000, "#.####") + ',' +
+      '"openSignal":' + str.tostring(openSignal, "#.####") + ',' +
+      '"openTrendSignal":' + str.tostring(openTrendSignal, "#.####") + ',' +
+      '"s30sSignal":' + str.tostring(s30sSignal, "#.####") + ',' +
+      '"s1mSignal":' + str.tostring(s1mSignal, "#.####") + ',' +
+      '"s5mSignal":' + str.tostring(s5mSignal, "#.####") + ',' +
+      '"sk2mDiff":' + str.tostring(sk2mDiff, "#.####") +
+      '}'
     alert(webhookMsg, alert.freq_once_per_bar_close)
