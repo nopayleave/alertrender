@@ -30,11 +30,34 @@ src(b, srcType) =>
         'hlcc4' => (b.h + b.l + b.c + b.c) / 4
         => na
 
+// ==== method src for bar type ====
+method src(bar b, string srcType) =>
+    switch srcType
+        'open'  => b.o
+        'high'  => b.h
+        'low'   => b.l
+        'close' => b.c
+        'hl2'   => (b.h + b.l) / 2
+        'hlc3'  => (b.h + b.l + b.c) / 3
+        'ohlc4' => (b.o + b.h + b.l + b.c) / 4
+        'hlcc4' => (b.h + b.l + b.c + b.c) / 4
+        => na
+
+// ==== method ha for bar type ====
+method ha(bar b) =>
+    bar.new(math.avg(b.o[1], b.c[1]), math.max(b.h, b.o, b.c), math.min(b.l, b.o, b.c), math.avg(b.o, b.h, b.l, b.c))
+
 // ==== stmc MACD function ====
-stmc(b, srcType, flen, slen, sig, clen) =>
-    x = (ta.ema(src(b, srcType), flen) - ta.ema(src(b, srcType), slen)) / (ta.ema(b.h - b.l , slen)) * 100
-    s = ta.ema(src(b, sig), clen)
-    osc.new(bar.new(b.o, b.h, b.l, x), s, x - s)
+method stmc(bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
+    float x = (ta.ema(b.src(src), flen)  - 
+               ta.ema(b.src(src), slen)) / 
+              (ta.ema(b.h - b.l , slen)) * 100
+
+    bar   z = bar.new(x[1], math.max(x, x[1]), math.min(x, x[1]), x).ha()
+
+    float s = ta.ema(z.src(sig), clen)
+
+    osc.new(z, s, z.c - s)
 
 // ==== calcStoch function ====
 calcStoch(len, smooth, dlen, timeframe) =>
@@ -46,25 +69,39 @@ calcStoch(len, smooth, dlen, timeframe) =>
     d = ta.sma(smoothK, dlen)
     [smoothK, d]
 
-// ==== MACD Settings ====
-groupMacd = "MACD Settings"
-src_input  = input.string('close', "Source", ['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
-fast = input.int(10, "Fast Length", group=groupMacd)
-slow = input.int(75, "Slow Length", group=groupMacd)
-sigs = input.string('close', "Signal Source", ['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
-sigl = input.int(20, "Signal Length", group=groupMacd)
+// ==== Input Settings ====
+const string gm = "MACD Settings", const string gu = "UI Options", const string gs = "Stochastic Settings"
+src_input  = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'],               group = gm)
+fast = input.int   (10      , "Fast Length"        ,                                                                                         group = gm)
+slow = input.int   (75      , "Slow Length"        ,                                                                                         group = gm)
+sigb = input.bool  (true    , "Signal"             ,                                                                           inline = '1', group = gm)
+sigs = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'], inline = '1', group = gm)
+sigl = input.int   (20      , "Length"             ,                                                                           inline = '1', group = gm)
+mode = input.string('Hybrid', "Display Mode"       , ['Hybrid',                       'MACD',                    'Histogram'],               group = gu)
+revs = input.bool  (true    , ""                   ,                                                                           inline = '0', group = gu)
+revt = input.int   (100     , "Reversion Threshold", [100,                                                               150], inline = '0', group = gu)
+colb = input.string('None'  , "Bar Coloring"       , ['None', 'MidLine', 'Candles', 'Sig Cross', 'Extremities', 'Reversions'],               group = gu)
+hol  = input.bool  (true    , "Hollow Candles"     ,                                                                                         group = gu)
+showTurnArrows = input.bool(true, "Show Turn Arrows", group=gu)
+turnUpColor = input.color(color.yellow, "Turn Up Color", group=gu)
+turnDnColor = input.color(color.white, "Turn Down Color", group=gu)
+histUpIncColor = input.color(#369b85, "Histogram Up-Increasing", group=gu)
+histUpDecColor = input.color(#f44336, "Histogram Up-Decreasing", group=gu)
+histDnIncColor = input.color(#369b85, "Histogram Down-Increasing", group=gu)
+histDnDecColor = input.color(#f44336, "Histogram Down-Decreasing", group=gu)
+haUpColor = input.color(#369b85, "Heikin-Ashi Up Color", group=gu)
+haDownColor = input.color(#f44336, "Heikin-Ashi Down Color", group=gu)
 
 // ==== Stochastic Settings ====
-groupStoch = "Stochastic Settings"
-stochLen    = input.int(10, "Stoch K Length", group=groupStoch)
-stochSmooth = input.int(10, "K Smoothing", group=groupStoch)
-stochDLen   = input.int(10, "D Length", group=groupStoch)
-stochTf     = input.timeframe("", "Timeframe (empty=current)", group=groupStoch)
-showStoch   = input.bool(true, "Show Stoch", group=groupStoch)
+stochLen    = input.int(10, "Stoch K Length", group=gs)
+stochSmooth = input.int(10, "K Smoothing", group=gs)
+stochDLen   = input.int(10, "D Length", group=gs)
+stochTf     = input.timeframe("", "Timeframe (empty=current)", group=gs)
+showStoch   = input.bool(true, "Show Stoch", group=gs)
 
 // ==== Calculations ====
 b = bar.new(open, high, low, close)
-o = stmc(b, src_input, fast, slow, sigs, sigl)
+o = b.stmc(src_input, fast, slow, sigs, sigl)
 [stochK, stochD] = calcStoch(stochLen, stochSmooth, stochDLen, stochTf)
 stochObj = stoch.new(stochK, stochD)
 
@@ -78,9 +115,9 @@ f_humantime(ts) =>
     y + '-' + m + '-' + d + ' ' + h + ':' + min
 
 // ==== Multi-Timeframe Signals ====
-s30sSignal = request.security(syminfo.tickerid, "30S", stmc(b, src_input, fast, slow, sigs, sigl).s)
-s1mSignal = request.security(syminfo.tickerid, "1", stmc(b, src_input, fast, slow, sigs, sigl).s)
-s5mSignal = request.security(syminfo.tickerid, "5", stmc(b, src_input, fast, slow, sigs, sigl).s)
+s30sSignal = request.security(syminfo.tickerid, "30S", b.stmc(src_input, fast, slow, sigs, sigl).s)
+s1mSignal = request.security(syminfo.tickerid, "1", b.stmc(src_input, fast, slow, sigs, sigl).s)
+s5mSignal = request.security(syminfo.tickerid, "5", b.stmc(src_input, fast, slow, sigs, sigl).s)
 [sk2m, _] = calcStoch(stochLen, stochSmooth, stochDLen, "2")
 [sk2m_2ago_val, _] = request.security(syminfo.tickerid, "2", calcStoch(stochLen, stochSmooth, stochDLen, "2"))
 sk2m_2ago = sk2m_2ago_val[2]
@@ -92,7 +129,7 @@ priceChange = na(yestclose) ? na : (close - yestclose) / yestclose * 100
 
 // ==== 2m MACD signal at specific bar ====
 get_2m_signal(bars_ago) =>
-    request.security(syminfo.tickerid, "2", stmc(b, src_input, fast, slow, sigs, sigl).s[bars_ago])
+    request.security(syminfo.tickerid, "2", b.stmc(src_input, fast, slow, sigs, sigl).s[bars_ago])
 
 _2m930signal = get_2m_signal(0)
 _2m932signal = get_2m_signal(1)
