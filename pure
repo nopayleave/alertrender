@@ -58,42 +58,6 @@ method calcStoch(simple int len, simple int smooth, simple int dlen, simple stri
     float d = ta.sma(smoothK, dlen)
     [smoothK, d]
 
-// ==== Market Time Functions ====
-// Get current time in ET (Eastern Time)
-getCurrentETTime() =>
-    // Convert current time to ET (UTC-5 in EST, UTC-4 in EDT)
-    currentTime = time + timeframe.in_seconds(timeframe.period) * 1000
-    // Note: This is a simplified conversion, actual DST handling may vary
-    currentTime
-
-// Check if current time is during market hours (9:30 AM - 4:00 PM ET)
-isMarketHours() =>
-    currentHour = hour(getCurrentETTime(), "America/New_York")
-    currentMinute = minute(getCurrentETTime(), "America/New_York")
-    
-    // Market opens at 9:30 AM ET
-    marketOpen = currentHour > 9 or (currentHour == 9 and currentMinute >= 30)
-    // Market closes at 4:00 PM ET
-    marketClose = currentHour < 16
-    
-    marketOpen and marketClose
-
-// Check if current time is premarket (4:00 AM - 9:30 AM ET)
-isPremarket() =>
-    currentHour = hour(getCurrentETTime(), "America/New_York")
-    currentMinute = minute(getCurrentETTime(), "America/New_York")
-    
-    // Premarket: 4:00 AM - 9:30 AM ET
-    afterPreStart = currentHour >= 4
-    beforeMarketOpen = currentHour < 9 or (currentHour == 9 and currentMinute < 30)
-    
-    afterPreStart and beforeMarketOpen
-
-// Check if it's past 10:00 AM ET
-isPast10AM() =>
-    currentHour = hour(getCurrentETTime(), "America/New_York")
-    currentHour >= 10
-
 // ==== MACD Settings ====
 groupMacd = "MACD Settings"
 src  = input.string('close', "Source", ['open', 'high', 'low', 'close', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'], group=groupMacd)
@@ -137,11 +101,6 @@ currentSK = request.security(syminfo.tickerid, "2", stochObj.k, lookahead=barmer
 previousSK = request.security(syminfo.tickerid, "2", stochObj.k[1], lookahead=barmerge.lookahead_off)
 sk2mDiff = currentSK - previousSK
 
-// ==== Market Time Status ====
-marketHours = isMarketHours()
-premarket = isPremarket()
-past10AM = isPast10AM()
-
 // ==== Plots ====
 plot(o.s, "stmc Signal Line", color=color.fuchsia, linewidth=2)
 plot(o.h, "stmc Histogram", color=o.h >= 0 ? color.green : color.red, style=plot.style_columns, linewidth=2)
@@ -170,9 +129,6 @@ if ta.change(time)
                  '"s30sSignal": ' + str.tostring(s30sSignal, "#.####") + ',' + 
                  '"s1mSignal": ' + str.tostring(s1mSignal, "#.####") + ',' + 
                  '"s5mSignal": ' + str.tostring(s5mSignal, "#.####") + ',' + 
-                 '"sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + ',' + 
-                 '"isPremarket": ' + str.tostring(premarket) + ',' + 
-                 '"isMarketHours": ' + str.tostring(marketHours) + ',' + 
-                 '"isPast10AM": ' + str.tostring(past10AM) + 
+                 '"sk2mDiff": ' + str.tostring(sk2mDiff, "#.####") + 
                  '}'
     alert(webhookMsg, alert.freq_once_per_bar_close)

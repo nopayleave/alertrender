@@ -332,45 +332,45 @@ async function fetchAlerts() {
   try {
     const response = await fetch('/alerts')
     const data = await response.json()
-    
+  
     // Update market status
     updateMarketStatus()
-    
-    // Update last update time
-    const lastUpdate = document.getElementById('lastUpdate')
-    if (data.length > 0) {
-      const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
-      lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
-    } else {
-      lastUpdate.textContent = 'Last updated: Never'
-    }
-    
+  
+  // Update last update time
+  const lastUpdate = document.getElementById('lastUpdate')
+  if (data.length > 0) {
+    const mostRecent = Math.max(...data.map(alert => parseInt(alert.time)))
+    lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString()
+  } else {
+    lastUpdate.textContent = 'Last updated: Never'
+  }
+  
     // Update table
     const alertsTable = document.getElementById('alertsTable')
-    const noAlerts = document.getElementById('noAlerts')
-    
+  const noAlerts = document.getElementById('noAlerts')
+  
     if (data.length === 0) {
       alertsTable.innerHTML = ''
-      noAlerts.classList.remove('hidden')
-    } else {
-      noAlerts.classList.add('hidden')
+    noAlerts.classList.remove('hidden')
+  } else {
+    noAlerts.classList.add('hidden')
       alertsTable.innerHTML = data.map(alert => {
-        // Check if this row was just updated
-        const wasUpdated = previousData.length > 0 && 
+      // Check if this row was just updated
+      const wasUpdated = previousData.length > 0 && 
           previousData.find(prev => prev.symbol === alert.symbol && prev.time !== alert.time)
-        const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
-        
-        return \`
+      const updateHighlight = wasUpdated ? 'ring-2 ring-blue-400 ring-opacity-50' : ''
+      
+      return \`
           <tr class="hover:bg-gray-700 transition-colors duration-200 \${updateHighlight}">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center">
                 <span class="text-sm font-medium text-white hover:text-blue-400 cursor-pointer"
                       onclick="window.open('https://www.tradingview.com/chart/?symbol=\${alert.symbol}', '_blank')"
-                      title="Click to open TradingView">
+                    title="Click to open TradingView">
                   \${alert.symbol}
-                </span>
-              </div>
-            </td>
+              </span>
+            </div>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white">
               $\${parseFloat(alert.price || 0).toFixed(2)}
             </td>
@@ -389,34 +389,34 @@ async function fetchAlerts() {
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s30sSignal)}">
                 \${parseFloat(alert.s30sSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s1mSignal)}">
                 \${parseFloat(alert.s1mSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm">
               <span class="px-2 py-1 rounded font-medium \${getSignalBgColor(alert.s5mSignal)}">
                 \${parseFloat(alert.s5mSignal || 0).toFixed(1)}
-              </span>
-            </td>
+            </span>
+          </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-white font-medium">
               \${formatTrend(alert.sk2mDiff)}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <button onclick="deleteAlert('\${alert.symbol}', '\${alert.timeframe || ''}')" 
                       class="text-red-400 hover:text-red-300 hover:bg-red-900 hover:bg-opacity-30 p-2 rounded transition-all duration-200" 
-                      title="Delete this alert">
-                🗑️
-              </button>
-            </td>
-          </tr>
-        \`
-      }).join('')
-    }
-    
-    previousData = [...data]
+                    title="Delete this alert">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      \`
+    }).join('')
+  }
+  
+  previousData = [...data]
   } catch (error) {
     console.error('Error fetching alerts:', error)
   }
