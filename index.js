@@ -10,28 +10,73 @@ app.use(express.json())
 // 儲存 alert JSON
 let alerts = [] // Latest alerts per symbol
 let alertsHistory = [] // All historical alerts
+let dayChangeData = {} // Store day change data by symbol
+
+// Helper function to find and update alert by symbol
+function updateAlertData(symbol, newData) {
+  // Find existing alert for this symbol
+  const existingIndex = alerts.findIndex(alert => alert.symbol === symbol)
+  
+  if (existingIndex !== -1) {
+    // Merge with existing alert
+    alerts[existingIndex] = {
+      ...alerts[existingIndex],
+      ...newData,
+      receivedAt: Date.now()
+    }
+  } else {
+    // Create new alert entry
+    alerts.unshift({
+      symbol: symbol,
+      ...newData,
+      receivedAt: Date.now()
+    })
+  }
+  
+  // Keep only latest 100 symbols in alerts (for performance)
+  alerts = alerts.slice(0, 100)
+}
 
 // Webhook for TradingView POST
 app.post('/webhook', (req, res) => {
   const alert = req.body
   
-  // Store in full history (unlimited)
+  // Store in full history (all alerts)
   alertsHistory.unshift({
     ...alert,
     receivedAt: Date.now()
   })
   
-  // Remove any existing alerts for the same symbol from latest alerts
-  alerts = alerts.filter(existingAlert => existingAlert.symbol !== alert.symbol)
+  // Detect if this is a day change alert (contains changeFromPrevDay but missing other fields)
+  const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   
-  // Add the new alert to the front of latest alerts
-  alerts.unshift({
-    ...alert,
-    receivedAt: Date.now()
-  })
-  
-  // Keep only latest 100 symbols in alerts (for performance)
-  alerts = alerts.slice(0, 100)
+  if (isDayChangeAlert) {
+    // Store day change data separately
+    dayChangeData[alert.symbol] = alert.changeFromPrevDay
+    
+    // Update existing alert with day change data
+    updateAlertData(alert.symbol, { changeFromPrevDay: alert.changeFromPrevDay })
+  } else {
+    // This is a main alert - merge with any existing day change data
+    const alertData = { ...alert }
+    
+    // Add day change data if available
+    if (dayChangeData[alert.symbol] !== undefined) {
+      alertData.changeFromPrevDay = dayChangeData[alert.symbol]
+    }
+    
+    // Remove any existing alerts for the same symbol from latest alerts
+    alerts = alerts.filter(existingAlert => existingAlert.symbol !== alert.symbol)
+    
+    // Add the new alert to the front of latest alerts
+    alerts.unshift({
+      ...alertData,
+      receivedAt: Date.now()
+    })
+    
+    // Keep only latest 100 symbols in alerts (for performance)
+    alerts = alerts.slice(0, 100)
+  }
   
   // Keep only latest 10000 entries in history (prevent memory issues)
   alertsHistory = alertsHistory.slice(0, 10000)
@@ -53,6 +98,7 @@ app.get('/alerts/history', (req, res) => {
 app.post('/reset-alerts', (req, res) => {
   alerts = []
   alertsHistory = []
+  dayChangeData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -273,13 +319,19 @@ app.get('/', (req, res) => {
               return parseFloat(alert.price) || 0;
             case 'priceChange':
               // Calculate price change percentage for sorting
-              if (alert.price && alert.previousClose && alert.previousClose !== 0) {
+              // Priority 1: Use changeFromPrevDay from Day script if available
+              if (alert.changeFromPrevDay !== undefined) {
+                return parseFloat(alert.changeFromPrevDay) || 0;
+              }
+              // Priority 2: Calculate from price and previousClose
+              else if (alert.price && alert.previousClose && alert.previousClose !== 0) {
                 const close = parseFloat(alert.price);
                 const prevDayClose = parseFloat(alert.previousClose);
                 const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
                 return changeFromPrevDay;
-              } else if (alert.priceChange) {
-                // Fallback to priceChange field if it exists (for backward compatibility)
+              } 
+              // Priority 3: Fallback to legacy priceChange field
+              else if (alert.priceChange) {
                 return parseFloat(alert.priceChange) || 0;
               }
               return 0;
@@ -398,14 +450,22 @@ app.get('/', (req, res) => {
             let priceChangeDisplay = 'N/A';
             let priceChangeColor = '';
             
-            if (alert.price && alert.previousClose && alert.previousClose !== 0) {
+            // Priority 1: Use changeFromPrevDay from Day script if available
+            if (alert.changeFromPrevDay !== undefined) {
+              const changeFromPrevDay = parseFloat(alert.changeFromPrevDay);
+              priceChangeDisplay = changeFromPrevDay.toFixed(2);
+              priceChangeColor = changeFromPrevDay >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+            }
+            // Priority 2: Calculate from price and previousClose
+            else if (alert.price && alert.previousClose && alert.previousClose !== 0) {
               const close = parseFloat(alert.price);
               const prevDayClose = parseFloat(alert.previousClose);
               const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
               priceChangeDisplay = changeFromPrevDay.toFixed(2);
               priceChangeColor = changeFromPrevDay >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
-            } else if (alert.priceChange) {
-              // Fallback to priceChange field if it exists (for backward compatibility)
+            } 
+            // Priority 3: Fallback to legacy priceChange field
+            else if (alert.priceChange) {
               priceChangeDisplay = alert.priceChange;
               priceChangeColor = parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
             }

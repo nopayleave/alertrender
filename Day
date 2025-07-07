@@ -1,0 +1,25 @@
+//@version=5
+indicator("Prev Day Close Compare", overlay=false)
+
+// 儲存昨日收市價
+var float prevDayClose = na
+
+// 每逢新 trading day，更新 prevDayClose
+if ta.change(time("D"))
+    prevDayClose := close[1]
+
+// 現價對比昨日收市
+changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100
+
+plot(changeFromPrevDay, title="Change vs. Prev Day Close")
+
+// Send webhook alert with day change data when new day starts or value changes significantly
+var float lastSentChange = na
+sendDayAlert = ta.change(time("D")) or (barstate.isconfirmed and math.abs(changeFromPrevDay - nz(lastSentChange)) > 0.01)
+
+if sendDayAlert
+    dayChangeMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay) + '}'
+    alert(dayChangeMsg, alert.freq_once_per_bar_close)
+    lastSentChange := changeFromPrevDay
