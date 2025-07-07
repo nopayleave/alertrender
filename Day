@@ -11,8 +11,8 @@ if ta.change(time("D"))
 // 現價對比昨日收市
 changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100
 
-// Daily volume data
-dailyVolume = volume
+// Daily volume data - get current day's volume from D timeframe
+dailyVolume = request.security(syminfo.tickerid, "1D", volume, lookahead=barmerge.lookahead_off)
 
 plot(changeFromPrevDay, title="Change vs. Prev Day Close")
 

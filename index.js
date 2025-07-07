@@ -553,8 +553,7 @@ app.get('/', (req, res) => {
           }
         }
 
-        // Fetch alerts every 2 seconds
-        setInterval(fetchAlerts, 2000);
+        // Fetch alerts once on page load
         fetchAlerts();
       </script>
     </body>
