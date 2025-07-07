@@ -11,6 +11,7 @@ app.use(express.json())
 let alerts = [] // Latest alerts per symbol
 let alertsHistory = [] // All historical alerts
 let dayChangeData = {} // Store day change data by symbol
+let dayVolumeData = {} // Store daily volume data by symbol
 
 // Helper function to find and update alert by symbol
 function updateAlertData(symbol, newData) {
@@ -47,22 +48,36 @@ app.post('/webhook', (req, res) => {
     receivedAt: Date.now()
   })
   
-  // Detect if this is a day change alert (contains changeFromPrevDay but missing other fields)
+  // Detect alert type:
+  // - Day script: contains changeFromPrevDay and volume but missing price (handles Chg% and Vol columns)
+  // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   
   if (isDayChangeAlert) {
-    // Store day change data separately
+    // Day script alert - store day change and volume data
     dayChangeData[alert.symbol] = alert.changeFromPrevDay
+    if (alert.volume !== undefined) {
+      dayVolumeData[alert.symbol] = alert.volume
+    }
     
-    // Update existing alert with day change data
-    updateAlertData(alert.symbol, { changeFromPrevDay: alert.changeFromPrevDay })
+    // Update existing alert with day data
+    const dayData = { changeFromPrevDay: alert.changeFromPrevDay }
+    if (alert.volume !== undefined) {
+      dayData.volume = alert.volume
+    }
+    updateAlertData(alert.symbol, dayData)
   } else {
-    // This is a main alert - merge with any existing day change data
+    // Main script alert (again.pine) - merge with any existing day data
     const alertData = { ...alert }
     
-    // Add day change data if available
+    // Add day change data if available from Day script
     if (dayChangeData[alert.symbol] !== undefined) {
       alertData.changeFromPrevDay = dayChangeData[alert.symbol]
+    }
+    
+    // Add volume data if available from Day script
+    if (dayVolumeData[alert.symbol] !== undefined) {
+      alertData.volume = dayVolumeData[alert.symbol]
     }
     
     // Remove any existing alerts for the same symbol from latest alerts
@@ -99,6 +114,7 @@ app.post('/reset-alerts', (req, res) => {
   alerts = []
   alertsHistory = []
   dayChangeData = {}
+  dayVolumeData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 

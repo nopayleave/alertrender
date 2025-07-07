@@ -45,10 +45,6 @@ timeframeStr = timeframe.period
 epoch = time
 humantime = str.format("{0,date,yyyy-MM-dd HH:mm}", timestamp("GMT+8", year, month, dayofmonth, hour, minute))
 price = close
-vol = volume
-
-// Send previous trading day close price instead of calculating percentage change
-previousClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
 
 s30_signal = getSignal("30S")
 s1m_signal = getSignal("1")
@@ -60,8 +56,6 @@ jsonMsg = '{' +
   '"time": "' + str.tostring(epoch) + '",' +
   '"humantime": "' + humantime + '",' +
   '"price": ' + str.tostring(price) + ',' +
-  '"previousClose": ' + str.tostring(previousClose) + ',' +
-  '"volume": ' + str.tostring(vol) + ',' +
   '"s30_signal": ' + str.tostring(s30_signal) + ',' +
   '"s1m_signal": ' + str.tostring(s1m_signal) + ',' +
   '"s5m_signal": ' + str.tostring(s5m_signal) + '}'

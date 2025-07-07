@@ -11,15 +11,23 @@ if ta.change(time("D"))
 // 現價對比昨日收市
 changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100
 
+// Daily volume data
+dailyVolume = volume
+
 plot(changeFromPrevDay, title="Change vs. Prev Day Close")
 
 // Send webhook alert with day change data when new day starts or value changes significantly
 var float lastSentChange = na
-sendDayAlert = ta.change(time("D")) or (barstate.isconfirmed and math.abs(changeFromPrevDay - nz(lastSentChange)) > 0.01)
+var float lastSentVolume = na
+sendDayAlert = ta.change(time("D")) or (barstate.isconfirmed and (math.abs(changeFromPrevDay - nz(lastSentChange)) > 0.01 or math.abs(dailyVolume - nz(lastSentVolume)) > volume * 0.1))
 
 if sendDayAlert
     dayChangeMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
-      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay) + '}'
+      '"timeframe": "1D",' +
+      '"time": "' + str.tostring(time) + '",' +
+      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.####") + ',' +
+      '"volume": ' + str.tostring(dailyVolume, "#") + '}'
     alert(dayChangeMsg, alert.freq_once_per_bar_close)
     lastSentChange := changeFromPrevDay
+    lastSentVolume := dailyVolume
