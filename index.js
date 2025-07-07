@@ -274,9 +274,10 @@ app.get('/', (req, res) => {
             case 'priceChange':
               // Calculate price change percentage for sorting
               if (alert.price && alert.previousClose && alert.previousClose !== 0) {
-                const currentPrice = parseFloat(alert.price);
-                const prevClose = parseFloat(alert.previousClose);
-                return ((currentPrice - prevClose) / prevClose) * 100;
+                const close = parseFloat(alert.price);
+                const prevDayClose = parseFloat(alert.previousClose);
+                const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
+                return changeFromPrevDay;
               } else if (alert.priceChange) {
                 // Fallback to priceChange field if it exists (for backward compatibility)
                 return parseFloat(alert.priceChange) || 0;
@@ -398,11 +399,11 @@ app.get('/', (req, res) => {
             let priceChangeColor = '';
             
             if (alert.price && alert.previousClose && alert.previousClose !== 0) {
-              const currentPrice = parseFloat(alert.price);
-              const prevClose = parseFloat(alert.previousClose);
-              const priceChangePercent = ((currentPrice - prevClose) / prevClose) * 100;
-              priceChangeDisplay = priceChangePercent.toFixed(2);
-              priceChangeColor = priceChangePercent >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+              const close = parseFloat(alert.price);
+              const prevDayClose = parseFloat(alert.previousClose);
+              const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
+              priceChangeDisplay = changeFromPrevDay.toFixed(2);
+              priceChangeColor = changeFromPrevDay >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
             } else if (alert.priceChange) {
               // Fallback to priceChange field if it exists (for backward compatibility)
               priceChangeDisplay = alert.priceChange;
