@@ -8,14 +8,14 @@ app.use(cors())
 app.use(express.json())
 
 // 儲存 alert JSON
-let alerts = [] // Latest alerts per symbol
-let alertsHistory = [] // All historical alerts
+let alerts = [] // All alerts (not just latest per symbol)
+let alertsHistory = [] // All historical alerts (backup storage)
 let dayChangeData = {} // Store day change data by symbol
 let dayVolumeData = {} // Store daily volume data by symbol
 
-// Helper function to find and update alert by symbol
+// Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
-  // Find existing alert for this symbol
+  // Find existing alert for this symbol (only look at recent alerts to merge Day script data)
   const existingIndex = alerts.findIndex(alert => alert.symbol === symbol)
   
   if (existingIndex !== -1) {
@@ -34,8 +34,10 @@ function updateAlertData(symbol, newData) {
     })
   }
   
-  // Keep only latest 100 symbols in alerts (for performance)
-  alerts = alerts.slice(0, 100)
+  // Keep alerts within reasonable limit (increase to 5000 for more history)
+  if (alerts.length > 5000) {
+    alerts = alerts.slice(0, 5000)
+  }
 }
 
 // Webhook for TradingView POST
@@ -67,7 +69,7 @@ app.post('/webhook', (req, res) => {
     }
     updateAlertData(alert.symbol, dayData)
   } else {
-    // Main script alert (again.pine) - merge with any existing day data
+    // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
     
     // Add day change data if available from Day script
@@ -80,17 +82,16 @@ app.post('/webhook', (req, res) => {
       alertData.volume = dayVolumeData[alert.symbol]
     }
     
-    // Remove any existing alerts for the same symbol from latest alerts
-    alerts = alerts.filter(existingAlert => existingAlert.symbol !== alert.symbol)
-    
-    // Add the new alert to the front of latest alerts
+    // Add ALL alerts to the front (don't remove existing ones)
     alerts.unshift({
       ...alertData,
       receivedAt: Date.now()
     })
     
-    // Keep only latest 100 symbols in alerts (for performance)
-    alerts = alerts.slice(0, 100)
+    // Keep alerts within reasonable limit (increase to 5000 for more history)
+    if (alerts.length > 5000) {
+      alerts = alerts.slice(0, 5000)
+    }
   }
   
   // Keep only latest 10000 entries in history (prevent memory issues)
