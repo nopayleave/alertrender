@@ -102,7 +102,23 @@ app.post('/webhook', (req, res) => {
 
 // API for frontend - only latest alerts per symbol
 app.get('/alerts', (req, res) => {
-  res.json(alerts)
+  // Get only the latest alert per symbol
+  const latestAlerts = {}
+  
+  // Go through alerts and keep only the most recent for each symbol
+  alerts.forEach(alert => {
+    if (!alert.symbol) return
+    
+    if (!latestAlerts[alert.symbol] || 
+        (alert.receivedAt > latestAlerts[alert.symbol].receivedAt)) {
+      latestAlerts[alert.symbol] = alert
+    }
+  })
+  
+  // Convert to array and sort by receivedAt (newest first)
+  const result = Object.values(latestAlerts).sort((a, b) => b.receivedAt - a.receivedAt)
+  
+  res.json(result)
 })
 
 // API for historical data - all alerts
