@@ -12,7 +12,7 @@ open_price       = open
 high_price       = high
 low_price        = low
 close_price      = close
-price_change     = na(close[1]) ? na : ((close - close[1]) / close[1]) * 100
+previous_close   = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
 price_change_cdl = ((close - open) / open) * 100
 vol              = volume
 
@@ -39,7 +39,7 @@ open_signal        = macd_2m - macd_2m_1
 open_trend_signal  = macd_2m_1 - macd_2m_2
 
 // JSON 字串
-webhookMsg = '{"symbol":"' + symbol_name + '","timeframe":"' + chart_timeframe + '","time":"' + alert_time + '","price":' + str.tostring(price) + ',"open":' + str.tostring(open_price) + ',"high":' + str.tostring(high_price) + ',"low":' + str.tostring(low_price) + ',"close":' + str.tostring(close_price) + ',"priceChange":' + str.tostring(price_change) + ',"priceChangeCandle":' + str.tostring(price_change_cdl) + ',"volume":' + str.tostring(vol) + ',"macdSignal":' + str.tostring(macd_signal) + ',"stochK":' + str.tostring(stoch_k) + ',"openSignal":' + str.tostring(open_signal) + ',"openTrendSignal":' + str.tostring(open_trend_signal) + ',"s30sSignal":' + str.tostring(s30s_signal) + ',"s1mSignal":' + str.tostring(s1m_signal) + ',"s5mSignal":' + str.tostring(s5m_signal) + ',"sk2mDiff":' + str.tostring(sk2m_diff) + '}'
+webhookMsg = '{"symbol":"' + symbol_name + '","timeframe":"' + chart_timeframe + '","time":"' + alert_time + '","price":' + str.tostring(price) + ',"open":' + str.tostring(open_price) + ',"high":' + str.tostring(high_price) + ',"low":' + str.tostring(low_price) + ',"close":' + str.tostring(close_price) + ',"previousClose":' + str.tostring(previous_close) + ',"priceChangeCandle":' + str.tostring(price_change_cdl) + ',"volume":' + str.tostring(vol) + ',"macdSignal":' + str.tostring(macd_signal) + ',"stochK":' + str.tostring(stoch_k) + ',"openSignal":' + str.tostring(open_signal) + ',"openTrendSignal":' + str.tostring(open_trend_signal) + ',"s30sSignal":' + str.tostring(s30s_signal) + ',"s1mSignal":' + str.tostring(s1m_signal) + ',"s5mSignal":' + str.tostring(s5m_signal) + ',"sk2mDiff":' + str.tostring(sk2m_diff) + '}'
 
 // 每收一支K線就 send
 if barstate.isconfirmed

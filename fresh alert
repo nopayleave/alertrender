@@ -313,7 +313,7 @@ color col = switch colb
 barcolor(col)
 
 // Calculate additional data for webhook
-priceChange1D = ((close - close[1]) / close[1]) * 100
+previousClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
 priceChangeCandle = ((close - open) / open) * 100  // Change % within current candle
 volume1D = volume
 
@@ -342,7 +342,7 @@ if ta.change(time) // On each new bar
                  ', "high": ' + str.tostring(high) + 
                  ', "low": ' + str.tostring(low) + 
                  ', "close": ' + str.tostring(close) + 
-                 ', "priceChange": ' + str.tostring(priceChange1D, "#.##") + 
+                 ', "previousClose": ' + str.tostring(previousClose) + 
                  ', "priceChangeCandle": ' + str.tostring(priceChangeCandle, "#.##") + 
                  ', "volume": ' + str.tostring(volume1D) + 
                  ', "macdSignal": ' + str.tostring(o.s, "#.####") + 
@@ -369,7 +369,6 @@ plot(o.b.src('hlcc4'), "hlcc4", editable = false, display = display.none)
 
 // Export additional data fields
 plot(volume1D        , "volume", editable = false, display = display.none)
-plot(priceChange1D   , "priceChange", editable = false, display = display.none)
 plot(priceChangeCandle, "priceChangeCandle", editable = false, display = display.none)
 plot(openSignal      , "openSignal", editable = false, display = display.none)
 plot(openTrendSignal , "openTrendSignal", editable = false, display = display.none)

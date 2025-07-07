@@ -47,8 +47,8 @@ humantime = str.format("{0,date,yyyy-MM-dd HH:mm}", timestamp("GMT+8", year, mon
 price = close
 vol = volume
 
-// Send previous close price instead of calculating percentage change
-previousClose = close[1]
+// Send previous trading day close price instead of calculating percentage change
+previousClose = request.security(syminfo.tickerid, "1D", close[1], lookahead=barmerge.lookahead_off)
 
 s30_signal = getSignal("30S")
 s1m_signal = getSignal("1")
