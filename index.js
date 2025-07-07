@@ -33,6 +33,12 @@ app.get('/alerts', (req, res) => {
   res.json(alerts)
 })
 
+// New endpoint to reset/clear all alerts
+app.post('/reset-alerts', (req, res) => {
+  alerts = []
+  res.json({ status: 'ok', message: 'All alerts cleared' })
+})
+
 // Render default homepage (可改)
 app.get('/', (req, res) => {
   res.send(`
@@ -86,7 +92,20 @@ app.get('/', (req, res) => {
           <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
         </div>
         
-                <!-- Search bar - sticky on top for desktop, bottom for mobile -->
+        <!-- Reset button - top right -->
+        <div class="fixed top-4 right-4 z-50">
+          <button 
+            id="resetButton" 
+            onclick="resetAlerts()" 
+            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 flex items-center gap-2"
+            title="Clear all alerts"
+          >
+            <span>🗑️</span>
+            <span class="hidden sm:inline">Reset</span>
+          </button>
+        </div>
+        
+        <!-- Search bar - sticky on top for desktop, bottom for mobile -->
         <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border p-4 md:p-6">
           <div class="container mx-auto max-w-7xl">
             <div class="relative">
@@ -156,7 +175,7 @@ app.get('/', (req, res) => {
 
       <script>
         // Sorting state
-        let currentSortField = null;
+        let currentSortField = 'symbol'; // Default to alphabetical sorting
         let currentSortDirection = 'asc';
         let alertsData = [];
         
@@ -217,6 +236,11 @@ app.get('/', (req, res) => {
             indicator.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
           }
         }
+
+        // Initialize sort indicators on page load
+        document.addEventListener('DOMContentLoaded', function() {
+          updateSortIndicators();
+        });
 
         function getSortValue(alert, field) {
           switch(field) {
@@ -345,6 +369,30 @@ app.get('/', (req, res) => {
           } catch (error) {
             console.error('Error fetching alerts:', error);
             document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+          }
+        }
+
+        async function resetAlerts() {
+          if (confirm('Are you sure you want to clear all alerts? This cannot be undone.')) {
+            try {
+              const response = await fetch('/reset-alerts', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                }
+              });
+              
+              if (response.ok) {
+                alertsData = [];
+                renderTable();
+                alert('All alerts have been cleared successfully!');
+              } else {
+                alert('Failed to clear alerts. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error clearing alerts:', error);
+              alert('Error clearing alerts. Please try again.');
+            }
           }
         }
 
