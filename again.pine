@@ -47,8 +47,8 @@ humantime = str.format("{0,date,yyyy-MM-dd HH:mm}", timestamp("GMT+8", year, mon
 price = close
 vol = volume
 
-// Calculate price change from previous trading day
-priceChange = na(close[1]) ? na : ((close - close[1]) / close[1]) * 100
+// Send previous close price instead of calculating percentage change
+previousClose = close[1]
 
 s30_signal = getSignal("30S")
 s1m_signal = getSignal("1")
@@ -60,7 +60,7 @@ jsonMsg = '{' +
   '"time": "' + str.tostring(epoch) + '",' +
   '"humantime": "' + humantime + '",' +
   '"price": ' + str.tostring(price) + ',' +
-  '"priceChange": ' + str.tostring(priceChange) + ',' +
+  '"previousClose": ' + str.tostring(previousClose) + ',' +
   '"volume": ' + str.tostring(vol) + ',' +
   '"s30_signal": ' + str.tostring(s30_signal) + ',' +
   '"s1m_signal": ' + str.tostring(s1m_signal) + ',' +

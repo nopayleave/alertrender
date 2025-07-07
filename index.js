@@ -255,7 +255,16 @@ app.get('/', (req, res) => {
             case 'price':
               return parseFloat(alert.price) || 0;
             case 'priceChange':
-              return parseFloat(alert.priceChange) || 0;
+              // Calculate price change percentage for sorting
+              if (alert.price && alert.previousClose && alert.previousClose !== 0) {
+                const currentPrice = parseFloat(alert.price);
+                const prevClose = parseFloat(alert.previousClose);
+                return ((currentPrice - prevClose) / prevClose) * 100;
+              } else if (alert.priceChange) {
+                // Fallback to priceChange field if it exists (for backward compatibility)
+                return parseFloat(alert.priceChange) || 0;
+              }
+              return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
             case 's30_signal':
@@ -367,6 +376,22 @@ app.get('/', (req, res) => {
             const starIcon = starred ? '⭐' : '☆';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
             
+            // Calculate price change percentage in frontend
+            let priceChangeDisplay = 'N/A';
+            let priceChangeColor = '';
+            
+            if (alert.price && alert.previousClose && alert.previousClose !== 0) {
+              const currentPrice = parseFloat(alert.price);
+              const prevClose = parseFloat(alert.previousClose);
+              const priceChangePercent = ((currentPrice - prevClose) / prevClose) * 100;
+              priceChangeDisplay = priceChangePercent.toFixed(2);
+              priceChangeColor = priceChangePercent >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+            } else if (alert.priceChange) {
+              // Fallback to priceChange field if it exists (for backward compatibility)
+              priceChangeDisplay = alert.priceChange;
+              priceChangeColor = parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+            }
+            
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 <td class="py-3 pl-4 pr-1 text-center">
@@ -380,7 +405,7 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
+                <td class="py-3 px-4 font-mono font-medium" style="\${priceChangeColor}">\${priceChangeDisplay}%</td>
                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
                 <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
                 <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
