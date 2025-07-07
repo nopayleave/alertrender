@@ -135,6 +135,9 @@ app.get('/', (req, res) => {
               <table class="w-full table-auto">
                 <thead>
                   <tr class="border-b border-border">
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground w-12">
+                      ⭐
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors sticky left-0 bg-card z-10 md:relative md:bg-transparent shadow-[2px_0_4px_rgba(0,0,0,0.1)] md:shadow-none w-auto whitespace-nowrap" onclick="sortTable('symbol')">
                       Ticker <span id="sort-symbol" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -160,7 +163,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="7" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="8" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -181,6 +184,9 @@ app.get('/', (req, res) => {
         
         // Search state
         let searchTerm = '';
+
+        // Starred alerts - stored in localStorage
+        let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
@@ -263,7 +269,7 @@ app.get('/', (req, res) => {
           }
         }
 
-                                 function filterAlerts() {
+        function filterAlerts() {
           searchTerm = document.getElementById('searchInput').value.toLowerCase();
           renderTable();
         }
@@ -286,12 +292,22 @@ app.get('/', (req, res) => {
           renderTable();
         }
 
+        function toggleStar(symbol) {
+          starredAlerts[symbol] = !starredAlerts[symbol];
+          localStorage.setItem('starredAlerts', JSON.stringify(starredAlerts));
+          renderTable();
+        }
+
+        function isStarred(symbol) {
+          return starredAlerts[symbol] || false;
+        }
+
         function renderTable() {
           const alertTable = document.getElementById('alertTable');
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="8" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -304,9 +320,17 @@ app.get('/', (req, res) => {
             );
           }
 
-          // Sort filtered data
+          // Sort filtered data - starred items always come first
           if (currentSortField) {
             filteredData.sort((a, b) => {
+              // First, sort by starred status
+              const aStarred = isStarred(a.symbol);
+              const bStarred = isStarred(b.symbol);
+              
+              if (aStarred && !bStarred) return -1;
+              if (!aStarred && bStarred) return 1;
+              
+              // Then sort by the selected field
               const aVal = getSortValue(a, currentSortField);
               const bVal = getSortValue(b, currentSortField);
               
@@ -322,7 +346,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="8" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -339,8 +363,21 @@ app.get('/', (req, res) => {
             const s30sStyle = getSignalBgColor(alert.s30_signal);
             const s1mStyle = getSignalBgColor(alert.s1m_signal);
             const s5mStyle = getSignalBgColor(alert.s5m_signal);
+            const starred = isStarred(alert.symbol);
+            const starIcon = starred ? '⭐' : '☆';
+            const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
+            
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors">
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+                <td class="py-3 px-4 text-center">
+                  <button 
+                    onclick="toggleStar('\${alert.symbol}')" 
+                    class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
+                    title="\${starred ? 'Remove from favorites' : 'Add to favorites'}"
+                  >
+                    \${starIcon}
+                  </button>
+                </td>
                 <td class="py-3 px-4 font-medium text-foreground sticky left-0 bg-card z-10 md:relative md:bg-transparent shadow-[2px_0_4px_rgba(0,0,0,0.1)] md:shadow-none w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium" style="\${parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);'}">\${alert.priceChange || 'N/A'}%</td>
@@ -368,7 +405,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="7" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
