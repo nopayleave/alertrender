@@ -8,34 +8,51 @@ app.use(cors())
 app.use(express.json())
 
 // 儲存 alert JSON
-let alerts = []
+let alerts = [] // Latest alerts per symbol
+let alertsHistory = [] // All historical alerts
 
 // Webhook for TradingView POST
 app.post('/webhook', (req, res) => {
   const alert = req.body
   
-  // Remove any existing alerts for the same symbol
+  // Store in full history (unlimited)
+  alertsHistory.unshift({
+    ...alert,
+    receivedAt: Date.now()
+  })
+  
+  // Remove any existing alerts for the same symbol from latest alerts
   alerts = alerts.filter(existingAlert => existingAlert.symbol !== alert.symbol)
   
-  // Add the new alert to the front
+  // Add the new alert to the front of latest alerts
   alerts.unshift({
     ...alert,
     receivedAt: Date.now()
   })
   
-  // 只保留最新 500 筆
-  alerts = alerts.slice(0, 500)
+  // Keep only latest 100 symbols in alerts (for performance)
+  alerts = alerts.slice(0, 100)
+  
+  // Keep only latest 10000 entries in history (prevent memory issues)
+  alertsHistory = alertsHistory.slice(0, 10000)
+  
   res.json({ status: 'ok' })
 })
 
-// API 俾前端 fetch
+// API for frontend - only latest alerts per symbol
 app.get('/alerts', (req, res) => {
   res.json(alerts)
+})
+
+// API for historical data - all alerts
+app.get('/alerts/history', (req, res) => {
+  res.json(alertsHistory)
 })
 
 // New endpoint to reset/clear all alerts
 app.post('/reset-alerts', (req, res) => {
   alerts = []
+  alertsHistory = []
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
