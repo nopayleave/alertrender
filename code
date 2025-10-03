@@ -11,8 +11,10 @@ offset = input.int(0, title="Offset", group="VWAP Settings", minval=0, display =
 EMA_GROUP = "EMA Settings"
 ema1Length = input.int(9, title="EMA 1 Length", group=EMA_GROUP)
 ema1Timeframe = input.timeframe("", title="EMA 1 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
+ema1Smooth = input.bool(false, title="EMA 1 Smooth (vs Step)", group=EMA_GROUP)
 ema2Length = input.int(21, title="EMA 2 Length", group=EMA_GROUP)
 ema2Timeframe = input.timeframe("", title="EMA 2 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
+ema2Smooth = input.bool(false, title="EMA 2 Smooth (vs Step)", group=EMA_GROUP)
 
 MACD_GROUP = "MACD Settings"
 macdFast = input.int(12, title="MACD Fast Length", group=MACD_GROUP)
@@ -85,7 +87,9 @@ if not (hideonDWM and timeframe.isdwm)
 	upperBandValue3 := _vwap + bandBasis * bandMult_3
 	lowerBandValue3 := _vwap - bandBasis * bandMult_3
 
-plot(vwapValue, title="VWAP", color=#2962FF, offset=offset)
+// VWAP color logic - green above, red below
+vwapColor = close > vwapValue ? color.green : color.red
+plot(vwapValue, title="VWAP", color=vwapColor, linewidth=2, offset=offset)
 
 upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
 lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
@@ -101,13 +105,103 @@ fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.tea
 
 // ============ ADDITIONAL INDICATORS ============
 
-// EMA Calculations (with optional multi-timeframe - separate for each)
-ema1 = request.security(syminfo.tickerid, ema1Timeframe == "" ? timeframe.period : ema1Timeframe, ta.ema(close, ema1Length))
-ema2 = request.security(syminfo.tickerid, ema2Timeframe == "" ? timeframe.period : ema2Timeframe, ta.ema(close, ema2Length))
+// ============================================================================
+// EMA 1 CALCULATION (with timeframe option and no repaint)
+// ============================================================================
 
-// Day High and Low
-dayHigh = request.security(syminfo.tickerid, "D", high)
-dayLow = request.security(syminfo.tickerid, "D", low)
+// Calculate EMA 1 on current timeframe
+ema1 = ta.ema(close, ema1Length)
+
+// Get HTF EMA 1 (step style or smooth style)
+htfRes1 = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+ema1Step = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
+ema1SmoothValue = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
+
+// Select which EMA 1 to use
+ema1Value = ema1Smooth ? ema1SmoothValue : ema1Step
+
+// ============================================================================
+// EMA 2 CALCULATION (with timeframe option and no repaint)
+// ============================================================================
+
+// Calculate EMA 2 on current timeframe
+ema2 = ta.ema(close, ema2Length)
+
+// Get HTF EMA 2 (step style or smooth style)
+htfRes2 = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
+ema2Step = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
+ema2SmoothValue = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
+
+// Select which EMA 2 to use
+ema2Value = ema2Smooth ? ema2SmoothValue : ema2Step
+
+// ============================================================================
+// EXTREME MARKET CONDITION DETECTION & EMA COLORING
+// ============================================================================
+
+// Detect extreme bullish: Price above BOTH EMAs
+isExtremeBullish = close > ema1Step and close > ema2Step
+
+// Detect extreme bearish: Price below BOTH EMAs
+isExtremeBearish = close < ema1Step and close < ema2Step
+
+// EMA color logic - simple: green above, red below
+ema1Color = close > ema1Step ? color.green : color.red
+ema2Color = close > ema2Step ? color.green : color.red
+
+// Trend status indicator
+aboveEma1 = close > ema1Step
+aboveEma2 = close > ema2Step
+trendIndicator = aboveEma1 and aboveEma2 ? "↑ ↑" : 
+                 not aboveEma1 and not aboveEma2 ? "↓ ↓" : 
+                 aboveEma2 and not aboveEma1 ? "- ↑" : 
+                 aboveEma1 and not aboveEma2 ? "↑ -" : "- -"
+trendColor = aboveEma1 and aboveEma2 ? color.lime : 
+             not aboveEma1 and not aboveEma2 ? color.red : color.gray
+
+// ============================================================================
+// PLOT EMAs
+// ============================================================================
+plot(ema1Value, title="EMA 1", color=ema1Color, linewidth=2)
+plot(ema2Value, title="EMA 2", color=ema2Color, linewidth=2)
+
+// ============================================================================
+// DAY HIGH/LOW WITH INTRADAY TRACKING
+// ============================================================================
+
+// Detect first bar of new day
+t = time("1440", session.extended) // 1440 = 60*24 minutes in a day
+is_first = na(t[1]) and not na(t) or t[1] < t
+
+// Track day high/low
+var float day_high = na
+var float day_low = na
+
+if is_first and barstate.isnew
+    day_high := high
+    day_low := low
+else
+    day_high := nz(day_high[1], high)
+    day_low := nz(day_low[1], low)
+
+if high > day_high
+    day_high := high
+    
+if low < day_low
+    day_low := low
+
+// Calculate day range and position
+dayRange = day_high - day_low
+dayMidpoint = day_low + (dayRange / 2)
+rangeStatus = close > dayMidpoint ? "Up Range" : close < dayMidpoint ? "Down Range" : "Mid Range"
+
+// Store for webhook (using variables for clarity)
+dayHigh = day_high
+dayLow = day_low
+
+// Plot day high/low lines
+plot(day_high, title="Day High", color=color.lime, linewidth=1, style=plot.style_line)
+plot(day_low, title="Day Low", color=color.red, linewidth=1, style=plot.style_line)
 
 // MACD Calculation (with optional multi-timeframe)
 [macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, macdTimeframe == "" ? timeframe.period : macdTimeframe, ta.macd(close, macdFast, macdSlow, macdSignal))
@@ -116,13 +210,14 @@ dayLow = request.security(syminfo.tickerid, "D", low)
 rsi = request.security(syminfo.tickerid, rsiTimeframe == "" ? timeframe.period : rsiTimeframe, ta.rsi(close, rsiLength))
 
 // Trend Determination (based on price vs VWAP and EMA alignment)
-trend = close > vwapValue and ema1 > ema2 ? "Bullish" : close < vwapValue and ema1 < ema2 ? "Bearish" : "Neutral"
+trend = close > vwapValue and ema1Value > ema2Value ? "Bullish" : close < vwapValue and ema1Value < ema2Value ? "Bearish" : "Neutral"
 
 // ============ WEBHOOK ALERT ============
 
 if enableAlerts and barstate.isconfirmed
     // Get effective timeframes (use chart timeframe if empty)
-    effectiveEmaTf = emaTimeframe == "" ? timeframe.period : emaTimeframe
+    effectiveEma1Tf = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+    effectiveEma2Tf = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
     effectiveMacdTf = macdTimeframe == "" ? timeframe.period : macdTimeframe
     effectiveRsiTf = rsiTimeframe == "" ? timeframe.period : rsiTimeframe
     
@@ -134,17 +229,24 @@ if enableAlerts and barstate.isconfirmed
       '"price": ' + str.tostring(close) + ',' +
       '"trend": "' + trend + '",' +
       '"vwap": ' + str.tostring(vwapValue, "#.##") + ',' +
+      '"vwapAbove": ' + str.tostring(close > vwapValue) + ',' +
       '"vwapUpper1": ' + str.tostring(upperBandValue1, "#.##") + ',' +
       '"vwapLower1": ' + str.tostring(lowerBandValue1, "#.##") + ',' +
       '"vwapUpper2": ' + str.tostring(upperBandValue2, "#.##") + ',' +
       '"vwapLower2": ' + str.tostring(lowerBandValue2, "#.##") + ',' +
       '"vwapUpper3": ' + str.tostring(upperBandValue3, "#.##") + ',' +
       '"vwapLower3": ' + str.tostring(lowerBandValue3, "#.##") + ',' +
-      '"ema1": ' + str.tostring(ema1, "#.##") + ',' +
-      '"ema2": ' + str.tostring(ema2, "#.##") + ',' +
-      '"emaTf": "' + effectiveEmaTf + '",' +
+      '"ema1": ' + str.tostring(ema1Value, "#.##") + ',' +
+      '"ema1Tf": "' + effectiveEma1Tf + '",' +
+      '"ema1Above": ' + str.tostring(close > ema1Step) + ',' +
+      '"ema2": ' + str.tostring(ema2Value, "#.##") + ',' +
+      '"ema2Tf": "' + effectiveEma2Tf + '",' +
+      '"ema2Above": ' + str.tostring(close > ema2Step) + ',' +
+      '"trendIndicator": "' + trendIndicator + '",' +
       '"dayHigh": ' + str.tostring(dayHigh, "#.##") + ',' +
       '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
+      '"dayRange": ' + str.tostring(dayRange, "#.##") + ',' +
+      '"rangeStatus": "' + rangeStatus + '",' +
       '"macd": ' + str.tostring(macdLine, "#.####") + ',' +
       '"macdSignal": ' + str.tostring(signalLine, "#.####") + ',' +
       '"macdTf": "' + effectiveMacdTf + '",' +

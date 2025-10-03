@@ -243,6 +243,9 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Market trend">
                       Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
                     </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rangeStatus')" title="Price position in day's range">
+                      Range <span id="sort-rangeStatus" class="ml-1 text-xs">⇅</span>
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price">
                       VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -265,7 +268,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="10" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -311,7 +314,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'vwap', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -337,6 +340,8 @@ app.get('/', (req, res) => {
               return parseFloat(alert.price) || 0;
             case 'trend':
               return alert.trend || '';
+            case 'rangeStatus':
+              return alert.rangeStatus || '';
             case 'vwap':
               return parseFloat(alert.vwap) || 0;
             case 'rsi':
@@ -410,7 +415,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -449,7 +454,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -493,6 +498,14 @@ app.get('/', (req, res) => {
                                alert.trend === 'Bearish' ? 'text-red-400 font-semibold' : 
                                'text-muted-foreground';
             
+            // Trend indicator (arrows showing price position vs EMAs)
+            const trendIndicator = alert.trendIndicator ? ' ' + alert.trendIndicator : '';
+            
+            // Range status color coding
+            const rangeClass = alert.rangeStatus === 'Up Range' ? 'text-green-400 font-semibold' : 
+                               alert.rangeStatus === 'Down Range' ? 'text-red-400 font-semibold' : 
+                               'text-muted-foreground';
+            
             // RSI color coding (overbought/oversold)
             const rsiValue = parseFloat(alert.rsi);
             const rsiClass = rsiValue >= 70 ? 'text-red-400 font-semibold' : 
@@ -504,6 +517,25 @@ app.get('/', (req, res) => {
             const macdSignalValue = parseFloat(alert.macdSignal);
             const macdClass = macdValue > macdSignalValue ? 'text-green-400' : 
                               macdValue < macdSignalValue ? 'text-red-400' : 
+                              'text-muted-foreground';
+            
+            // VWAP color coding (price above/below)
+            const vwapClass = alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'text-green-400 font-semibold' : 
+                              alert.vwapAbove === 'false' || alert.vwapAbove === false ? 'text-red-400 font-semibold' : 
+                              'text-foreground';
+            
+            // EMA1 color coding (price above/below)
+            const ema1Above = alert.ema1Above === 'true' || alert.ema1Above === true;
+            const ema1Below = alert.ema1Above === 'false' || alert.ema1Above === false;
+            const ema1Class = ema1Above ? 'text-green-400 font-semibold' : 
+                              ema1Below ? 'text-red-400 font-semibold' : 
+                              'text-muted-foreground';
+            
+            // EMA2 color coding (price above/below)
+            const ema2Above = alert.ema2Above === 'true' || alert.ema2Above === true;
+            const ema2Below = alert.ema2Above === 'false' || alert.ema2Above === false;
+            const ema2Class = ema2Above ? 'text-green-400 font-semibold' : 
+                              ema2Below ? 'text-red-400 font-semibold' : 
                               'text-muted-foreground';
             
             return \`
@@ -519,11 +551,12 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-medium \${trendClass}">\${alert.trend || 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-foreground">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-medium \${trendClass}" title="Price vs EMA1/EMA2">\${(alert.trend || 'N/A') + trendIndicator}</td>
+                <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-muted-foreground" title="EMA1\${alert.emaTf ? ' [' + alert.emaTf + ']' : ''}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-muted-foreground" title="EMA2\${alert.emaTf ? ' [' + alert.emaTf + ']' : ''}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${ema1Class}" title="EMA1\${alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : ''} - Price \${ema1Above ? 'above' : ema1Below ? 'below' : 'near'}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${ema2Class}" title="EMA2\${alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : ''} - Price \${ema2Above ? 'above' : ema2Below ? 'below' : 'near'}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
               </tr>
@@ -541,7 +574,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="10" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
