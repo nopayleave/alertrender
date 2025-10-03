@@ -352,21 +352,19 @@ app.get('/', (req, res) => {
           
           const toast = document.createElement('div');
           toast.id = toastId;
-          toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3`;
-          toast.innerHTML = `
-            <span class="text-2xl">${arrow}</span>
-            <div class="flex-1">
-              <div class="font-bold text-lg">${symbol}</div>
-              <div class="text-sm">${directionText}</div>
-              <div class="text-xs opacity-90">$${parseFloat(price).toFixed(2)}</div>
-            </div>
-            <button onclick="removeToast('${toastId}')" class="text-white hover:text-gray-200 font-bold text-xl">×</button>
-          `;
+          toast.className = 'toast ' + bgColor + ' text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3';
+          toast.innerHTML = '<span class="text-2xl">' + arrow + '</span>' +
+            '<div class="flex-1">' +
+              '<div class="font-bold text-lg">' + symbol + '</div>' +
+              '<div class="text-sm">' + directionText + '</div>' +
+              '<div class="text-xs opacity-90">$' + parseFloat(price).toFixed(2) + '</div>' +
+            '</div>' +
+            '<button onclick="removeToast(\'' + toastId + '\')" class="text-white hover:text-gray-200 font-bold text-xl">×</button>';
           
           toastContainer.appendChild(toast);
           
           // Auto remove after 5 seconds
-          setTimeout(() => removeToast(toastId), 5000);
+          setTimeout(function() { removeToast(toastId); }, 5000);
         }
         
         // Remove toast notification
