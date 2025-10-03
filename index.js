@@ -641,9 +641,11 @@ app.get('/', (req, res) => {
                                 alert.vwapRemark && alert.vwapRemark.startsWith('DN') ? 'text-red-400 font-bold' :
                                 'text-yellow-400 font-semibold';
             
+            const escapedSymbol = (alert.symbol || 'N/A').replace(/'/g, "\\'");
+            
             return '<tr class="border-b border-border hover:bg-muted/50 transition-colors ' + (starred ? 'bg-muted/20' : '') + '">' +
               '<td class="py-3 pl-4 pr-1 text-center">' +
-                '<button onclick="toggleStar(\'' + alert.symbol + '\')" class="text-xl ' + starClass + ' transition-colors cursor-pointer hover:scale-110 transform" title="' + (starred ? 'Remove from favorites' : 'Add to favorites') + '">' +
+                '<button onclick="toggleStar(\'' + escapedSymbol + '\')" class="text-xl ' + starClass + ' transition-colors cursor-pointer hover:scale-110 transform" title="' + (starred ? 'Remove from favorites' : 'Add to favorites') + '">' +
                   starIcon +
                 '</button>' +
               '</td>' +
