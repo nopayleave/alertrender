@@ -212,6 +212,16 @@ rsi = request.security(syminfo.tickerid, rsiTimeframe == "" ? timeframe.period :
 // Trend Determination (based on price vs VWAP and EMA alignment)
 trend = close > vwapValue and ema1Value > ema2Value ? "Bullish" : close < vwapValue and ema1Value < ema2Value ? "Bearish" : "Neutral"
 
+// VWAP Band Position Remark
+vwapRemark = close > upperBandValue3 ? "UP3+" :
+             close > upperBandValue2 ? "UP3" :
+             close > upperBandValue1 ? "UP2" :
+             close > vwapValue ? "UP1" :
+             close < lowerBandValue3 ? "DN3+" :
+             close < lowerBandValue2 ? "DN3" :
+             close < lowerBandValue1 ? "DN2" :
+             close < vwapValue ? "DN1" : "VWAP"
+
 // ============ WEBHOOK ALERT ============
 
 if enableAlerts and barstate.isconfirmed
@@ -230,6 +240,7 @@ if enableAlerts and barstate.isconfirmed
       '"trend": "' + trend + '",' +
       '"vwap": ' + str.tostring(vwapValue, "#.##") + ',' +
       '"vwapAbove": ' + str.tostring(close > vwapValue) + ',' +
+      '"vwapRemark": "' + vwapRemark + '",' +
       '"vwapUpper1": ' + str.tostring(upperBandValue1, "#.##") + ',' +
       '"vwapLower1": ' + str.tostring(lowerBandValue1, "#.##") + ',' +
       '"vwapUpper2": ' + str.tostring(upperBandValue2, "#.##") + ',' +
