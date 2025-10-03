@@ -202,7 +202,7 @@ app.get('/', (req, res) => {
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border p-4 md:p-6">
+        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border p-4">
           <div class="container mx-auto max-w-7xl">
             <div class="relative">
               <input 
@@ -283,41 +283,6 @@ app.get('/', (req, res) => {
           <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</p>
         </div>
       </div>
-      
-      <!-- Toast Container -->
-      <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
-
-      <style>
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        
-        @keyframes slideOut {
-          from {
-            transform: translateX(0);
-            opacity: 1;
-          }
-          to {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-        }
-        
-        .toast {
-          animation: slideIn 0.3s ease-out;
-        }
-        
-        .toast.removing {
-          animation: slideOut 0.3s ease-in;
-        }
-      </style>
 
       <script>
         // Sorting state
@@ -330,70 +295,12 @@ app.get('/', (req, res) => {
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
-        
-        // Track VWAP crossing state for each symbol
-        let vwapCrossingState = {};
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
           if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
           if (vol >= 1000) return (vol / 1000).toFixed(1) + 'K';
           return vol.toString();
-        }
-        
-        // Show toast notification
-        function showToast(symbol, direction, price) {
-          const toastContainer = document.getElementById('toastContainer');
-          const toastId = 'toast-' + Date.now();
-          
-          const bgColor = direction === 'above' ? 'bg-green-600' : 'bg-red-600';
-          const arrow = direction === 'above' ? '↑' : '↓';
-          const directionText = direction === 'above' ? 'crossed ABOVE VWAP' : 'crossed BELOW VWAP';
-          
-          const toast = document.createElement('div');
-          toast.id = toastId;
-          toast.className = 'toast ' + bgColor + ' text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3';
-          toast.innerHTML = '<span class="text-2xl">' + arrow + '</span>' +
-            '<div class="flex-1">' +
-              '<div class="font-bold text-lg">' + symbol + '</div>' +
-              '<div class="text-sm">' + directionText + '</div>' +
-              '<div class="text-xs opacity-90">$' + parseFloat(price).toFixed(2) + '</div>' +
-            '</div>' +
-            '<button onclick="removeToast(\'' + toastId + '\')" class="text-white hover:text-gray-200 font-bold text-xl">×</button>';
-          
-          toastContainer.appendChild(toast);
-          
-          // Auto remove after 5 seconds
-          setTimeout(function() { removeToast(toastId); }, 5000);
-        }
-        
-        // Remove toast notification
-        function removeToast(toastId) {
-          const toast = document.getElementById(toastId);
-          if (toast) {
-            toast.classList.add('removing');
-            setTimeout(() => toast.remove(), 300);
-          }
-        }
-        
-        // Check for VWAP crossings
-        function checkVwapCrossings(alerts) {
-          alerts.forEach(alert => {
-            if (!alert.symbol || !alert.vwapAbove) return;
-            
-            const isAbove = alert.vwapAbove === 'true' || alert.vwapAbove === true;
-            const previousState = vwapCrossingState[alert.symbol];
-            
-            // If we have a previous state and it changed
-            if (previousState !== undefined && previousState !== isAbove) {
-              // Crossing detected!
-              const direction = isAbove ? 'above' : 'below';
-              showToast(alert.symbol, direction, alert.price);
-            }
-            
-            // Update state
-            vwapCrossingState[alert.symbol] = isAbove;
-          });
         }
 
         function sortTable(field) {
@@ -559,7 +466,7 @@ app.get('/', (req, res) => {
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
-          const searchInfo = searchTerm ? ' • Showing ' + filteredData.length + ' of ' + alertsData.length : '';
+          const searchInfo = searchTerm ? \` • Showing \${filteredData.length} of \${alertsData.length}\` : '';
           lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo;
 
           alertTable.innerHTML = filteredData.map(alert => {
@@ -641,26 +548,30 @@ app.get('/', (req, res) => {
                                 alert.vwapRemark && alert.vwapRemark.startsWith('DN') ? 'text-red-400 font-bold' :
                                 'text-yellow-400 font-semibold';
             
-            const escapedSymbol = (alert.symbol || 'N/A').replace(/'/g, "\\'");
-            
-            return '<tr class="border-b border-border hover:bg-muted/50 transition-colors ' + (starred ? 'bg-muted/20' : '') + '">' +
-              '<td class="py-3 pl-4 pr-1 text-center">' +
-                '<button onclick="toggleStar(\'' + escapedSymbol + '\')" class="text-xl ' + starClass + ' transition-colors cursor-pointer hover:scale-110 transform" title="' + (starred ? 'Remove from favorites' : 'Add to favorites') + '">' +
-                  starIcon +
-                '</button>' +
-              '</td>' +
-              '<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">' + (alert.symbol || 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono font-medium text-foreground">$' + (alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-medium ' + trendClass + '" title="Price vs EMA1/EMA2">' + ((alert.trend || 'N/A') + trendIndicator) + '</td>' +
-              '<td class="py-3 px-4 font-medium ' + rangeClass + '" title="Day Range: ' + (alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A') + '">' + (alert.rangeStatus || 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono ' + vwapClass + '" title="Price ' + (alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below') + ' VWAP">$' + (alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-bold ' + remarkClass + '" title="VWAP Band Zone">' + (alert.vwapRemark || 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono ' + rsiClass + '" title="RSI' + (alert.rsiTf ? ' [' + alert.rsiTf + ']' : '') + '">' + (alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono ' + ema1Class + '" title="EMA1' + (alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : '') + ' - Price ' + (ema1Above ? 'above' : ema1Below ? 'below' : 'near') + '">$' + (alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono ' + ema2Class + '" title="EMA2' + (alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : '') + ' - Price ' + (ema2Above ? 'above' : ema2Below ? 'below' : 'near') + '">$' + (alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 font-mono ' + macdClass + '" title="MACD' + (alert.macdTf ? ' [' + alert.macdTf + ']' : '') + '">' + (alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A') + '</td>' +
-              '<td class="py-3 px-4 text-muted-foreground">' + formatVolume(alert.volume) + '</td>' +
-            '</tr>';
+            return \`
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+                <td class="py-3 pl-4 pr-1 text-center">
+                  <button 
+                    onclick="toggleStar('\${alert.symbol}')" 
+                    class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
+                    title="\${starred ? 'Remove from favorites' : 'Add to favorites'}"
+                  >
+                    \${starIcon}
+                  </button>
+                </td>
+                <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-medium \${trendClass}" title="Price vs EMA1/EMA2">\${(alert.trend || 'N/A') + trendIndicator}</td>
+                <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-bold \${remarkClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${ema1Class}" title="EMA1\${alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : ''} - Price \${ema1Above ? 'above' : ema1Below ? 'below' : 'near'}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${ema2Class}" title="EMA2\${alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : ''} - Price \${ema2Above ? 'above' : ema2Below ? 'below' : 'near'}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${macdClass}" title="MACD\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
+                <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+              </tr>
+            \`;
           }).join('');
         }
 
@@ -668,9 +579,6 @@ app.get('/', (req, res) => {
           try {
             const response = await fetch('/alerts');
             const data = await response.json();
-            
-            // Check for VWAP crossings before updating
-            checkVwapCrossings(data);
             
             alertsData = data;
             renderTable();
