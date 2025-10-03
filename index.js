@@ -240,8 +240,23 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
                       Price <span id="sort-price" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('priceChange')" title="Price change % from previous trading day">
-                      Chg% <span id="sort-priceChange" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Market trend">
+                      Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price">
+                      VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')" title="Relative Strength Index">
+                      RSI <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema1')" title="Fast EMA">
+                      EMA1 <span id="sort-ema1" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema2')" title="Slow EMA">
+                      EMA2 <span id="sort-ema2" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')" title="MACD Line">
+                      MACD <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       Vol <span id="sort-volume" class="ml-1 text-xs">⇅</span>
@@ -259,7 +274,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="8" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="13" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -327,15 +342,16 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'priceChange', 'volume', 's30_signal', 's1m_signal', 's5m_signal'];
+          const indicators = ['symbol', 'price', 'trend', 'vwap', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume', 's30_signal', 's1m_signal', 's5m_signal'];
           indicators.forEach(field => {
-            document.getElementById('sort-' + field).textContent = '⇅';
+            const elem = document.getElementById('sort-' + field);
+            if (elem) elem.textContent = '⇅';
           });
           
           // Set current sort indicator
           if (currentSortField) {
             const indicator = document.getElementById('sort-' + currentSortField);
-            indicator.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
+            if (indicator) indicator.textContent = currentSortDirection === 'asc' ? '↑' : '↓';
           }
         }
 
@@ -350,6 +366,18 @@ app.get('/', (req, res) => {
               return alert.symbol || '';
             case 'price':
               return parseFloat(alert.price) || 0;
+            case 'trend':
+              return alert.trend || '';
+            case 'vwap':
+              return parseFloat(alert.vwap) || 0;
+            case 'rsi':
+              return parseFloat(alert.rsi) || 0;
+            case 'ema1':
+              return parseFloat(alert.ema1) || 0;
+            case 'ema2':
+              return parseFloat(alert.ema2) || 0;
+            case 'macd':
+              return parseFloat(alert.macd) || 0;
             case 'priceChange':
               // Calculate price change percentage for sorting
               // Priority 1: Use changeFromPrevDay from Day script if available
@@ -419,7 +447,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="8" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -458,7 +486,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="8" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -503,6 +531,24 @@ app.get('/', (req, res) => {
               priceChangeColor = parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
             }
             
+            // Trend color coding
+            const trendClass = alert.trend === 'Bullish' ? 'text-green-400 font-semibold' : 
+                               alert.trend === 'Bearish' ? 'text-red-400 font-semibold' : 
+                               'text-muted-foreground';
+            
+            // RSI color coding (overbought/oversold)
+            const rsiValue = parseFloat(alert.rsi);
+            const rsiClass = rsiValue >= 70 ? 'text-red-400 font-semibold' : 
+                             rsiValue <= 30 ? 'text-green-400 font-semibold' : 
+                             'text-muted-foreground';
+            
+            // MACD color coding
+            const macdValue = parseFloat(alert.macd);
+            const macdSignalValue = parseFloat(alert.macdSignal);
+            const macdClass = macdValue > macdSignalValue ? 'text-green-400' : 
+                              macdValue < macdSignalValue ? 'text-red-400' : 
+                              'text-muted-foreground';
+            
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 <td class="py-3 pl-4 pr-1 text-center">
@@ -515,8 +561,13 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
-                <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString() : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono font-medium" style="\${priceChangeColor}">\${priceChangeDisplay}%</td>
+                <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-medium \${trendClass}">\${alert.trend || 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-foreground">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${rsiClass}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-muted-foreground">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-muted-foreground">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${macdClass}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
                 <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
                 <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
@@ -541,7 +592,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="13" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
