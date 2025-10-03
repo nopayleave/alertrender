@@ -1,5 +1,5 @@
 //@version=5
-indicator(title="Volume Weighted Average Price", shorttitle="VWAP", overlay=true, timeframe="", timeframe_gaps=true)
+indicator(title="Volume Weighted Average Price", shorttitle="VWAP", overlay=true)
 
 hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings", display = display.data_window)
 var anchor = input.string(defval = "Session", title="Anchor Period",
@@ -10,18 +10,26 @@ offset = input.int(0, title="Offset", group="VWAP Settings", minval=0, display =
 // Additional Indicator Settings
 EMA_GROUP = "EMA Settings"
 ema1Length = input.int(9, title="EMA 1 Length", group=EMA_GROUP)
+ema1Timeframe = input.timeframe("", title="EMA 1 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
 ema2Length = input.int(21, title="EMA 2 Length", group=EMA_GROUP)
+ema2Timeframe = input.timeframe("", title="EMA 2 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
 
 MACD_GROUP = "MACD Settings"
 macdFast = input.int(12, title="MACD Fast Length", group=MACD_GROUP)
 macdSlow = input.int(26, title="MACD Slow Length", group=MACD_GROUP)
 macdSignal = input.int(9, title="MACD Signal Length", group=MACD_GROUP)
+macdTimeframe = input.timeframe("", title="MACD Timeframe", group=MACD_GROUP, tooltip="Leave empty for chart timeframe")
 
 RSI_GROUP = "RSI Settings"
 rsiLength = input.int(14, title="RSI Length", group=RSI_GROUP)
+rsiTimeframe = input.timeframe("", title="RSI Timeframe", group=RSI_GROUP, tooltip="Leave empty for chart timeframe")
 
 ALERT_GROUP = "Alert Settings"
 enableAlerts = input.bool(true, title="Enable Webhook Alerts", group=ALERT_GROUP)
+alertFreq = input.string("Once Per Bar Close", title="Alert Frequency", 
+  options=["Once Per Bar Close", "Once Per Bar", "All"], 
+  group=ALERT_GROUP,
+  tooltip="Once Per Bar Close: Alert when bar closes\nOnce Per Bar: Alert once per bar (any time)\nAll: Alert every time condition is met")
 
 BANDS_GROUP = "Bands Settings"
 CALC_MODE_TOOLTIP = "Determines the units used to calculate the distance of the bands. When 'Percentage' is selected, a multiplier of 1 means 1%."
@@ -93,19 +101,19 @@ fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.tea
 
 // ============ ADDITIONAL INDICATORS ============
 
-// EMA Calculations
-ema1 = ta.ema(close, ema1Length)
-ema2 = ta.ema(close, ema2Length)
+// EMA Calculations (with optional multi-timeframe - separate for each)
+ema1 = request.security(syminfo.tickerid, ema1Timeframe == "" ? timeframe.period : ema1Timeframe, ta.ema(close, ema1Length))
+ema2 = request.security(syminfo.tickerid, ema2Timeframe == "" ? timeframe.period : ema2Timeframe, ta.ema(close, ema2Length))
 
 // Day High and Low
 dayHigh = request.security(syminfo.tickerid, "D", high)
 dayLow = request.security(syminfo.tickerid, "D", low)
 
-// MACD Calculation
-[macdLine, signalLine, macdHist] = ta.macd(close, macdFast, macdSlow, macdSignal)
+// MACD Calculation (with optional multi-timeframe)
+[macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, macdTimeframe == "" ? timeframe.period : macdTimeframe, ta.macd(close, macdFast, macdSlow, macdSignal))
 
-// RSI Calculation
-rsi = ta.rsi(close, rsiLength)
+// RSI Calculation (with optional multi-timeframe)
+rsi = request.security(syminfo.tickerid, rsiTimeframe == "" ? timeframe.period : rsiTimeframe, ta.rsi(close, rsiLength))
 
 // Trend Determination (based on price vs VWAP and EMA alignment)
 trend = close > vwapValue and ema1 > ema2 ? "Bullish" : close < vwapValue and ema1 < ema2 ? "Bearish" : "Neutral"
@@ -113,6 +121,11 @@ trend = close > vwapValue and ema1 > ema2 ? "Bullish" : close < vwapValue and em
 // ============ WEBHOOK ALERT ============
 
 if enableAlerts and barstate.isconfirmed
+    // Get effective timeframes (use chart timeframe if empty)
+    effectiveEmaTf = emaTimeframe == "" ? timeframe.period : emaTimeframe
+    effectiveMacdTf = macdTimeframe == "" ? timeframe.period : macdTimeframe
+    effectiveRsiTf = rsiTimeframe == "" ? timeframe.period : rsiTimeframe
+    
     // Build JSON payload
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
@@ -129,11 +142,19 @@ if enableAlerts and barstate.isconfirmed
       '"vwapLower3": ' + str.tostring(lowerBandValue3, "#.##") + ',' +
       '"ema1": ' + str.tostring(ema1, "#.##") + ',' +
       '"ema2": ' + str.tostring(ema2, "#.##") + ',' +
+      '"emaTf": "' + effectiveEmaTf + '",' +
       '"dayHigh": ' + str.tostring(dayHigh, "#.##") + ',' +
       '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
       '"macd": ' + str.tostring(macdLine, "#.####") + ',' +
       '"macdSignal": ' + str.tostring(signalLine, "#.####") + ',' +
+      '"macdTf": "' + effectiveMacdTf + '",' +
       '"rsi": ' + str.tostring(rsi, "#.##") + ',' +
+      '"rsiTf": "' + effectiveRsiTf + '",' +
       '"volume": ' + str.tostring(volume) + '}'
     
-    alert(jsonMsg, alert.freq_once_per_bar_close)
+    // Determine alert frequency
+    freq = alertFreq == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
+           alertFreq == "Once Per Bar" ? alert.freq_once_per_bar : 
+           alert.freq_all
+    
+    alert(jsonMsg, freq)

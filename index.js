@@ -246,35 +246,26 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price">
                       VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')" title="Relative Strength Index">
-                      RSI <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
+                      <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema1')" title="Fast EMA">
-                      EMA1 <span id="sort-ema1" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema1')">
+                      <span title="Fast Exponential Moving Average">EMA1</span> <span id="sort-ema1" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema2')" title="Slow EMA">
-                      EMA2 <span id="sort-ema2" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema2')">
+                      <span title="Slow Exponential Moving Average">EMA2</span> <span id="sort-ema2" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')" title="MACD Line">
-                      MACD <span id="sort-macd" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')">
+                      <span title="Moving Average Convergence Divergence">MACD</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       Vol <span id="sort-volume" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s30_signal')">
-                      S30s <span id="sort-s30_signal" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s1m_signal')">
-                      S1m <span id="sort-s1m_signal" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('s5m_signal')">
-                      S5m <span id="sort-s5m_signal" class="ml-1 text-xs">⇅</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="13" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="10" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -306,28 +297,6 @@ app.get('/', (req, res) => {
           return vol.toString();
         }
 
-        function getSignalLabelClass(signal) {
-          const value = parseFloat(signal);
-          if (isNaN(value)) return 'px-2 py-1 text-xs font-semibold bg-muted text-muted-foreground rounded';
-          
-          if (value >= 250) return 'px-2 py-1 text-xs font-semibold rounded'; // Deep green
-          if (value >= 50) return 'px-2 py-1 text-xs font-semibold rounded'; // Light green
-          if (value >= -50) return 'px-2 py-1 text-xs font-semibold bg-gray-600 text-gray-100 rounded'; // Dark grey
-          if (value >= -250) return 'px-2 py-1 text-xs font-semibold rounded'; // Light red
-          return 'px-2 py-1 text-xs font-semibold rounded'; // Deep red
-        }
-
-        function getSignalBgColor(signal) {
-          const value = parseFloat(signal);
-          if (isNaN(value)) return '';
-          
-          if (value >= 250) return 'background-color: oklch(0.6 0.15 163); color: white;'; // Deep green
-          if (value >= 50) return 'background-color: oklch(0.5 0.1 163); color: white;'; // Medium green
-          if (value >= -50) return ''; // Light grey (default)
-          if (value >= -250) return 'background-color: oklch(0.5 0.15 25.331); color: white;'; // Medium red
-          return 'background-color: oklch(0.4 0.2 25.331); color: white;'; // Deep red
-        }
-
         function sortTable(field) {
           if (currentSortField === field) {
             currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
@@ -342,7 +311,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'vwap', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume', 's30_signal', 's1m_signal', 's5m_signal'];
+          const indicators = ['symbol', 'price', 'trend', 'vwap', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -398,12 +367,6 @@ app.get('/', (req, res) => {
               return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
-            case 's30_signal':
-              return parseFloat(alert.s30_signal) || 0;
-            case 's1m_signal':
-              return parseFloat(alert.s1m_signal) || 0;
-            case 's5m_signal':
-              return parseFloat(alert.s5m_signal) || 0;
             default:
               return '';
           }
@@ -447,7 +410,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -486,7 +449,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -497,12 +460,6 @@ app.get('/', (req, res) => {
           lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo;
 
           alertTable.innerHTML = filteredData.map(alert => {
-            const s30sClass = getSignalLabelClass(alert.s30_signal);
-            const s1mClass = getSignalLabelClass(alert.s1m_signal);
-            const s5mClass = getSignalLabelClass(alert.s5m_signal);
-            const s30sStyle = getSignalBgColor(alert.s30_signal);
-            const s1mStyle = getSignalBgColor(alert.s1m_signal);
-            const s5mStyle = getSignalBgColor(alert.s5m_signal);
             const starred = isStarred(alert.symbol);
             const starIcon = starred ? '⭐' : '☆';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
@@ -564,22 +521,14 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-medium \${trendClass}">\${alert.trend || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono text-foreground">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono \${rsiClass}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-muted-foreground">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono text-muted-foreground">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono \${macdClass}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-muted-foreground" title="EMA1\${alert.emaTf ? ' [' + alert.emaTf + ']' : ''}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono text-muted-foreground" title="EMA2\${alert.emaTf ? ' [' + alert.emaTf + ']' : ''}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${macdClass}" title="MACD\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
-                <td class="py-3 px-4"><span class="\${s30sClass}" style="\${s30sStyle}">\${formatSignal(alert.s30_signal)}</span></td>
-                <td class="py-3 px-4"><span class="\${s1mClass}" style="\${s1mStyle}">\${formatSignal(alert.s1m_signal)}</span></td>
-                <td class="py-3 px-4"><span class="\${s5mClass}" style="\${s5mStyle}">\${formatSignal(alert.s5m_signal)}</span></td>
               </tr>
             \`;
           }).join('');
-        }
-
-        function formatSignal(signal) {
-          if (!signal && signal !== 0) return 'N/A';
-          return Math.round(parseFloat(signal)).toString();
         }
 
         async function fetchAlerts() {
@@ -592,7 +541,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="13" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="10" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
