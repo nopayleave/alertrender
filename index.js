@@ -182,7 +182,7 @@ app.get('/', (req, res) => {
       </script>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
-      <div class="container mx-auto p-6 max-w-7xl">
+      <div class="container mx-auto max-w-7xl">
         <div class="mb-8">
           <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
           <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
@@ -283,6 +283,41 @@ app.get('/', (req, res) => {
           <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</p>
         </div>
       </div>
+      
+      <!-- Toast Container -->
+      <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+      <style>
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideOut {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+        }
+        
+        .toast {
+          animation: slideIn 0.3s ease-out;
+        }
+        
+        .toast.removing {
+          animation: slideOut 0.3s ease-in;
+        }
+      </style>
 
       <script>
         // Sorting state
@@ -295,12 +330,72 @@ app.get('/', (req, res) => {
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
+        
+        // Track VWAP crossing state for each symbol
+        let vwapCrossingState = {};
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
           if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
           if (vol >= 1000) return (vol / 1000).toFixed(1) + 'K';
           return vol.toString();
+        }
+        
+        // Show toast notification
+        function showToast(symbol, direction, price) {
+          const toastContainer = document.getElementById('toastContainer');
+          const toastId = 'toast-' + Date.now();
+          
+          const bgColor = direction === 'above' ? 'bg-green-600' : 'bg-red-600';
+          const arrow = direction === 'above' ? '↑' : '↓';
+          const directionText = direction === 'above' ? 'crossed ABOVE VWAP' : 'crossed BELOW VWAP';
+          
+          const toast = document.createElement('div');
+          toast.id = toastId;
+          toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3`;
+          toast.innerHTML = `
+            <span class="text-2xl">${arrow}</span>
+            <div class="flex-1">
+              <div class="font-bold text-lg">${symbol}</div>
+              <div class="text-sm">${directionText}</div>
+              <div class="text-xs opacity-90">$${parseFloat(price).toFixed(2)}</div>
+            </div>
+            <button onclick="removeToast('${toastId}')" class="text-white hover:text-gray-200 font-bold text-xl">×</button>
+          `;
+          
+          toastContainer.appendChild(toast);
+          
+          // Auto remove after 5 seconds
+          setTimeout(() => removeToast(toastId), 5000);
+        }
+        
+        // Remove toast notification
+        function removeToast(toastId) {
+          const toast = document.getElementById(toastId);
+          if (toast) {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+          }
+        }
+        
+        // Check for VWAP crossings
+        function checkVwapCrossings(alerts) {
+          alerts.forEach(alert => {
+            if (!alert.symbol || !alert.vwapAbove) return;
+            
+            const isAbove = alert.vwapAbove === 'true' || alert.vwapAbove === true;
+            const previousState = vwapCrossingState[alert.symbol];
+            
+            // If we have a previous state and it changed
+            if (previousState !== undefined && previousState !== isAbove) {
+              // Crossing detected!
+              const direction = isAbove ? 'above' : 'below';
+              showToast(alert.symbol, direction, alert.price);
+            }
+            
+            // Update state
+            vwapCrossingState[alert.symbol] = isAbove;
+          });
         }
 
         function sortTable(field) {
@@ -580,6 +675,9 @@ app.get('/', (req, res) => {
             const response = await fetch('/alerts');
             const data = await response.json();
             
+            // Check for VWAP crossings before updating
+            checkVwapCrossings(data);
+            
             alertsData = data;
             renderTable();
             
@@ -615,6 +713,9 @@ app.get('/', (req, res) => {
 
         // Fetch alerts once on page load
         fetchAlerts();
+        
+        // Auto-refresh every 15 seconds
+        setInterval(fetchAlerts, 15000);
       </script>
     </body>
     </html>
