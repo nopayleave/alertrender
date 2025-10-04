@@ -1,0 +1,528 @@
+// This Pine Script™ code is subject to the terms of the Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © EliCobra
+
+//@version=5
+indicator("Peak Spot", "Peak Spot", false, max_bars_back=500, max_lines_count=500, max_labels_count=500, explicit_plot_zorder=true)
+
+type bar
+    float o = na
+    float h = na
+    float l = na
+    float c = na
+
+type osc
+    bar   b = na
+    float s = na
+    float h = na
+
+
+
+
+
+method src(bar b, simple string src) =>
+    float x = switch src
+        'open'  =>          b.o
+        'high'  =>          b.h
+        'low'   =>          b.l
+        'close' =>          b.c
+        'oc2'   => math.avg(b.o, b.c          )
+        'hl2'   => math.avg(b.h, b.l          )
+        'hlc3'  => math.avg(b.h, b.l, b.c     )
+        'ohlc4' => math.avg(b.o, b.h, b.l, b.c)
+        'hlcc4' => math.avg(b.h, b.l, b.c, b.c)
+
+    x
+
+method ha(bar b, simple bool p = true) =>
+    var bar x = bar.new(       )
+    x.c      := b  .src('ohlc4')
+    x        := bar.new(
+         na(x.o[1]) ? 
+             b.src('oc2') : nz(x.src('oc2')[1]),
+         math.max(b.h, math.max(x.o, x.c))     ,
+         math.min(b.l, math.min(x.o, x.c))     ,
+         x.c                                   )
+
+    p ? x : b
+
+method stmc(bar b, simple string src, simple int flen, simple int slen, simple string sig, simple int clen) =>
+    float x = (ta.ema(b.src(src), flen)  - 
+               ta.ema(b.src(src), slen)) / 
+              (ta.ema(b.h - b.l , slen)) * 100
+
+    bar   z = bar.new(
+             x[1]             ,
+             math.max(x, x[1]),
+             math.min(x, x[1]),
+             x                ).ha()
+
+    float s = ta.ema(z.src(sig), clen)
+
+    osc.new(z, s, z.c - s)
+
+
+
+const string gm = "MACD Settings", const string gu = "UI Options", const string gt = "Timeframe Settings"
+src  = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'],               group = gm)
+fast = input.int   (10      , "Fast Length"        ,                                                                                         group = gm)
+slow = input.int   (75      , "Slow Length"        ,                                                                                         group = gm)
+sigb = input.bool  (true    , "Signal"             ,                                                                           inline = '1', group = gm)
+sigs = input.string('close' , "Source"             , ['open',  'high',  'low',  'close',  'hl2',  'hlc3',  'ohlc4',  'hlcc4'], inline = '1', group = gm)
+sigl = input.int   (20      , "Length"             ,                                                                           inline = '1', group = gm)
+
+// Timeframe Settings
+useCustomTF = input.bool(false, "Use Custom Timeframe", group=gt, tooltip="Enable to analyze on a different timeframe")
+customTF = input.timeframe("", "Timeframe", group=gt, tooltip="Leave empty for chart timeframe")
+mode = input.string('MACD', "Display Mode"       , ['Hybrid',                       'MACD',                    'Histogram'],               group = gu)
+revs = input.bool  (true    , ""                   ,                                                                           inline = '0', group = gu)
+revt = input.int   (100     , "Reversion Threshold", [100,                                                               150], inline = '0', group = gu)
+colb = input.string('None'  , "Bar Coloring"       , ['None', 'MidLine', 'Candles', 'Sig Cross', 'Extremities', 'Reversions'],               group = gu)
+hol  = input.bool  (true    , "Hollow Candles"     ,                                                                                         group = gu)
+showTurnArrows = input.bool(true, "Show Turn Arrows", group=gu)
+turnUpColor = input.color(color.yellow, "Turn Up Color", group=gu)
+turnDnColor = input.color(color.white, "Turn Down Color", group=gu)
+histUpIncColor = input.color(#369b85, "Histogram Up-Increasing", group=gu)
+histUpDecColor = input.color(#f44336, "Histogram Up-Decreasing", group=gu)
+histDnIncColor = input.color(#369b85, "Histogram Down-Increasing", group=gu)
+histDnDecColor = input.color(#f44336, "Histogram Down-Decreasing", group=gu)
+haUpColor = input.color(#369b85, "Heikin-Ashi Up Color", group=gu)
+haDownColor = input.color(#f44336, "Heikin-Ashi Down Color", group=gu)
+haSignalSize = input.string("Normal", "Heikin-Ashi Signal Size", ["Small", "Normal", "Large"], group=gu)
+signalOffset = input.int(80, "Signal Offset", minval=0, group=gu)
+weakThr = input.int(50, "Weak/Medium Threshold", minval=1, group=gu)
+strongThr = input.int(250, "Medium/Strong Threshold", minval=1, group=gu)
+filterNoTradeZones = input.bool(true, "Filter No-Trade Zones", group=gu, tooltip="Suppress signals beyond Do Not Long/Short levels")
+
+// Ensure strong threshold is always greater than weak threshold
+int strongThrAdj = strongThr <= weakThr ? weakThr + 1 : strongThr
+
+// Divergence Styling Options
+useDivergenceColoring = input.bool(true, "Enable HA/Histogram Divergence Coloring", group=gu)
+haUpHistDownColor = input.color(#fdbeff, "HA D ↓", group=gu, tooltip="Heikin-Ashi bullish but MACD momentum weakening")
+haDownHistUpColor = input.color(#befff1, "HA D ↑", group=gu, tooltip="Heikin-Ashi bearish but MACD momentum strengthening")
+
+// Divergence Signal Options
+showDivergenceSignals = input.bool(true, "Show Divergence Signals", group=gu, tooltip="Display arrow signals for divergence start/end")
+showCombinedSignals = input.bool(false, "Show Combined Signals", group=gu, tooltip="Show 'HA D ↑ turn HA ↑' instead of separate start/end signals")
+showDivergenceStart = input.bool(true, "Show Divergence Start", group=gu, tooltip="Display HA D ↑/↓ signals when divergence begins")
+showDivergenceEnd = input.bool(true, "Show Divergence End", group=gu, tooltip="Display HA ↑/↓ signals when divergence ends")
+
+// HA Pattern Detection Options
+showHAPatterns = input.bool(true, "Show HA Pattern Signals", group=gu, tooltip="Display signals for HA + Histogram pattern combinations")
+bottomReversalColor = input.color(color.green, "Bottom Reversal Signal", group=gu, tooltip="HA falling but histogram strengthening")
+normalRiseColor = input.color(color.lime, "Normal Rise Signal", group=gu, tooltip="HA rising + histogram strengthening/maintaining")
+topReversalColor = input.color(color.orange, "Top Reversal Signal", group=gu, tooltip="HA rising but histogram weakening")
+strongDowntrendColor = input.color(color.red, "Strong Downtrend Signal", group=gu, tooltip="HA falling + histogram weakening")
+
+// Background Fill Options
+showBackgroundFills = input.bool(true, "Show Background Fills", group=gu)
+upperZoneColor = input.color(color.new(#369b85, 80), "Upper Zone Color", group=gu, tooltip="Background color for overbought/extreme high zones")
+lowerZoneColor = input.color(color.new(#fc1f1f, 85), "Lower Zone Color", group=gu, tooltip="Background color for oversold/extreme low zones")
+
+// Fixed background zone levels (separate from level settings)
+upperZone1 = 50    // Fixed upper zone start
+upperZone2 = 500   // Fixed upper zone end
+lowerZone1 = -50   // Fixed lower zone start
+lowerZone2 = -500  // Fixed lower zone end
+
+doNotShortLevel = input.int(500, "Do Not Short Level", group=gu)
+doNotLongLevel = input.int(-500, "Do Not Long Level", group=gu)
+
+// Determine effective timeframe
+effectiveTF = useCustomTF and customTF != "" ? customTF : timeframe.period
+
+// Define MACD calculation function
+calcMACD() =>
+    bar _b = bar.new(open, high, low, close)
+    osc _o = _b.stmc(src, fast, slow, sigs, sigl)
+    [_b.o, _b.h, _b.l, _b.c, _o.b.o, _o.b.h, _o.b.l, _o.b.c, _o.s, _o.h]
+
+// Calculate for chart timeframe
+bar b_chart = bar.new(open, high, low, close)
+osc o_chart = b_chart.stmc(src, fast, slow, sigs, sigl)
+
+// Calculate for custom timeframe (step effect without gaps - plots stay visible)
+[bar_o_htf, bar_h_htf, bar_l_htf, bar_c_htf, osc_b_o_htf, osc_b_h_htf, osc_b_l_htf, osc_b_c_htf, osc_s_htf, osc_h_htf] = 
+     request.security(syminfo.tickerid, effectiveTF, calcMACD())
+bar b_htf = bar.new(bar_o_htf, bar_h_htf, bar_l_htf, bar_c_htf)
+bar osc_bar_htf = bar.new(osc_b_o_htf, osc_b_h_htf, osc_b_l_htf, osc_b_c_htf)
+osc o_htf = osc.new(osc_bar_htf, osc_s_htf, osc_h_htf)
+
+// Select which data to use
+bar b = useCustomTF and customTF != "" ? b_htf : b_chart
+osc o = useCustomTF and customTF != "" ? o_htf : o_chart
+
+
+
+const color colup = #369b85
+const color coldn = #fc1f1f
+const color colhu = #8ac3f5
+const color colhd = #ffa7b6
+var   color colnt = chart.fg_color
+color       colh  = 
+                      o.h > 0                              ?
+                     (o.h > o.h[1]                         ? 
+                                     color.new(colhu, 20)  : 
+                                     color.new(colhu, 30)) :
+                     (o.h > o.h[1]                         ? 
+                                     color.new(colhd, 20)  : 
+                                     color.new(colhd, 30))
+
+// Detect Heikin-Ashi and Histogram conditions
+bool haUp = o.b.c > o.b.o
+bool haDown = o.b.c < o.b.o
+bool histIncreasing = o.h > o.h[1]
+bool histDecreasing = o.h < o.h[1]
+
+// Enhanced pattern detection
+// 1. HA falling but histogram strengthening → possible bottom reversal (HA跌，但 histogram 轉強 → 可能見底反彈)
+bool haDownHistStrengthening = haDown and histIncreasing and o.h > 0
+bool haDownHistMaintaining = haDown and o.h > o.h[1] and o.h > 0
+
+// 2. Normal rise (HA rising + Histogram strengthening or maintaining strength) (正常上升（HA 升 + Histogram 增強或維持強度）)
+bool haUpHistStrengthening = haUp and histIncreasing and o.h > 0
+bool haUpHistMaintaining = haUp and o.h > 0 and not histDecreasing
+
+// 3. HA rising but histogram weakening → possible top reversal
+bool haUpHistWeakening = haUp and histDecreasing and o.h > 0
+
+// 4. HA falling and histogram weakening → strong downtrend
+bool haDownHistWeakening = haDown and histDecreasing and o.h < 0
+
+// 5. Additional pattern refinements
+bool haDownHistMaintainingStrength = haDown and o.h > 0 and o.h >= o.h[1]  // HA down but histogram maintaining positive strength
+bool haUpHistMaintainingStrength = haUp and o.h > 0 and o.h >= o.h[1]      // HA up and histogram maintaining positive strength
+bool haDownHistGettingMoreNegative = haDown and o.h < 0 and o.h <= o.h[1]  // HA down and histogram getting more negative
+bool haUpHistGettingMoreNegative = haUp and o.h < 0 and o.h <= o.h[1]      // HA up but histogram getting more negative
+
+// Divergence conditions (original logic)
+bool haUpHistDown = haUp and histDecreasing      // HA bullish but momentum weakening
+bool haDownHistUp = haDown and histIncreasing    // HA bearish but momentum strengthening
+
+// Track divergence state changes
+var bool wasHaUpHistDown = false
+var bool wasHaDownHistUp = false
+
+// Detect when divergence ends (turns back to normal)
+bool haUpHistDownEnded = wasHaUpHistDown and not haUpHistDown and haUp
+bool haDownHistUpEnded = wasHaDownHistUp and not haDownHistUp and haDown
+
+// Detect HA D up → HA Up pattern (divergence resolution)
+bool haDownHistUpToHaUp = wasHaDownHistUp and haUp and not haDownHistUp  // HA D up → HA Up
+bool haUpHistDownToHaDown = wasHaUpHistDown and haDown and not haUpHistDown  // HA U down → HA Down
+
+// Detect HA D up to HA D pattern (bearish divergence continuation)
+bool haDownHistUpToHaDownHistUp = wasHaDownHistUp and haDownHistUp and not haUp  // HA D up → HA D up (bearish)
+
+// Simplified bearish pattern detection - just HA down after any HA up period
+bool haUpToHaDown = haDown and haUp[1]  // HA was up, now down
+bool haDownToHaDown = haDown and haDown[1]  // HA was down, still down
+
+// ===================
+// Track Bull/Bear Peak for Higher High / Lower Low Signal Size
+// ===================
+
+// --- Efficient signal tracking without arrays ---
+// Track only the most recent and previous signal HA closes/indices
+var float lastBullSignalHaClose = na
+var float prevBullSignalHaClose = na
+var int   lastBullSignalIndex   = na
+
+var float lastBearSignalHaClose = na
+var float prevBearSignalHaClose = na
+var int   lastBearSignalIndex   = na
+
+// 判斷 signal bar
+bool new_bull_signal = showHAPatterns and haDownHistUpToHaUp and not haDownHistUpToHaUp[1]
+bool new_bear_signal = showHAPatterns and haUpHistDownToHaDown and not haUpHistDownToHaDown[1]
+
+// 更新牛 signal 資料
+if new_bull_signal
+    prevBullSignalHaClose := lastBullSignalHaClose
+    lastBullSignalHaClose := o.b.c
+    lastBullSignalIndex   := bar_index
+
+// 更新熊 signal 資料
+if new_bear_signal
+    prevBearSignalHaClose := lastBearSignalHaClose
+    lastBearSignalHaClose := o.b.c
+    lastBearSignalIndex   := bar_index
+
+// 比較今次同上一個 signal bar 嘅 HA close
+bool bull_higher_ha_close = not na(prevBullSignalHaClose) and lastBullSignalHaClose > prevBullSignalHaClose
+bool bear_lower_ha_close  = not na(prevBearSignalHaClose) and lastBearSignalHaClose < prevBearSignalHaClose
+
+// (removed early state update; single update kept near end of script to avoid redundant work)
+
+// Apply enhanced HA coloring based on patterns
+color haColor = switch
+    useDivergenceColoring and haUpHistDown => haUpHistDownColor
+    useDivergenceColoring and haDownHistUp => haDownHistUpColor
+    haDownHistUpToHaUp => color.green                   // HA D up → HA Up (divergence resolution)
+    haUpHistDownToHaDown => color.red                   // HA U down → HA Down (divergence resolution)
+    haDownHistStrengthening => bottomReversalColor      // HA falling but histogram strengthening
+    haUpHistStrengthening => normalRiseColor            // HA rising + histogram strengthening
+    haUpHistWeakening => topReversalColor               // HA rising but histogram weakening
+    haDownHistWeakening => strongDowntrendColor         // HA falling + histogram weakening
+    haDownHistMaintainingStrength => bottomReversalColor // HA down but maintaining positive strength
+    haUpHistMaintainingStrength => normalRiseColor      // HA up and maintaining positive strength
+    haDownHistGettingMoreNegative => strongDowntrendColor // HA down and getting more negative
+    haUpHistGettingMoreNegative => topReversalColor     // HA up but getting more negative
+    haUp => haUpColor
+    haDown => haDownColor
+    => haUpColor
+
+// Dynamic background zone levels (must be defined first)
+uz1 = hline(upperZone1                             ,                   display =    display.none      )
+uz2 = hline(upperZone2                             ,                   display =    display.none      )
+lz1 = hline(lowerZone1                             ,                   display =    display.none      )
+lz2 = hline(lowerZone2                             ,                   display =    display.none      )
+
+// Background fills (must be applied immediately after hlines)
+fill(uz1, uz2, showBackgroundFills ? upperZoneColor : na)
+fill(lz2, lz1, showBackgroundFills ? lowerZoneColor : na)
+
+// Mid line and level lines (defined after background zones)
+m   = hline(0                                      , "Mid Line", chart.fg_color,    hline.style_solid )
+dns = hline(doNotShortLevel                        , "Do Not Short", color.yellow, hline.style_dotted, 3)
+dnl = hline(doNotLongLevel                         , "Do Not Long", color.yellow, hline.style_dotted, 3)
+smu = hline(250                                    , "Semi Line Upper", color.yellow, hline.style_dotted, 2)
+sml = hline(-250                                   , "Semi Line Lower", color.yellow, hline.style_dotted, 2)
+h   = plot (mode != 'Histogram' and sigb ? o.s : na, "Signal"  , colnt                                )
+color histColor = na
+if o.h > 0
+    histColor := o.h > o.h[1] ? histUpIncColor : histUpDecColor
+else if o.h < 0
+    histColor := o.h > o.h[1] ? histDnIncColor : histDnDecColor
+mc  = plot (mode != 'MACD' ? o.h : na, "H", histColor, 1, plot.style_columns)
+
+// Determine fill color - solid for divergence conditions, hollow for normal
+color haFillColor = (useDivergenceColoring and (haUpHistDown or haDownHistUp)) ? haColor : na
+
+plotcandle(mode != 'Histogram' ? o.b.o  : na                                                    ,
+           mode != 'Histogram' ? o.b.h  : na                                                    ,
+           mode != 'Histogram' ? o.b.l  : na                                                    ,
+           mode != 'Histogram' ? o.b.c  : na                                                    ,
+           "𝗠𝗔𝗖𝗗", haFillColor, haColor, bordercolor = haColor)
+
+// Detect HA D down → Normal Rise pattern transition (clean logic)
+bool currentHADDown = haDownHistWeakening
+bool currentNormalRise = haUpHistStrengthening
+
+// Simple transition: previous bar was HA D down, current bar is Normal Rise
+bool haDDownToNormalRise = haDownHistWeakening[1] and currentNormalRise and not currentHADDown
+
+// Plot white circle for transition
+plot(haDDownToNormalRise ? o.b.c : na, color=color.white, style=plot.style_circles, linewidth=6, title="HA D Down → Normal Rise")
+
+
+
+
+
+
+
+
+
+// HA Pattern Plot Signals (consolidated to reduce plot calls)
+float bullSignalPlot = na
+color bullSignalColor = na
+float bearSignalPlot = na
+color bearSignalColor = na
+float bearHADivergencePlot = na
+
+// Combined HA DD and HA UU transition plot
+float haTransitionPlot = na
+color haTransitionColor = na
+
+// Bullish signal (single series with dynamic color and strength levels)
+int bullLevel = 0
+if new_bull_signal
+    float bullStrength = math.abs(o.h)
+    // Optionally filter out signals in no-trade zones
+    bool blocked = filterNoTradeZones and (o.b.c >= doNotShortLevel or o.b.c <= doNotLongLevel)
+    bullLevel := blocked ? 0 : (bullStrength < weakThr ? 1 : bullStrength < strongThrAdj ? 2 : 3)
+    bullSignalPlot := bullLevel == 0 ? na : (o.b.c - signalOffset)
+    // Check if HA close > 0 OR > Signal value for white color
+    bool bullSignalWhite = o.b.c > 0 or o.b.c > o.s
+    bullSignalColor := bullSignalWhite ? color.white : (bullLevel == 1 ? color.teal : bullLevel == 2 ? color.lime : bullLevel == 3 ? color.new(color.green, 0) : na)
+    // Emphasize if higher HA close vs previous bull signal (only if not white)
+    bullSignalColor := not bullSignalWhite and bull_higher_ha_close ? color.new(bullSignalColor, 0) : (not bullSignalWhite ? color.new(bullSignalColor, 10) : bullSignalColor)
+
+// Bearish signal (single series with dynamic color and strength levels)
+int bearLevel = 0
+if new_bear_signal
+    float bearStrength = math.abs(o.h)
+    bool blocked = filterNoTradeZones and (o.b.c >= doNotShortLevel or o.b.c <= doNotLongLevel)
+    bearLevel := blocked ? 0 : (bearStrength < weakThr ? 1 : bearStrength < strongThrAdj ? 2 : 3)
+    bearSignalPlot := bearLevel == 0 ? na : (o.b.c + signalOffset)
+    // Check if HA close < 0 OR < Signal value for white color
+    bool bearSignalWhite = o.b.c < 0 or o.b.c < o.s
+    bearSignalColor := bearSignalWhite ? color.white : (bearLevel == 1 ? color.orange : bearLevel == 2 ? color.red : bearLevel == 3 ? color.new(color.maroon, 0) : na)
+    // Emphasize if lower HA close vs previous bear signal (only if not white)
+    bearSignalColor := not bearSignalWhite and bear_lower_ha_close ? color.new(bearSignalColor, 0) : (not bearSignalWhite ? color.new(bearSignalColor, 10) : bearSignalColor)
+
+// HA D up to HA D bearish signal
+if showHAPatterns and haDownHistUpToHaDownHistUp and not haDownHistUpToHaDownHistUp[1]
+    bearHADivergencePlot := o.b.c + 100
+
+// HA DD (hollow green to hollow red) and HA UU (hollow red to hollow green) transitions
+bool haDDTransition = haDown and haUp[1]
+bool haUUTransition = haUp and haDown[1]
+
+if showHAPatterns and haDDTransition and not haDDTransition[1]
+    haTransitionPlot := o.b.c + 200
+    // Check if HA close < 0 OR < Signal value for white color (bearish transition)
+    bool haDDSignalWhite = o.b.c < 0 or o.b.c < o.s
+    haTransitionColor := haDDSignalWhite ? color.white : color.red
+
+if showHAPatterns and haUUTransition and not haUUTransition[1]
+    haTransitionPlot := o.b.c - 200
+    // Check if HA close > 0 OR > Signal value for white color (bullish transition)
+    bool haUUSignalWhite = o.b.c > 0 or o.b.c > o.s
+    haTransitionColor := haUUSignalWhite ? color.white : color.lime
+
+// Alert conditions for HA pattern signals
+if new_bull_signal and bullLevel == 3
+    alert("Bull Strong", alert.freq_once_per_bar)
+else if new_bull_signal and bullLevel == 2
+    alert("Bull Medium", alert.freq_once_per_bar)
+else if new_bull_signal and bullLevel == 1
+    alert("Bull Weak", alert.freq_once_per_bar)
+
+// (old Normal/Neutral alerts replaced by level-based alerts above)
+
+if new_bear_signal and bearLevel == 3
+    alert("Bear Strong", alert.freq_once_per_bar)
+else if new_bear_signal and bearLevel == 2
+    alert("Bear Medium", alert.freq_once_per_bar)
+else if new_bear_signal and bearLevel == 1
+    alert("Bear Weak", alert.freq_once_per_bar)
+
+// (old LH/Neutral alerts replaced by level-based alerts above)
+
+// Alert for HA D up to HA D bearish signal
+//if showHAPatterns and haDownHistUpToHaDownHistUp and not haDownHistUpToHaDownHistUp[1]
+    //alert("Bear HA D→HA D Signal triggered - HA D up → HA D up (bearish divergence continuation)", alert.freq_once_per_bar)
+
+// Alert conditions for HA DD and HA UU transitions
+if showHAPatterns and haDDTransition and not haDDTransition[1]
+    alert("HA DD Signal triggered - Hollow green to hollow red transition", alert.freq_once_per_bar)
+
+if showHAPatterns and haUUTransition and not haUUTransition[1]
+    alert("HA UU Signal triggered - Hollow red to hollow green transition", alert.freq_once_per_bar)
+
+// Size by user preference (constant across bars; Pine requires const linewidth)
+int baseSize = haSignalSize == "Small" ? 3 : haSignalSize == "Large" ? 7 : 5
+
+// HA signals as crosses (consolidated)
+plot(bullSignalPlot, color=bullSignalColor, style=plot.style_cross, linewidth=baseSize, title="Bull ▲")
+plot(bearSignalPlot, color=bearSignalColor, style=plot.style_cross, linewidth=baseSize, title="Bear ▼")
+
+// HA transitions (single plot)
+plot(haTransitionPlot, color=haTransitionColor, style=plot.style_cross, linewidth=6, title="HA Transition")
+
+
+
+
+
+// Plot HA Pattern Signals
+// plot(showHAPatterns and haDownHistStrengthening ? low : na, "Bottom Reversal", color=bottomReversalColor, style=plot.style_cross, linewidth=3)
+// plot(showHAPatterns and haUpHistStrengthening ? high : na, "Normal Rise", color=normalRiseColor, style=plot.style_cross, linewidth=3)
+// plot(showHAPatterns and haUpHistWeakening ? high : na, "Top Reversal", color=topReversalColor, style=plot.style_cross, linewidth=3)
+// plot(showHAPatterns and haDownHistWeakening ? low : na, "Strong Downtrend", color=strongDowntrendColor, style=plot.style_cross, linewidth=3)
+
+// Additional refined pattern signals
+// plot(showHAPatterns and haDownHistMaintainingStrength ? low : na, "HA Down + Hist Maintain", color=bottomReversalColor, style=plot.style_cross, linewidth=2)
+// plot(showHAPatterns and haUpHistMaintainingStrength ? high : na, "HA Up + Hist Maintain", color=normalRiseColor, style=plot.style_cross, linewidth=2)
+// plot(showHAPatterns and haDownHistGettingMoreNegative ? low : na, "HA Down + Hist Worse", color=strongDowntrendColor, style=plot.style_cross, linewidth=2)
+// plot(showHAPatterns and haUpHistGettingMoreNegative ? high : na, "HA Up + Hist Worse", color=topReversalColor, style=plot.style_cross, linewidth=2)
+
+// HA Pattern Plot Signals (converted from labels to plots)
+// bullHighlightPlot = na
+// bullNormalPlot = na
+// bullGrayPlot = na
+// bearHighlightPlot = na
+// bearNormalPlot = na
+// bearGrayPlot = na
+
+// Bullish signals - highlighted (higher HA close)
+// if new_bull_signal and bull_higher_ha_close
+//     bullHighlightPlot := o.b.c - 40
+
+// Bullish signals - normal but HA close between 100 and -100
+// if new_bull_signal and not bull_higher_ha_close and o.b.c >= -100 and o.b.c <= 100
+//     bullNormalPlot := o.b.c - 40
+
+// Bullish signals - normal (HA close outside range)
+// if new_bull_signal and not bull_higher_ha_close and (o.b.c < -100 or o.b.c > 100)
+//     bullGrayPlot := o.b.c - 40
+
+// Bearish signals - highlighted (lower HA close)
+// if new_bear_signal and bear_lower_ha_close
+//     bearHighlightPlot := o.b.c + 40
+
+// Bearish signals - normal but HA close between 100 and -100
+// if new_bear_signal and not bear_lower_ha_close and o.b.c >= -100 and o.b.c <= 100
+//     bearNormalPlot := o.b.c + 40
+
+// Bearish signals - normal (HA close outside range)
+// if new_bear_signal and not bear_lower_ha_close and (o.b.c < -100 or o.b.c > 100)
+//     bearGrayPlot := o.b.c + 40
+
+// plot(bullHighlightPlot, color=color.lime, style=plot.style_circles, linewidth=3, title="Bull Highlight ▲")
+// plot(bullNormalPlot, color=color.teal, style=plot.style_circles, linewidth=2, title="Bull Normal ▲")
+// plot(bullGrayPlot, color=color.gray, style=plot.style_circles, linewidth=1, title="Bull Gray ▲")
+// plot(bearHighlightPlot, color=color.red, style=plot.style_circles, linewidth=3, title="Bear Highlight ▼")
+// plot(bearNormalPlot, color=color.orange, style=plot.style_circles, linewidth=2, title="Bear Normal ▼")
+// plot(bearGrayPlot, color=color.gray, style=plot.style_circles, linewidth=1, title="Bear Gray ▼")
+
+
+
+// Divergence signal plots - Combined or Separate
+// All HA up/down plots removed
+
+// All previous levels removed
+
+
+
+
+
+
+
+
+
+
+
+
+
+color col = switch colb
+    'MidLine'     => o.b.c > 0     ? colup                         : coldn
+    'Candles'     => haColor
+    'Sig Cross'   => o.s   > o.b.c ? coldn                         : colup
+    'Extremities' => o.b.c > revt  ? coldn : o.b.c < -revt ? colup : color.new(colnt, 25)
+    'Reversions'  => o.h > 0       ? colup : o.h < 0       ? coldn : color.new(colnt, 25)
+    'None'        => na
+
+barcolor(col)
+
+// Update divergence state tracking for next bar
+wasHaUpHistDown := haUpHistDown
+wasHaDownHistUp := haDownHistUp
+
+
+
+
+
+
+// =============================
+// ✅ EXPORT: keep all your existing plots
+// =============================
+plot(o.b.o           , "open" , editable = false, display = display.none)
+plot(o.b.h           , "high" , editable = false, display = display.none)
+plot(o.b.l           , "low"  , editable = false, display = display.none)
+plot(o.b.c           , "close", editable = false, display = display.none)
+plot(o.b.src('hl2'  ), "hl2"  , editable = false, display = display.none)
+plot(o.b.src('hlc3' ), "hlc3" , editable = false, display = display.none)
+plot(o.b.src('ohlc4'), "ohlc4", editable = false, display = display.none)
+plot(o.b.src('hlcc4'), "hlcc4", editable = false, display = display.none)
+

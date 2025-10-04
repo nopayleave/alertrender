@@ -12,6 +12,7 @@ let alerts = [] // All alerts (not just latest per symbol)
 let alertsHistory = [] // All historical alerts (backup storage)
 let dayChangeData = {} // Store day change data by symbol
 let dayVolumeData = {} // Store daily volume data by symbol
+let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
@@ -52,8 +53,10 @@ app.post('/webhook', (req, res) => {
   
   // Detect alert type:
   // - Day script: contains changeFromPrevDay and volume but missing price (handles Chg% and Vol columns)
+  // - VWAP Crossing alert: contains vwapCrossing flag
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
+  const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
   
   if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
@@ -68,6 +71,15 @@ app.post('/webhook', (req, res) => {
       dayData.volume = alert.volume
     }
     updateAlertData(alert.symbol, dayData)
+  } else if (isVwapCrossingAlert) {
+    // VWAP Crossing alert - store crossing status with timestamp
+    vwapCrossingData[alert.symbol] = {
+      crossed: true,
+      timestamp: Date.now()
+    }
+    
+    // Update existing alert with crossing flag
+    updateAlertData(alert.symbol, { vwapCrossing: true })
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
@@ -80,6 +92,22 @@ app.post('/webhook', (req, res) => {
     // Add volume data if available from Day script
     if (dayVolumeData[alert.symbol] !== undefined) {
       alertData.volume = dayVolumeData[alert.symbol]
+    }
+    
+    // Check and add VWAP crossing status if active (within last 5 minutes)
+    const crossingInfo = vwapCrossingData[alert.symbol]
+    if (crossingInfo && crossingInfo.crossed) {
+      const ageInMinutes = (Date.now() - crossingInfo.timestamp) / 60000
+      if (ageInMinutes <= 5) {
+        // Crossing is recent (within 5 minutes), mark it
+        alertData.vwapCrossing = true
+      } else {
+        // Crossing is old, expire it
+        delete vwapCrossingData[alert.symbol]
+        alertData.vwapCrossing = false
+      }
+    } else {
+      alertData.vwapCrossing = false
     }
     
     // Add ALL alerts to the front (don't remove existing ones)
@@ -132,6 +160,7 @@ app.post('/reset-alerts', (req, res) => {
   alertsHistory = []
   dayChangeData = {}
   dayVolumeData = {}
+  vwapCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -249,8 +278,11 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price">
                       VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwapRemark')" title="VWAP Band Zone">
-                      Remark <span id="sort-vwapRemark" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwapPosition')" title="VWAP Band Zone">
+                      Position <span id="sort-vwapPosition" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwapCrossing')" title="VWAP Crossing Status">
+                      Remark <span id="sort-vwapCrossing" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
                       <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
@@ -271,7 +303,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="12" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="13" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -317,7 +349,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'vwapRemark', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'vwapPosition', 'vwapCrossing', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -347,8 +379,10 @@ app.get('/', (req, res) => {
               return alert.rangeStatus || '';
             case 'vwap':
               return parseFloat(alert.vwap) || 0;
-            case 'vwapRemark':
+            case 'vwapPosition':
               return alert.vwapRemark || '';
+            case 'vwapCrossing':
+              return (alert.vwapCrossing === true || alert.vwapCrossing === 'true') ? 'Crossing' : 'Normal';
             case 'rsi':
               return parseFloat(alert.rsi) || 0;
             case 'ema1':
@@ -420,7 +454,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.textContent = 'Last updated: Never';
             return;
           }
@@ -459,7 +493,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
             return;
           }
@@ -543,10 +577,19 @@ app.get('/', (req, res) => {
                               ema2Below ? 'text-red-400 font-semibold' : 
                               'text-muted-foreground';
             
-            // VWAP Remark color coding
-            const remarkClass = alert.vwapRemark && alert.vwapRemark.startsWith('UP') ? 'text-green-400 font-bold' :
-                                alert.vwapRemark && alert.vwapRemark.startsWith('DN') ? 'text-red-400 font-bold' :
-                                'text-yellow-400 font-semibold';
+            // VWAP Position color coding (band zone)
+            const positionClass = alert.vwapRemark && alert.vwapRemark.startsWith('UP') ? 'text-green-400 font-bold' :
+                                  alert.vwapRemark && alert.vwapRemark.startsWith('DN') ? 'text-red-400 font-bold' :
+                                  'text-yellow-400 font-semibold';
+            
+            // VWAP Remark - display "Crossing" if VWAP crossing detected, otherwise "Normal"
+            let remarkDisplay = 'Normal';
+            let remarkClass = 'text-muted-foreground';
+            
+            if (alert.vwapCrossing === true || alert.vwapCrossing === 'true') {
+              remarkDisplay = 'Crossing';
+              remarkClass = 'text-yellow-400 font-bold animate-pulse';
+            }
             
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
@@ -564,7 +607,8 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-medium \${trendClass}" title="Price vs EMA1/EMA2">\${(alert.trend || 'N/A') + trendIndicator}</td>
                 <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-bold \${remarkClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
+                <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
+                <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${ema1Class}" title="EMA1\${alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : ''} - Price \${ema1Above ? 'above' : ema1Below ? 'below' : 'near'}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${ema2Class}" title="EMA2\${alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : ''} - Price \${ema2Above ? 'above' : ema2Below ? 'below' : 'near'}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
@@ -585,7 +629,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="12" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="13" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
