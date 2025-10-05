@@ -210,7 +210,7 @@ app.get('/', (req, res) => {
         }
       </script>
       <style>
-        @media (min-width: 1280px) {
+        @media (min-width: 1370px) {
           .container {
             max-width: 1360px;
           }
