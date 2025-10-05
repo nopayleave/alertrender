@@ -212,7 +212,7 @@ app.get('/', (req, res) => {
       <style>
         @media (min-width: 1280px) {
           .container {
-            max-width: 86rem;
+            max-width: 1360px;
           }
         }
         .mx-auto {
