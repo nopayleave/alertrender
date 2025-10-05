@@ -212,14 +212,11 @@ app.get('/', (req, res) => {
       <style>
         @media (min-width: 1280px) {
           .container {
-            max-width: 1390px;
+            max-width: 86rem;
           }
         }
         .mx-auto {
           margin: auto;
-        }
-        .max-w-7xl {
-          max-width: 86rem;
         }
         .p-4 {
           padding-bottom: 2rem;
