@@ -1,5 +1,5 @@
 //@version=5
-indicator(title="Volume Weighted Average Price", shorttitle="VWAP", overlay=true)
+indicator(title="List", shorttitle="List", overlay=true)
 
 hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings", display = display.data_window)
 var anchor = input.string(defval = "Session", title="Anchor Period",
@@ -173,7 +173,7 @@ plot(ema2Value, title="EMA 2", color=ema2Color, linewidth=2)
 t = time("1440", session.extended) // 1440 = 60*24 minutes in a day
 is_first = na(t[1]) and not na(t) or t[1] < t
 
-// Track day high/low
+// Track day high/low and cumulative volume
 var float day_high = na
 var float day_low = na
 var float session_volume = 0.0
