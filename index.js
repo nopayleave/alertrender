@@ -89,8 +89,9 @@ app.post('/webhook', (req, res) => {
       alertData.changeFromPrevDay = dayChangeData[alert.symbol]
     }
     
-    // Add volume data if available from Day script
-    if (dayVolumeData[alert.symbol] !== undefined) {
+    // Add volume data if available from Day script, but ONLY if main script didn't send volume
+    // Main script's session_volume takes priority (it's the real-time cumulative daily volume)
+    if (!alert.volume && dayVolumeData[alert.symbol] !== undefined) {
       alertData.volume = dayVolumeData[alert.symbol]
     }
     
