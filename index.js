@@ -215,6 +215,12 @@ app.get('/', (req, res) => {
             max-width: 1390px;
           }
         }
+        .mx-auto {
+          margin: auto;
+        }
+        .max-w-7xl {
+          max-width: 86rem;
+        }
         .p-4 {
           padding-bottom: 2rem;
         }
@@ -227,7 +233,7 @@ app.get('/', (req, res) => {
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border p-4">
+        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border py-4">
           <div class="container mx-auto max-w-7xl">
             <div class="relative">
               <input 
