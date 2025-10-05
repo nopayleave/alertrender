@@ -209,25 +209,21 @@ app.get('/', (req, res) => {
           }
         }
       </script>
+      <style>
+        @media (min-width: 1280px) {
+          .container {
+            max-width: 1390px;
+          }
+        }
+        .p-4 {
+          padding-bottom: 2rem;
+        }
+      </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
       <div class="container mx-auto max-w-7xl">
         <div class="mb-8">
           <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
-          <p class="text-muted-foreground text-xl leading-7">Real-time alert data with color-coded price changes</p>
-        </div>
-        
-        <!-- Reset button - top right -->
-        <div class="fixed top-4 right-4 z-50">
-          <button 
-            id="resetButton" 
-            onclick="resetAlerts()" 
-            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-colors duration-200 flex items-center gap-2"
-            title="Clear all alerts"
-          >
-            <span>🗑️</span>
-            <span class="hidden sm:inline">Reset</span>
-          </button>
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
@@ -312,7 +308,7 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="mt-6 text-center">
-          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never</p>
+          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
         </div>
       </div>
 
@@ -327,6 +323,10 @@ app.get('/', (req, res) => {
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
+
+        // Countdown state
+        let countdownSeconds = 15;
+        let countdownInterval = null;
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
@@ -449,13 +449,37 @@ app.get('/', (req, res) => {
           return starredAlerts[symbol] || false;
         }
 
+        function updateCountdown() {
+          const countdownElem = document.getElementById('countdown');
+          if (countdownElem) {
+            countdownElem.textContent = \`- \${countdownSeconds}s\`;
+          }
+        }
+
+        function startCountdown() {
+          countdownSeconds = 15;
+          updateCountdown();
+          
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+          }
+          
+          countdownInterval = setInterval(() => {
+            countdownSeconds--;
+            if (countdownSeconds < 0) {
+              countdownSeconds = 15;
+            }
+            updateCountdown();
+          }, 1000);
+        }
+
         function renderTable() {
           const alertTable = document.getElementById('alertTable');
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
             alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
-            lastUpdate.textContent = 'Last updated: Never';
+            lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
 
@@ -494,14 +518,16 @@ app.get('/', (req, res) => {
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
             alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
-            lastUpdate.textContent = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString();
+            lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
+            updateCountdown();
             return;
           }
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
           const searchInfo = searchTerm ? \` • Showing \${filteredData.length} of \${alertsData.length}\` : '';
-          lastUpdate.textContent = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo;
+          lastUpdate.innerHTML = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo + ' <span id="countdown"></span>';
+          updateCountdown();
 
           alertTable.innerHTML = filteredData.map(alert => {
             const starred = isStarred(alert.symbol);
@@ -626,34 +652,11 @@ app.get('/', (req, res) => {
             
             alertsData = data;
             renderTable();
+            startCountdown();
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
             document.getElementById('alertTable').innerHTML = '<tr><td colspan="13" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
-          }
-        }
-
-        async function resetAlerts() {
-          if (confirm('Are you sure you want to clear all alerts? This cannot be undone.')) {
-            try {
-              const response = await fetch('/reset-alerts', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                }
-              });
-              
-              if (response.ok) {
-                alertsData = [];
-                renderTable();
-                alert('All alerts have been cleared successfully!');
-              } else {
-                alert('Failed to clear alerts. Please try again.');
-              }
-            } catch (error) {
-              console.error('Error clearing alerts:', error);
-              alert('Error clearing alerts. Please try again.');
-            }
           }
         }
 
