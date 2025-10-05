@@ -231,7 +231,7 @@ app.get('/', (req, res) => {
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
         <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border py-4">
-          <div class="container mx-auto style="max-width: 1360px;">
+          <div class="container mx-auto" style="max-width: 1360px;">
             <div class="relative">
               <input 
                 type="text" 
