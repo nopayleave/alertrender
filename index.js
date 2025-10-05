@@ -634,7 +634,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-medium \${trendClass}" title="Price vs EMA1/EMA2">\${(alert.trend || 'N/A') + trendIndicator}</td>
-                <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus || 'N/A'}</td>
+                <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus ? alert.rangeStatus.replace(' Range', '') : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
