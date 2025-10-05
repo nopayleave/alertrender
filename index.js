@@ -296,7 +296,7 @@ app.get('/', (req, res) => {
                       <span title="Moving Average Convergence Divergence">MACD</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
-                      Vol <span id="sort-volume" class="ml-1 text-xs">⇅</span>
+                      <span title="Volume since 9:30 AM">Vol</span> <span id="sort-volume" class="ml-1 text-xs">⇅</span>
                     </th>
                   </tr>
                 </thead>
@@ -642,7 +642,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-mono \${ema1Class}" title="EMA1\${alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : ''} - Price \${ema1Above ? 'above' : ema1Below ? 'below' : 'near'}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${ema2Class}" title="EMA2\${alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : ''} - Price \${ema2Above ? 'above' : ema2Below ? 'below' : 'near'}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macd ? parseFloat(alert.macd).toFixed(2) : 'N/A'}</td>
-                <td class="py-3 px-4 text-muted-foreground">\${formatVolume(alert.volume)}</td>
+                <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
           }).join('');

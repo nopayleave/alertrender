@@ -176,13 +176,16 @@ is_first = na(t[1]) and not na(t) or t[1] < t
 // Track day high/low
 var float day_high = na
 var float day_low = na
+var float session_volume = 0.0
 
 if is_first and barstate.isnew
     day_high := high
     day_low := low
+    session_volume := volume
 else
     day_high := nz(day_high[1], high)
     day_low := nz(day_low[1], low)
+    session_volume := nz(session_volume[1], 0) + volume
 
 if high > day_high
     day_high := high
@@ -263,7 +266,7 @@ if enableAlerts and barstate.isconfirmed
       '"macdTf": "' + effectiveMacdTf + '",' +
       '"rsi": ' + str.tostring(rsi, "#.##") + ',' +
       '"rsiTf": "' + effectiveRsiTf + '",' +
-      '"volume": ' + str.tostring(volume) + '}'
+      '"volume": ' + str.tostring(session_volume) + '}'
     
     // Determine alert frequency
     freq = alertFreq == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
