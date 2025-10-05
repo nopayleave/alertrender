@@ -224,14 +224,14 @@ app.get('/', (req, res) => {
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
-      <div class="container mx-auto">
+      <div class="container mx-auto" style="max-width: 1360px;">
         <div class="mb-8">
           <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
         <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border py-4">
-          <div class="container mx-auto">
+          <div class="container mx-auto style="max-width: 1360px;">
             <div class="relative">
               <input 
                 type="text" 
