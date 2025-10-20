@@ -221,9 +221,12 @@ else if crossDown80
     signal := "D4_Cross_Down_80"
 
 // === Trigger webhook alert ===
-// Create alert message only when signal is non-empty
+// Create JSON alert message with symbol for webhook
 if signal != ""
-    alert(signal, freq=alert.freq_once_per_bar_close)
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"d4Signal": "' + signal + '"}'
+    alert(jsonMsg, freq=alert.freq_once_per_bar_close)
 
 // Store previous value for next comparison
 prevD4 := d4

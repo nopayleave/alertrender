@@ -47,6 +47,9 @@ function updateAlertData(symbol, newData) {
 app.post('/webhook', (req, res) => {
   const alert = req.body
   
+  // Log incoming webhook for debugging
+  console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
+  
   // Store in full history (all alerts)
   alertsHistory.unshift({
     ...alert,
@@ -64,17 +67,30 @@ app.post('/webhook', (req, res) => {
   const isQuadStochAlert = alert.quadStochSignal !== undefined
   const isQuadStochD4Alert = alert.d4Signal !== undefined
   
+  // Log alert type detection for debugging
+  console.log('📊 Alert type detected:', {
+    isDayChangeAlert,
+    isVwapCrossingAlert,
+    isQuadStochAlert,
+    isQuadStochD4Alert,
+    symbol: alert.symbol
+  })
+  
   if (isQuadStochD4Alert) {
     // Quad Stochastic D4 alert - store trend and crossing data
     quadStochD4Data[alert.symbol] = {
       signal: alert.d4Signal,
       timestamp: Date.now()
     }
+    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}`)
     
-    // Update existing alert with D4 data
-    updateAlertData(alert.symbol, { 
-      quadStochD4Signal: alert.d4Signal
-    })
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].quadStochD4Signal = alert.d4Signal
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal`)
+    }
   } else if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
     dayChangeData[alert.symbol] = alert.changeFromPrevDay
@@ -89,7 +105,7 @@ app.post('/webhook', (req, res) => {
     }
     updateAlertData(alert.symbol, dayData)
   } else if (isQuadStochAlert) {
-    // Quad Stochastic alert - store crossing status with timestamp
+    // Quad Stochastic D1/D2 alert - store crossing status with timestamp
     quadStochData[alert.symbol] = {
       signal: alert.quadStochSignal,
       d1: alert.d1,
@@ -99,22 +115,32 @@ app.post('/webhook', (req, res) => {
       k1: alert.k1,
       timestamp: Date.now()
     }
+    console.log(`✅ Quad Stoch D1/D2 signal stored for ${alert.symbol}: ${alert.quadStochSignal}`)
     
-    // Update existing alert with quad stoch data
-    updateAlertData(alert.symbol, { 
-      quadStochSignal: alert.quadStochSignal,
-      quadStochD1: alert.d1,
-      quadStochD2: alert.d2
-    })
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].quadStochSignal = alert.quadStochSignal
+      alerts[existingIndex].quadStochD1 = alert.d1
+      alerts[existingIndex].quadStochD2 = alert.d2
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with Quad Stoch signal`)
+    }
   } else if (isVwapCrossingAlert) {
     // VWAP Crossing alert - store crossing status with timestamp
     vwapCrossingData[alert.symbol] = {
       crossed: true,
       timestamp: Date.now()
     }
+    console.log(`✅ VWAP crossing stored for ${alert.symbol}`)
     
-    // Update existing alert with crossing flag
-    updateAlertData(alert.symbol, { vwapCrossing: true })
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].vwapCrossing = true
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
+    }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
@@ -171,10 +197,12 @@ app.post('/webhook', (req, res) => {
       if (ageInMinutes <= 30) {
         // D4 signal is recent (within 30 minutes), mark it
         alertData.quadStochD4Signal = quadStochD4Info.signal
+        console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
         delete quadStochD4Data[alert.symbol]
         alertData.quadStochD4Signal = null
+        console.log(`⏰ D4 signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     } else {
       alertData.quadStochD4Signal = null
@@ -222,6 +250,19 @@ app.get('/alerts', (req, res) => {
 // API for historical data - all alerts
 app.get('/alerts/history', (req, res) => {
   res.json(alertsHistory)
+})
+
+// Debug endpoint - check what data is stored
+app.get('/debug', (req, res) => {
+  res.json({
+    alertsCount: alerts.length,
+    historyCount: alertsHistory.length,
+    latestAlerts: alerts.slice(0, 5),
+    quadStochD4Data: quadStochD4Data,
+    quadStochData: quadStochData,
+    vwapCrossingData: vwapCrossingData,
+    dayChangeData: dayChangeData
+  })
 })
 
 // New endpoint to reset/clear all alerts
