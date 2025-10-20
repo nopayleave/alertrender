@@ -1,0 +1,276 @@
+//@version=5
+indicator(title="List", shorttitle="List", overlay=true)
+
+hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings", display = display.data_window)
+var anchor = input.string(defval = "Session", title="Anchor Period",
+ options=["Session", "Week", "Month", "Quarter", "Year", "Decade", "Century", "Earnings", "Dividends", "Splits"], group="VWAP Settings")
+src = input(title = "Source", defval = hlc3, group="VWAP Settings", display = display.data_window)
+offset = input.int(0, title="Offset", group="VWAP Settings", minval=0, display = display.data_window)
+
+// Additional Indicator Settings
+EMA_GROUP = "EMA Settings"
+ema1Length = input.int(9, title="EMA 1 Length", group=EMA_GROUP)
+ema1Timeframe = input.timeframe("", title="EMA 1 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
+ema1Smooth = input.bool(false, title="EMA 1 Smooth (vs Step)", group=EMA_GROUP)
+ema2Length = input.int(21, title="EMA 2 Length", group=EMA_GROUP)
+ema2Timeframe = input.timeframe("", title="EMA 2 Timeframe", group=EMA_GROUP, tooltip="Leave empty for chart timeframe")
+ema2Smooth = input.bool(false, title="EMA 2 Smooth (vs Step)", group=EMA_GROUP)
+
+MACD_GROUP = "MACD Settings"
+macdFast = input.int(12, title="MACD Fast Length", group=MACD_GROUP)
+macdSlow = input.int(26, title="MACD Slow Length", group=MACD_GROUP)
+macdSignal = input.int(9, title="MACD Signal Length", group=MACD_GROUP)
+macdTimeframe = input.timeframe("", title="MACD Timeframe", group=MACD_GROUP, tooltip="Leave empty for chart timeframe")
+
+RSI_GROUP = "RSI Settings"
+rsiLength = input.int(14, title="RSI Length", group=RSI_GROUP)
+rsiTimeframe = input.timeframe("", title="RSI Timeframe", group=RSI_GROUP, tooltip="Leave empty for chart timeframe")
+
+ALERT_GROUP = "Alert Settings"
+enableAlerts = input.bool(true, title="Enable Webhook Alerts", group=ALERT_GROUP)
+alertFreq = input.string("Once Per Bar Close", title="Alert Frequency", 
+  options=["Once Per Bar Close", "Once Per Bar", "All"], 
+  group=ALERT_GROUP,
+  tooltip="Once Per Bar Close: Alert when bar closes\nOnce Per Bar: Alert once per bar (any time)\nAll: Alert every time condition is met")
+
+BANDS_GROUP = "Bands Settings"
+CALC_MODE_TOOLTIP = "Determines the units used to calculate the distance of the bands. When 'Percentage' is selected, a multiplier of 1 means 1%."
+calcModeInput = input.string("Standard Deviation", "Bands Calculation Mode", options = ["Standard Deviation", "Percentage"], group = BANDS_GROUP, tooltip = CALC_MODE_TOOLTIP, display = display.data_window)
+showBand_1 = input(true, title = "", group = BANDS_GROUP, inline = "band_1", display = display.data_window)
+bandMult_1 = input.float(1.0, title = "Bands Multiplier #1", group = BANDS_GROUP, inline = "band_1", step = 0.5, minval=0, display = display.data_window)
+showBand_2 = input(false, title = "", group = BANDS_GROUP, inline = "band_2", display = display.data_window)
+bandMult_2 = input.float(2.0, title = "Bands Multiplier #2", group = BANDS_GROUP, inline = "band_2", step = 0.5, minval=0, display = display.data_window)
+showBand_3 = input(false, title = "", group = BANDS_GROUP, inline = "band_3", display = display.data_window)
+bandMult_3 = input.float(3.0, title = "Bands Multiplier #3", group = BANDS_GROUP, inline = "band_3", step = 0.5, minval=0, display = display.data_window)
+
+if barstate.islast and ta.cum(volume) == 0
+    runtime.error("No volume is provided by the data vendor.")
+
+new_earnings = request.earnings(syminfo.tickerid, earnings.actual, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
+new_dividends = request.dividends(syminfo.tickerid, dividends.gross, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
+new_split = request.splits(syminfo.tickerid, splits.denominator, barmerge.gaps_on, barmerge.lookahead_on, ignore_invalid_symbol=true)
+
+isNewPeriod = switch anchor
+	"Earnings"  => not na(new_earnings)
+	"Dividends" => not na(new_dividends)
+	"Splits"    => not na(new_split)
+	"Session"   => timeframe.change("D")
+	"Week"      => timeframe.change("W")
+	"Month"     => timeframe.change("M")
+	"Quarter"   => timeframe.change("3M")
+	"Year"      => timeframe.change("12M")
+	"Decade"    => timeframe.change("12M") and year % 10 == 0
+	"Century"   => timeframe.change("12M") and year % 100 == 0
+	=> false
+
+isEsdAnchor = anchor == "Earnings" or anchor == "Dividends" or anchor == "Splits"
+if na(src[1]) and not isEsdAnchor
+	isNewPeriod := true
+
+float vwapValue = na
+float upperBandValue1 = na
+float lowerBandValue1 = na
+float upperBandValue2 = na
+float lowerBandValue2 = na
+float upperBandValue3 = na
+float lowerBandValue3 = na
+
+if not (hideonDWM and timeframe.isdwm)
+    [_vwap, _stdevUpper, _] = ta.vwap(src, isNewPeriod, 1)
+	vwapValue := _vwap
+    stdevAbs = _stdevUpper - _vwap
+	bandBasis = calcModeInput == "Standard Deviation" ? stdevAbs : _vwap * 0.01
+	upperBandValue1 := _vwap + bandBasis * bandMult_1
+	lowerBandValue1 := _vwap - bandBasis * bandMult_1
+	upperBandValue2 := _vwap + bandBasis * bandMult_2
+	lowerBandValue2 := _vwap - bandBasis * bandMult_2
+	upperBandValue3 := _vwap + bandBasis * bandMult_3
+	lowerBandValue3 := _vwap - bandBasis * bandMult_3
+
+// VWAP color logic - green above, red below
+vwapColor = close > vwapValue ? color.green : color.red
+plot(vwapValue, title="VWAP", color=vwapColor, linewidth=2, offset=offset)
+
+upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
+lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
+fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color= color.new(color.green, 95)    , display = showBand_1 ? display.all : display.none)
+
+upperBand_2 = plot(upperBandValue2, title="Upper Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
+lowerBand_2 = plot(lowerBandValue2, title="Lower Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
+fill(upperBand_2, lowerBand_2, title="Bands Fill #2", color= color.new(color.olive, 95)    , display = showBand_2 ? display.all : display.none)
+
+upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
+lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
+fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.teal, 95)    , display = showBand_3 ? display.all : display.none)
+
+// ============ ADDITIONAL INDICATORS ============
+
+// ============================================================================
+// EMA 1 CALCULATION (with timeframe option and no repaint)
+// ============================================================================
+
+// Calculate EMA 1 on current timeframe
+ema1 = ta.ema(close, ema1Length)
+
+// Get HTF EMA 1 (step style or smooth style)
+htfRes1 = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+ema1Step = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
+ema1SmoothValue = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
+
+// Select which EMA 1 to use
+ema1Value = ema1Smooth ? ema1SmoothValue : ema1Step
+
+// ============================================================================
+// EMA 2 CALCULATION (with timeframe option and no repaint)
+// ============================================================================
+
+// Calculate EMA 2 on current timeframe
+ema2 = ta.ema(close, ema2Length)
+
+// Get HTF EMA 2 (step style or smooth style)
+htfRes2 = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
+ema2Step = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
+ema2SmoothValue = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
+
+// Select which EMA 2 to use
+ema2Value = ema2Smooth ? ema2SmoothValue : ema2Step
+
+// ============================================================================
+// EXTREME MARKET CONDITION DETECTION & EMA COLORING
+// ============================================================================
+
+// Detect extreme bullish: Price above BOTH EMAs
+isExtremeBullish = close > ema1Step and close > ema2Step
+
+// Detect extreme bearish: Price below BOTH EMAs
+isExtremeBearish = close < ema1Step and close < ema2Step
+
+// EMA color logic - simple: green above, red below
+ema1Color = close > ema1Step ? color.green : color.red
+ema2Color = close > ema2Step ? color.green : color.red
+
+// Trend status indicator
+aboveEma1 = close > ema1Step
+aboveEma2 = close > ema2Step
+trendIndicator = aboveEma1 and aboveEma2 ? "↑ ↑" : 
+                 not aboveEma1 and not aboveEma2 ? "↓ ↓" : 
+                 aboveEma2 and not aboveEma1 ? "- ↑" : 
+                 aboveEma1 and not aboveEma2 ? "↑ -" : "- -"
+trendColor = aboveEma1 and aboveEma2 ? color.lime : 
+             not aboveEma1 and not aboveEma2 ? color.red : color.gray
+
+// ============================================================================
+// PLOT EMAs
+// ============================================================================
+plot(ema1Value, title="EMA 1", color=ema1Color, linewidth=2)
+plot(ema2Value, title="EMA 2", color=ema2Color, linewidth=2)
+
+// ============================================================================
+// DAY HIGH/LOW WITH INTRADAY TRACKING
+// ============================================================================
+
+// Detect first bar of new day
+t = time("1440", session.extended) // 1440 = 60*24 minutes in a day
+is_first = na(t[1]) and not na(t) or t[1] < t
+
+// Track day high/low and cumulative volume
+var float day_high = na
+var float day_low = na
+var float session_volume = 0.0
+
+if is_first and barstate.isnew
+    day_high := high
+    day_low := low
+    session_volume := volume
+else
+    day_high := nz(day_high[1], high)
+    day_low := nz(day_low[1], low)
+    session_volume := nz(session_volume[1], 0) + volume
+
+if high > day_high
+    day_high := high
+    
+if low < day_low
+    day_low := low
+
+// Calculate day range and position
+dayRange = day_high - day_low
+dayMidpoint = day_low + (dayRange / 2)
+rangeStatus = close > dayMidpoint ? "Up Range" : close < dayMidpoint ? "Down Range" : "Mid Range"
+
+// Store for webhook (using variables for clarity)
+dayHigh = day_high
+dayLow = day_low
+
+// Plot day high/low lines
+plot(day_high, title="Day High", color=color.lime, linewidth=1, style=plot.style_line)
+plot(day_low, title="Day Low", color=color.red, linewidth=1, style=plot.style_line)
+
+// MACD Calculation (with optional multi-timeframe)
+[macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, macdTimeframe == "" ? timeframe.period : macdTimeframe, ta.macd(close, macdFast, macdSlow, macdSignal))
+
+// RSI Calculation (with optional multi-timeframe)
+rsi = request.security(syminfo.tickerid, rsiTimeframe == "" ? timeframe.period : rsiTimeframe, ta.rsi(close, rsiLength))
+
+// Trend Determination (based on price vs VWAP and EMA alignment)
+trend = close > vwapValue and ema1Value > ema2Value ? "Bullish" : close < vwapValue and ema1Value < ema2Value ? "Bearish" : "Neutral"
+
+// VWAP Band Position Remark
+vwapRemark = close > upperBandValue3 ? "UP3+" :
+             close > upperBandValue2 ? "UP3" :
+             close > upperBandValue1 ? "UP2" :
+             close > vwapValue ? "UP1" :
+             close < lowerBandValue3 ? "DN3+" :
+             close < lowerBandValue2 ? "DN3" :
+             close < lowerBandValue1 ? "DN2" :
+             close < vwapValue ? "DN1" : "VWAP"
+
+// ============ WEBHOOK ALERT ============
+
+if enableAlerts and barstate.isconfirmed
+    // Get effective timeframes (use chart timeframe if empty)
+    effectiveEma1Tf = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+    effectiveEma2Tf = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
+    effectiveMacdTf = macdTimeframe == "" ? timeframe.period : macdTimeframe
+    effectiveRsiTf = rsiTimeframe == "" ? timeframe.period : rsiTimeframe
+    
+    // Build JSON payload
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"time": "' + str.tostring(time) + '",' +
+      '"price": ' + str.tostring(close) + ',' +
+      '"trend": "' + trend + '",' +
+      '"vwap": ' + str.tostring(vwapValue, "#.##") + ',' +
+      '"vwapAbove": ' + str.tostring(close > vwapValue) + ',' +
+      '"vwapRemark": "' + vwapRemark + '",' +
+      '"vwapUpper1": ' + str.tostring(upperBandValue1, "#.##") + ',' +
+      '"vwapLower1": ' + str.tostring(lowerBandValue1, "#.##") + ',' +
+      '"vwapUpper2": ' + str.tostring(upperBandValue2, "#.##") + ',' +
+      '"vwapLower2": ' + str.tostring(lowerBandValue2, "#.##") + ',' +
+      '"vwapUpper3": ' + str.tostring(upperBandValue3, "#.##") + ',' +
+      '"vwapLower3": ' + str.tostring(lowerBandValue3, "#.##") + ',' +
+      '"ema1": ' + str.tostring(ema1Value, "#.##") + ',' +
+      '"ema1Tf": "' + effectiveEma1Tf + '",' +
+      '"ema1Above": ' + str.tostring(close > ema1Step) + ',' +
+      '"ema2": ' + str.tostring(ema2Value, "#.##") + ',' +
+      '"ema2Tf": "' + effectiveEma2Tf + '",' +
+      '"ema2Above": ' + str.tostring(close > ema2Step) + ',' +
+      '"trendIndicator": "' + trendIndicator + '",' +
+      '"dayHigh": ' + str.tostring(dayHigh, "#.##") + ',' +
+      '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
+      '"dayRange": ' + str.tostring(dayRange, "#.##") + ',' +
+      '"rangeStatus": "' + rangeStatus + '",' +
+      '"macd": ' + str.tostring(macdLine, "#.####") + ',' +
+      '"macdSignal": ' + str.tostring(signalLine, "#.####") + ',' +
+      '"macdTf": "' + effectiveMacdTf + '",' +
+      '"rsi": ' + str.tostring(rsi, "#.##") + ',' +
+      '"rsiTf": "' + effectiveRsiTf + '",' +
+      '"volume": ' + str.tostring(session_volume) + '}'
+    
+    // Determine alert frequency
+    freq = alertFreq == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
+           alertFreq == "Once Per Bar" ? alert.freq_once_per_bar : 
+           alert.freq_all
+    
+    alert(jsonMsg, freq)

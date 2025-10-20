@@ -1,0 +1,173 @@
+//@version=6
+indicator(title="Quad Stochastic", shorttitle="Quad Stoch", overlay=false, explicit_plot_zorder=true)
+
+// Shared inputs
+length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
+smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
+periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
+colorD1 = input.color(color.red, title="D1 Color", group="Stoch1 Settings")
+linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
+showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
+
+length2 = input.int(18, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
+smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
+periodD2 = input.int(3, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
+colorD2 = input.color(color.blue, title="D2 Color", group="Stoch2 Settings")
+linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
+showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+
+length3 = input.int(39, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
+smoothK3 = input.int(1, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
+periodD3 = input.int(4, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
+colorD3 = input.color(color.aqua, title="D3 Color", group="Stoch3 Settings")
+linewidthD3 = input.int(3, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
+showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
+
+length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
+smoothK4 = input.int(1, minval=1, title="Stoch4 %K Smoothing (smoothK)", group="Stoch4 Settings")
+periodD4 = input.int(10, minval=1, title="Stoch4 %D Smoothing (periodD)", group="Stoch4 Settings")
+colorD4 = input.color(#000000, title="D4 Color (Area Fill)", group="Stoch4 Settings")
+transparencyD4 = input.int(70, minval=0, maxval=100, title="D4 Transparency", group="Stoch4 Settings")
+linewidthD4 = input.int(2, minval=1, maxval=5, title="D4 Line Width", group="Stoch4 Settings")
+showD4 = input.bool(true, title="Show D4", group="Stoch4 Settings")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute for each
+[k1, d1] = getStoch(length1, smoothK1, periodD1)
+[k2, d2] = getStoch(length2, smoothK2, periodD2)
+[k3, d3] = getStoch(length3, smoothK3, periodD3)
+[k4, d4] = getStoch(length4, smoothK4, periodD4)
+
+// Plot %D4 first (z-index as last/behind) - use fill for better z-order control
+// Extract RGB from colorD4 and apply transparencyD4 to ensure proper opacity control
+d4FillColor = color.rgb(color.r(colorD4), color.g(colorD4), color.b(colorD4), transparencyD4)
+p_d4 = plot(showD4 ? d4 : na, title="%d4", color=color.new(colorD4, 100), linewidth=linewidthD4, display=display.pane)
+p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
+fill(p_base, p_d4, color=showD4 ? d4FillColor : na, title="D4 Fill")
+
+// Plot %D lines with customizable colors (on top of D4)
+plot(showD1 ? d1 : na, title="%d1", color=colorD1, linewidth=linewidthD1, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=colorD2, linewidth=linewidthD2, display=display.pane)
+plot(showD3 ? d3 : na, title="%d3", color=colorD3, linewidth=linewidthD3, display=display.pane)
+
+// Plot Mid line above D1, D2, D3 (z-index on top)
+plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
+
+// Plot %K line for 10-period Stochastic as a regular line
+plot(k1, title="%K1", color=color.new(#00bcd4, 65), linewidth=1, style=plot.style_line, display=display.none)
+
+// Reference levels
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// ===== HIGHER LOW / LOWER HIGH DETECTION =====
+// Pivot detection parameters
+pivotLength = input.int(5, minval=1, title="Pivot Length", tooltip="Bars on each side for pivot detection")
+
+// HL/LH Display Options
+showHLLH_D1 = input.bool(true, title="Show D1 HL/LH", group="HL/LH Display")
+showHLLH_D2 = input.bool(true, title="Show D2 HL/LH", group="HL/LH Display")
+labelSize_D1 = input.string("Small", title="D1 Label Size", options=["Tiny", "Small", "Normal", "Large"], group="HL/LH Display")
+labelSize_D2 = input.string("Tiny", title="D2 Label Size", options=["Tiny", "Small", "Normal", "Large"], group="HL/LH Display")
+
+// Oversold Threshold
+oversoldThreshold = input.int(80, minval=0, maxval=100, title="Oversold Threshold Level", group="HL/LH Display", tooltip="LH above this level will use special color")
+
+// D1 Colors
+colorHL_D1 = input.color(color.lime, title="D1 Higher Low Color", group="HL/LH Display")
+colorLH_D1 = input.color(color.red, title="D1 Lower High Color", group="HL/LH Display")
+colorLH_D1_Oversold = input.color(color.white, title="D1 LH Oversold Color", group="HL/LH Display")
+
+// D2 Colors
+colorHL_D2 = input.color(color.aqua, title="D2 Higher Low Color", group="HL/LH Display")
+colorLH_D2 = input.color(color.orange, title="D2 Lower High Color", group="HL/LH Display")
+colorLH_D2_Oversold = input.color(color.white, title="D2 LH Oversold Color", group="HL/LH Display")
+
+// Convert string to size
+getSize(sizeStr) =>
+    sizeStr == "Tiny" ? size.tiny : sizeStr == "Small" ? size.small : sizeStr == "Normal" ? size.normal : size.large
+
+// Detect pivots on D1
+pivotHighD1 = ta.pivothigh(d1, pivotLength, pivotLength)
+pivotLowD1 = ta.pivotlow(d1, pivotLength, pivotLength)
+
+// Detect pivots on D2
+pivotHighD2 = ta.pivothigh(d2, pivotLength, pivotLength)
+pivotLowD2 = ta.pivotlow(d2, pivotLength, pivotLength)
+
+// Track previous pivot values for D1
+var float lastHighD1 = na
+var float lastLowD1 = na
+var int lastHighBarD1 = na
+var int lastLowBarD1 = na
+
+// Track previous pivot values for D2
+var float lastHighD2 = na
+var float lastLowD2 = na
+var int lastHighBarD2 = na
+var int lastLowBarD2 = na
+
+// Update D1 pivots
+if not na(pivotHighD1)
+    if not na(lastHighD1)
+        // Check for Lower High
+        if pivotHighD1 < lastHighD1 and showHLLH_D1
+            // Use oversold color if LH is above threshold, otherwise use regular color
+            lhColor = pivotHighD1 > oversoldThreshold ? colorLH_D1_Oversold : colorLH_D1
+            label.new(bar_index - pivotLength, pivotHighD1, "LH", style=label.style_triangledown, color=lhColor, textcolor=color.white, size=getSize(labelSize_D1))
+    lastHighD1 := pivotHighD1
+    lastHighBarD1 := bar_index - pivotLength
+
+if not na(pivotLowD1)
+    if not na(lastLowD1)
+        // Check for Higher Low
+        if pivotLowD1 > lastLowD1 and showHLLH_D1
+            label.new(bar_index - pivotLength, pivotLowD1, "HL", style=label.style_triangleup, color=colorHL_D1, textcolor=color.black, size=getSize(labelSize_D1))
+    lastLowD1 := pivotLowD1
+    lastLowBarD1 := bar_index - pivotLength
+
+// Update D2 pivots
+if not na(pivotHighD2)
+    if not na(lastHighD2)
+        // Check for Lower High
+        if pivotHighD2 < lastHighD2 and showHLLH_D2
+            // Use oversold color if LH is above threshold, otherwise use regular color
+            lhColor_D2 = pivotHighD2 > oversoldThreshold ? colorLH_D2_Oversold : colorLH_D2
+            label.new(bar_index - pivotLength, pivotHighD2, "LH", style=label.style_triangledown, color=lhColor_D2, textcolor=color.white, size=getSize(labelSize_D2))
+    lastHighD2 := pivotHighD2
+    lastHighBarD2 := bar_index - pivotLength
+
+if not na(pivotLowD2)
+    if not na(lastLowD2)
+        // Check for Higher Low
+        if pivotLowD2 > lastLowD2 and showHLLH_D2
+            label.new(bar_index - pivotLength, pivotLowD2, "HL", style=label.style_triangleup, color=colorHL_D2, textcolor=color.black, size=getSize(labelSize_D2))
+    lastLowD2 := pivotLowD2
+    lastLowBarD2 := bar_index - pivotLength
+
+// ===== D1 & D2 CROSSOVER / CROSSUNDER DETECTION =====
+// Crossover Display Options
+showCrossover = input.bool(true, title="Show Crossover Signals", group="Crossover Display")
+showCrossoverBG = input.bool(true, title="Show Background Highlight", group="Crossover Display")
+crossoverColor = input.color(color.green, title="Crossover Color", group="Crossover Display")
+crossunderColor = input.color(color.red, title="Crossunder Color", group="Crossover Display")
+
+crossoverD1D2 = ta.crossover(d1, d2)
+crossunderD1D2 = ta.crossunder(d1, d2)
+
+// Get the crossing value for plotting
+crossValue = crossoverD1D2 or crossunderD1D2 ? d1 : na
+
+// Plot crossover signals at the actual crossing point
+plotshape(showCrossover and crossoverD1D2 ? crossValue : na, title="D1 Cross Over D2", style=shape.circle, location=location.absolute, color=color.new(crossoverColor, 0), size=size.small, offset=0, text="▲")
+plotshape(showCrossover and crossunderD1D2 ? crossValue : na, title="D1 Cross Under D2", style=shape.circle, location=location.absolute, color=color.new(crossunderColor, 0), size=size.small, offset=0, text="▼")
+
+// Background highlight on crosses
+bgcolor(showCrossoverBG and crossoverD1D2 ? color.new(crossoverColor, 90) : na, title="Crossover BG")
+bgcolor(showCrossoverBG and crossunderD1D2 ? color.new(crossunderColor, 90) : na, title="Crossunder BG")

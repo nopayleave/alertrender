@@ -13,6 +13,8 @@ let alertsHistory = [] // All historical alerts (backup storage)
 let dayChangeData = {} // Store day change data by symbol
 let dayVolumeData = {} // Store daily volume data by symbol
 let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
+let quadStochData = {} // Store Quad Stochastic crossing status by symbol with timestamp
+let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
@@ -54,11 +56,26 @@ app.post('/webhook', (req, res) => {
   // Detect alert type:
   // - Day script: contains changeFromPrevDay and volume but missing price (handles Chg% and Vol columns)
   // - VWAP Crossing alert: contains vwapCrossing flag
+  // - Quad Stochastic D1/D2 alert: contains quadStochSignal
+  // - Quad Stochastic D4 alert: contains d4Signal field
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
+  const isQuadStochAlert = alert.quadStochSignal !== undefined
+  const isQuadStochD4Alert = alert.d4Signal !== undefined
   
-  if (isDayChangeAlert) {
+  if (isQuadStochD4Alert) {
+    // Quad Stochastic D4 alert - store trend and crossing data
+    quadStochD4Data[alert.symbol] = {
+      signal: alert.d4Signal,
+      timestamp: Date.now()
+    }
+    
+    // Update existing alert with D4 data
+    updateAlertData(alert.symbol, { 
+      quadStochD4Signal: alert.d4Signal
+    })
+  } else if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
     dayChangeData[alert.symbol] = alert.changeFromPrevDay
     if (alert.volume !== undefined) {
@@ -71,6 +88,24 @@ app.post('/webhook', (req, res) => {
       dayData.volume = alert.volume
     }
     updateAlertData(alert.symbol, dayData)
+  } else if (isQuadStochAlert) {
+    // Quad Stochastic alert - store crossing status with timestamp
+    quadStochData[alert.symbol] = {
+      signal: alert.quadStochSignal,
+      d1: alert.d1,
+      d2: alert.d2,
+      d3: alert.d3,
+      d4: alert.d4,
+      k1: alert.k1,
+      timestamp: Date.now()
+    }
+    
+    // Update existing alert with quad stoch data
+    updateAlertData(alert.symbol, { 
+      quadStochSignal: alert.quadStochSignal,
+      quadStochD1: alert.d1,
+      quadStochD2: alert.d2
+    })
   } else if (isVwapCrossingAlert) {
     // VWAP Crossing alert - store crossing status with timestamp
     vwapCrossingData[alert.symbol] = {
@@ -109,6 +144,40 @@ app.post('/webhook', (req, res) => {
       }
     } else {
       alertData.vwapCrossing = false
+    }
+    
+    // Check and add Quad Stochastic crossing status if active (within last 10 minutes)
+    const quadStochInfo = quadStochData[alert.symbol]
+    if (quadStochInfo && quadStochInfo.signal) {
+      const ageInMinutes = (Date.now() - quadStochInfo.timestamp) / 60000
+      if (ageInMinutes <= 10) {
+        // Crossing is recent (within 10 minutes), mark it
+        alertData.quadStochSignal = quadStochInfo.signal
+        alertData.quadStochD1 = quadStochInfo.d1
+        alertData.quadStochD2 = quadStochInfo.d2
+      } else {
+        // Crossing is old, expire it
+        delete quadStochData[alert.symbol]
+        alertData.quadStochSignal = null
+      }
+    } else {
+      alertData.quadStochSignal = null
+    }
+    
+    // Check and add Quad Stochastic D4 trend status if active (within last 30 minutes)
+    const quadStochD4Info = quadStochD4Data[alert.symbol]
+    if (quadStochD4Info && quadStochD4Info.signal) {
+      const ageInMinutes = (Date.now() - quadStochD4Info.timestamp) / 60000
+      if (ageInMinutes <= 30) {
+        // D4 signal is recent (within 30 minutes), mark it
+        alertData.quadStochD4Signal = quadStochD4Info.signal
+      } else {
+        // Signal is old, expire it
+        delete quadStochD4Data[alert.symbol]
+        alertData.quadStochD4Signal = null
+      }
+    } else {
+      alertData.quadStochD4Signal = null
     }
     
     // Add ALL alerts to the front (don't remove existing ones)
@@ -162,6 +231,8 @@ app.post('/reset-alerts', (req, res) => {
   dayChangeData = {}
   dayVolumeData = {}
   vwapCrossingData = {}
+  quadStochData = {}
+  quadStochD4Data = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -284,6 +355,12 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwapCrossing')" title="VWAP Crossing Status">
                       Remark <span id="sort-vwapCrossing" class="ml-1 text-xs">⇅</span>
                     </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('quadStoch')" title="Quad Stochastic D1/D2 Crossing">
+                      Quad Stoch <span id="sort-quadStoch" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Quad Stochastic D4 Trend & Crossings">
+                      QStoch <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
                       <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -303,7 +380,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="13" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="15" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -353,7 +430,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'vwapPosition', 'vwapCrossing', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'vwapPosition', 'vwapCrossing', 'quadStoch', 'qstoch', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -387,6 +464,35 @@ app.get('/', (req, res) => {
               return alert.vwapRemark || '';
             case 'vwapCrossing':
               return (alert.vwapCrossing === true || alert.vwapCrossing === 'true') ? 'Crossing' : 'Normal';
+            case 'quadStoch':
+              // Sort by signal strength (higher = more bullish)
+              const sig = alert.quadStochSignal;
+              if (sig === 'Bull_Cross_High') return 10;
+              if (sig === 'Bull_Cross_Low') return 9;
+              if (sig === 'Bull_D1>D2_Rising') return 8;
+              if (sig === 'Bull_D2>D1_Rising') return 7;
+              if (sig === 'Bull_Diverging') return 6;
+              if (sig === 'Neutral_D1>D2') return 5;
+              if (sig === 'Neutral_D1<D2') return 4;
+              if (sig === 'Neutral') return 3;
+              if (sig === 'Bear_Diverging') return 2;
+              if (sig === 'Bear_D2<D1_Falling') return 1;
+              if (sig === 'Bear_D1<D2_Falling') return 0;
+              if (sig === 'Bear_Cross_Low') return -1;
+              if (sig === 'Bear_Cross_High') return -2;
+              return 3; // Default to neutral
+            case 'qstoch':
+              // Sort by D4 signal strength (higher = more bullish)
+              const d4sig = alert.quadStochD4Signal;
+              if (d4sig === 'D4_Uptrend') return 10;
+              if (d4sig === 'D4_Cross_Up_80') return 9;
+              if (d4sig === 'D4_Cross_Up_50') return 8;
+              if (d4sig === 'D4_Cross_Up_20') return 7;
+              if (d4sig === 'D4_Cross_Down_20') return 3;
+              if (d4sig === 'D4_Cross_Down_50') return 2;
+              if (d4sig === 'D4_Cross_Down_80') return 1;
+              if (d4sig === 'D4_Downtrend') return 0;
+              return 5; // Default to neutral
             case 'rsi':
               return parseFloat(alert.rsi) || 0;
             case 'ema1':
@@ -482,7 +588,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="15" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -521,7 +627,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="15" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -621,6 +727,118 @@ app.get('/', (req, res) => {
               remarkClass = 'text-yellow-400 font-bold animate-pulse';
             }
             
+            // Quad Stochastic Signal Display
+            let quadStochDisplay = '-';
+            let quadStochClass = 'text-muted-foreground';
+            let quadStochTitle = 'No recent signal';
+            
+            const signal = alert.quadStochSignal;
+            const d1Val = alert.quadStochD1 ? parseFloat(alert.quadStochD1).toFixed(1) : 'N/A';
+            const d2Val = alert.quadStochD2 ? parseFloat(alert.quadStochD2).toFixed(1) : 'N/A';
+            
+            // Bullish signals (Green)
+            if (signal === 'Bull_Cross_High') {
+              quadStochDisplay = '↑⚡ HIGH';
+              quadStochClass = 'text-green-400 font-bold animate-pulse';
+              quadStochTitle = \`Bullish Cross in Upper Zone (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bull_Cross_Low') {
+              quadStochDisplay = '↑⚡ LOW';
+              quadStochClass = 'text-green-400 font-bold animate-pulse';
+              quadStochTitle = \`Bullish Cross from Oversold (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bull_D1>D2_Rising') {
+              quadStochDisplay = '↑↑ D1>D2';
+              quadStochClass = 'text-green-400 font-semibold';
+              quadStochTitle = \`Bullish: D1 above D2, both rising (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bull_D2>D1_Rising') {
+              quadStochDisplay = '↑↑ D2>D1';
+              quadStochClass = 'text-green-400 font-semibold';
+              quadStochTitle = \`Bullish Momentum: Both D1 and D2 rising (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bull_Diverging') {
+              quadStochDisplay = '↗️ DIV';
+              quadStochClass = 'text-lime-400 font-semibold';
+              quadStochTitle = \`Bullish Divergence: D1 rising, D2 falling (D1: \${d1Val}, D2: \${d2Val})\`;
+            }
+            // Bearish signals (Red)
+            else if (signal === 'Bear_Cross_High') {
+              quadStochDisplay = '↓⚡ HIGH';
+              quadStochClass = 'text-red-400 font-bold animate-pulse';
+              quadStochTitle = \`Bearish Cross in Overbought (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bear_Cross_Low') {
+              quadStochDisplay = '↓⚡ LOW';
+              quadStochClass = 'text-red-400 font-bold animate-pulse';
+              quadStochTitle = \`Bearish Cross in Lower Zone (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bear_D1<D2_Falling') {
+              quadStochDisplay = '↓↓ D1<D2';
+              quadStochClass = 'text-red-400 font-semibold';
+              quadStochTitle = \`Bearish: D1 below D2, both falling (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bear_D2<D1_Falling') {
+              quadStochDisplay = '↓↓ D2<D1';
+              quadStochClass = 'text-red-400 font-semibold';
+              quadStochTitle = \`Bearish Momentum: Both D1 and D2 falling (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Bear_Diverging') {
+              quadStochDisplay = '↘️ DIV';
+              quadStochClass = 'text-orange-400 font-semibold';
+              quadStochTitle = \`Bearish Divergence: D1 falling, D2 rising (D1: \${d1Val}, D2: \${d2Val})\`;
+            }
+            // Neutral signals (Yellow/Gray)
+            else if (signal === 'Neutral_D1>D2') {
+              quadStochDisplay = '⚪ D1>D2';
+              quadStochClass = 'text-yellow-400';
+              quadStochTitle = \`Neutral: D1 above D2, mixed momentum (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Neutral_D1<D2') {
+              quadStochDisplay = '⚪ D1<D2';
+              quadStochClass = 'text-yellow-400';
+              quadStochTitle = \`Neutral: D1 below D2, mixed momentum (D1: \${d1Val}, D2: \${d2Val})\`;
+            } else if (signal === 'Neutral') {
+              quadStochDisplay = '⚪ =';
+              quadStochClass = 'text-gray-400';
+              quadStochTitle = \`Neutral: D1 equals D2 (D1: \${d1Val}, D2: \${d2Val})\`;
+            }
+            
+            // QStoch D4 Signal Display
+            let qstochDisplay = '-';
+            let qstochClass = 'text-muted-foreground';
+            let qstochTitle = 'No recent D4 signal';
+            
+            const d4Signal = alert.quadStochD4Signal;
+            
+            // Uptrend signals (Green)
+            if (d4Signal === 'D4_Uptrend') {
+              qstochDisplay = '↑ Uptrend';
+              qstochClass = 'text-green-400 font-bold';
+              qstochTitle = 'D4 Uptrend (>50 or rising)';
+            } else if (d4Signal === 'D4_Cross_Up_80') {
+              qstochDisplay = '↑⚡ Exit OB';
+              qstochClass = 'text-green-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Up 80 - Exiting Overbought Zone';
+            } else if (d4Signal === 'D4_Cross_Up_50') {
+              qstochDisplay = '↑⚡ Bull>50';
+              qstochClass = 'text-green-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Up 50 - Entering Bullish Territory';
+            } else if (d4Signal === 'D4_Cross_Up_20') {
+              qstochDisplay = '↑⚡ Exit OS';
+              qstochClass = 'text-lime-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Up 20 - Exiting Oversold Zone';
+            }
+            // Downtrend signals (Red)
+            else if (d4Signal === 'D4_Downtrend') {
+              qstochDisplay = '↓ Downtrend';
+              qstochClass = 'text-red-400 font-bold';
+              qstochTitle = 'D4 Downtrend (<50 or falling)';
+            } else if (d4Signal === 'D4_Cross_Down_20') {
+              qstochDisplay = '↓⚡ In OS';
+              qstochClass = 'text-red-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Down 20 - Entering Oversold Zone';
+            } else if (d4Signal === 'D4_Cross_Down_50') {
+              qstochDisplay = '↓⚡ Bear<50';
+              qstochClass = 'text-red-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Down 50 - Entering Bearish Territory';
+            } else if (d4Signal === 'D4_Cross_Down_80') {
+              qstochDisplay = '↓⚡ In OB';
+              qstochClass = 'text-orange-400 font-bold animate-pulse';
+              qstochTitle = 'D4 Crossed Down 80 - Entering Overbought Zone';
+            }
+            
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 <td class="py-3 pl-4 pr-1 text-center">
@@ -639,6 +857,8 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
+                <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
+                <td class="py-3 px-4 font-bold \${qstochClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${ema1Class}" title="EMA1\${alert.ema1Tf ? ' [' + alert.ema1Tf + ']' : ''} - Price \${ema1Above ? 'above' : ema1Below ? 'below' : 'near'}">$\${alert.ema1 ? parseFloat(alert.ema1).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${ema2Class}" title="EMA2\${alert.ema2Tf ? ' [' + alert.ema2Tf + ']' : ''} - Price \${ema2Above ? 'above' : ema2Below ? 'below' : 'near'}">$\${alert.ema2 ? parseFloat(alert.ema2).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
@@ -660,7 +880,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="13" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="15" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
