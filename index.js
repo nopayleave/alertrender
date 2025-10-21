@@ -815,7 +815,7 @@ app.get('/', (req, res) => {
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         // Countdown state
-        let countdownSeconds = 15;
+        let countdownSeconds = 120;
         let countdownInterval = null;
 
         function formatVolume(vol) {
@@ -962,7 +962,7 @@ app.get('/', (req, res) => {
         }
 
         function startCountdown() {
-          countdownSeconds = 15;
+          countdownSeconds = 120;
           updateCountdown();
           
           if (countdownInterval) {
@@ -972,7 +972,7 @@ app.get('/', (req, res) => {
           countdownInterval = setInterval(() => {
             countdownSeconds--;
             if (countdownSeconds < 0) {
-              countdownSeconds = 15;
+              countdownSeconds = 120;
             }
             updateCountdown();
           }, 1000);
@@ -1193,7 +1193,7 @@ app.get('/', (req, res) => {
             
             // Uptrend signals (Green)
             if (d4Signal === 'D4_Uptrend') {
-              qstochDisplay = '↑ Uptrend';
+              qstochDisplay = '↑ Up';
               qstochClass = 'text-green-400 font-bold';
               qstochTitle = 'D4 Uptrend (>50 or rising)';
             } else if (d4Signal === 'D4_Cross_Up_80') {
@@ -1211,7 +1211,7 @@ app.get('/', (req, res) => {
             }
             // Downtrend signals (Red)
             else if (d4Signal === 'D4_Downtrend') {
-              qstochDisplay = '↓ Downtrend';
+              qstochDisplay = '↓ Down';
               qstochClass = 'text-red-400 font-bold';
               qstochTitle = 'D4 Downtrend (<50 or falling)';
             } else if (d4Signal === 'D4_Cross_Down_20') {
@@ -1276,8 +1276,8 @@ app.get('/', (req, res) => {
         // Fetch alerts once on page load
         fetchAlerts();
         
-        // Auto-refresh every 15 seconds
-        setInterval(fetchAlerts, 15000);
+        // Auto-refresh every 2 minutes (120 seconds)
+        setInterval(fetchAlerts, 120000);
       </script>
     </body>
     </html>
