@@ -475,6 +475,17 @@ app.get('/calculator', (req, res) => {
                 oninput="calculate()"
                 value="50"
               />
+              <!-- Quick Select Buttons -->
+              <div class="mt-2 flex flex-wrap gap-1">
+                <button onclick="setStockPrice(1)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$1</button>
+                <button onclick="setStockPrice(5)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$5</button>
+                <button onclick="setStockPrice(10)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$10</button>
+                <button onclick="setStockPrice(15)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$15</button>
+                <button onclick="setStockPrice(20)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$20</button>
+                <button onclick="setStockPrice(50)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$50</button>
+                <button onclick="setStockPrice(80)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$80</button>
+                <button onclick="setStockPrice(100)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$100</button>
+              </div>
             </div>
           </div>
         </div>
@@ -550,6 +561,11 @@ app.get('/calculator', (req, res) => {
           else {
             return Math.round(num / 1000) * 1000;
           }
+        }
+
+        function setStockPrice(price) {
+          document.getElementById('sharePrice').value = price;
+          calculate();
         }
 
         function calculate() {
