@@ -219,6 +219,10 @@ app.post('/webhook', (req, res) => {
         alertData.quadStochD2 = quadStochD4Info.d2
         alertData.quadStochD3 = quadStochD4Info.d3
         alertData.quadStochD4 = quadStochD4Info.d4
+        alertData.d1Direction = quadStochD4Info.d1Direction
+        alertData.d2Direction = quadStochD4Info.d2Direction
+        alertData.d3Direction = quadStochD4Info.d3Direction
+        alertData.d4Direction = quadStochD4Info.d4Direction
         console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
