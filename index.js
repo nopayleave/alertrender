@@ -395,25 +395,35 @@ app.get('/calculator', (req, res) => {
         <!-- Calculator Inputs -->
         <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
           <div class="flex gap-4 items-end">
-            <!-- Portfolio Value -->
+            <!-- Portfolio Value with Currency Toggle -->
             <div class="flex-1">
               <label class="block text-xs font-medium text-muted-foreground mb-1">
-                Value ($)
+                Portfolio Value
               </label>
-              <input 
-                type="number" 
-                id="portfolioValue" 
-                placeholder="10000"
-                class="w-full px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
-                oninput="calculate()"
-                value="10000"
-              />
+              <div class="flex gap-2">
+                <input 
+                  type="number" 
+                  id="portfolioValue" 
+                  placeholder="10000"
+                  class="flex-1 px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
+                  oninput="calculate()"
+                  value="10000"
+                />
+                <select 
+                  id="currency" 
+                  class="px-3 py-2 bg-secondary border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  onchange="calculate()"
+                >
+                  <option value="USD">USD</option>
+                  <option value="HKD">HKD</option>
+                </select>
+              </div>
             </div>
 
-            <!-- Share Price -->
+            <!-- Share Price (Always USD) -->
             <div class="flex-1">
               <label class="block text-xs font-medium text-muted-foreground mb-1">
-                Stock Price ($)
+                Stock Price (USD)
               </label>
               <input 
                 type="number" 
@@ -429,9 +439,32 @@ app.get('/calculator', (req, res) => {
         </div>
 
         <!-- Allocation Results -->
-        <div class="bg-card rounded-lg shadow-lg p-4 border border-border">
+        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
           <div id="allocationList" class="space-y-2">
             <!-- Results will be populated here -->
+          </div>
+        </div>
+
+        <!-- % Cheatsheet -->
+        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+          <h3 class="text-lg font-semibold text-foreground mb-3">% Cheatsheet</h3>
+          <p class="text-xs text-muted-foreground mb-3">Required shares to earn target profit from price moves</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="cheatsheetTable">
+              <thead>
+                <tr class="border-b border-border">
+                  <th class="text-left py-2 px-2 text-muted-foreground">Target Profit</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">2% Move</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">5% Move</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">10% Move</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">15% Move</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">20% Move</th>
+                </tr>
+              </thead>
+              <tbody id="cheatsheetBody">
+                <!-- Will be populated by JavaScript -->
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -439,6 +472,8 @@ app.get('/calculator', (req, res) => {
         <div class="mt-4 bg-card rounded-lg shadow p-3 border border-border">
           <div class="text-xs text-muted-foreground">
             💡 Shares are rounded to nice numbers (10, 50, 100, 500, 1000). Actual % may differ slightly.
+            <br>
+            📊 Cheatsheet formula: Required Shares = Target Profit ÷ (Stock Price × Move %)
           </div>
         </div>
       </div>
@@ -474,15 +509,23 @@ app.get('/calculator', (req, res) => {
         }
 
         function calculate() {
-          const portfolioValue = parseFloat(document.getElementById('portfolioValue').value) || 0;
+          const portfolioValueInput = parseFloat(document.getElementById('portfolioValue').value) || 0;
+          const currency = document.getElementById('currency').value;
           const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
           const allocationList = document.getElementById('allocationList');
+          const cheatsheetBody = document.getElementById('cheatsheetBody');
+          
+          // Convert HKD to USD if needed (approximate rate: 7.8 HKD = 1 USD)
+          const HKD_TO_USD = 7.8;
+          const portfolioValue = currency === 'HKD' ? portfolioValueInput / HKD_TO_USD : portfolioValueInput;
 
           if (!portfolioValue || !sharePrice || portfolioValue <= 0 || sharePrice <= 0) {
             allocationList.innerHTML = '<div class="text-center text-muted-foreground py-8">Enter portfolio value and stock price</div>';
+            cheatsheetBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
             return;
           }
 
+          // Allocation breakdown
           const allocations = [10, 20, 30, 40, 50];
           
           allocationList.innerHTML = allocations.map(percent => {
@@ -504,6 +547,28 @@ app.get('/calculator', (req, res) => {
                   <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
                 </div>
               </div>
+            \`;
+          }).join('');
+          
+          // % Cheatsheet - calculate required shares for different profit targets and % moves
+          const profitTargets = [100, 250, 500, 1000, 2500, 5000];
+          const percentMoves = [2, 5, 10, 15, 20];
+          
+          cheatsheetBody.innerHTML = profitTargets.map(profit => {
+            const cells = percentMoves.map(movePercent => {
+              // Formula: Required Shares = Target Profit / (Stock Price × Move %)
+              const profitPerShare = sharePrice * (movePercent / 100);
+              const requiredShares = profit / profitPerShare;
+              const roundedShares = roundToNice(requiredShares);
+              
+              return \`<td class="text-center py-2 px-2 text-foreground font-semibold">\${roundedShares.toLocaleString()}</td>\`;
+            }).join('');
+            
+            return \`
+              <tr class="border-b border-border/50 hover:bg-secondary/30">
+                <td class="text-left py-2 px-2 text-green-400 font-semibold">$\${profit.toLocaleString()}</td>
+                \${cells}
+              </tr>
             \`;
           }).join('');
         }
