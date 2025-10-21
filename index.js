@@ -15,6 +15,7 @@ let dayVolumeData = {} // Store daily volume data by symbol
 let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
 let quadStochData = {} // Store Quad Stochastic crossing status by symbol with timestamp
 let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
+let previousQSValues = {} // Store previous QS values to detect changes
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
@@ -77,6 +78,15 @@ app.post('/webhook', (req, res) => {
   })
   
   if (isQuadStochD4Alert) {
+    // Check if values changed compared to previous update
+    const prevQS = previousQSValues[alert.symbol] || {}
+    const d4Changed = prevQS.d4 !== alert.d4
+    const directionChanged = 
+      prevQS.d1Direction !== alert.d1Direction ||
+      prevQS.d2Direction !== alert.d2Direction ||
+      prevQS.d3Direction !== alert.d3Direction ||
+      prevQS.d4Direction !== alert.d4Direction
+    
     // Quad Stochastic D4 alert - store trend and crossing data
     quadStochD4Data[alert.symbol] = {
       signal: alert.d4Signal,
@@ -88,9 +98,22 @@ app.post('/webhook', (req, res) => {
       d2Direction: alert.d2Direction,
       d3Direction: alert.d3Direction,
       d4Direction: alert.d4Direction,
+      d4Changed: d4Changed,
+      directionChanged: directionChanged,
+      changeTimestamp: Date.now(),
       timestamp: Date.now()
     }
-    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}`)
+    
+    // Store current values as previous for next comparison
+    previousQSValues[alert.symbol] = {
+      d4: alert.d4,
+      d1Direction: alert.d1Direction,
+      d2Direction: alert.d2Direction,
+      d3Direction: alert.d3Direction,
+      d4Direction: alert.d4Direction
+    }
+    
+    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${d4Changed}/${directionChanged}`)
     
     // Also update existing alert if it exists (don't create new one)
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -104,6 +127,9 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d2Direction = alert.d2Direction
       alerts[existingIndex].d3Direction = alert.d3Direction
       alerts[existingIndex].d4Direction = alert.d4Direction
+      alerts[existingIndex].qsD4Changed = d4Changed
+      alerts[existingIndex].qsDirectionChanged = directionChanged
+      alerts[existingIndex].qsChangeTimestamp = Date.now()
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     }
@@ -223,6 +249,9 @@ app.post('/webhook', (req, res) => {
         alertData.d2Direction = quadStochD4Info.d2Direction
         alertData.d3Direction = quadStochD4Info.d3Direction
         alertData.d4Direction = quadStochD4Info.d4Direction
+        alertData.qsD4Changed = quadStochD4Info.d4Changed
+        alertData.qsDirectionChanged = quadStochD4Info.directionChanged
+        alertData.qsChangeTimestamp = quadStochD4Info.changeTimestamp
         console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
@@ -300,6 +329,7 @@ app.post('/reset-alerts', (req, res) => {
   vwapCrossingData = {}
   quadStochData = {}
   quadStochD4Data = {}
+  previousQSValues = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -1001,6 +1031,14 @@ app.get('/', (req, res) => {
             
             const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
             
+            // Check if QS values changed recently (within last 2 minutes)
+            const qsChangeAge = alert.qsChangeTimestamp ? (Date.now() - alert.qsChangeTimestamp) / 60000 : 999;
+            const d4RecentlyChanged = alert.qsD4Changed && qsChangeAge <= 2;
+            const directionRecentlyChanged = alert.qsDirectionChanged && qsChangeAge <= 2;
+            
+            const qsD4CellClass = d4RecentlyChanged ? 'bg-blue-900/50 animate-pulse' : '';
+            const qsArrowCellClass = directionRecentlyChanged ? 'bg-blue-900/50 animate-pulse' : '';
+            
             // QStoch D4 Signal Display
             let qstochDisplay = '-';
             let qstochClass = 'text-muted-foreground';
@@ -1064,8 +1102,8 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
-                <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
-                <td class="py-3 px-4 text-lg" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
+                <td class="py-3 px-4 font-bold \${quadStochClass} \${qsD4CellClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
+                <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>
