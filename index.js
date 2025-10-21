@@ -494,7 +494,7 @@ app.get('/calculator', (req, res) => {
             <table class="w-full text-sm" id="cheatsheetTable">
               <thead>
                 <tr class="border-b border-border">
-                  <th class="text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
+                  <th class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
                   <th class="text-center py-2 px-2 text-muted-foreground">1% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">2% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">5% Move</th>
@@ -630,7 +630,7 @@ app.get('/calculator', (req, res) => {
             
             return \`
               <tr class="border-b border-border/50 hover:bg-secondary/30">
-                <td class="text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
+                <td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
                 \${cells}
               </tr>
             \`;
