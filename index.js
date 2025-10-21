@@ -672,12 +672,6 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
                       <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema1')">
-                      <span title="Fast Exponential Moving Average">EMA1</span> <span id="sort-ema1" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('ema2')">
-                      <span title="Slow Exponential Moving Average">EMA2</span> <span id="sort-ema2" class="ml-1 text-xs">⇅</span>
-                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')">
                       <span title="Moving Average Convergence Divergence">MACD</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -688,7 +682,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="13" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -738,7 +732,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'rangeStatus', 'vwap', 'vwapPosition', 'vwapCrossing', 'quadStoch', 'qstoch', 'rsi', 'ema1', 'ema2', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'vwapCrossing', 'quadStoch', 'qstoch', 'rsi', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -762,10 +756,6 @@ app.get('/', (req, res) => {
               return alert.symbol || '';
             case 'price':
               return parseFloat(alert.price) || 0;
-            case 'trend':
-              return alert.trend || '';
-            case 'rangeStatus':
-              return alert.rangeStatus || '';
             case 'vwap':
               return parseFloat(alert.vwap) || 0;
             case 'vwapPosition':
@@ -789,12 +779,8 @@ app.get('/', (req, res) => {
               return 5; // Default to neutral
             case 'rsi':
               return parseFloat(alert.rsi) || 0;
-            case 'ema1':
-              return parseFloat(alert.ema1) || 0;
-            case 'ema2':
-              return parseFloat(alert.ema2) || 0;
             case 'macd':
-              return parseFloat(alert.macd) || 0;
+              return parseFloat(alert.macdHistogram) || 0;
             case 'priceChange':
               // Calculate price change percentage for sorting
               // Priority 1: Use changeFromPrevDay from Day script if available
@@ -882,7 +868,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="15" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -921,7 +907,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="15" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -962,18 +948,17 @@ app.get('/', (req, res) => {
               priceChangeColor = parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
             }
             
-            // Trend color coding
-            const trendClass = alert.trend === 'Bullish' ? 'text-green-400 font-semibold' : 
-                               alert.trend === 'Bearish' ? 'text-red-400 font-semibold' : 
-                               'text-muted-foreground';
-            
-            // Trend indicator (arrows showing price position vs EMAs)
-            const trendIndicator = alert.trendIndicator ? ' ' + alert.trendIndicator : '';
-            
-            // Range status color coding
-            const rangeClass = alert.rangeStatus === 'Up Range' ? 'text-green-400 font-semibold' : 
-                               alert.rangeStatus === 'Down Range' ? 'text-red-400 font-semibold' : 
-                               'text-muted-foreground';
+            // Calculate VWAP percentage difference
+            let vwapDiffDisplay = '';
+            let vwapDiffColor = '';
+            if (alert.price && alert.vwap) {
+              const price = parseFloat(alert.price);
+              const vwap = parseFloat(alert.vwap);
+              const vwapDiff = ((price - vwap) / vwap) * 100;
+              const sign = vwapDiff >= 0 ? '+' : '';
+              vwapDiffDisplay = \` (\${sign}\${vwapDiff.toFixed(2)}%)\`;
+              vwapDiffColor = vwapDiff >= 0 ? 'text-green-400' : 'text-red-400';
+            }
             
             // RSI color coding (overbought/oversold)
             const rsiValue = parseFloat(alert.rsi);
@@ -981,11 +966,10 @@ app.get('/', (req, res) => {
                              rsiValue <= 30 ? 'text-green-400 font-semibold' : 
                              'text-muted-foreground';
             
-            // MACD color coding
-            const macdValue = parseFloat(alert.macd);
-            const macdSignalValue = parseFloat(alert.macdSignal);
-            const macdClass = macdValue > macdSignalValue ? 'text-green-400' : 
-                              macdValue < macdSignalValue ? 'text-red-400' : 
+            // MACD Histogram color coding
+            const macdHistogramValue = parseFloat(alert.macdHistogram);
+            const macdClass = macdHistogramValue > 0 ? 'text-green-400 font-semibold' : 
+                              macdHistogramValue < 0 ? 'text-red-400 font-semibold' : 
                               'text-muted-foreground';
             
             // VWAP color coding (price above/below)
@@ -1105,9 +1089,10 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-medium \${trendClass}" title="Price vs EMA1/EMA2">\${(alert.trend || 'N/A') + trendIndicator}</td>
-                <td class="py-3 px-4 font-medium \${rangeClass}" title="Day Range: \${alert.dayRange ? '$' + parseFloat(alert.dayRange).toFixed(2) : 'N/A'}">\${alert.rangeStatus ? alert.rangeStatus.replace(' Range', '') : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">$\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">
+                  $\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
+                  <span class="\${vwapDiffColor} text-sm">\${vwapDiffDisplay}</span>
+                </td>
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
                 <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
