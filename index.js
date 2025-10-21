@@ -84,6 +84,10 @@ app.post('/webhook', (req, res) => {
       d2: alert.d2,
       d3: alert.d3,
       d4: alert.d4,
+      d1Direction: alert.d1Direction,
+      d2Direction: alert.d2Direction,
+      d3Direction: alert.d3Direction,
+      d4Direction: alert.d4Direction,
       timestamp: Date.now()
     }
     console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}`)
@@ -96,6 +100,10 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].quadStochD2 = alert.d2
       alerts[existingIndex].quadStochD3 = alert.d3
       alerts[existingIndex].quadStochD4 = alert.d4
+      alerts[existingIndex].d1Direction = alert.d1Direction
+      alerts[existingIndex].d2Direction = alert.d2Direction
+      alerts[existingIndex].d3Direction = alert.d3Direction
+      alerts[existingIndex].d4Direction = alert.d4Direction
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     }
@@ -351,28 +359,26 @@ app.get('/calculator', (req, res) => {
         </div>
 
         <!-- Calculator Inputs -->
-        <div class="bg-card rounded-lg shadow-lg p-6 border border-border mb-6">
-          <h2 class="text-2xl font-bold text-foreground mb-6">Position Calculator</h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+          <div class="flex gap-4 items-end">
             <!-- Portfolio Value -->
-            <div>
-              <label class="block text-sm font-medium text-muted-foreground mb-2">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-muted-foreground mb-1">
                 Value ($)
               </label>
               <input 
                 type="number" 
                 id="portfolioValue" 
                 placeholder="10000"
-                class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                class="w-full px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
                 oninput="calculate()"
                 value="10000"
               />
             </div>
 
             <!-- Share Price -->
-            <div>
-              <label class="block text-sm font-medium text-muted-foreground mb-2">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-muted-foreground mb-1">
                 Stock Price ($)
               </label>
               <input 
@@ -380,7 +386,7 @@ app.get('/calculator', (req, res) => {
                 id="sharePrice" 
                 placeholder="50"
                 step="0.01"
-                class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                class="w-full px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
                 oninput="calculate()"
                 value="50"
               />
@@ -389,24 +395,16 @@ app.get('/calculator', (req, res) => {
         </div>
 
         <!-- Allocation Results -->
-        <div class="bg-card rounded-lg shadow-lg p-6 border border-border">
-          <h2 class="text-2xl font-bold text-foreground mb-6">Allocation Breakdown</h2>
-          
-          <div id="allocationList" class="space-y-3">
+        <div class="bg-card rounded-lg shadow-lg p-4 border border-border">
+          <div id="allocationList" class="space-y-2">
             <!-- Results will be populated here -->
           </div>
         </div>
 
         <!-- Formula Reference -->
-        <div class="mt-6 bg-card rounded-lg shadow-lg p-6 border border-border">
-          <h3 class="text-lg font-semibold text-foreground mb-4">How It Works</h3>
-          <div class="space-y-2 text-sm text-muted-foreground">
-            <div><strong class="text-foreground">Position Size</strong> = Portfolio Value × (Allocation % ÷ 100)</div>
-            <div><strong class="text-foreground">Number of Shares</strong> = Position Size ÷ Stock Price (rounded down)</div>
-            <div><strong class="text-foreground">Actual Cost</strong> = Number of Shares × Stock Price</div>
-            <div class="pt-2 text-xs">
-              💡 The actual percentage may differ slightly from the target due to rounding shares to whole numbers.
-            </div>
+        <div class="mt-4 bg-card rounded-lg shadow p-3 border border-border">
+          <div class="text-xs text-muted-foreground">
+            💡 Shares are rounded to nice numbers (10, 50, 100, 500, 1000). Actual % may differ slightly.
           </div>
         </div>
       </div>
@@ -461,15 +459,14 @@ app.get('/calculator', (req, res) => {
             const actualPercent = portfolioValue > 0 ? (actualCost / portfolioValue) * 100 : 0;
 
             return \`
-              <div class="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border hover:border-blue-500 transition-colors">
-                <div class="flex-1">
-                  <span class="text-3xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
-                  <span class="text-xl text-muted-foreground ml-2">shares</span>
-                  <span class="text-xl font-semibold text-foreground ml-3">= \${percent}%</span>
+              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
+                <div class="flex items-baseline gap-2">
+                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-sm text-muted-foreground">shares</span>
+                  <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
                 <div class="text-right">
-                  <div class="text-sm text-muted-foreground">Cost</div>
-                  <div class="text-lg font-semibold text-green-400">$\${actualCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-base font-semibold text-green-400">$\${actualCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                   <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
                 </div>
               </div>
@@ -608,10 +605,13 @@ app.get('/', (req, res) => {
                       Remark <span id="sort-vwapCrossing" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('quadStoch')" title="Quad Stochastic D4 Value">
-                      Quad Stoch <span id="sort-quadStoch" class="ml-1 text-xs">⇅</span>
+                      QS D4 Value <span id="sort-quadStoch" class="ml-1 text-xs">⇅</span>
+                    </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qsArrow')" title="D1/D2/D3/D4 Direction Arrows">
+                      QS Arrow <span id="sort-qsArrow" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Quad Stochastic D4 Trend & Crossings">
-                      QStoch <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
+                      QS D4 <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
                       <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
@@ -626,7 +626,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="12" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -676,7 +676,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'vwapCrossing', 'quadStoch', 'qstoch', 'rsi', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'vwapCrossing', 'quadStoch', 'qsArrow', 'qstoch', 'rsi', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -709,6 +709,14 @@ app.get('/', (req, res) => {
             case 'quadStoch':
               // Sort by D4 value numerically
               return parseFloat(alert.quadStochD4) || 0;
+            case 'qsArrow':
+              // Sort by number of up arrows (bullish first)
+              const d1Dir = alert.d1Direction || 'flat';
+              const d2Dir = alert.d2Direction || 'flat';
+              const d3Dir = alert.d3Direction || 'flat';
+              const d4Dir = alert.d4Direction || 'flat';
+              const upCount = [d1Dir, d2Dir, d3Dir, d4Dir].filter(d => d === 'up').length;
+              return upCount;
             case 'qstoch':
               // Sort by D4 signal strength (higher = more bullish)
               const d4sig = alert.quadStochD4Signal;
@@ -812,7 +820,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -851,7 +859,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -962,6 +970,33 @@ app.get('/', (req, res) => {
               }
             }
             
+            // QS Arrow Display - showing D1/D2/D3/D4 directions
+            const d1Dir = alert.d1Direction || 'flat';
+            const d2Dir = alert.d2Direction || 'flat';
+            const d3Dir = alert.d3Direction || 'flat';
+            const d4Dir = alert.d4Direction || 'flat';
+            
+            const getArrow = (dir) => {
+              if (dir === 'up') return '↑';
+              if (dir === 'down') return '↓';
+              return '→';
+            };
+            
+            const getArrowColor = (dir) => {
+              if (dir === 'up') return 'text-green-400';
+              if (dir === 'down') return 'text-red-400';
+              return 'text-gray-400';
+            };
+            
+            const qsArrowDisplay = \`
+              <span class="\${getArrowColor(d1Dir)}">\${getArrow(d1Dir)}</span>
+              <span class="\${getArrowColor(d2Dir)}">\${getArrow(d2Dir)}</span>
+              <span class="\${getArrowColor(d3Dir)}">\${getArrow(d3Dir)}</span>
+              <span class="\${getArrowColor(d4Dir)}">\${getArrow(d4Dir)}</span>
+            \`;
+            
+            const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
+            
             // QStoch D4 Signal Display
             let qstochDisplay = '-';
             let qstochClass = 'text-muted-foreground';
@@ -1026,6 +1061,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
                 <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
+                <td class="py-3 px-4 text-lg" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>

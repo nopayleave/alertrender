@@ -187,8 +187,19 @@ plotshape(showCrossover and crossunderD1D2 ? crossValue : na, title="D1 Cross Un
 bgcolor(showCrossoverBG and crossoverD1D2 ? color.new(crossoverColor, 90) : na, title="Crossover BG")
 bgcolor(showCrossoverBG and crossunderD1D2 ? color.new(crossunderColor, 90) : na, title="Crossunder BG")
 
-// ===== D4 TREND DIRECTION + WEBHOOK SIGNALS =====
+// ===== D1/D2/D3/D4 DIRECTION TRACKING =====
+var float prevD1 = na
+var float prevD2 = na
+var float prevD3 = na
 var float prevD4 = na
+
+// Determine direction for each stochastic
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+d4Direction = na(prevD4) ? "flat" : d4 > prevD4 ? "up" : d4 < prevD4 ? "down" : "flat"
+
+// ===== D4 TREND DIRECTION + WEBHOOK SIGNALS =====
 d4Up = na(prevD4) ? false : d4 > prevD4
 d4Down = na(prevD4) ? false : d4 < prevD4
 
@@ -229,8 +240,15 @@ if signal != ""
       '"d1": ' + str.tostring(d1) + ',' +
       '"d2": ' + str.tostring(d2) + ',' +
       '"d3": ' + str.tostring(d3) + ',' +
-      '"d4": ' + str.tostring(d4) + '}'
+      '"d4": ' + str.tostring(d4) + ',' +
+      '"d1Direction": "' + d1Direction + '",' +
+      '"d2Direction": "' + d2Direction + '",' +
+      '"d3Direction": "' + d3Direction + '",' +
+      '"d4Direction": "' + d4Direction + '"}'
     alert(jsonMsg, freq=alert.freq_once_per_bar_close)
 
-// Store previous value for next comparison
+// Store previous values for next comparison
+prevD1 := d1
+prevD2 := d2
+prevD3 := d3
 prevD4 := d4
