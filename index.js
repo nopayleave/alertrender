@@ -453,7 +453,7 @@ app.get('/calculator', (req, res) => {
             <table class="w-full text-sm" id="cheatsheetTable">
               <thead>
                 <tr class="border-b border-border">
-                  <th class="text-left py-2 px-2 text-muted-foreground">Target Profit</th>
+                  <th class="text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
                   <th class="text-center py-2 px-2 text-muted-foreground">2% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">5% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">10% Move</th>
@@ -551,14 +551,26 @@ app.get('/calculator', (req, res) => {
           }).join('');
           
           // % Cheatsheet - calculate required shares for different profit targets and % moves
-          const profitTargets = [100, 250, 500, 1000, 2500, 5000];
+          // Adjust profit targets based on currency
+          const profitTargetsUSD = [100, 250, 500, 1000, 2500, 5000];
+          const profitTargetsHKD = [1000, 2000, 4000, 8000, 20000, 40000];
+          
+          const profitTargets = currency === 'HKD' ? profitTargetsHKD : profitTargetsUSD;
+          const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
+          
+          // Update currency label in table header
+          document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
+          
           const percentMoves = [2, 5, 10, 15, 20];
           
           cheatsheetBody.innerHTML = profitTargets.map(profit => {
             const cells = percentMoves.map(movePercent => {
-              // Formula: Required Shares = Target Profit / (Stock Price × Move %)
+              // Convert profit to USD if in HKD
+              const profitUSD = currency === 'HKD' ? profit / HKD_TO_USD : profit;
+              
+              // Formula: Required Shares = Target Profit (USD) / (Stock Price × Move %)
               const profitPerShare = sharePrice * (movePercent / 100);
-              const requiredShares = profit / profitPerShare;
+              const requiredShares = profitUSD / profitPerShare;
               const roundedShares = roundToNice(requiredShares);
               
               return \`<td class="text-center py-2 px-2 text-foreground font-semibold">\${roundedShares.toLocaleString()}</td>\`;
@@ -566,7 +578,7 @@ app.get('/calculator', (req, res) => {
             
             return \`
               <tr class="border-b border-border/50 hover:bg-secondary/30">
-                <td class="text-left py-2 px-2 text-green-400 font-semibold">$\${profit.toLocaleString()}</td>
+                <td class="text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
                 \${cells}
               </tr>
             \`;
