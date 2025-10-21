@@ -465,7 +465,7 @@ app.get('/calculator', (req, res) => {
               <!-- Share Price (Always USD) -->
               <div class="flex-[1.5]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">
-                  Stock Price (USD)
+                  Share $US
                 </label>
                 <input 
                   type="number" 
