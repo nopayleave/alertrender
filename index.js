@@ -434,11 +434,11 @@ app.get('/calculator', (req, res) => {
         </div>
 
         <!-- Calculator Inputs (Sticky) -->
-        <div class="sticky top-0 z-20 bg-background pb-4">
-          <div class="bg-card rounded-lg shadow-lg p-4 border border-border">
+        <div id="stickyContainer" class="sticky top-0 z-20 bg-background pb-4">
+          <div id="stickyCard" class="bg-card rounded-lg shadow-lg p-4 border border-border transition-all duration-300">
             <div class="flex flex-row gap-2">
               <!-- Portfolio Value with Currency Toggle -->
-              <div class="flex-1">
+              <div class="flex-[0.7]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Portfolio Value
                 </label>
@@ -446,10 +446,10 @@ app.get('/calculator', (req, res) => {
                   <input 
                     type="number" 
                     id="portfolioValue" 
-                    placeholder="10000"
+                    placeholder="180000"
                     class="flex-1 px-2 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
                     oninput="calculate()"
-                    value="10000"
+                    value="180000"
                   />
                   <select 
                     id="currency" 
@@ -457,13 +457,13 @@ app.get('/calculator', (req, res) => {
                     onchange="calculate()"
                   >
                     <option value="USD">USD</option>
-                    <option value="HKD">HKD</option>
+                    <option value="HKD" selected>HKD</option>
                   </select>
                 </div>
               </div>
 
               <!-- Share Price (Always USD) -->
-              <div class="flex-1">
+              <div class="flex-[1.3]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Stock Price (USD)
                 </label>
@@ -655,6 +655,34 @@ app.get('/calculator', (req, res) => {
             \`;
           }).join('');
         }
+
+        // Detect when sticky is activated and remove border
+        const stickyContainer = document.getElementById('stickyContainer');
+        const stickyCard = document.getElementById('stickyCard');
+        
+        // Create a sentinel element before the sticky container
+        const sentinel = document.createElement('div');
+        sentinel.style.position = 'absolute';
+        sentinel.style.top = '0';
+        sentinel.style.height = '1px';
+        stickyContainer.parentElement.insertBefore(sentinel, stickyContainer);
+        
+        const observer = new IntersectionObserver(
+          ([entry]) => {
+            if (!entry.isIntersecting) {
+              // Sticky is active (scrolled past sentinel)
+              stickyCard.classList.remove('border', 'border-border', 'rounded-lg');
+              stickyCard.classList.add('border-b', 'border-border/50', 'rounded-none');
+            } else {
+              // Not sticky (at top of page)
+              stickyCard.classList.remove('border-b', 'border-border/50', 'rounded-none');
+              stickyCard.classList.add('border', 'border-border', 'rounded-lg');
+            }
+          },
+          { threshold: [0], rootMargin: '-1px 0px 0px 0px' }
+        );
+        
+        observer.observe(sentinel);
 
         // Calculate on page load
         calculate();
