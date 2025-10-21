@@ -617,7 +617,15 @@ app.get('/calculator', (req, res) => {
               const requiredShares = profitUSD / profitPerShare;
               const roundedShares = roundToNice(requiredShares);
               
-              return \`<td class="text-center py-2 px-2 text-foreground font-semibold">\${roundedShares.toLocaleString()}</td>\`;
+              // Calculate cost and check if it exceeds 100% of capital
+              const totalCost = roundedShares * sharePrice;
+              const exceedsCapital = totalCost > portfolioValue;
+              
+              // Dim if exceeds capital
+              const cellClass = exceedsCapital ? 'text-muted-foreground/50' : 'text-foreground font-semibold';
+              const titleText = exceedsCapital ? \`Cost: $\${totalCost.toLocaleString()} (exceeds capital)\` : '';
+              
+              return \`<td class="text-center py-2 px-2 \${cellClass}" title="\${titleText}">\${roundedShares.toLocaleString()}</td>\`;
             }).join('');
             
             return \`
