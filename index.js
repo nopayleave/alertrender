@@ -435,9 +435,9 @@ app.get('/calculator', (req, res) => {
 
         <!-- Calculator Inputs -->
         <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
-          <div class="flex flex-col md:flex-row gap-4 items-end">
+          <div class="flex flex-col md:flex-row gap-4">
             <!-- Portfolio Value with Currency Toggle -->
-            <div class="flex-1">
+            <div class="w-full md:flex-1">
               <label class="block text-xs font-medium text-muted-foreground mb-1">
                 Portfolio Value
               </label>
@@ -462,7 +462,7 @@ app.get('/calculator', (req, res) => {
             </div>
 
             <!-- Share Price (Always USD) -->
-            <div class="flex-1">
+            <div class="w-full md:flex-1">
               <label class="block text-xs font-medium text-muted-foreground mb-1">
                 Stock Price (USD)
               </label>
