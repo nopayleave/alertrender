@@ -225,7 +225,11 @@ else if crossDown80
 if signal != ""
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
-      '"d4Signal": "' + signal + '"}'
+      '"d4Signal": "' + signal + '",' +
+      '"d1": ' + str.tostring(d1) + ',' +
+      '"d2": ' + str.tostring(d2) + ',' +
+      '"d3": ' + str.tostring(d3) + ',' +
+      '"d4": ' + str.tostring(d4) + '}'
     alert(jsonMsg, freq=alert.freq_once_per_bar_close)
 
 // Store previous value for next comparison
