@@ -433,65 +433,68 @@ app.get('/calculator', (req, res) => {
           <p class="text-muted-foreground">Calculate position sizing based on portfolio allocation</p>
         </div>
 
-        <!-- Calculator Inputs -->
-        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
-          <div class="flex flex-col md:flex-row gap-4">
-            <!-- Portfolio Value with Currency Toggle -->
-            <div class="w-full md:flex-1">
-              <label class="block text-xs font-medium text-muted-foreground mb-1">
-                Portfolio Value
-              </label>
-              <div class="flex gap-2">
+        <!-- Calculator Inputs (Sticky) -->
+        <div class="sticky top-0 z-20 bg-background pb-4">
+          <div class="bg-card rounded-lg shadow-lg p-4 border border-border">
+            <div class="flex flex-row gap-2">
+              <!-- Portfolio Value with Currency Toggle -->
+              <div class="flex-1">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
+                  Portfolio Value
+                </label>
+                <div class="flex gap-1">
+                  <input 
+                    type="number" 
+                    id="portfolioValue" 
+                    placeholder="10000"
+                    class="flex-1 px-2 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                    oninput="calculate()"
+                    value="10000"
+                  />
+                  <select 
+                    id="currency" 
+                    class="px-2 py-2 bg-secondary border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                    onchange="calculate()"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="HKD">HKD</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Share Price (Always USD) -->
+              <div class="flex-1">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
+                  Stock Price (USD)
+                </label>
                 <input 
                   type="number" 
-                  id="portfolioValue" 
-                  placeholder="10000"
-                  class="flex-1 px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
+                  id="sharePrice" 
+                  placeholder="50"
+                  step="0.01"
+                  class="w-full px-2 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
                   oninput="calculate()"
-                  value="10000"
+                  value="50"
                 />
-                <select 
-                  id="currency" 
-                  class="px-3 py-2 bg-secondary border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  onchange="calculate()"
-                >
-                  <option value="USD">USD</option>
-                  <option value="HKD">HKD</option>
-                </select>
               </div>
             </div>
-
-            <!-- Share Price (Always USD) -->
-            <div class="w-full md:flex-1">
-              <label class="block text-xs font-medium text-muted-foreground mb-1">
-                Stock Price (USD)
-              </label>
-              <input 
-                type="number" 
-                id="sharePrice" 
-                placeholder="50"
-                step="0.01"
-                class="w-full px-3 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-lg"
-                oninput="calculate()"
-                value="50"
-              />
-              <!-- Quick Select Buttons -->
-              <div class="mt-2 flex flex-wrap gap-1">
-                <button onclick="setStockPrice(1)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$1</button>
-                <button onclick="setStockPrice(5)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$5</button>
-                <button onclick="setStockPrice(10)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$10</button>
-                <button onclick="setStockPrice(15)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$15</button>
-                <button onclick="setStockPrice(20)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$20</button>
-                <button onclick="setStockPrice(50)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$50</button>
-                <button onclick="setStockPrice(80)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$80</button>
-                <button onclick="setStockPrice(100)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$100</button>
-              </div>
+            
+            <!-- Quick Select Buttons -->
+            <div class="mt-2 flex flex-wrap gap-1">
+              <button onclick="setStockPrice(1)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$1</button>
+              <button onclick="setStockPrice(5)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$5</button>
+              <button onclick="setStockPrice(10)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$10</button>
+              <button onclick="setStockPrice(15)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$15</button>
+              <button onclick="setStockPrice(20)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$20</button>
+              <button onclick="setStockPrice(50)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$50</button>
+              <button onclick="setStockPrice(80)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$80</button>
+              <button onclick="setStockPrice(100)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$100</button>
             </div>
           </div>
         </div>
 
         <!-- Allocation Results -->
-        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+        <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4 mt-4">
           <div id="allocationList" class="space-y-2">
             <!-- Results will be populated here -->
           </div>
