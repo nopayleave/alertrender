@@ -438,7 +438,7 @@ app.get('/calculator', (req, res) => {
           <div id="stickyCard" class="bg-card rounded-lg shadow-lg p-4 border border-border transition-all duration-300">
             <div class="flex flex-row gap-2">
               <!-- Portfolio Value with Currency Toggle -->
-              <div class="flex-[0.7]">
+              <div class="flex-[0.5]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Portfolio Value
                 </label>
@@ -463,7 +463,7 @@ app.get('/calculator', (req, res) => {
               </div>
 
               <!-- Share Price (Always USD) -->
-              <div class="flex-[1.3]">
+              <div class="flex-[1.5]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">
                   Stock Price (USD)
                 </label>
