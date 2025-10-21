@@ -87,6 +87,40 @@ app.post('/webhook', (req, res) => {
       prevQS.d3Direction !== alert.d3Direction ||
       prevQS.d4Direction !== alert.d4Direction
     
+    // Rank signals from bearish (-3) to bullish (+3) for comparison
+    const signalRank = {
+      'D4_Downtrend': -3,
+      'D4_Cross_Down_80': -2,
+      'D4_Cross_Down_50': -1,
+      'D4_Cross_Down_20': 0,
+      'D4_Cross_Up_20': 1,
+      'D4_Cross_Up_50': 2,
+      'D4_Cross_Up_80': 3,
+      'D4_Uptrend': 3
+    }
+    
+    const currentRank = signalRank[alert.d4Signal] || 0
+    const previousRank = prevQS.d4Signal ? (signalRank[prevQS.d4Signal] || 0) : 0
+    
+    // Determine if more bullish or bearish
+    let changeDirection = 'neutral'
+    if (currentRank > previousRank) {
+      changeDirection = 'bullish' // More bullish
+    } else if (currentRank < previousRank) {
+      changeDirection = 'bearish' // More bearish
+    }
+    
+    // Count up vs down directions for arrow change type
+    const prevUpCount = [prevQS.d1Direction, prevQS.d2Direction, prevQS.d3Direction, prevQS.d4Direction].filter(d => d === 'up').length
+    const currUpCount = [alert.d1Direction, alert.d2Direction, alert.d3Direction, alert.d4Direction].filter(d => d === 'up').length
+    
+    let arrowChangeDirection = 'neutral'
+    if (currUpCount > prevUpCount) {
+      arrowChangeDirection = 'bullish'
+    } else if (currUpCount < prevUpCount) {
+      arrowChangeDirection = 'bearish'
+    }
+    
     // Quad Stochastic D4 alert - store trend and crossing data
     quadStochD4Data[alert.symbol] = {
       signal: alert.d4Signal,
@@ -100,6 +134,8 @@ app.post('/webhook', (req, res) => {
       d4Direction: alert.d4Direction,
       d4Changed: d4Changed,
       directionChanged: directionChanged,
+      changeDirection: changeDirection,
+      arrowChangeDirection: arrowChangeDirection,
       changeTimestamp: Date.now(),
       timestamp: Date.now()
     }
@@ -107,13 +143,14 @@ app.post('/webhook', (req, res) => {
     // Store current values as previous for next comparison
     previousQSValues[alert.symbol] = {
       d4: alert.d4,
+      d4Signal: alert.d4Signal,
       d1Direction: alert.d1Direction,
       d2Direction: alert.d2Direction,
       d3Direction: alert.d3Direction,
       d4Direction: alert.d4Direction
     }
     
-    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${d4Changed}/${directionChanged}`)
+    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${changeDirection}/${arrowChangeDirection}`)
     
     // Also update existing alert if it exists (don't create new one)
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -129,6 +166,8 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d4Direction = alert.d4Direction
       alerts[existingIndex].qsD4Changed = d4Changed
       alerts[existingIndex].qsDirectionChanged = directionChanged
+      alerts[existingIndex].qsChangeDirection = changeDirection
+      alerts[existingIndex].qsArrowChangeDirection = arrowChangeDirection
       alerts[existingIndex].qsChangeTimestamp = Date.now()
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
@@ -251,6 +290,8 @@ app.post('/webhook', (req, res) => {
         alertData.d4Direction = quadStochD4Info.d4Direction
         alertData.qsD4Changed = quadStochD4Info.d4Changed
         alertData.qsDirectionChanged = quadStochD4Info.directionChanged
+        alertData.qsChangeDirection = quadStochD4Info.changeDirection
+        alertData.qsArrowChangeDirection = quadStochD4Info.arrowChangeDirection
         alertData.qsChangeTimestamp = quadStochD4Info.changeTimestamp
         console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
@@ -1111,13 +1152,29 @@ app.get('/', (req, res) => {
             
             const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
             
-            // Check if QS values changed recently (within last 2 minutes)
+            // Check if QS values changed recently (within last 2 minutes) and determine color
             const qsChangeAge = alert.qsChangeTimestamp ? (Date.now() - alert.qsChangeTimestamp) / 60000 : 999;
             const d4RecentlyChanged = alert.qsD4Changed && qsChangeAge <= 2;
             const directionRecentlyChanged = alert.qsDirectionChanged && qsChangeAge <= 2;
             
-            const qsD4CellClass = d4RecentlyChanged ? 'bg-blue-900/50 animate-pulse' : '';
-            const qsArrowCellClass = directionRecentlyChanged ? 'bg-blue-900/50 animate-pulse' : '';
+            // Color based on bullish/bearish change direction
+            let qsD4CellClass = '';
+            if (d4RecentlyChanged && alert.qsChangeDirection) {
+              if (alert.qsChangeDirection === 'bullish') {
+                qsD4CellClass = 'bg-green-900/50 animate-pulse';
+              } else if (alert.qsChangeDirection === 'bearish') {
+                qsD4CellClass = 'bg-red-900/50 animate-pulse';
+              }
+            }
+            
+            let qsArrowCellClass = '';
+            if (directionRecentlyChanged && alert.qsArrowChangeDirection) {
+              if (alert.qsArrowChangeDirection === 'bullish') {
+                qsArrowCellClass = 'bg-green-900/50 animate-pulse';
+              } else if (alert.qsArrowChangeDirection === 'bearish') {
+                qsArrowCellClass = 'bg-red-900/50 animate-pulse';
+              }
+            }
             
             // QStoch D4 Signal Display
             let qstochDisplay = '-';
