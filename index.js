@@ -473,7 +473,9 @@ app.get('/calculator', (req, res) => {
           <div class="text-xs text-muted-foreground">
             💡 Shares are rounded to nice numbers (10, 50, 100, 500, 1000). Actual % may differ slightly.
             <br>
-            📊 Cheatsheet formula: Required Shares = Target Profit ÷ (Stock Price × Move %)
+            📊 Cheatsheet formula: Required Shares = Target Profit (in USD) ÷ (Stock Price × Move %)
+            <br>
+            💱 Exchange rate: 7.8 HKD = 1 USD (HKD automatically converted for calculations)
           </div>
         </div>
       </div>
