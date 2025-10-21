@@ -977,20 +977,6 @@ app.get('/', (req, res) => {
                               alert.vwapAbove === 'false' || alert.vwapAbove === false ? 'text-red-400 font-semibold' : 
                               'text-foreground';
             
-            // EMA1 color coding (price above/below)
-            const ema1Above = alert.ema1Above === 'true' || alert.ema1Above === true;
-            const ema1Below = alert.ema1Above === 'false' || alert.ema1Above === false;
-            const ema1Class = ema1Above ? 'text-green-400 font-semibold' : 
-                              ema1Below ? 'text-red-400 font-semibold' : 
-                              'text-muted-foreground';
-            
-            // EMA2 color coding (price above/below)
-            const ema2Above = alert.ema2Above === 'true' || alert.ema2Above === true;
-            const ema2Below = alert.ema2Above === 'false' || alert.ema2Above === false;
-            const ema2Class = ema2Above ? 'text-green-400 font-semibold' : 
-                              ema2Below ? 'text-red-400 font-semibold' : 
-                              'text-muted-foreground';
-            
             // VWAP Position color coding (band zone)
             const positionClass = alert.vwapRemark && alert.vwapRemark.startsWith('UP') ? 'text-green-400 font-bold' :
                                   alert.vwapRemark && alert.vwapRemark.startsWith('DN') ? 'text-red-400 font-bold' :
