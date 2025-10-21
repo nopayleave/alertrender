@@ -454,6 +454,7 @@ app.get('/calculator', (req, res) => {
               <thead>
                 <tr class="border-b border-border">
                   <th class="text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">1% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">2% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">5% Move</th>
                   <th class="text-center py-2 px-2 text-muted-foreground">10% Move</th>
@@ -523,7 +524,7 @@ app.get('/calculator', (req, res) => {
 
           if (!portfolioValue || !sharePrice || portfolioValue <= 0 || sharePrice <= 0) {
             allocationList.innerHTML = '<div class="text-center text-muted-foreground py-8">Enter portfolio value and stock price</div>';
-            cheatsheetBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
+            cheatsheetBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
             return;
           }
 
@@ -563,7 +564,7 @@ app.get('/calculator', (req, res) => {
           // Update currency label in table header
           document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
           
-          const percentMoves = [2, 5, 10, 15, 20];
+          const percentMoves = [1, 2, 5, 10, 15, 20];
           
           cheatsheetBody.innerHTML = profitTargets.map(profit => {
             const cells = percentMoves.map(movePercent => {
@@ -1181,9 +1182,9 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
                 <td class="py-3 px-4 font-bold \${remarkClass}" title="\${remarkDisplay === 'Crossing' ? 'VWAP Crossing Detected!' : 'No Recent VWAP Crossing'}">\${remarkDisplay}</td>
-                <td class="py-3 px-4 font-bold \${quadStochClass} \${qsD4CellClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
+                <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
-                <td class="py-3 px-4 font-bold \${qstochClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
+                <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
