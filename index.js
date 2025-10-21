@@ -350,189 +350,131 @@ app.get('/calculator', (req, res) => {
           <p class="text-muted-foreground">Calculate position sizing based on portfolio allocation</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Calculator Card -->
-          <div class="bg-card rounded-lg shadow-lg p-6 border border-border">
-            <h2 class="text-2xl font-bold text-foreground mb-6">Position Calculator</h2>
-            
-            <div class="space-y-4">
-              <!-- Portfolio Value -->
-              <div>
-                <label class="block text-sm font-medium text-muted-foreground mb-2">
-                  Portfolio Value ($)
-                </label>
-                <input 
-                  type="number" 
-                  id="portfolioValue" 
-                  placeholder="10000"
-                  class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                  oninput="calculate()"
-                  value="10000"
-                />
-              </div>
-
-              <!-- Allocation Percentage -->
-              <div>
-                <label class="block text-sm font-medium text-muted-foreground mb-2">
-                  Allocation (%)
-                </label>
-                <input 
-                  type="number" 
-                  id="allocationPercent" 
-                  placeholder="5"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                  oninput="calculate()"
-                  value="5"
-                />
-              </div>
-
-              <!-- Share Price -->
-              <div>
-                <label class="block text-sm font-medium text-muted-foreground mb-2">
-                  Share Price ($)
-                </label>
-                <input 
-                  type="number" 
-                  id="sharePrice" 
-                  placeholder="50"
-                  step="0.01"
-                  class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                  oninput="calculate()"
-                  value="50"
-                />
-              </div>
-
-              <!-- Calculate Button -->
-              <button 
-                onclick="calculate()" 
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors"
-              >
-                Calculate
-              </button>
+        <!-- Calculator Inputs -->
+        <div class="bg-card rounded-lg shadow-lg p-6 border border-border mb-6">
+          <h2 class="text-2xl font-bold text-foreground mb-6">Position Calculator</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Portfolio Value -->
+            <div>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">
+                Value ($)
+              </label>
+              <input 
+                type="number" 
+                id="portfolioValue" 
+                placeholder="10000"
+                class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                oninput="calculate()"
+                value="10000"
+              />
             </div>
-          </div>
 
-          <!-- Results Card -->
-          <div class="bg-card rounded-lg shadow-lg p-6 border border-border">
-            <h2 class="text-2xl font-bold text-foreground mb-6">Results</h2>
-            
-            <div class="space-y-6">
-              <!-- Position Size -->
-              <div class="bg-secondary rounded-lg p-4 border border-border">
-                <div class="text-sm text-muted-foreground mb-1">Position Size</div>
-                <div class="text-3xl font-bold text-green-400" id="positionSize">$0.00</div>
-              </div>
-
-              <!-- Number of Shares -->
-              <div class="bg-secondary rounded-lg p-4 border border-border">
-                <div class="text-sm text-muted-foreground mb-1">Number of Shares</div>
-                <div class="text-3xl font-bold text-blue-400" id="numShares">0</div>
-                <div class="text-sm text-muted-foreground mt-2">
-                  Rounded: <span id="numSharesRounded" class="text-foreground font-semibold">0</span> shares
-                </div>
-              </div>
-
-              <!-- Actual Investment -->
-              <div class="bg-secondary rounded-lg p-4 border border-border">
-                <div class="text-sm text-muted-foreground mb-1">Actual Investment (Rounded)</div>
-                <div class="text-2xl font-bold text-yellow-400" id="actualInvestment">$0.00</div>
-                <div class="text-sm text-muted-foreground mt-2">
-                  Actual %: <span id="actualPercent" class="text-foreground font-semibold">0.00%</span>
-                </div>
-              </div>
-
-              <!-- Risk Amount -->
-              <div class="bg-secondary rounded-lg p-4 border border-border">
-                <div class="text-sm text-muted-foreground mb-2">Stop Loss Calculator</div>
-                <div class="flex gap-2 mb-3">
-                  <input 
-                    type="number" 
-                    id="stopLossPercent" 
-                    placeholder="2"
-                    step="0.1"
-                    class="flex-1 px-3 py-1 text-sm bg-background border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                    oninput="calculate()"
-                    value="2"
-                  />
-                  <span class="text-muted-foreground self-center">% risk</span>
-                </div>
-                <div class="text-sm text-muted-foreground">
-                  Max Loss: <span id="maxLoss" class="text-red-400 font-semibold">$0.00</span>
-                </div>
-                <div class="text-sm text-muted-foreground mt-1">
-                  Stop Price: <span id="stopPrice" class="text-orange-400 font-semibold">$0.00</span>
-                </div>
-              </div>
+            <!-- Share Price -->
+            <div>
+              <label class="block text-sm font-medium text-muted-foreground mb-2">
+                Stock Price ($)
+              </label>
+              <input 
+                type="number" 
+                id="sharePrice" 
+                placeholder="50"
+                step="0.01"
+                class="w-full px-4 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                oninput="calculate()"
+                value="50"
+              />
             </div>
           </div>
         </div>
 
-        <!-- Quick Presets -->
-        <div class="mt-6 bg-card rounded-lg shadow-lg p-6 border border-border">
-          <h3 class="text-lg font-semibold text-foreground mb-4">Quick Allocation Presets</h3>
-          <div class="flex flex-wrap gap-2">
-            <button onclick="setAllocation(1)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">1%</button>
-            <button onclick="setAllocation(2)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">2%</button>
-            <button onclick="setAllocation(3)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">3%</button>
-            <button onclick="setAllocation(5)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">5%</button>
-            <button onclick="setAllocation(10)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">10%</button>
-            <button onclick="setAllocation(15)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">15%</button>
-            <button onclick="setAllocation(20)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">20%</button>
-            <button onclick="setAllocation(25)" class="px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-md transition-colors">25%</button>
+        <!-- Allocation Results -->
+        <div class="bg-card rounded-lg shadow-lg p-6 border border-border">
+          <h2 class="text-2xl font-bold text-foreground mb-6">Allocation Breakdown</h2>
+          
+          <div id="allocationList" class="space-y-3">
+            <!-- Results will be populated here -->
           </div>
         </div>
 
         <!-- Formula Reference -->
         <div class="mt-6 bg-card rounded-lg shadow-lg p-6 border border-border">
-          <h3 class="text-lg font-semibold text-foreground mb-4">Formula Reference</h3>
-          <div class="space-y-2 text-sm text-muted-foreground font-mono">
-            <div>Position Size = Portfolio Value × (Allocation % ÷ 100)</div>
-            <div>Number of Shares = Position Size ÷ Share Price</div>
-            <div>Actual Investment = Number of Shares (rounded) × Share Price</div>
-            <div>Max Loss = Position Size × (Stop Loss % ÷ 100)</div>
-            <div>Stop Price = Share Price × (1 - Stop Loss % ÷ 100)</div>
+          <h3 class="text-lg font-semibold text-foreground mb-4">How It Works</h3>
+          <div class="space-y-2 text-sm text-muted-foreground">
+            <div><strong class="text-foreground">Position Size</strong> = Portfolio Value × (Allocation % ÷ 100)</div>
+            <div><strong class="text-foreground">Number of Shares</strong> = Position Size ÷ Stock Price (rounded down)</div>
+            <div><strong class="text-foreground">Actual Cost</strong> = Number of Shares × Stock Price</div>
+            <div class="pt-2 text-xs">
+              💡 The actual percentage may differ slightly from the target due to rounding shares to whole numbers.
+            </div>
           </div>
         </div>
       </div>
 
       <script>
-        function calculate() {
-          const portfolioValue = parseFloat(document.getElementById('portfolioValue').value) || 0;
-          const allocationPercent = parseFloat(document.getElementById('allocationPercent').value) || 0;
-          const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
-          const stopLossPercent = parseFloat(document.getElementById('stopLossPercent').value) || 0;
-
-          // Calculate position size
-          const positionSize = portfolioValue * (allocationPercent / 100);
+        function roundToNice(num) {
+          if (num === 0) return 0;
           
-          // Calculate number of shares
-          const numShares = sharePrice > 0 ? positionSize / sharePrice : 0;
-          const numSharesRounded = Math.floor(numShares);
-          
-          // Calculate actual investment (with rounded shares)
-          const actualInvestment = numSharesRounded * sharePrice;
-          const actualPercent = portfolioValue > 0 ? (actualInvestment / portfolioValue) * 100 : 0;
-          
-          // Calculate stop loss
-          const maxLoss = positionSize * (stopLossPercent / 100);
-          const stopPrice = sharePrice * (1 - stopLossPercent / 100);
-
-          // Update display
-          document.getElementById('positionSize').textContent = '$' + positionSize.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('numShares').textContent = numShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('numSharesRounded').textContent = numSharesRounded.toLocaleString();
-          document.getElementById('actualInvestment').textContent = '$' + actualInvestment.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('actualPercent').textContent = actualPercent.toFixed(2) + '%';
-          document.getElementById('maxLoss').textContent = '$' + maxLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-          document.getElementById('stopPrice').textContent = '$' + stopPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          // For very small numbers (< 10), round to nearest 10
+          if (num < 10) {
+            return Math.ceil(num / 10) * 10;
+          }
+          // For small numbers (10-99), round to nearest 10
+          else if (num < 100) {
+            return Math.round(num / 10) * 10;
+          }
+          // For medium-small numbers (100-499), round to nearest 50
+          else if (num < 500) {
+            return Math.round(num / 50) * 50;
+          }
+          // For medium numbers (500-999), round to nearest 100
+          else if (num < 1000) {
+            return Math.round(num / 100) * 100;
+          }
+          // For large numbers (1000-4999), round to nearest 500
+          else if (num < 5000) {
+            return Math.round(num / 500) * 500;
+          }
+          // For very large numbers (5000+), round to nearest 1000
+          else {
+            return Math.round(num / 1000) * 1000;
+          }
         }
 
-        function setAllocation(percent) {
-          document.getElementById('allocationPercent').value = percent;
-          calculate();
+        function calculate() {
+          const portfolioValue = parseFloat(document.getElementById('portfolioValue').value) || 0;
+          const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
+          const allocationList = document.getElementById('allocationList');
+
+          if (!portfolioValue || !sharePrice || portfolioValue <= 0 || sharePrice <= 0) {
+            allocationList.innerHTML = '<div class="text-center text-muted-foreground py-8">Enter portfolio value and stock price</div>';
+            return;
+          }
+
+          const allocations = [10, 20, 30, 40, 50];
+          
+          allocationList.innerHTML = allocations.map(percent => {
+            const positionSize = portfolioValue * (percent / 100);
+            const exactShares = positionSize / sharePrice;
+            const numShares = roundToNice(exactShares);
+            const actualCost = numShares * sharePrice;
+            const actualPercent = portfolioValue > 0 ? (actualCost / portfolioValue) * 100 : 0;
+
+            return \`
+              <div class="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border hover:border-blue-500 transition-colors">
+                <div class="flex-1">
+                  <span class="text-3xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-xl text-muted-foreground ml-2">shares</span>
+                  <span class="text-xl font-semibold text-foreground ml-3">= \${percent}%</span>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-muted-foreground">Cost</div>
+                  <div class="text-lg font-semibold text-green-400">$\${actualCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
+                </div>
+              </div>
+            \`;
+          }).join('');
         }
 
         // Calculate on page load
@@ -604,14 +546,16 @@ app.get('/', (req, res) => {
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
       <div class="container mx-auto" style="max-width:1360px;">
-        <div class="mb-8 flex justify-between items-center">
-          <div>
-            <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
-          </div>
-          <div>
-            <a href="/calculator" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition-colors">
-              📊 Calculator
-            </a>
+        <div class="mb-8">
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
+            </div>
+            <div>
+              <a href="/calculator" class="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
+                📊 Calculator
+              </a>
+            </div>
           </div>
         </div>
         

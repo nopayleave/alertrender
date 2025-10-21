@@ -173,25 +173,28 @@ plot(ema2Value, title="EMA 2", color=ema2Color, linewidth=2)
 t = time("1440", session.extended) // 1440 = 60*24 minutes in a day
 is_first = na(t[1]) and not na(t) or t[1] < t
 
-// Track day high/low and cumulative volume
+// Track day high/low
 var float day_high = na
 var float day_low = na
-var float session_volume = 0.0
 
 if is_first and barstate.isnew
     day_high := high
     day_low := low
-    session_volume := volume
 else
     day_high := nz(day_high[1], high)
     day_low := nz(day_low[1], low)
-    session_volume := nz(session_volume[1], 0) + volume
 
 if high > day_high
     day_high := high
     
 if low < day_low
     day_low := low
+
+// Get current day's volume from daily timeframe
+currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+// Get previous day's completed volume from daily timeframe
+prevDayVolume = request.security(syminfo.tickerid, "D", volume[1], lookahead=barmerge.lookahead_on)
 
 // Calculate day range and position
 dayRange = day_high - day_low
@@ -263,10 +266,12 @@ if enableAlerts and barstate.isconfirmed
       '"rangeStatus": "' + rangeStatus + '",' +
       '"macd": ' + str.tostring(macdLine, "#.####") + ',' +
       '"macdSignal": ' + str.tostring(signalLine, "#.####") + ',' +
+      '"macdHistogram": ' + str.tostring(macdHist, "#.####") + ',' +
       '"macdTf": "' + effectiveMacdTf + '",' +
       '"rsi": ' + str.tostring(rsi, "#.##") + ',' +
       '"rsiTf": "' + effectiveRsiTf + '",' +
-      '"volume": ' + str.tostring(session_volume) + '}'
+      '"volume": ' + str.tostring(currentDayVolume) + ',' +
+      '"prevDayVolume": ' + str.tostring(prevDayVolume) + '}'
     
     // Determine alert frequency
     freq = alertFreq == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
