@@ -597,6 +597,10 @@ app.get('/calculator', (req, res) => {
             const numShares = roundToNice(exactShares);
             const actualCost = numShares * sharePrice;
             const actualPercent = portfolioValue > 0 ? (actualCost / portfolioValue) * 100 : 0;
+            
+            // Convert display cost to selected currency
+            const displayCost = currency === 'HKD' ? actualCost * HKD_TO_USD : actualCost;
+            const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
 
             return \`
               <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
@@ -606,7 +610,7 @@ app.get('/calculator', (req, res) => {
                   <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
                 <div class="text-right">
-                  <div class="text-base font-semibold text-green-400">$\${actualCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                   <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
                 </div>
               </div>
