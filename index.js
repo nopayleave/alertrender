@@ -504,17 +504,57 @@ app.get('/calculator', (req, res) => {
         <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
           <h3 class="text-lg font-semibold text-foreground mb-3">% Cheatsheet</h3>
           <p class="text-xs text-muted-foreground mb-3">Required shares to earn target profit from price moves</p>
+          
+          <!-- Custom Calculator -->
+          <div class="bg-secondary/50 rounded-lg p-3 mb-4 border border-border">
+            <div class="flex flex-wrap items-end gap-2">
+              <div class="flex-1 min-w-[120px]">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Target Profit <span id="customProfitCurrency">(USD)</span></label>
+                <input 
+                  type="number" 
+                  id="customProfit" 
+                  placeholder="1000"
+                  class="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  oninput="calculateCustom()"
+                />
+              </div>
+              <div class="flex-1 min-w-[100px]">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">% Move</label>
+                <input 
+                  type="number" 
+                  id="customPercent" 
+                  placeholder="15"
+                  step="0.1"
+                  class="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  oninput="calculateCustom()"
+                />
+              </div>
+              <div class="flex-1 min-w-[120px]">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">Shares Needed</label>
+                <div id="customResult" class="px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 font-semibold text-sm text-center">
+                  -
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="overflow-x-auto">
             <table class="w-full text-sm" id="cheatsheetTable">
               <thead>
                 <tr class="border-b border-border">
                   <th class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">1% Move</th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">2% Move</th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">5% Move</th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">10% Move</th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">15% Move</th>
-                  <th class="text-center py-2 px-2 text-muted-foreground">20% Move</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">1%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">2%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">5%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">10%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">15%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">20%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">30%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">50%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">75%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">100%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">150%</th>
+                  <th class="text-center py-2 px-2 text-muted-foreground">200%</th>
                 </tr>
               </thead>
               <tbody id="cheatsheetBody">
@@ -584,7 +624,7 @@ app.get('/calculator', (req, res) => {
 
           if (!portfolioValue || !sharePrice || portfolioValue <= 0 || sharePrice <= 0) {
             allocationList.innerHTML = '<div class="text-center text-muted-foreground py-8">Enter portfolio value and stock price</div>';
-            cheatsheetBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
+            cheatsheetBody.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
             return;
           }
 
@@ -627,8 +667,9 @@ app.get('/calculator', (req, res) => {
           
           // Update currency label in table header
           document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
+          document.getElementById('customProfitCurrency').textContent = \`(\${currency})\`;
           
-          const percentMoves = [1, 2, 5, 10, 15, 20];
+          const percentMoves = [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200];
           
           cheatsheetBody.innerHTML = profitTargets.map(profit => {
             const cells = percentMoves.map(movePercent => {
@@ -658,6 +699,33 @@ app.get('/calculator', (req, res) => {
               </tr>
             \`;
           }).join('');
+          
+          // Update custom calculator too
+          calculateCustom();
+        }
+
+        function calculateCustom() {
+          const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
+          const customProfit = parseFloat(document.getElementById('customProfit').value) || 0;
+          const customPercent = parseFloat(document.getElementById('customPercent').value) || 0;
+          const currency = document.getElementById('currency').value;
+          const customResult = document.getElementById('customResult');
+          
+          if (!sharePrice || !customProfit || !customPercent || sharePrice <= 0 || customProfit <= 0 || customPercent <= 0) {
+            customResult.textContent = '-';
+            return;
+          }
+          
+          // Convert HKD to USD if needed
+          const HKD_TO_USD = 7.8;
+          const profitUSD = currency === 'HKD' ? customProfit / HKD_TO_USD : customProfit;
+          
+          // Formula: Required Shares = Target Profit (USD) ÷ (Stock Price × Move %)
+          const profitPerShare = sharePrice * (customPercent / 100);
+          const requiredShares = profitUSD / profitPerShare;
+          const roundedShares = roundToNice(requiredShares);
+          
+          customResult.textContent = roundedShares.toLocaleString();
         }
 
         // Detect when sticky is activated and remove border
