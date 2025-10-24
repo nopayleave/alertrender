@@ -16,6 +16,7 @@ let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
 let quadStochData = {} // Store Quad Stochastic crossing status by symbol with timestamp
 let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
 let previousQSValues = {} // Store previous QS values to detect changes
+let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
@@ -62,15 +63,13 @@ app.post('/webhook', (req, res) => {
   // - VWAP Crossing alert: contains vwapCrossing flag
   // - Quad Stochastic D1/D2 alert: contains quadStochSignal
   // - Quad Stochastic D4 alert: contains d4Signal field
-  // - MACD Crossing alert: contains macdCrossingSignal field (from Peak or List script)
+  // - MACD Crossing alert: contains macdCrossingSignal field
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
-  // - List script: contains price, vwap, ema, macd, rsi and macdCrossingSignal
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
   const isQuadStochAlert = alert.quadStochSignal !== undefined
   const isQuadStochD4Alert = alert.d4Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
-  const isListScriptAlert = alert.price && alert.vwap && alert.macdCrossingSignal && !alert.quadStochSignal && !alert.d4Signal
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -79,7 +78,6 @@ app.post('/webhook', (req, res) => {
     isQuadStochAlert,
     isQuadStochD4Alert,
     isMacdCrossingAlert,
-    isListScriptAlert,
     symbol: alert.symbol
   })
   
@@ -178,6 +176,25 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     }
+  } else if (isMacdCrossingAlert) {
+    // MACD Crossing alert - store crossing signal with timestamp
+    macdCrossingData[alert.symbol] = {
+      signal: alert.macdCrossingSignal,
+      macd: alert.macd,
+      macdSignal: alert.macdSignal,
+      macdHistogram: alert.macdHistogram,
+      timestamp: Date.now()
+    }
+    console.log(`✅ MACD crossing signal stored for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
+      alerts[existingIndex].macdCrossingTimestamp = alert.macdCrossingTimestamp
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
+    }
   } else if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
     dayChangeData[alert.symbol] = alert.changeFromPrevDay
@@ -228,31 +245,6 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].vwapCrossing = true
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
-    }
-  } else if (isListScriptAlert) {
-    // List script alert - comprehensive alert with all indicators including MACD crossing
-    console.log(`✅ List script alert received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
-    
-    // Store ALL alerts from List script (comprehensive data)
-    alerts.unshift({
-      ...alert,
-      receivedAt: Date.now()
-    })
-    
-    // Keep alerts within reasonable limit
-    if (alerts.length > 5000) {
-      alerts = alerts.slice(0, 5000)
-    }
-  } else if (isMacdCrossingAlert) {
-    // MACD Crossing alert - store crossing signal with timestamp (from Peak script only)
-    console.log(`✅ MACD crossing signal received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
-    
-    // Also update existing alert if it exists (don't create new one)
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
@@ -335,6 +327,25 @@ app.post('/webhook', (req, res) => {
       alertData.quadStochD4Signal = null
     }
     
+    // Check and add MACD crossing status if active (within last 15 minutes)
+    const macdCrossingInfo = macdCrossingData[alert.symbol]
+    if (macdCrossingInfo && macdCrossingInfo.signal) {
+      const ageInMinutes = (Date.now() - macdCrossingInfo.timestamp) / 60000
+      if (ageInMinutes <= 15) {
+        // MACD crossing is recent (within 15 minutes), mark it
+        alertData.macdCrossingSignal = macdCrossingInfo.signal
+        alertData.macdCrossingTimestamp = macdCrossingInfo.timestamp
+        console.log(`✅ Merged MACD crossing signal for ${alert.symbol}: ${macdCrossingInfo.signal} (age: ${ageInMinutes.toFixed(1)} min)`)
+      } else {
+        // Signal is old, expire it
+        delete macdCrossingData[alert.symbol]
+        alertData.macdCrossingSignal = null
+        console.log(`⏰ MACD crossing signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+      }
+    } else {
+      alertData.macdCrossingSignal = null
+    }
+    
     // Add ALL alerts to the front (don't remove existing ones)
     alerts.unshift({
       ...alertData,
@@ -388,6 +399,7 @@ app.get('/debug', (req, res) => {
     quadStochD4Data: quadStochD4Data,
     quadStochData: quadStochData,
     vwapCrossingData: vwapCrossingData,
+    macdCrossingData: macdCrossingData,
     dayChangeData: dayChangeData
   })
 })
@@ -402,6 +414,7 @@ app.post('/reset-alerts', (req, res) => {
   quadStochData = {}
   quadStochD4Data = {}
   previousQSValues = {}
+  macdCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -923,14 +936,14 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Quad Stochastic D4 Trend & Crossings">
                       QS D4 <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
                     </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
+                      MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
                       <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')">
                       <span title="MACD Histogram">MACD Hist</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')">
-                      <span title="MACD Line Crossing Signal Line">Macd Cr</span> <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       <span title="Volume since 9:30 AM">Vol</span> <span id="sort-volume" class="ml-1 text-xs">⇅</span>
@@ -989,7 +1002,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'quadStoch', 'qsArrow', 'qstoch', 'rsi', 'macd', 'macdCrossing', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1040,27 +1053,27 @@ app.get('/', (req, res) => {
               if (d4sig === 'D4_Cross_Down_80') return 1;
               if (d4sig === 'D4_Downtrend') return 0;
               return 5; // Default to neutral
+            case 'macdCrossing':
+              // Sort by MACD crossing signal strength (bullish to bearish)
+              const macdSig = alert.macdCrossingSignal;
+              if (macdSig === 'COver >50') return 10; // Strongest bullish
+              if (macdSig === 'COver >0') return 9; // Bullish
+              if (macdSig === 'MACD >0') return 8; // MACD above zero
+              if (macdSig === 'Signal >0') return 7; // Signal above zero
+              if (macdSig === 'COver <0') return 6; // Weak bullish
+              if (macdSig === 'CUnder >0') return 5; // Weak bearish
+              if (macdSig === 'CUnder <0') return 4; // Bearish
+              if (macdSig === 'MACD <0') return 3; // MACD below zero
+              if (macdSig === 'Signal <0') return 2; // Signal below zero
+              if (macdSig === 'CUnder <-50') return 1; // Strongest bearish
+              if (macdSig === 'M > S') return 0.5; // Neutral bullish
+              if (macdSig === 'M < S') return 0.3; // Neutral bearish
+              if (macdSig === 'M = S') return 0.4; // Neutral
+              return 0; // Default
             case 'rsi':
               return parseFloat(alert.rsi) || 0;
             case 'macd':
               return parseFloat(alert.macdHistogram) || 0;
-            case 'macdCrossing':
-              // Sort by MACD crossing signal strength (bullish first)
-              const macdCrossing = alert.macdCrossingSignal;
-              if (macdCrossing === 'COver >50') return 10;
-              if (macdCrossing === 'COver >0') return 9;
-              if (macdCrossing === 'MACD >0') return 8;
-              if (macdCrossing === 'Signal >0') return 7;
-              if (macdCrossing === 'COver <0') return 6;
-              if (macdCrossing === 'CUnder >0') return 5;
-              if (macdCrossing === 'CUnder <0') return 4;
-              if (macdCrossing === 'MACD <0') return 3;
-              if (macdCrossing === 'Signal <0') return 2;
-              if (macdCrossing === 'CUnder <-50') return 1;
-              if (macdCrossing === 'M > S') return 0.5; // MACD above signal (neutral bullish)
-              if (macdCrossing === 'M < S') return 0.3; // MACD below signal (neutral bearish)
-              if (macdCrossing === 'M = S') return 0.4; // MACD equals signal (neutral)
-              return 0; // No signal
             case 'priceChange':
               // Calculate price change percentage for sorting
               // Priority 1: Use changeFromPrevDay from Day script if available
@@ -1387,59 +1400,79 @@ app.get('/', (req, res) => {
             // MACD Crossing Signal Display
             let macdCrossingDisplay = '-';
             let macdCrossingClass = 'text-muted-foreground';
-            let macdCrossingTitle = 'No MACD crossing signal';
-            let macdCrossingCellClass = ''; // For background highlighting
+            let macdCrossingTitle = 'No recent MACD crossing signal';
+            let macdCrossingCellClass = '';
             
             const macdCrossingSignal = alert.macdCrossingSignal;
             
-            if (macdCrossingSignal) {
-              macdCrossingDisplay = macdCrossingSignal;
-              
-              // Color coding based on signal type
-              if (macdCrossingSignal.includes('COver >50')) {
-                macdCrossingClass = 'text-green-400 font-bold'; // Strong bullish
-                macdCrossingTitle = 'MACD crosses above signal line and MACD > 50';
-              } else if (macdCrossingSignal.includes('COver >0')) {
-                macdCrossingClass = 'text-green-400 font-semibold'; // Bullish
-                macdCrossingTitle = 'MACD crosses above signal line and MACD > 0';
-                macdCrossingCellClass = 'bg-green-900/30'; // Background highlight for COver >0
-              } else if (macdCrossingSignal.includes('MACD >0')) {
-                macdCrossingClass = 'text-green-400'; // MACD above zero
-                macdCrossingTitle = 'MACD line crosses above zero';
-              } else if (macdCrossingSignal.includes('Signal >0')) {
-                macdCrossingClass = 'text-green-400'; // Signal above zero
-                macdCrossingTitle = 'Signal line crosses above zero';
-              } else if (macdCrossingSignal.includes('COver <0')) {
-                macdCrossingClass = 'text-yellow-400'; // Weak bullish
-                macdCrossingTitle = 'MACD crosses above signal line but MACD < 0';
-              } else if (macdCrossingSignal.includes('CUnder >0')) {
-                macdCrossingClass = 'text-orange-400'; // Weak bearish
-                macdCrossingTitle = 'MACD crosses below signal line but MACD > 0';
-              } else if (macdCrossingSignal.includes('CUnder <0')) {
-                macdCrossingClass = 'text-red-400 font-semibold'; // Bearish
-                macdCrossingTitle = 'MACD crosses below signal line and MACD < 0';
-                macdCrossingCellClass = 'bg-red-900/30'; // Background highlight for CUnder <0
-              } else if (macdCrossingSignal.includes('MACD <0')) {
-                macdCrossingClass = 'text-red-400'; // MACD below zero
-                macdCrossingTitle = 'MACD line crosses below zero';
-              } else if (macdCrossingSignal.includes('Signal <0')) {
-                macdCrossingClass = 'text-red-400'; // Signal below zero
-                macdCrossingTitle = 'Signal line crosses below zero';
-              } else if (macdCrossingSignal.includes('CUnder <-50')) {
-                macdCrossingClass = 'text-red-400 font-bold'; // Strong bearish
-                macdCrossingTitle = 'MACD crosses below signal line and MACD < -50';
-              } else if (macdCrossingSignal.includes('M > S')) {
-                macdCrossingClass = 'text-blue-400'; // MACD above Signal (neutral bullish)
-                macdCrossingTitle = 'MACD line is above Signal line (no crossing)';
-              } else if (macdCrossingSignal.includes('M < S')) {
-                macdCrossingClass = 'text-purple-400'; // MACD below Signal (neutral bearish)
-                macdCrossingTitle = 'MACD line is below Signal line (no crossing)';
-              } else if (macdCrossingSignal.includes('M = S')) {
-                macdCrossingClass = 'text-gray-400'; // MACD equals Signal (neutral)
-                macdCrossingTitle = 'MACD line equals Signal line (rare occurrence)';
-              }
+            // Check if MACD crossing signal is recent (within last 5 minutes)
+            const macdCrossingAge = alert.macdCrossingTimestamp ? (Date.now() - alert.macdCrossingTimestamp) / 60000 : 999;
+            const isRecentCrossing = macdCrossingAge <= 5;
+            
+            // Bullish Crossing Signals (Green)
+            if (macdCrossingSignal === 'COver >50') {
+              macdCrossingDisplay = 'COver >50';
+              macdCrossingClass = 'text-green-400 font-bold';
+              macdCrossingTitle = 'MACD crosses above Signal AND MACD > 50 (Strong Bullish)';
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/30';
+            } else if (macdCrossingSignal === 'COver >0') {
+              macdCrossingDisplay = 'COver >0';
+              macdCrossingClass = 'text-green-400 font-bold';
+              macdCrossingTitle = 'MACD crosses above Signal AND MACD > 0 (Bullish)';
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/30';
+            } else if (macdCrossingSignal === 'COver <0') {
+              macdCrossingDisplay = 'COver <0';
+              macdCrossingClass = 'text-yellow-400 font-semibold';
+              macdCrossingTitle = 'MACD crosses above Signal BUT MACD < 0 (Weak Bullish)';
             }
-
+            // Bearish Crossing Signals (Red)
+            else if (macdCrossingSignal === 'CUnder <-50') {
+              macdCrossingDisplay = 'CUnder <-50';
+              macdCrossingClass = 'text-red-400 font-bold';
+              macdCrossingTitle = 'MACD crosses below Signal AND MACD < -50 (Strong Bearish)';
+            } else if (macdCrossingSignal === 'CUnder <0') {
+              macdCrossingDisplay = 'CUnder <0';
+              macdCrossingClass = 'text-red-400 font-bold';
+              macdCrossingTitle = 'MACD crosses below Signal AND MACD < 0 (Bearish)';
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/30';
+            } else if (macdCrossingSignal === 'CUnder >0') {
+              macdCrossingDisplay = 'CUnder >0';
+              macdCrossingClass = 'text-orange-400 font-semibold';
+              macdCrossingTitle = 'MACD crosses below Signal BUT MACD > 0 (Weak Bearish)';
+            }
+            // Zero Line Crossings (Yellow/Orange)
+            else if (macdCrossingSignal === 'MACD >0') {
+              macdCrossingDisplay = 'MACD >0';
+              macdCrossingClass = 'text-yellow-400 font-semibold';
+              macdCrossingTitle = 'MACD line crosses above zero';
+            } else if (macdCrossingSignal === 'MACD <0') {
+              macdCrossingDisplay = 'MACD <0';
+              macdCrossingClass = 'text-orange-400 font-semibold';
+              macdCrossingTitle = 'MACD line crosses below zero';
+            } else if (macdCrossingSignal === 'Signal >0') {
+              macdCrossingDisplay = 'Signal >0';
+              macdCrossingClass = 'text-yellow-400 font-semibold';
+              macdCrossingTitle = 'Signal line crosses above zero';
+            } else if (macdCrossingSignal === 'Signal <0') {
+              macdCrossingDisplay = 'Signal <0';
+              macdCrossingClass = 'text-orange-400 font-semibold';
+              macdCrossingTitle = 'Signal line crosses below zero';
+            }
+            // Position States (Blue/Purple/Gray)
+            else if (macdCrossingSignal === 'M > S') {
+              macdCrossingDisplay = 'M > S';
+              macdCrossingClass = 'text-blue-400 font-semibold';
+              macdCrossingTitle = 'MACD line is above Signal line (Neutral Bullish)';
+            } else if (macdCrossingSignal === 'M < S') {
+              macdCrossingDisplay = 'M < S';
+              macdCrossingClass = 'text-purple-400 font-semibold';
+              macdCrossingTitle = 'MACD line is below Signal line (Neutral Bearish)';
+            } else if (macdCrossingSignal === 'M = S') {
+              macdCrossingDisplay = 'M = S';
+              macdCrossingClass = 'text-gray-400 font-semibold';
+              macdCrossingTitle = 'MACD line equals Signal line (Neutral)';
+            }
+            
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 <td class="py-3 pl-4 pr-1 text-center">
@@ -1461,9 +1494,9 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
+                <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>
-                <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
