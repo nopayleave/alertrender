@@ -212,6 +212,66 @@ plot(day_low, title="Day Low", color=color.red, linewidth=1, style=plot.style_li
 // MACD Calculation (with optional multi-timeframe)
 [macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, macdTimeframe == "" ? timeframe.period : macdTimeframe, ta.macd(close, macdFast, macdSlow, macdSignal))
 
+// ============================================================================
+// MACD CROSSING DETECTION
+// ============================================================================
+
+// Detect MACD line crossing above/below signal line
+bool macdCrossOverSignal = ta.crossover(macdLine, signalLine)
+bool macdCrossUnderSignal = ta.crossunder(macdLine, signalLine)
+
+// Detect MACD line crossing above/below zero
+bool macdCrossOverZero = ta.crossover(macdLine, 0)
+bool macdCrossUnderZero = ta.crossunder(macdLine, 0)
+
+// Detect signal line crossing above/below zero
+bool signalCrossOverZero = ta.crossover(signalLine, 0)
+bool signalCrossUnderZero = ta.crossunder(signalLine, 0)
+
+// MACD Crossing Signal Generation
+string macdCrossingSignal = na
+
+// Priority 1: MACD line crosses above signal line
+if macdCrossOverSignal
+    if macdLine > 50
+        macdCrossingSignal := "COver >50"      // MACD crosses above signal and MACD > 50
+    else if macdLine > 0
+        macdCrossingSignal := "COver >0"       // MACD crosses above signal and MACD > 0
+    else
+        macdCrossingSignal := "COver <0"        // MACD crosses above signal but MACD < 0
+
+// Priority 2: MACD line crosses below signal line
+else if macdCrossUnderSignal
+    if macdLine < -50
+        macdCrossingSignal := "CUnder <-50"    // MACD crosses below signal and MACD < -50
+    else if macdLine < 0
+        macdCrossingSignal := "CUnder <0"      // MACD crosses below signal and MACD < 0
+    else
+        macdCrossingSignal := "CUnder >0"      // MACD crosses below signal but MACD > 0
+
+// Priority 3: MACD line crosses zero (if no signal line crossing)
+else if macdCrossOverZero
+    macdCrossingSignal := "MACD >0"            // MACD line crosses above zero
+
+else if macdCrossUnderZero
+    macdCrossingSignal := "MACD <0"            // MACD line crosses below zero
+
+// Priority 4: Signal line crosses zero (if no other crossings)
+else if signalCrossOverZero
+    macdCrossingSignal := "Signal >0"          // Signal line crosses above zero
+
+else if signalCrossUnderZero
+    macdCrossingSignal := "Signal <0"          // Signal line crosses below zero
+
+// Priority 5: No crossings - show current MACD vs Signal relationship
+else
+    if macdLine > signalLine
+        macdCrossingSignal := "M > S"          // MACD above Signal (no crossing)
+    else if macdLine < signalLine
+        macdCrossingSignal := "M < S"          // MACD below Signal (no crossing)
+    else
+        macdCrossingSignal := "M = S"          // MACD equals Signal (rare)
+
 // RSI Calculation (with optional multi-timeframe)
 rsi = request.security(syminfo.tickerid, rsiTimeframe == "" ? timeframe.period : rsiTimeframe, ta.rsi(close, rsiLength))
 
@@ -268,6 +328,7 @@ if enableAlerts and barstate.isconfirmed
       '"macdSignal": ' + str.tostring(signalLine, "#.####") + ',' +
       '"macdHistogram": ' + str.tostring(macdHist, "#.####") + ',' +
       '"macdTf": "' + effectiveMacdTf + '",' +
+      '"macdCrossingSignal": "' + str.tostring(macdCrossingSignal) + '",' +
       '"rsi": ' + str.tostring(rsi, "#.##") + ',' +
       '"rsiTf": "' + effectiveRsiTf + '",' +
       '"volume": ' + str.tostring(currentDayVolume) + ',' +

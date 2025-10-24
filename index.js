@@ -62,13 +62,15 @@ app.post('/webhook', (req, res) => {
   // - VWAP Crossing alert: contains vwapCrossing flag
   // - Quad Stochastic D1/D2 alert: contains quadStochSignal
   // - Quad Stochastic D4 alert: contains d4Signal field
-  // - MACD Crossing alert: contains macdCrossingSignal field
+  // - MACD Crossing alert: contains macdCrossingSignal field (from Peak or List script)
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
+  // - List script: contains price, vwap, ema, macd, rsi and macdCrossingSignal
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
   const isQuadStochAlert = alert.quadStochSignal !== undefined
   const isQuadStochD4Alert = alert.d4Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
+  const isListScriptAlert = alert.price && alert.vwap && alert.macdCrossingSignal && !alert.quadStochSignal && !alert.d4Signal
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -77,6 +79,7 @@ app.post('/webhook', (req, res) => {
     isQuadStochAlert,
     isQuadStochD4Alert,
     isMacdCrossingAlert,
+    isListScriptAlert,
     symbol: alert.symbol
   })
   
@@ -236,6 +239,20 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
+    }
+  } else if (isListScriptAlert) {
+    // List script alert - comprehensive alert with all indicators including MACD crossing
+    console.log(`✅ List script alert received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    
+    // Store ALL alerts from List script (comprehensive data)
+    alerts.unshift({
+      ...alert,
+      receivedAt: Date.now()
+    })
+    
+    // Keep alerts within reasonable limit
+    if (alerts.length > 5000) {
+      alerts = alerts.slice(0, 5000)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
