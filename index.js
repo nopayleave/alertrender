@@ -229,17 +229,6 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
     }
-  } else if (isMacdCrossingAlert) {
-    // MACD Crossing alert - store crossing signal with timestamp
-    console.log(`✅ MACD crossing signal received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
-    
-    // Also update existing alert if it exists (don't create new one)
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
-    }
   } else if (isListScriptAlert) {
     // List script alert - comprehensive alert with all indicators including MACD crossing
     console.log(`✅ List script alert received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
@@ -253,6 +242,17 @@ app.post('/webhook', (req, res) => {
     // Keep alerts within reasonable limit
     if (alerts.length > 5000) {
       alerts = alerts.slice(0, 5000)
+    }
+  } else if (isMacdCrossingAlert) {
+    // MACD Crossing alert - store crossing signal with timestamp (from Peak script only)
+    console.log(`✅ MACD crossing signal received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
