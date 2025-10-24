@@ -380,6 +380,17 @@ app.post('/webhook', (req, res) => {
   // Keep only latest 10000 entries in history (prevent memory issues)
   alertsHistory = alertsHistory.slice(0, 10000)
   
+  // Broadcast real-time update to connected clients
+  broadcastUpdate('alert_received', {
+    symbol: alert.symbol,
+    alertType: isDayChangeAlert ? 'day_change' : 
+               isVwapCrossingAlert ? 'vwap_crossing' :
+               isQuadStochAlert ? 'quad_stoch' :
+               isQuadStochD4Alert ? 'quad_stoch_d4' :
+               isMacdCrossingAlert ? 'macd_crossing' : 'main_script',
+    timestamp: Date.now()
+  })
+  
   res.json({ status: 'ok' })
 })
 
@@ -436,6 +447,54 @@ app.post('/reset-alerts', (req, res) => {
   macdCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
+
+// Server-Sent Events endpoint for real-time updates
+let clients = []
+
+app.get('/events', (req, res) => {
+  // Set SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  })
+  
+  // Add client to list
+  const clientId = Date.now()
+  clients.push({ id: clientId, res })
+  
+  console.log(`📡 SSE client connected: ${clientId} (${clients.length} total clients)`)
+  
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`)
+  
+  // Handle client disconnect
+  req.on('close', () => {
+    clients = clients.filter(client => client.id !== clientId)
+    console.log(`📡 SSE client disconnected: ${clientId} (${clients.length} remaining)`)
+  })
+})
+
+// Function to broadcast updates to all connected clients
+function broadcastUpdate(updateType, data) {
+  const message = JSON.stringify({ type: updateType, data, timestamp: Date.now() })
+  
+  clients.forEach(client => {
+    try {
+      client.res.write(`data: ${message}\n\n`)
+    } catch (error) {
+      console.log(`⚠️ Error sending SSE to client ${client.id}:`, error.message)
+      // Remove disconnected client
+      clients = clients.filter(c => c.id !== client.id)
+    }
+  })
+  
+  if (clients.length > 0) {
+    console.log(`📡 Broadcasted ${updateType} update to ${clients.length} clients`)
+  }
+}
 
 // Share Calculator Page
 app.get('/calculator', (req, res) => {
@@ -981,6 +1040,15 @@ app.get('/', (req, res) => {
         
         <div class="mt-6 text-center">
           <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
+          <div class="mt-2 flex items-center justify-center gap-2">
+            <div id="connectionStatus" class="flex items-center gap-1 text-xs">
+              <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="connectionText" class="text-muted-foreground">Connecting...</span>
+            </div>
+            <div id="realtimeIndicator" class="text-xs text-green-400 hidden">
+              <span class="animate-pulse">🔄 Real-time updates active</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1540,8 +1608,47 @@ app.get('/', (req, res) => {
         // Fetch alerts once on page load
         fetchAlerts();
         
-        // Auto-refresh every 2 minutes (120 seconds)
+        // Auto-refresh every 2 minutes (120 seconds) as fallback
         setInterval(fetchAlerts, 120000);
+        
+        // Real-time updates using Server-Sent Events (SSE)
+        const eventSource = new EventSource('/events');
+        const connectionIndicator = document.getElementById('connectionIndicator');
+        const connectionText = document.getElementById('connectionText');
+        const realtimeIndicator = document.getElementById('realtimeIndicator');
+        
+        eventSource.onopen = function(event) {
+          console.log('📡 SSE connection opened');
+          connectionIndicator.className = 'w-2 h-2 rounded-full bg-green-500';
+          connectionText.textContent = 'Connected';
+          connectionText.className = 'text-green-400';
+          realtimeIndicator.classList.remove('hidden');
+        };
+        
+        eventSource.onmessage = function(event) {
+          console.log('📡 Received real-time update:', event.data);
+          fetchAlerts(); // Refresh immediately when new data arrives
+          
+          // Show brief update indicator
+          realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Updated just now</span>';
+          setTimeout(() => {
+            realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Real-time updates active</span>';
+          }, 2000);
+        };
+        
+        eventSource.onerror = function(event) {
+          console.log('⚠️ SSE connection error, falling back to polling');
+          connectionIndicator.className = 'w-2 h-2 rounded-full bg-red-500';
+          connectionText.textContent = 'Disconnected';
+          connectionText.className = 'text-red-400';
+          realtimeIndicator.classList.add('hidden');
+          // SSE failed, rely on interval polling
+        };
+        
+        // Clean up SSE connection when page is unloaded
+        window.addEventListener('beforeunload', function() {
+          eventSource.close();
+        });
       </script>
     </body>
     </html>
