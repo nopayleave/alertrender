@@ -430,6 +430,15 @@ else if signalCrossOverZero
 else if signalCrossUnderZero
     macdCrossingSignal := "Signal <0"          // Signal line crosses below zero
 
+// Priority 5: No crossings - show current MACD vs Signal relationship
+else
+    if macdLine > signalLine
+        macdCrossingSignal := "M > S"          // MACD above Signal (no crossing)
+    else if macdLine < signalLine
+        macdCrossingSignal := "M < S"          // MACD below Signal (no crossing)
+    else
+        macdCrossingSignal := "M = S"          // MACD equals Signal (rare)
+
 
 
 // HA Pattern Plot Signals - Only Keep 4 signals

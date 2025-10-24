@@ -1040,6 +1040,9 @@ app.get('/', (req, res) => {
               if (macdCrossing === 'MACD <0') return 3;
               if (macdCrossing === 'Signal <0') return 2;
               if (macdCrossing === 'CUnder <-50') return 1;
+              if (macdCrossing === 'M > S') return 0.5; // MACD above signal (neutral bullish)
+              if (macdCrossing === 'M < S') return 0.3; // MACD below signal (neutral bearish)
+              if (macdCrossing === 'M = S') return 0.4; // MACD equals signal (neutral)
               return 0; // No signal
             case 'priceChange':
               // Calculate price change percentage for sorting
@@ -1408,6 +1411,15 @@ app.get('/', (req, res) => {
               } else if (macdCrossingSignal.includes('CUnder <-50')) {
                 macdCrossingClass = 'text-red-400 font-bold'; // Strong bearish
                 macdCrossingTitle = 'MACD crosses below signal line and MACD < -50';
+              } else if (macdCrossingSignal.includes('M > S')) {
+                macdCrossingClass = 'text-blue-400'; // MACD above Signal (neutral bullish)
+                macdCrossingTitle = 'MACD line is above Signal line (no crossing)';
+              } else if (macdCrossingSignal.includes('M < S')) {
+                macdCrossingClass = 'text-purple-400'; // MACD below Signal (neutral bearish)
+                macdCrossingTitle = 'MACD line is below Signal line (no crossing)';
+              } else if (macdCrossingSignal.includes('M = S')) {
+                macdCrossingClass = 'text-gray-400'; // MACD equals Signal (neutral)
+                macdCrossingTitle = 'MACD line equals Signal line (rare occurrence)';
               }
             }
 
