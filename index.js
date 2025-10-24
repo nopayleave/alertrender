@@ -176,7 +176,7 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     }
-  } else if (isMacdCrossingAlert) {
+  } else if (isMacdCrossingAlert && !alert.price) {
     // MACD Crossing alert - store crossing signal with timestamp
     macdCrossingData[alert.symbol] = {
       signal: alert.macdCrossingSignal,
@@ -249,6 +249,18 @@ app.post('/webhook', (req, res) => {
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
+    
+    // If this main script alert contains MACD crossing data, store it first
+    if (alert.macdCrossingSignal) {
+      macdCrossingData[alert.symbol] = {
+        signal: alert.macdCrossingSignal,
+        macd: alert.macd,
+        macdSignal: alert.macdSignal,
+        macdHistogram: alert.macdHistogram,
+        timestamp: alert.macdCrossingTimestamp || Date.now()
+      }
+      console.log(`✅ Stored MACD crossing data for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    }
     
     // Add day change data if available from Day script
     if (dayChangeData[alert.symbol] !== undefined) {
@@ -343,7 +355,14 @@ app.post('/webhook', (req, res) => {
         console.log(`⏰ MACD crossing signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     } else {
-      alertData.macdCrossingSignal = null
+      // If no stored MACD crossing data, check if this alert has MACD crossing data
+      if (alert.macdCrossingSignal) {
+        alertData.macdCrossingSignal = alert.macdCrossingSignal
+        alertData.macdCrossingTimestamp = alert.macdCrossingTimestamp
+        console.log(`✅ Using MACD crossing signal from alert for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+      } else {
+        alertData.macdCrossingSignal = null
+      }
     }
     
     // Add ALL alerts to the front (don't remove existing ones)

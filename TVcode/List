@@ -229,7 +229,7 @@ signalCrossZeroUp = ta.crossover(signalLine, 0)
 signalCrossZeroDown = ta.crossunder(signalLine, 0)
 
 // Determine MACD crossing signal based on priority
-var string macdCrossingSignal = na
+var string macdCrossingSignal = ""
 var float macdCrossingTimestamp = na
 
 // Priority 1: MACD line crosses signal line
