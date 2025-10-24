@@ -62,11 +62,13 @@ app.post('/webhook', (req, res) => {
   // - VWAP Crossing alert: contains vwapCrossing flag
   // - Quad Stochastic D1/D2 alert: contains quadStochSignal
   // - Quad Stochastic D4 alert: contains d4Signal field
+  // - MACD Crossing alert: contains macdCrossingSignal field
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
   const isQuadStochAlert = alert.quadStochSignal !== undefined
   const isQuadStochD4Alert = alert.d4Signal !== undefined
+  const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -74,6 +76,7 @@ app.post('/webhook', (req, res) => {
     isVwapCrossingAlert,
     isQuadStochAlert,
     isQuadStochD4Alert,
+    isMacdCrossingAlert,
     symbol: alert.symbol
   })
   
@@ -222,6 +225,17 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].vwapCrossing = true
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
+    }
+  } else if (isMacdCrossingAlert) {
+    // MACD Crossing alert - store crossing signal with timestamp
+    console.log(`✅ MACD crossing signal received for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
@@ -898,6 +912,9 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')">
                       <span title="MACD Histogram">MACD Hist</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')">
+                      <span title="MACD Line Crossing Signal Line">Macd Cr</span> <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       <span title="Volume since 9:30 AM">Vol</span> <span id="sort-volume" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -905,7 +922,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="12" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -955,7 +972,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'quadStoch', 'qsArrow', 'qstoch', 'rsi', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'quadStoch', 'qsArrow', 'qstoch', 'rsi', 'macd', 'macdCrossing', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1010,6 +1027,20 @@ app.get('/', (req, res) => {
               return parseFloat(alert.rsi) || 0;
             case 'macd':
               return parseFloat(alert.macdHistogram) || 0;
+            case 'macdCrossing':
+              // Sort by MACD crossing signal strength (bullish first)
+              const macdCrossing = alert.macdCrossingSignal;
+              if (macdCrossing === 'COver >50') return 10;
+              if (macdCrossing === 'COver >0') return 9;
+              if (macdCrossing === 'MACD >0') return 8;
+              if (macdCrossing === 'Signal >0') return 7;
+              if (macdCrossing === 'COver <0') return 6;
+              if (macdCrossing === 'CUnder >0') return 5;
+              if (macdCrossing === 'CUnder <0') return 4;
+              if (macdCrossing === 'MACD <0') return 3;
+              if (macdCrossing === 'Signal <0') return 2;
+              if (macdCrossing === 'CUnder <-50') return 1;
+              return 0; // No signal
             case 'priceChange':
               // Calculate price change percentage for sorting
               // Priority 1: Use changeFromPrevDay from Day script if available
@@ -1097,7 +1128,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -1136,7 +1167,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -1333,6 +1364,53 @@ app.get('/', (req, res) => {
               qstochTitle = 'D4 Crossed Down 80 - Entering Overbought Zone';
             }
             
+            // MACD Crossing Signal Display
+            let macdCrossingDisplay = '-';
+            let macdCrossingClass = 'text-muted-foreground';
+            let macdCrossingTitle = 'No MACD crossing signal';
+            let macdCrossingCellClass = ''; // For background highlighting
+            
+            const macdCrossingSignal = alert.macdCrossingSignal;
+            
+            if (macdCrossingSignal) {
+              macdCrossingDisplay = macdCrossingSignal;
+              
+              // Color coding based on signal type
+              if (macdCrossingSignal.includes('COver >50')) {
+                macdCrossingClass = 'text-green-400 font-bold'; // Strong bullish
+                macdCrossingTitle = 'MACD crosses above signal line and MACD > 50';
+              } else if (macdCrossingSignal.includes('COver >0')) {
+                macdCrossingClass = 'text-green-400 font-semibold'; // Bullish
+                macdCrossingTitle = 'MACD crosses above signal line and MACD > 0';
+                macdCrossingCellClass = 'bg-green-900/30'; // Background highlight for COver >0
+              } else if (macdCrossingSignal.includes('MACD >0')) {
+                macdCrossingClass = 'text-green-400'; // MACD above zero
+                macdCrossingTitle = 'MACD line crosses above zero';
+              } else if (macdCrossingSignal.includes('Signal >0')) {
+                macdCrossingClass = 'text-green-400'; // Signal above zero
+                macdCrossingTitle = 'Signal line crosses above zero';
+              } else if (macdCrossingSignal.includes('COver <0')) {
+                macdCrossingClass = 'text-yellow-400'; // Weak bullish
+                macdCrossingTitle = 'MACD crosses above signal line but MACD < 0';
+              } else if (macdCrossingSignal.includes('CUnder >0')) {
+                macdCrossingClass = 'text-orange-400'; // Weak bearish
+                macdCrossingTitle = 'MACD crosses below signal line but MACD > 0';
+              } else if (macdCrossingSignal.includes('CUnder <0')) {
+                macdCrossingClass = 'text-red-400 font-semibold'; // Bearish
+                macdCrossingTitle = 'MACD crosses below signal line and MACD < 0';
+                macdCrossingCellClass = 'bg-red-900/30'; // Background highlight for CUnder <0
+              } else if (macdCrossingSignal.includes('MACD <0')) {
+                macdCrossingClass = 'text-red-400'; // MACD below zero
+                macdCrossingTitle = 'MACD line crosses below zero';
+              } else if (macdCrossingSignal.includes('Signal <0')) {
+                macdCrossingClass = 'text-red-400'; // Signal below zero
+                macdCrossingTitle = 'Signal line crosses below zero';
+              } else if (macdCrossingSignal.includes('CUnder <-50')) {
+                macdCrossingClass = 'text-red-400 font-bold'; // Strong bearish
+                macdCrossingTitle = 'MACD crosses below signal line and MACD < -50';
+              }
+            }
+
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 <td class="py-3 pl-4 pr-1 text-center">
@@ -1356,6 +1434,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>
+                <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
@@ -1373,7 +1452,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="12" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 

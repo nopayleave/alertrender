@@ -375,6 +375,61 @@ bool crossover_neutral_zone = crossOver and s.k >= 45 and s.k <= 55
 // Detect bearish crossunder below previous crossunder (weakening momentum)
 bool crossunder_below_previous = crossUnder and not na(prev_crossunder_k) and s.k < prev_crossunder_k
 
+// ===================
+// MACD CROSSING DETECTION
+// ===================
+
+// MACD line and signal line values
+float macdLine = o.b.c      // MACD line (main MACD value)
+float signalLine = o.s       // Signal line (EMA of MACD)
+
+// Detect MACD line crossing above/below signal line
+bool macdCrossOverSignal = ta.crossover(macdLine, signalLine)
+bool macdCrossUnderSignal = ta.crossunder(macdLine, signalLine)
+
+// Detect MACD line crossing above/below zero
+bool macdCrossOverZero = ta.crossover(macdLine, 0)
+bool macdCrossUnderZero = ta.crossunder(macdLine, 0)
+
+// Detect signal line crossing above/below zero
+bool signalCrossOverZero = ta.crossover(signalLine, 0)
+bool signalCrossUnderZero = ta.crossunder(signalLine, 0)
+
+// MACD Crossing Signal Generation
+string macdCrossingSignal = na
+
+// Priority 1: MACD line crosses above signal line
+if macdCrossOverSignal
+    if macdLine > 50
+        macdCrossingSignal := "COver >50"      // MACD crosses above signal and MACD > 50
+    else if macdLine > 0
+        macdCrossingSignal := "COver >0"       // MACD crosses above signal and MACD > 0
+    else
+        macdCrossingSignal := "COver <0"        // MACD crosses above signal but MACD < 0
+
+// Priority 2: MACD line crosses below signal line
+else if macdCrossUnderSignal
+    if macdLine < -50
+        macdCrossingSignal := "CUnder <-50"    // MACD crosses below signal and MACD < -50
+    else if macdLine < 0
+        macdCrossingSignal := "CUnder <0"      // MACD crosses below signal and MACD < 0
+    else
+        macdCrossingSignal := "CUnder >0"      // MACD crosses below signal but MACD > 0
+
+// Priority 3: MACD line crosses zero (if no signal line crossing)
+else if macdCrossOverZero
+    macdCrossingSignal := "MACD >0"            // MACD line crosses above zero
+
+else if macdCrossUnderZero
+    macdCrossingSignal := "MACD <0"            // MACD line crosses below zero
+
+// Priority 4: Signal line crosses zero (if no other crossings)
+else if signalCrossOverZero
+    macdCrossingSignal := "Signal >0"          // Signal line crosses above zero
+
+else if signalCrossUnderZero
+    macdCrossingSignal := "Signal <0"          // Signal line crosses below zero
+
 
 
 // HA Pattern Plot Signals - Only Keep 4 signals
@@ -440,6 +495,10 @@ if showHAPatterns and haDDTransition and not haDDTransition[1]
 
 if showHAPatterns and haUUTransition and not haUUTransition[1]
     alert("HA UU Signal triggered - Hollow red to hollow green transition", alert.freq_once_per_bar)
+
+// Alert conditions for MACD crossings
+if not na(macdCrossingSignal)
+    alert("MACD Crossing: " + macdCrossingSignal, alert.freq_once_per_bar)
 
 // Plot all 4 signals - always show in indicator panel
 plot(bullHADivergencePlot, color=color.aqua, style=plot.style_cross, linewidth=7, title="Bull HA U→HA U ▲")
@@ -551,4 +610,12 @@ plot(o.b.src('hl2'  ), "hl2"  , editable = false, display = display.none)
 plot(o.b.src('hlc3' ), "hlc3" , editable = false, display = display.none)
 plot(o.b.src('ohlc4'), "ohlc4", editable = false, display = display.none)
 plot(o.b.src('hlcc4'), "hlcc4", editable = false, display = display.none)
+
+// MACD Crossing Signal Export
+plot(macdCrossOverSignal ? 1 : 0, "macdCrossOverSignal", editable = false, display = display.none)
+plot(macdCrossUnderSignal ? 1 : 0, "macdCrossUnderSignal", editable = false, display = display.none)
+plot(macdCrossOverZero ? 1 : 0, "macdCrossOverZero", editable = false, display = display.none)
+plot(macdCrossUnderZero ? 1 : 0, "macdCrossUnderZero", editable = false, display = display.none)
+plot(signalCrossOverZero ? 1 : 0, "signalCrossOverZero", editable = false, display = display.none)
+plot(signalCrossUnderZero ? 1 : 0, "signalCrossUnderZero", editable = false, display = display.none)
 
