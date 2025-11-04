@@ -1,0 +1,150 @@
+//@version=5
+indicator("MACD + Quad Stoch Momentum Table v7.1", overlay=true)
+
+// === MACD 設定 ===
+fastLength = input.int(10, "MACD Fast Length")
+slowLength = input.int(75, "MACD Slow Length")
+signalLength = input.int(25, "MACD Signal Length")
+
+[macdLine, signalLine, hist] = ta.macd(close, fastLength, slowLength, signalLength)
+
+// === MACD 狀態分析 ===
+macdUp = ta.rising(macdLine, 1)
+macdDown = ta.falling(macdLine, 1)
+macdAbove0 = macdLine > 0
+macdBelow0 = macdLine < 0
+macdAboveSignal = macdLine > signalLine
+macdBelowSignal = macdLine < signalLine
+
+macdCondition =
+     macdAbove0 and macdUp and macdAboveSignal  ? "Strong Bull"
+   : macdAbove0 and macdUp and macdBelowSignal  ? "Bullish"
+   : macdAbove0 and macdDown and macdAboveSignal ? "Caution Bull"
+   : macdAbove0 and macdDown and macdBelowSignal ? "Weak Bull"
+   : macdBelow0 and macdDown and macdBelowSignal ? "Strong Bear"
+   : macdBelow0 and macdDown and macdAboveSignal ? "Bearish"
+   : macdBelow0 and macdUp and macdBelowSignal ? "Caution Bear"
+   : macdBelow0 and macdUp and macdAboveSignal ? "Weak Bear"
+   : "Neutral"
+
+// === Quad Stoch 設定 ===
+// Function to get Stochastic %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    d
+
+sto1 = getStoch(10, 3, 3)
+sto2 = getStoch(18, 1, 3)
+sto3 = getStoch(39, 1, 8)
+sto4 = getStoch(60, 1, 10)
+
+stochAvg = (sto1 + sto2 + sto3 + sto4) / 4.0
+stochUp = ta.rising(stochAvg, 1)
+stochDown = ta.falling(stochAvg, 1)
+
+// === Stoch 區域 ===
+stochZone = stochAvg > 80 ? "Overbought"
+   : stochAvg < 20 ? "Oversold"
+   : stochAvg > 50 ? "Bull Zone"
+   : "Bear Zone"
+
+stochCondition =
+     stochZone == "Overbought" and stochDown ? "Weak Bear"
+   : stochZone == "Oversold" and stochUp ? "Weak Bull"
+   : stochZone == "Bull Zone" and stochUp ? "Bullish"
+   : stochZone == "Bear Zone" and stochDown ? "Bearish"
+   : "Neutral"
+
+// === Higher Low / Lower High 偵測 ===
+lenHL = 5
+lowestPrev = ta.lowest(stochAvg[1], lenHL)
+highestPrev = ta.highest(stochAvg[1], lenHL)
+bullishHL = stochAvg[1] < lowestPrev and stochAvg > stochAvg[1] // Higher Low
+bearishLH = stochAvg[1] > highestPrev and stochAvg < stochAvg[1] // Lower High
+
+stochDivergence =
+     bullishHL ? "Stoch HL → Bullish Divergence"
+   : bearishLH ? "Stoch LH → Bearish Divergence"
+   : "None"
+
+// === Quad Stoch Exit Analysis (All 4 Stochastics) ===
+d1Up = ta.rising(sto1, 1)
+d2Up = ta.rising(sto2, 1)
+d3Up = ta.rising(sto3, 1)
+d4Up = ta.rising(sto4, 1)
+
+// Count how many stochastics are rising and above 20
+stochExitCount = (d1Up and sto1 > 20 ? 1 : 0) + (d2Up and sto2 > 20 ? 1 : 0) + (d3Up and sto3 > 20 ? 1 : 0) + (d4Up and sto4 > 20 ? 1 : 0)
+
+// Count how many stochastics are below 20 (bearish condition)
+stochBearishCount = (sto1 < 20 ? 1 : 0) + (sto2 < 20 ? 1 : 0) + (sto3 < 20 ? 1 : 0) + (sto4 < 20 ? 1 : 0)
+
+quadStochCondition =
+     stochExitCount == 4 ? "Strong Bull"
+   : stochExitCount == 3 ? "Bullish"
+   : stochExitCount == 2 ? "Neutral"
+   : stochBearishCount >= 3 ? "Bearish"
+   : stochBearishCount == 4 ? "Strong Bear"
+   : "Neutral"
+
+// === 最終方向判斷 ===
+finalSignal =
+     (macdCondition == "Strong Bull" or macdCondition == "Bullish") and (stochCondition == "Bullish" or stochCondition == "Weak Bull") and quadStochCondition == "Strong Bull" ? "Super Long"
+   : (macdCondition == "Strong Bull" or macdCondition == "Bullish") and (stochCondition == "Bullish" or stochCondition == "Weak Bull") and quadStochCondition == "Bullish" ? "Strong Long"
+   : (macdCondition == "Strong Bull" or macdCondition == "Bullish") and (stochCondition == "Bullish" or stochCondition == "Weak Bull") ? "Long"
+   : (macdCondition == "Caution Bull" or stochCondition == "Bullish") and quadStochCondition == "Strong Bull" ? "Strong Long"
+   : (macdCondition == "Caution Bull" or stochCondition == "Bullish") and quadStochCondition == "Bullish" ? "Long"
+   : (macdCondition == "Strong Bear" or macdCondition == "Bearish") and (stochCondition == "Bearish" or stochCondition == "Weak Bear") and quadStochCondition == "Strong Bear" ? "Super Short"
+   : (macdCondition == "Strong Bear" or macdCondition == "Bearish") and (stochCondition == "Bearish" or stochCondition == "Weak Bear") and quadStochCondition == "Bearish" ? "Strong Short"
+   : (macdCondition == "Strong Bear" or macdCondition == "Bearish") and (stochCondition == "Bearish" or stochCondition == "Weak Bear") ? "Short"
+   : (macdCondition == "Caution Bear" or stochCondition == "Bearish") and quadStochCondition == "Strong Bear" ? "Strong Short"
+   : (macdCondition == "Caution Bear" or stochCondition == "Bearish") and quadStochCondition == "Bearish" ? "Short"
+   : quadStochCondition == "Strong Bull" ? "Quad Strong Bull"
+   : quadStochCondition == "Bullish" ? "Quad Bullish"
+   : quadStochCondition == "Strong Bear" ? "Quad Strong Bear"
+   : quadStochCondition == "Bearish" ? "Quad Bearish"
+   : "Neutral"
+
+// === Divergence 標記 ===
+plotshape(bullishHL, title="Bullish Divergence", style=shape.triangleup, color=color.lime, location=location.belowbar, size=size.small, text="HL↑", textcolor=color.white)
+plotshape(bearishLH, title="Bearish Divergence", style=shape.triangledown, color=color.red, location=location.abovebar, size=size.small, text="LH↓", textcolor=color.white)
+
+if bullishHL
+    label.new(bar_index, low, "Stoch HL ↑", style=label.style_label_up, color=color.new(color.lime, 0), textcolor=color.white, yloc=yloc.belowbar)
+
+if bearishLH
+    label.new(bar_index, high, "Stoch LH ↓", style=label.style_label_down, color=color.new(color.red, 0), textcolor=color.white, yloc=yloc.abovebar)
+
+// === Table 顯示 ===
+var table resultTable = table.new(position.top_right, 2, 7, border_width=1)
+if barstate.islast
+    table.cell(resultTable, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.gray, 60))
+    table.cell(resultTable, 1, 0, "Status", text_color=color.white, bgcolor=color.new(color.gray, 60))
+    table.cell(resultTable, 0, 1, "MACD", text_color=color.white)
+    table.cell(resultTable, 1, 1, macdCondition, text_color=color.white)
+    table.cell(resultTable, 0, 2, "Stochastic", text_color=color.white)
+    table.cell(resultTable, 1, 2, stochCondition, text_color=color.white)
+    table.cell(resultTable, 0, 3, "Quad Stoch", text_color=color.white)
+    table.cell(resultTable, 1, 3, quadStochCondition + " (" + str.tostring(stochExitCount) + "/4)", text_color=quadStochCondition == "Strong Bull" ? color.new(color.lime, 0) : quadStochCondition == "Bullish" ? color.lime : quadStochCondition == "Strong Bear" ? color.new(color.red, 0) : quadStochCondition == "Bearish" ? color.red : color.white)
+    table.cell(resultTable, 0, 4, "Stoch Divergence", text_color=color.white)
+    table.cell(resultTable, 1, 4, stochDivergence, text_color=bullishHL ? color.lime : bearishLH ? color.red : color.white)
+    table.cell(resultTable, 0, 5, "Final Signal", text_color=color.white, bgcolor=color.new(color.gray, 80))
+    table.cell(resultTable, 1, 5, finalSignal, text_color=finalSignal == "Super Long" ? color.new(color.lime, 0) : finalSignal == "Strong Long" ? color.lime : finalSignal == "Long" ? color.new(color.lime, 20) : finalSignal == "Quad Strong Bull" ? color.new(color.lime, 10) : finalSignal == "Quad Bullish" ? color.new(color.lime, 30) : finalSignal == "Short" ? color.new(color.red, 20) : finalSignal == "Strong Short" ? color.red : finalSignal == "Super Short" ? color.new(color.red, 0) : finalSignal == "Quad Strong Bear" ? color.new(color.red, 10) : finalSignal == "Quad Bearish" ? color.new(color.red, 30) : color.white, bgcolor=color.new(color.black, 0))
+    table.cell(resultTable, 0, 6, "MACD (10,75,25)", text_color=color.new(color.gray, 60))
+    table.cell(resultTable, 1, 6, "", text_color=color.new(color.gray, 60))
+
+// === Background Color Based on Quad Stoch ===
+// Green background when quad stoch average > 50 and rising
+// Red background when quad stoch average < 50 and falling
+bgColorCondition = stochAvg > 50 and stochUp ? color.new(color.green, 95)
+   : stochAvg < 50 and stochDown ? color.new(color.red, 95)
+   : na
+
+bgcolor(bgColorCondition, title="Quad Stoch Background")
+
+// === Plot ===
+plot(macdLine, color=color.new(color.aqua, 0), title="MACD Line")
+plot(signalLine, color=color.new(color.orange, 0), title="Signal Line")
+hline(0, 'Zero Line', color=color.new(color.gray, 60))

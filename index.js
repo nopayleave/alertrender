@@ -192,6 +192,9 @@ app.post('/webhook', (req, res) => {
     if (existingIndex !== -1) {
       alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
       alerts[existingIndex].macdCrossingTimestamp = alert.macdCrossingTimestamp
+      if (alert.macd !== undefined) alerts[existingIndex].macd = alert.macd
+      if (alert.macdSignal !== undefined) alerts[existingIndex].macdSignal = alert.macdSignal
+      if (alert.macdHistogram !== undefined) alerts[existingIndex].macdHistogram = alert.macdHistogram
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
     }
@@ -347,6 +350,9 @@ app.post('/webhook', (req, res) => {
         // MACD crossing is recent (within 15 minutes), mark it
         alertData.macdCrossingSignal = macdCrossingInfo.signal
         alertData.macdCrossingTimestamp = macdCrossingInfo.timestamp
+        if (macdCrossingInfo.macd !== undefined) alertData.macd = macdCrossingInfo.macd
+        if (macdCrossingInfo.macdSignal !== undefined) alertData.macdSignal = macdCrossingInfo.macdSignal
+        if (macdCrossingInfo.macdHistogram !== undefined) alertData.macdHistogram = macdCrossingInfo.macdHistogram
         console.log(`✅ Merged MACD crossing signal for ${alert.symbol}: ${macdCrossingInfo.signal} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
@@ -359,6 +365,9 @@ app.post('/webhook', (req, res) => {
       if (alert.macdCrossingSignal) {
         alertData.macdCrossingSignal = alert.macdCrossingSignal
         alertData.macdCrossingTimestamp = alert.macdCrossingTimestamp
+        if (alert.macd !== undefined) alertData.macd = alert.macd
+        if (alert.macdSignal !== undefined) alertData.macdSignal = alert.macdSignal
+        if (alert.macdHistogram !== undefined) alertData.macdHistogram = alert.macdHistogram
         console.log(`✅ Using MACD crossing signal from alert for ${alert.symbol}: ${alert.macdCrossingSignal}`)
       } else {
         alertData.macdCrossingSignal = null
@@ -1558,6 +1567,13 @@ app.get('/', (req, res) => {
               macdCrossingDisplay = 'M = S';
               macdCrossingClass = 'text-gray-400 font-semibold';
               macdCrossingTitle = 'MACD line equals Signal line (Neutral)';
+            }
+
+            // Append MACD line numeric value if available
+            const macdNumeric = alert.macd;
+            if (macdNumeric !== undefined && macdNumeric !== null && !isNaN(parseFloat(macdNumeric))) {
+              macdCrossingDisplay = `${macdCrossingDisplay} (${parseFloat(macdNumeric).toFixed(2)})`;
+              macdCrossingTitle = `${macdCrossingTitle} | MACD: ${parseFloat(macdNumeric).toFixed(2)}`;
             }
             
             return \`
