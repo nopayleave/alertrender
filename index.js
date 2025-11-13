@@ -1011,8 +1011,8 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price & % difference">
                       VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwapPosition')" title="VWAP Band Zone">
-                      Position <span id="sort-vwapPosition" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Quad Stochastic Trend Analysis">
+                      Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('quadStoch')" title="Quad Stochastic D4 Value">
                       QS D4 Value <span id="sort-quadStoch" class="ml-1 text-xs">⇅</span>
@@ -1098,7 +1098,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'vwap', 'vwapPosition', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'vwap', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1124,8 +1124,60 @@ app.get('/', (req, res) => {
               return parseFloat(alert.price) || 0;
             case 'vwap':
               return parseFloat(alert.vwap) || 0;
-            case 'vwapPosition':
-              return alert.vwapRemark || '';
+            case 'trend':
+              // Sort by trend priority
+              const trendOrder = {
+                'Bounce': 10,
+                'Up Day': 9,
+                'Up': 8,
+                'Bullish': 7,
+                'Overbought': 6,
+                'Neutral': 5,
+                'Oversold': 4,
+                'Bearish': 3,
+                'Down': 2,
+                'Down Day': 1,
+                'Pullback': 0
+              };
+              // Calculate trend for sorting (reuse same logic)
+              const d1Dir_sort = alert.d1Direction || 'flat';
+              const d2Dir_sort = alert.d2Direction || 'flat';
+              const d3Dir_sort = alert.d3Direction || 'flat';
+              const d4Dir_sort = alert.d4Direction || 'flat';
+              const d1Val_sort = parseFloat(alert.d1Value) || 0;
+              const d2Val_sort = parseFloat(alert.d2Value) || 0;
+              const d3Val_sort = parseFloat(alert.d3Value) || 0;
+              const d4Val_sort = parseFloat(alert.quadStochD4) || 0;
+              const allDown_sort = d1Dir_sort === 'down' && d2Dir_sort === 'down' && d3Dir_sort === 'down' && d4Dir_sort === 'down';
+              const allUp_sort = d1Dir_sort === 'up' && d2Dir_sort === 'up' && d3Dir_sort === 'up' && d4Dir_sort === 'up';
+              const d123Above50_sort = d1Val_sort > 50 && d2Val_sort > 50 && d3Val_sort > 50;
+              const d123Below50_sort = d1Val_sort < 50 && d2Val_sort < 50 && d3Val_sort < 50;
+              const d123Above70_sort = d1Val_sort > 70 && d2Val_sort > 70 && d3Val_sort > 70;
+              const d123Below30_sort = d1Val_sort < 30 && d2Val_sort < 30 && d3Val_sort < 30;
+              
+              let trend_sort = 'Neutral';
+              if (d4Val_sort < 25 && d4Dir_sort === 'up' && d123Above50_sort) {
+                trend_sort = 'Bounce';
+              } else if (d4Val_sort > 75 && d4Dir_sort === 'down' && d123Below50_sort) {
+                trend_sort = 'Pullback';
+              } else if (d123Above70_sort) {
+                trend_sort = 'Overbought';
+              } else if (d123Below30_sort) {
+                trend_sort = 'Oversold';
+              } else if (d4Val_sort < 25) {
+                trend_sort = 'Down Day';
+              } else if (d4Val_sort > 75) {
+                trend_sort = 'Up Day';
+              } else if (allDown_sort) {
+                trend_sort = 'Down';
+              } else if (allUp_sort) {
+                trend_sort = 'Up';
+              } else if (d4Val_sort > 50 && d4Dir_sort === 'up') {
+                trend_sort = 'Bullish';
+              } else if (d4Val_sort < 50 && d4Dir_sort === 'down') {
+                trend_sort = 'Bearish';
+              }
+              return trendOrder[trend_sort] || 5;
             case 'quadStoch':
               // Sort by D4 value numerically
               return parseFloat(alert.quadStochD4) || 0;
@@ -1425,6 +1477,67 @@ app.get('/', (req, res) => {
             
             const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
             
+            // === TREND ANALYSIS ===
+            // Calculate trend based on D1, D2, D3, D4 values and directions
+            let trendDisplay = 'Neutral';
+            let trendClass = 'text-gray-400';
+            let trendTitle = 'Trend analysis';
+            
+            const d1Val = parseFloat(alert.d1Value) || 0;
+            const d2Val = parseFloat(alert.d2Value) || 0;
+            const d3Val = parseFloat(alert.d3Value) || 0;
+            const d4Val_trend = parseFloat(alert.quadStochD4) || 0;
+            
+            const allDown = d1Dir === 'down' && d2Dir === 'down' && d3Dir === 'down' && d4Dir === 'down';
+            const allUp = d1Dir === 'up' && d2Dir === 'up' && d3Dir === 'up' && d4Dir === 'up';
+            const d123Above50 = d1Val > 50 && d2Val > 50 && d3Val > 50;
+            const d123Below50 = d1Val < 50 && d2Val < 50 && d3Val < 50;
+            const d123Above70 = d1Val > 70 && d2Val > 70 && d3Val > 70;
+            const d123Below30 = d1Val < 30 && d2Val < 30 && d3Val < 30;
+            
+            // Priority order for trend determination
+            if (d4Val_trend < 25 && d4Dir === 'up' && d123Above50) {
+              trendDisplay = 'Bounce';
+              trendClass = 'text-lime-400 font-bold';
+              trendTitle = 'D4 < 25 going up, D1/D2/D3 > 50 - Bounce signal';
+            } else if (d4Val_trend > 75 && d4Dir === 'down' && d123Below50) {
+              trendDisplay = 'Pullback';
+              trendClass = 'text-orange-400 font-bold';
+              trendTitle = 'D4 > 75 going down, D1/D2/D3 < 50 - Pullback signal';
+            } else if (d123Above70) {
+              trendDisplay = 'Overbought';
+              trendClass = 'text-red-300 font-semibold';
+              trendTitle = 'D1, D2, D3 all > 70 - Overbought zone';
+            } else if (d123Below30) {
+              trendDisplay = 'Oversold';
+              trendClass = 'text-lime-300 font-semibold';
+              trendTitle = 'D1, D2, D3 all < 30 - Oversold zone';
+            } else if (d4Val_trend < 25) {
+              trendDisplay = 'Down Day';
+              trendClass = 'text-red-400 font-bold';
+              trendTitle = 'D4 < 25 - Strong bearish';
+            } else if (d4Val_trend > 75) {
+              trendDisplay = 'Up Day';
+              trendClass = 'text-green-400 font-bold';
+              trendTitle = 'D4 > 75 - Strong bullish';
+            } else if (allDown) {
+              trendDisplay = 'Down';
+              trendClass = 'text-red-400';
+              trendTitle = 'All D1/D2/D3/D4 going down';
+            } else if (allUp) {
+              trendDisplay = 'Up';
+              trendClass = 'text-green-400';
+              trendTitle = 'All D1/D2/D3/D4 going up';
+            } else if (d4Val_trend > 50 && d4Dir === 'up') {
+              trendDisplay = 'Bullish';
+              trendClass = 'text-green-400';
+              trendTitle = 'D4 > 50 and going up';
+            } else if (d4Val_trend < 50 && d4Dir === 'down') {
+              trendDisplay = 'Bearish';
+              trendClass = 'text-red-400';
+              trendTitle = 'D4 < 50 and going down';
+            }
+            
             // Check if QS values changed recently (within last 2 minutes) and determine color
             const qsChangeAge = alert.qsChangeTimestamp ? (Date.now() - alert.qsChangeTimestamp) / 60000 : 999;
             const d4RecentlyChanged = alert.qsD4Changed && qsChangeAge <= 2;
@@ -1593,7 +1706,7 @@ app.get('/', (req, res) => {
                   $\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="\${vwapDiffColor} text-sm">\${vwapDiffDisplay}</span>
                 </td>
-                <td class="py-3 px-4 font-bold \${positionClass}" title="VWAP Band Zone">\${alert.vwapRemark || 'N/A'}</td>
+                <td class="py-3 px-4 font-bold \${trendClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
