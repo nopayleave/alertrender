@@ -1685,8 +1685,8 @@ app.get('/', (req, res) => {
             // Append MACD line numeric value if available
             const macdNumeric = alert.macd;
             if (macdNumeric !== undefined && macdNumeric !== null && !isNaN(parseFloat(macdNumeric))) {
-              macdCrossingDisplay = `${macdCrossingDisplay} (${parseFloat(macdNumeric).toFixed(2)})`;
-              macdCrossingTitle = `${macdCrossingTitle} | MACD: ${parseFloat(macdNumeric).toFixed(2)}`;
+              macdCrossingDisplay = \`\${macdCrossingDisplay} (\${parseFloat(macdNumeric).toFixed(2)})\`;
+              macdCrossingTitle = \`\${macdCrossingTitle} | MACD: \${parseFloat(macdNumeric).toFixed(2)}\`;
             }
             
             return \`
