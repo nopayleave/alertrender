@@ -1483,17 +1483,21 @@ app.get('/', (req, res) => {
             let trendClass = 'text-gray-400';
             let trendTitle = 'Trend analysis';
             
-            const d1Val = parseFloat(alert.d1Value) || 0;
-            const d2Val = parseFloat(alert.d2Value) || 0;
-            const d3Val = parseFloat(alert.d3Value) || 0;
+            const d1Val = parseFloat(alert.d1Value);
+            const d2Val = parseFloat(alert.d2Value);
+            const d3Val = parseFloat(alert.d3Value);
             const d4Val_trend = parseFloat(alert.quadStochD4) || 0;
+            
+            // Check if D1, D2, D3 values are valid (not NaN, null, or undefined)
+            const hasValidD123 = !isNaN(d1Val) && !isNaN(d2Val) && !isNaN(d3Val) && 
+                                 d1Val !== null && d2Val !== null && d3Val !== null;
             
             const allDown = d1Dir === 'down' && d2Dir === 'down' && d3Dir === 'down' && d4Dir === 'down';
             const allUp = d1Dir === 'up' && d2Dir === 'up' && d3Dir === 'up' && d4Dir === 'up';
-            const d123Above50 = d1Val > 50 && d2Val > 50 && d3Val > 50;
-            const d123Below50 = d1Val < 50 && d2Val < 50 && d3Val < 50;
-            const d123Above70 = d1Val > 70 && d2Val > 70 && d3Val > 70;
-            const d123Below30 = d1Val < 30 && d2Val < 30 && d3Val < 30;
+            const d123Above50 = hasValidD123 && d1Val > 50 && d2Val > 50 && d3Val > 50;
+            const d123Below50 = hasValidD123 && d1Val < 50 && d2Val < 50 && d3Val < 50;
+            const d123Above70 = hasValidD123 && d1Val > 70 && d2Val > 70 && d3Val > 70;
+            const d123Below30 = hasValidD123 && d1Val < 30 && d2Val < 30 && d3Val < 30;
             
             // Priority order for trend determination
             if (d4Val_trend < 25 && d4Dir === 'up' && d123Above50) {
