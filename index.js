@@ -1763,37 +1763,101 @@ app.get('/', (req, res) => {
               macdCrossingClass = 'text-orange-400 font-semibold';
               macdCrossingTitle = 'Signal line crosses below zero';
             }
-            // Position States - Simplified descriptions
+            // Position States - Check MACD trend direction by comparing with previous alert
             else if (macdCrossingSignal === 'M > S') {
-              const macdNumeric = alert.macd;
-              const macdValue = macdNumeric !== undefined && macdNumeric !== null && !isNaN(parseFloat(macdNumeric)) ? parseFloat(macdNumeric) : 0;
+              const macdValue = parseFloat(alert.macd) || 0;
+              const signalValue = parseFloat(alert.macdSignal) || 0;
               
-              if (macdValue > 0) {
-                macdCrossingDisplay = 'Drop in Uptrend';
+              // Find previous alert for same symbol to detect MACD trend
+              const prevAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol && a.macd !== undefined);
+              let macdTrending = 'flat';
+              
+              if (prevAlert && prevAlert.macd !== undefined) {
+                const prevMacdValue = parseFloat(prevAlert.macd) || 0;
+                if (macdValue > prevMacdValue) {
+                  macdTrending = 'up';
+                } else if (macdValue < prevMacdValue) {
+                  macdTrending = 'down';
+                }
+              }
+              
+              // Show M and S values for debugging
+              const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
+              
+              // Determine display based on MACD trend direction
+              if (macdTrending === 'down') {
+                macdCrossingDisplay = \`Down \${valueDisplay}\`;
+                macdCrossingClass = 'text-orange-400 font-semibold';
+                macdCrossingTitle = \`M > S but MACD trending down - M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
+              } else if (macdValue > 0) {
+                macdCrossingDisplay = \`Drop in Uptrend \${valueDisplay}\`;
                 macdCrossingClass = 'text-orange-400 font-semibold';
                 macdCrossingTitle = \`M > S (>\${macdValue.toFixed(2)}) - Drop in uptrend\`;
               } else {
-                macdCrossingDisplay = 'Up in Uptrend';
+                macdCrossingDisplay = \`Up in Uptrend \${valueDisplay}\`;
                 macdCrossingClass = 'text-green-400 font-semibold';
                 macdCrossingTitle = \`M > S (<\${macdValue.toFixed(2)}) - Up in uptrend\`;
               }
             } else if (macdCrossingSignal === 'M < S') {
-              const macdNumeric = alert.macd;
-              const macdValue = macdNumeric !== undefined && macdNumeric !== null && !isNaN(parseFloat(macdNumeric)) ? parseFloat(macdNumeric) : 0;
+              const macdValue = parseFloat(alert.macd) || 0;
+              const signalValue = parseFloat(alert.macdSignal) || 0;
               
-              if (macdValue > 0) {
-                macdCrossingDisplay = 'Drop in Downtrend';
+              // Find previous alert for same symbol to detect MACD trend
+              const prevAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol && a.macd !== undefined);
+              let macdTrending = 'flat';
+              
+              if (prevAlert && prevAlert.macd !== undefined) {
+                const prevMacdValue = parseFloat(prevAlert.macd) || 0;
+                if (macdValue > prevMacdValue) {
+                  macdTrending = 'up';
+                } else if (macdValue < prevMacdValue) {
+                  macdTrending = 'down';
+                }
+              }
+              
+              // Show M and S values for debugging
+              const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
+              
+              // Determine display based on MACD trend direction
+              if (macdTrending === 'up') {
+                macdCrossingDisplay = \`Up \${valueDisplay}\`;
+                macdCrossingClass = 'text-lime-400 font-semibold';
+                macdCrossingTitle = \`M < S but MACD trending up - M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
+              } else if (macdValue > 0) {
+                macdCrossingDisplay = \`Drop in Downtrend \${valueDisplay}\`;
                 macdCrossingClass = 'text-red-400 font-semibold';
                 macdCrossingTitle = \`M < S (>\${macdValue.toFixed(2)}) - Drop in downtrend\`;
               } else {
-                macdCrossingDisplay = 'Up in Downtrend';
+                macdCrossingDisplay = \`Up in Downtrend \${valueDisplay}\`;
                 macdCrossingClass = 'text-lime-400 font-semibold';
                 macdCrossingTitle = \`M < S (<\${macdValue.toFixed(2)}) - Up in downtrend\`;
               }
             } else if (macdCrossingSignal === 'M = S') {
-              macdCrossingDisplay = 'M = S';
+              const macdValue = parseFloat(alert.macd) || 0;
+              const signalValue = parseFloat(alert.macdSignal) || 0;
+              macdCrossingDisplay = \`M = S M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
               macdCrossingClass = 'text-gray-400 font-semibold';
               macdCrossingTitle = 'MACD line equals Signal line (Neutral)';
+            }
+            
+            // QS D4 Value gradient color (0-100 scale)
+            let d4ValueClass = 'text-foreground';
+            const d4Value = parseFloat(alert.quadStochD4);
+            if (!isNaN(d4Value)) {
+              // Gradient from red (0) → yellow (50) → green (100)
+              if (d4Value >= 75) {
+                d4ValueClass = 'text-green-400 font-bold'; // 75-100: Strong green
+              } else if (d4Value >= 60) {
+                d4ValueClass = 'text-green-500 font-semibold'; // 60-75: Green
+              } else if (d4Value >= 50) {
+                d4ValueClass = 'text-lime-400 font-semibold'; // 50-60: Lime
+              } else if (d4Value >= 40) {
+                d4ValueClass = 'text-yellow-400 font-semibold'; // 40-50: Yellow
+              } else if (d4Value >= 25) {
+                d4ValueClass = 'text-orange-400 font-semibold'; // 25-40: Orange
+              } else {
+                d4ValueClass = 'text-red-400 font-bold'; // 0-25: Red
+              }
             }
             
             return \`
@@ -1816,7 +1880,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono font-semibold text-foreground" title="Quad Stochastic D4 Value">\${alert.quadStochD4 ? parseFloat(alert.quadStochD4).toFixed(2) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Quad Stochastic D4 Value (0-100)">\${alert.quadStochD4 ? parseFloat(alert.quadStochD4).toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
