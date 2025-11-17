@@ -15,8 +15,9 @@ let dayVolumeData = {} // Store daily volume data by symbol
 let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
 let quadStochData = {} // Store Quad Stochastic crossing status by symbol with timestamp
 let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
+let octoStochData = {} // Store Octo Stochastic (8 stoch) data by symbol
 let previousQSValues = {} // Store previous QS values to detect changes
-let previousDirections = {} // Store previous D1/D2/D3/D4 directions to detect switches
+let previousDirections = {} // Store previous D1-D8 directions to detect switches
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 
@@ -64,13 +65,15 @@ app.post('/webhook', (req, res) => {
   // - Day script: contains changeFromPrevDay and volume but missing price (handles Chg% and Vol columns)
   // - VWAP Crossing alert: contains vwapCrossing flag
   // - Quad Stochastic D1/D2 alert: contains quadStochSignal
-  // - Quad Stochastic D4 alert: contains d4Signal field
+  // - Quad Stochastic D4 alert: contains d4Signal field (old 4-stoch)
+  // - Octo Stochastic alert: contains d8Signal field (new 8-stoch)
   // - MACD Crossing alert: contains macdCrossingSignal field
   // - Main script (again.pine): contains price and signals (handles Price and Signal columns)
   const isDayChangeAlert = alert.changeFromPrevDay !== undefined && !alert.price
   const isVwapCrossingAlert = alert.vwapCrossing === true || alert.vwapCrossing === 'true'
   const isQuadStochAlert = alert.quadStochSignal !== undefined
   const isQuadStochD4Alert = alert.d4Signal !== undefined
+  const isOctoStochAlert = alert.d8Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   
   // Log alert type detection for debugging
@@ -79,6 +82,7 @@ app.post('/webhook', (req, res) => {
     isVwapCrossingAlert,
     isQuadStochAlert,
     isQuadStochD4Alert,
+    isOctoStochAlert,
     isMacdCrossingAlert,
     symbol: alert.symbol
   })
@@ -216,6 +220,112 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     }
+  } else if (isOctoStochAlert && !alert.price) {
+    // Octo Stochastic (8-stoch) alert - store all 8 stochastic data
+    const prevOcto = previousQSValues[alert.symbol] || {}
+    const prevDir = previousDirections[alert.symbol] || {}
+    
+    // Detect direction switches for D1 and D7
+    const d1Switched = prevDir.d1 && prevDir.d1 !== alert.d1Direction
+    const d7Switched = prevDir.d7 && prevDir.d7 !== alert.d7Direction
+    
+    // Detect specific switch types for trend analysis
+    const d1SwitchedToUp = d1Switched && alert.d1Direction === 'up'
+    const d1SwitchedToDown = d1Switched && alert.d1Direction === 'down'
+    const d7SwitchedToUp = d7Switched && alert.d7Direction === 'up'
+    const d7SwitchedToDown = d7Switched && alert.d7Direction === 'down'
+    
+    // Store Octo Stochastic data
+    octoStochData[alert.symbol] = {
+      d1: alert.d1,
+      d2: alert.d2,
+      d3: alert.d3,
+      d4: alert.d4,
+      d5: alert.d5,
+      d6: alert.d6,
+      d7: alert.d7,
+      d8: alert.d8,
+      d1Direction: alert.d1Direction,
+      d2Direction: alert.d2Direction,
+      d3Direction: alert.d3Direction,
+      d4Direction: alert.d4Direction,
+      d5Direction: alert.d5Direction,
+      d6Direction: alert.d6Direction,
+      d7Direction: alert.d7Direction,
+      d8Direction: alert.d8Direction,
+      d8Signal: alert.d8Signal,
+      d1d2Cross: alert.d1d2Cross,
+      timeframe1_4: alert.timeframe1_4,
+      timeframe5_8: alert.timeframe5_8,
+      d1SwitchedToUp: d1SwitchedToUp,
+      d1SwitchedToDown: d1SwitchedToDown,
+      d7SwitchedToUp: d7SwitchedToUp,
+      d7SwitchedToDown: d7SwitchedToDown,
+      timestamp: Date.now()
+    }
+    
+    // Store current values as previous for next comparison
+    previousQSValues[alert.symbol] = {
+      d1: alert.d1,
+      d2: alert.d2,
+      d3: alert.d3,
+      d4: alert.d4,
+      d5: alert.d5,
+      d6: alert.d6,
+      d7: alert.d7,
+      d8: alert.d8,
+      d1Direction: alert.d1Direction,
+      d2Direction: alert.d2Direction,
+      d3Direction: alert.d3Direction,
+      d4Direction: alert.d4Direction,
+      d5Direction: alert.d5Direction,
+      d6Direction: alert.d6Direction,
+      d7Direction: alert.d7Direction,
+      d8Direction: alert.d8Direction
+    }
+    
+    // Store current directions as previous for next comparison
+    previousDirections[alert.symbol] = {
+      d1: alert.d1Direction,
+      d2: alert.d2Direction,
+      d3: alert.d3Direction,
+      d4: alert.d4Direction,
+      d5: alert.d5Direction,
+      d6: alert.d6Direction,
+      d7: alert.d7Direction,
+      d8: alert.d8Direction
+    }
+    
+    console.log(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D8 Signal=${alert.d8Signal}`)
+    
+    // Also update existing alert if it exists (don't create new one)
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].octoStochD1 = alert.d1
+      alerts[existingIndex].octoStochD2 = alert.d2
+      alerts[existingIndex].octoStochD3 = alert.d3
+      alerts[existingIndex].octoStochD4 = alert.d4
+      alerts[existingIndex].octoStochD5 = alert.d5
+      alerts[existingIndex].octoStochD6 = alert.d6
+      alerts[existingIndex].octoStochD7 = alert.d7
+      alerts[existingIndex].octoStochD8 = alert.d8
+      alerts[existingIndex].d1Direction = alert.d1Direction
+      alerts[existingIndex].d2Direction = alert.d2Direction
+      alerts[existingIndex].d3Direction = alert.d3Direction
+      alerts[existingIndex].d4Direction = alert.d4Direction
+      alerts[existingIndex].d5Direction = alert.d5Direction
+      alerts[existingIndex].d6Direction = alert.d6Direction
+      alerts[existingIndex].d7Direction = alert.d7Direction
+      alerts[existingIndex].d8Direction = alert.d8Direction
+      alerts[existingIndex].d8Signal = alert.d8Signal
+      alerts[existingIndex].d1d2Cross = alert.d1d2Cross
+      alerts[existingIndex].d1SwitchedToUp = d1SwitchedToUp
+      alerts[existingIndex].d1SwitchedToDown = d1SwitchedToDown
+      alerts[existingIndex].d7SwitchedToUp = d7SwitchedToUp
+      alerts[existingIndex].d7SwitchedToDown = d7SwitchedToDown
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
+    }
   } else if (isMacdCrossingAlert && !alert.price) {
     // MACD Crossing alert - store crossing signal with timestamp
     macdCrossingData[alert.symbol] = {
@@ -351,43 +461,82 @@ app.post('/webhook', (req, res) => {
       alertData.quadStochSignal = null
     }
     
-    // Check and add Quad Stochastic D4 trend status if active (within last 60 minutes)
-    const quadStochD4Info = quadStochD4Data[alert.symbol]
-    if (quadStochD4Info && quadStochD4Info.signal) {
-      const ageInMinutes = (Date.now() - quadStochD4Info.timestamp) / 60000
+    // Check and add Octo Stochastic data if active (within last 60 minutes) - PRIORITY
+    const octoStochInfo = octoStochData[alert.symbol]
+    if (octoStochInfo) {
+      const ageInMinutes = (Date.now() - octoStochInfo.timestamp) / 60000
       if (ageInMinutes <= 60) {
-        // D4 signal is recent (within 30 minutes), mark it
-        alertData.quadStochD4Signal = quadStochD4Info.signal
-        alertData.quadStochD1 = quadStochD4Info.d1
-        alertData.quadStochD2 = quadStochD4Info.d2
-        alertData.quadStochD3 = quadStochD4Info.d3
-        alertData.quadStochD4 = quadStochD4Info.d4
-        alertData.d1Direction = quadStochD4Info.d1Direction
-        alertData.d2Direction = quadStochD4Info.d2Direction
-        alertData.d3Direction = quadStochD4Info.d3Direction
-        alertData.d4Direction = quadStochD4Info.d4Direction
-        alertData.qsD4Changed = quadStochD4Info.d4Changed
-        alertData.qsDirectionChanged = quadStochD4Info.directionChanged
-        alertData.qsChangeDirection = quadStochD4Info.changeDirection
-        alertData.qsArrowChangeDirection = quadStochD4Info.arrowChangeDirection
-        alertData.qsChangeTimestamp = quadStochD4Info.changeTimestamp
-        alertData.d2SwitchedToDown = quadStochD4Info.d2SwitchedToDown
-        alertData.d3SwitchedToUp = quadStochD4Info.d3SwitchedToUp
-        alertData.d3SwitchedToDown = quadStochD4Info.d3SwitchedToDown
-        alertData.d1CrossedUnder75 = quadStochD4Info.d1CrossedUnder75
-        alertData.d2CrossedUnder75 = quadStochD4Info.d2CrossedUnder75
-        alertData.d1CrossedAbove50 = quadStochD4Info.d1CrossedAbove50
-        alertData.d2CrossedAbove50 = quadStochD4Info.d2CrossedAbove50
-        alertData.d4CrossedAbove25 = quadStochD4Info.d4CrossedAbove25
-        console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
+        // Octo Stoch data is recent, use it (overrides Quad Stoch D4)
+        alertData.octoStochD1 = octoStochInfo.d1
+        alertData.octoStochD2 = octoStochInfo.d2
+        alertData.octoStochD3 = octoStochInfo.d3
+        alertData.octoStochD4 = octoStochInfo.d4
+        alertData.octoStochD5 = octoStochInfo.d5
+        alertData.octoStochD6 = octoStochInfo.d6
+        alertData.octoStochD7 = octoStochInfo.d7
+        alertData.octoStochD8 = octoStochInfo.d8
+        alertData.d1Direction = octoStochInfo.d1Direction
+        alertData.d2Direction = octoStochInfo.d2Direction
+        alertData.d3Direction = octoStochInfo.d3Direction
+        alertData.d4Direction = octoStochInfo.d4Direction
+        alertData.d5Direction = octoStochInfo.d5Direction
+        alertData.d6Direction = octoStochInfo.d6Direction
+        alertData.d7Direction = octoStochInfo.d7Direction
+        alertData.d8Direction = octoStochInfo.d8Direction
+        alertData.d8Signal = octoStochInfo.d8Signal
+        alertData.d1d2Cross = octoStochInfo.d1d2Cross
+        alertData.d1SwitchedToUp = octoStochInfo.d1SwitchedToUp
+        alertData.d1SwitchedToDown = octoStochInfo.d1SwitchedToDown
+        alertData.d7SwitchedToUp = octoStochInfo.d7SwitchedToUp
+        alertData.d7SwitchedToDown = octoStochInfo.d7SwitchedToDown
+        alertData.timeframe1_4 = octoStochInfo.timeframe1_4
+        alertData.timeframe5_8 = octoStochInfo.timeframe5_8
+        console.log(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
-        // Signal is old, expire it
-        delete quadStochD4Data[alert.symbol]
-        alertData.quadStochD4Signal = null
-        console.log(`⏰ D4 signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        // Data is old, expire it
+        delete octoStochData[alert.symbol]
+        console.log(`⏰ Octo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
-    } else {
-      alertData.quadStochD4Signal = null
+    }
+    // FALLBACK: Check and add Quad Stochastic D4 trend status if active (within last 60 minutes) and no Octo data
+    else {
+      const quadStochD4Info = quadStochD4Data[alert.symbol]
+      if (quadStochD4Info && quadStochD4Info.signal) {
+        const ageInMinutes = (Date.now() - quadStochD4Info.timestamp) / 60000
+        if (ageInMinutes <= 60) {
+          // D4 signal is recent (within 30 minutes), mark it
+          alertData.quadStochD4Signal = quadStochD4Info.signal
+          alertData.quadStochD1 = quadStochD4Info.d1
+          alertData.quadStochD2 = quadStochD4Info.d2
+          alertData.quadStochD3 = quadStochD4Info.d3
+          alertData.quadStochD4 = quadStochD4Info.d4
+          alertData.d1Direction = quadStochD4Info.d1Direction
+          alertData.d2Direction = quadStochD4Info.d2Direction
+          alertData.d3Direction = quadStochD4Info.d3Direction
+          alertData.d4Direction = quadStochD4Info.d4Direction
+          alertData.qsD4Changed = quadStochD4Info.d4Changed
+          alertData.qsDirectionChanged = quadStochD4Info.directionChanged
+          alertData.qsChangeDirection = quadStochD4Info.changeDirection
+          alertData.qsArrowChangeDirection = quadStochD4Info.arrowChangeDirection
+          alertData.qsChangeTimestamp = quadStochD4Info.changeTimestamp
+          alertData.d2SwitchedToDown = quadStochD4Info.d2SwitchedToDown
+          alertData.d3SwitchedToUp = quadStochD4Info.d3SwitchedToUp
+          alertData.d3SwitchedToDown = quadStochD4Info.d3SwitchedToDown
+          alertData.d1CrossedUnder75 = quadStochD4Info.d1CrossedUnder75
+          alertData.d2CrossedUnder75 = quadStochD4Info.d2CrossedUnder75
+          alertData.d1CrossedAbove50 = quadStochD4Info.d1CrossedAbove50
+          alertData.d2CrossedAbove50 = quadStochD4Info.d2CrossedAbove50
+          alertData.d4CrossedAbove25 = quadStochD4Info.d4CrossedAbove25
+          console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
+        } else {
+          // Signal is old, expire it
+          delete quadStochD4Data[alert.symbol]
+          alertData.quadStochD4Signal = null
+          console.log(`⏰ D4 signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        }
+      } else {
+        alertData.quadStochD4Signal = null
+      }
     }
     
     // Check and add MACD crossing status if active (within last 15 minutes)
@@ -456,6 +605,7 @@ app.post('/webhook', (req, res) => {
                isVwapCrossingAlert ? 'vwap_crossing' :
                isQuadStochAlert ? 'quad_stoch' :
                isQuadStochD4Alert ? 'quad_stoch_d4' :
+               isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' : 'main_script',
     timestamp: Date.now()
   })
@@ -496,6 +646,7 @@ app.get('/debug', (req, res) => {
     historyCount: alertsHistory.length,
     latestAlerts: alerts.slice(0, 5),
     quadStochD4Data: quadStochD4Data,
+    octoStochData: octoStochData,
     quadStochData: quadStochData,
     vwapCrossingData: vwapCrossingData,
     macdCrossingData: macdCrossingData,
@@ -512,6 +663,7 @@ app.post('/reset-alerts', (req, res) => {
   vwapCrossingData = {}
   quadStochData = {}
   quadStochD4Data = {}
+  octoStochData = {}
   previousQSValues = {}
   previousDirections = {}
   previousPrices = {}
@@ -1178,73 +1330,49 @@ app.get('/', (req, res) => {
             case 'vwap':
               return parseFloat(alert.vwap) || 0;
             case 'trend':
-              // Sort by trend priority
+              // Sort by trend priority (NEW D1 & D7 BASED)
               const trendOrder = {
-                'Keep Hi Up': 8,
-                'Bounce Support': 7,
-                'Trend Up': 6,
-                'Bull Trend Break?': 5,
-                'Neutral': 4,
-                'Bear Trend Break?': 3,
-                'Trend Down': 2,
-                'Bounce Reject': 1,
-                'Keep Low Down': 0
+                'Very Long': 10,
+                'Try Long': 8,
+                'Switch Long': 7,
+                'Neutral': 5,
+                'Switch Short': 4,
+                'Try Short': 3,
+                'Very Short': 1
               };
-              // Calculate trend for sorting (reuse same logic)
+              // Calculate trend for sorting using D1 and D7
               const d1Dir_sort = alert.d1Direction || 'flat';
-              const d2Dir_sort = alert.d2Direction || 'flat';
-              const d3Dir_sort = alert.d3Direction || 'flat';
-              const d4Dir_sort = alert.d4Direction || 'flat';
-              const d1Val_sort = parseFloat(alert.d1Value) || 0;
-              const d2Val_sort = parseFloat(alert.d2Value) || 0;
-              const d3Val_sort = parseFloat(alert.d3Value) || 0;
-              const d4Val_sort = parseFloat(alert.quadStochD4) || 0;
-              const allDown_sort = d1Dir_sort === 'down' && d2Dir_sort === 'down' && d3Dir_sort === 'down' && d4Dir_sort === 'down';
-              const allUp_sort = d1Dir_sort === 'up' && d2Dir_sort === 'up' && d3Dir_sort === 'up' && d4Dir_sort === 'up';
-              const d123Above50_sort = d1Val_sort > 50 && d2Val_sort > 50 && d3Val_sort > 50;
-              const d123Below50_sort = d1Val_sort < 50 && d2Val_sort < 50 && d3Val_sort < 50;
-              const d123Above70_sort = d1Val_sort > 70 && d2Val_sort > 70 && d3Val_sort > 70;
-              const d123Below30_sort = d1Val_sort < 30 && d2Val_sort < 30 && d3Val_sort < 30;
+              const d7Val_sort = parseFloat(alert.octoStochD7) || 0;
+              const d7Dir_sort = alert.d7Direction || 'flat';
               
               let trend_sort = 'Neutral';
               
-              // Check if D3 just switched direction
-              const d3SwitchedUp_sort = d3Dir_sort === 'up' // We'll use this as proxy for switch in sorting
-              const d3SwitchedDown_sort = d3Dir_sort === 'down'
+              // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
+              if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
+                trend_sort = 'Very Long';
+              }
+              // Switch Short: D7 > 80 AND D1 switched to down
+              else if (d7Val_sort > 80 && alert.d1SwitchedToDown) {
+                trend_sort = 'Switch Short';
+              }
+              // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
+              else if (d7Val_sort < 20 && (alert.d1SwitchedToDown || d1Dir_sort === 'down')) {
+                trend_sort = 'Very Short';
+              }
+              // Switch Long: D7 < 20 AND D1 switched to up
+              else if (d7Val_sort < 20 && alert.d1SwitchedToUp) {
+                trend_sort = 'Switch Long';
+              }
+              // Try Long: D7 > 40 AND D1 going up
+              else if (d7Val_sort > 40 && d1Dir_sort === 'up') {
+                trend_sort = 'Try Long';
+              }
+              // Try Short: D7 < 40 AND D1 going down
+              else if (d7Val_sort < 40 && d1Dir_sort === 'down') {
+                trend_sort = 'Try Short';
+              }
               
-              // Keep Hi Up: D4 >= 75 AND (D3 going up OR D3 switched up)
-              if (d4Val_sort >= 75 && d3Dir_sort === 'up') {
-                trend_sort = 'Keep Hi Up';
-              }
-              // Keep Low Down: D4 <= 25 AND (D3 going down OR D3 switched down)
-              else if (d4Val_sort <= 25 && d3Dir_sort === 'down') {
-                trend_sort = 'Keep Low Down';
-              }
-              // Bounce Support: D3 switched up AND D4 > 75
-              else if (d4Val_sort > 75 && d3SwitchedUp_sort) {
-                trend_sort = 'Bounce Support';
-              }
-              // Bounce Reject: D3 switched down AND D4 < 25
-              else if (d4Val_sort < 25 && d3SwitchedDown_sort) {
-                trend_sort = 'Bounce Reject';
-              }
-              // Bull Trend Break?: D2 AND D1 crossed under 75 AND D4 > 85 going down
-              else if (alert.d1CrossedUnder75 && alert.d2CrossedUnder75 && d4Val_sort > 85 && d4Dir_sort === 'down') {
-                trend_sort = 'Bull Trend Break?';
-              }
-              // Bear Trend Break?: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
-              else if (alert.d1CrossedAbove50 && alert.d2CrossedAbove50 && alert.d4CrossedAbove25 && d4Dir_sort === 'up') {
-                trend_sort = 'Bear Trend Break?';
-              }
-              // Trend Up: All D1/D2/D3/D4 going up
-              else if (allUp_sort) {
-                trend_sort = 'Trend Up';
-              }
-              // Trend Down: All D1/D2/D3/D4 going down
-              else if (allDown_sort) {
-                trend_sort = 'Trend Down';
-              }
-              return trendOrder[trend_sort] || 6;
+              return trendOrder[trend_sort] || 5;
             case 'quadStoch':
               // Sort by D4 value numerically
               return parseFloat(alert.quadStochD4) || 0;
@@ -1559,79 +1687,63 @@ app.get('/', (req, res) => {
             
             const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
             
-            // === TREND ANALYSIS ===
-            // Calculate trend based on D1, D2, D3, D4 values and directions
+            // === NEW TREND ANALYSIS - D1 & D7 BASED ===
+            // Calculate trend based on D1 and D7 values and directions
             let trendDisplay = 'Neutral';
             let trendClass = 'text-gray-400';
             let trendCellClass = '';
-            let trendTitle = 'Trend analysis';
+            let trendTitle = 'Trend analysis based on D1 & D7';
             
-            const d1Val = parseFloat(alert.d1Value);
-            const d2Val = parseFloat(alert.d2Value);
-            const d3Val = parseFloat(alert.d3Value);
-            const d4Val_trend = parseFloat(alert.quadStochD4) || 0;
+            // Get D7 value and direction (from Octo Stoch data)
+            const d7Val = parseFloat(alert.octoStochD7) || 0;
+            const d7Dir = alert.d7Direction || 'flat';
             
-            // Check if D1, D2, D3 values are valid (not NaN, null, or undefined)
-            const hasValidD123 = !isNaN(d1Val) && !isNaN(d2Val) && !isNaN(d3Val) && 
-                                 d1Val !== null && d2Val !== null && d3Val !== null;
-            
-            const allDown = d1Dir === 'down' && d2Dir === 'down' && d3Dir === 'down' && d4Dir === 'down';
-            const allUp = d1Dir === 'up' && d2Dir === 'up' && d3Dir === 'up' && d4Dir === 'up';
-            const d123Above50 = hasValidD123 && d1Val > 50 && d2Val > 50 && d3Val > 50;
-            const d123Below50 = hasValidD123 && d1Val < 50 && d2Val < 50 && d3Val < 50;
-            const d123Above70 = hasValidD123 && d1Val > 70 && d2Val > 70 && d3Val > 70;
-            const d123Below30 = hasValidD123 && d1Val < 30 && d2Val < 30 && d3Val < 30;
-            
-            // Priority order for trend determination
-            // Keep Hi Up: D4 >= 75 AND D3 going up or switched up
-            if (d4Val_trend >= 75 && d3Dir === 'up') {
-              trendDisplay = 'Keep Hi Up';
-              trendClass = 'text-green-600 font-extrabold';
-              trendTitle = 'D4 >= 75, D3 trending up - Keep going up';
+            // Priority order for trend determination based on D1 and D7
+            // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
+            if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
+              trendDisplay = 'Very Long';
+              trendClass = 'text-green-600 font-extrabold animate-pulse';
+              trendCellClass = 'bg-green-900/50';
+              trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
             }
-            // Keep Low Down: D4 <= 25 AND D3 going down or switched down
-            else if (d4Val_trend <= 25 && d3Dir === 'down') {
-              trendDisplay = 'Keep Low Down';
-              trendClass = 'text-red-600 font-extrabold';
-              trendTitle = 'D4 <= 25, D3 trending down - Keep going down';
-            }
-            // Bounce Support: D3 switched up AND D4 > 75
-            else if (d4Val_trend > 75 && alert.d3SwitchedToUp) {
-              trendDisplay = 'Bounce Support';
-              trendClass = 'text-lime-400 font-bold animate-pulse';
-              trendCellClass = 'bg-green-900/40';
-              trendTitle = 'D3 just switched up, D4 > 75 - Bounce from support';
-            }
-            // Bounce Reject: D3 switched down AND D4 < 25
-            else if (d4Val_trend < 25 && alert.d3SwitchedToDown) {
-              trendDisplay = 'Bounce Reject';
+            // Switch Short: D7 > 80 AND D1 switched to down
+            else if (d7Val > 80 && alert.d1SwitchedToDown) {
+              trendDisplay = 'Switch Short';
               trendClass = 'text-orange-400 font-bold animate-pulse';
-              trendCellClass = 'bg-red-900/40';
-              trendTitle = 'D3 just switched down, D4 < 25 - Bounce rejected';
+              trendCellClass = 'bg-orange-900/40';
+              trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
             }
-            // Bull Trend Break?: D2 AND D1 crossed under 75 AND D4 > 85 going down
-            else if (alert.d1CrossedUnder75 && alert.d2CrossedUnder75 && d4Val_trend > 85 && d4Dir === 'down') {
-              trendDisplay = 'Bull Trend Break?';
-              trendClass = 'text-orange-400 font-bold';
-              trendTitle = 'D1 & D2 crossed under 75, D4 > 85 going down - Bullish trend breaking?';
+            // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
+            else if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) {
+              trendDisplay = 'Very Short';
+              trendClass = 'text-red-600 font-extrabold animate-pulse';
+              trendCellClass = 'bg-red-900/50';
+              trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
             }
-            // Bear Trend Break?: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
-            else if (alert.d1CrossedAbove50 && alert.d2CrossedAbove50 && alert.d4CrossedAbove25 && d4Dir === 'up') {
-              trendDisplay = 'Bear Trend Break?';
-              trendClass = 'text-lime-400 font-bold';
-              trendTitle = 'D1 & D2 crossed above 50, D4 crossed above 25 going up - Bearish trend breaking?';
+            // Switch Long: D7 < 20 AND D1 switched to up
+            else if (d7Val < 20 && alert.d1SwitchedToUp) {
+              trendDisplay = 'Switch Long';
+              trendClass = 'text-lime-400 font-bold animate-pulse';
+              trendCellClass = 'bg-lime-900/40';
+              trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
             }
-            // Trend Up: All D1/D2/D3/D4 going up
-            else if (allUp) {
-              trendDisplay = 'Trend Up';
+            // Try Long: D7 > 40 AND D1 going up
+            else if (d7Val > 40 && d1Dir === 'up') {
+              trendDisplay = 'Try Long';
               trendClass = 'text-green-400 font-semibold';
-              trendTitle = 'All D1/D2/D3/D4 trending up - Strong uptrend';
+              trendTitle = 'D7 > 40, D1 going up - Try long position';
             }
-            // Trend Down: All D1/D2/D3/D4 going down
-            else if (allDown) {
-              trendDisplay = 'Trend Down';
+            // Try Short: D7 < 40 AND D1 going down
+            else if (d7Val < 40 && d1Dir === 'down') {
+              trendDisplay = 'Try Short';
               trendClass = 'text-red-400 font-semibold';
-              trendTitle = 'All D1/D2/D3/D4 trending down - Strong downtrend';
+              trendTitle = 'D7 < 40, D1 going down - Try short position';
+            }
+            // Neutral zone
+            else {
+              trendDisplay = 'Neutral';
+              trendClass = 'text-gray-400';
+              trendTitle = \`D7: \${d7Val.toFixed(1)}, D1: \${d1Dir} - No clear signal\`;
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color

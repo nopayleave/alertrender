@@ -1,7 +1,11 @@
 //@version=6
-indicator(title="Quad Stochastic", shorttitle="Quad Stoch", overlay=false, explicit_plot_zorder=true)
+indicator(title="Octo Stochastic (8 Stoch)", shorttitle="Octo Stoch", overlay=false, explicit_plot_zorder=true)
 
-// Shared inputs
+// ===== TIMEFRAME SETTINGS =====
+timeframe1_4 = input.timeframe("", title="Timeframe for D1-D4", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframe5_8 = input.timeframe("", title="Timeframe for D5-D8", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+
+// Stoch1 - Very Short Term (5min = ~10 bars)
 length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
 smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
 periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
@@ -9,6 +13,7 @@ colorD1 = input.color(color.red, title="D1 Color", group="Stoch1 Settings")
 linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
 showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
 
+// Stoch2 - Short Term (5min = ~18 bars, ~1.5 hours)
 length2 = input.int(18, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
 smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
 periodD2 = input.int(3, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
@@ -16,6 +21,7 @@ colorD2 = input.color(color.blue, title="D2 Color", group="Stoch2 Settings")
 linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
 showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
 
+// Stoch3 - Medium Term (5min = ~39 bars, ~3 hours)
 length3 = input.int(39, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
 smoothK3 = input.int(1, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
 periodD3 = input.int(4, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
@@ -23,13 +29,46 @@ colorD3 = input.color(color.aqua, title="D3 Color", group="Stoch3 Settings")
 linewidthD3 = input.int(3, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
 showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
 
+// Stoch4 - Longer Term (5min = ~60 bars, ~5 hours / half day)
 length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
 smoothK4 = input.int(1, minval=1, title="Stoch4 %K Smoothing (smoothK)", group="Stoch4 Settings")
 periodD4 = input.int(10, minval=1, title="Stoch4 %D Smoothing (periodD)", group="Stoch4 Settings")
-colorD4 = input.color(#000000, title="D4 Color (Area Fill)", group="Stoch4 Settings")
-transparencyD4 = input.int(70, minval=0, maxval=100, title="D4 Transparency", group="Stoch4 Settings")
+colorD4 = input.color(color.yellow, title="D4 Color", group="Stoch4 Settings")
 linewidthD4 = input.int(2, minval=1, maxval=5, title="D4 Line Width", group="Stoch4 Settings")
 showD4 = input.bool(true, title="Show D4", group="Stoch4 Settings")
+
+// Stoch5 - Same as D1 (5min = ~10 bars)
+length5 = input.int(10, minval=1, title="Stoch5 Length (periodK)", group="Stoch5 Settings")
+smoothK5 = input.int(3, minval=1, title="Stoch5 %K Smoothing (smoothK)", group="Stoch5 Settings")
+periodD5 = input.int(3, minval=1, title="Stoch5 %D Smoothing (periodD)", group="Stoch5 Settings")
+colorD5 = input.color(color.orange, title="D5 Color", group="Stoch5 Settings")
+linewidthD5 = input.int(2, minval=1, maxval=5, title="D5 Line Width", group="Stoch5 Settings")
+showD5 = input.bool(true, title="Show D5", group="Stoch5 Settings")
+
+// Stoch6 - Same as D2 (5min = ~18 bars, ~1.5 hours)
+length6 = input.int(18, minval=1, title="Stoch6 Length (periodK)", group="Stoch6 Settings")
+smoothK6 = input.int(1, minval=1, title="Stoch6 %K Smoothing (smoothK)", group="Stoch6 Settings")
+periodD6 = input.int(3, minval=1, title="Stoch6 %D Smoothing (periodD)", group="Stoch6 Settings")
+colorD6 = input.color(color.purple, title="D6 Color", group="Stoch6 Settings")
+linewidthD6 = input.int(2, minval=1, maxval=5, title="D6 Line Width", group="Stoch6 Settings")
+showD6 = input.bool(true, title="Show D6", group="Stoch6 Settings")
+
+// Stoch7 - Same as D3 (5min = ~39 bars, ~3 hours)
+length7 = input.int(39, minval=1, title="Stoch7 Length (periodK)", group="Stoch7 Settings")
+smoothK7 = input.int(1, minval=1, title="Stoch7 %K Smoothing (smoothK)", group="Stoch7 Settings")
+periodD7 = input.int(4, minval=1, title="Stoch7 %D Smoothing (periodD)", group="Stoch7 Settings")
+colorD7 = input.color(color.fuchsia, title="D7 Color", group="Stoch7 Settings")
+linewidthD7 = input.int(2, minval=1, maxval=5, title="D7 Line Width", group="Stoch7 Settings")
+showD7 = input.bool(true, title="Show D7", group="Stoch7 Settings")
+
+// Stoch8 - Same as D4 (5min = ~60 bars, ~5 hours / half day - BACKGROUND FILL)
+length8 = input.int(60, minval=1, title="Stoch8 Length (periodK)", group="Stoch8 Settings")
+smoothK8 = input.int(1, minval=1, title="Stoch8 %K Smoothing (smoothK)", group="Stoch8 Settings")
+periodD8 = input.int(10, minval=1, title="Stoch8 %D Smoothing (periodD)", group="Stoch8 Settings")
+colorD8 = input.color(#000000, title="D8 Color (Area Fill)", group="Stoch8 Settings")
+transparencyD8 = input.int(70, minval=0, maxval=100, title="D8 Transparency", group="Stoch8 Settings")
+linewidthD8 = input.int(2, minval=1, maxval=5, title="D8 Line Width", group="Stoch8 Settings")
+showD8 = input.bool(true, title="Show D8", group="Stoch8 Settings")
 
 // Function to get Stochastic %K and %D
 getStoch(len, smK, perD) =>
@@ -38,23 +77,61 @@ getStoch(len, smK, perD) =>
     d = ta.sma(k, perD)
     [k, d]
 
-// Compute for each
-[k1, d1] = getStoch(length1, smoothK1, periodD1)
-[k2, d2] = getStoch(length2, smoothK2, periodD2)
-[k3, d3] = getStoch(length3, smoothK3, periodD3)
-[k4, d4] = getStoch(length4, smoothK4, periodD4)
+// Compute D1-D4 with timeframe1_4
+[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+[k3_chart, d3_chart] = getStoch(length3, smoothK3, periodD3)
+[k4_chart, d4_chart] = getStoch(length4, smoothK4, periodD4)
 
-// Plot %D4 first (z-index as last/behind) - use fill for better z-order control
-// Extract RGB from colorD4 and apply transparencyD4 to ensure proper opacity control
-d4FillColor = color.rgb(color.r(colorD4), color.g(colorD4), color.b(colorD4), transparencyD4)
-p_d4 = plot(showD4 ? d4 : na, title="%d4", color=color.new(colorD4, 100), linewidth=linewidthD4, display=display.pane)
+[k1_mtf, d1_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+[k2_mtf, d2_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+[k3_mtf, d3_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length3, smoothK3, periodD3), lookahead=barmerge.lookahead_off)
+[k4_mtf, d4_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length4, smoothK4, periodD4), lookahead=barmerge.lookahead_off)
+
+k1 = timeframe1_4 == "" ? k1_chart : k1_mtf
+d1 = timeframe1_4 == "" ? d1_chart : d1_mtf
+k2 = timeframe1_4 == "" ? k2_chart : k2_mtf
+d2 = timeframe1_4 == "" ? d2_chart : d2_mtf
+k3 = timeframe1_4 == "" ? k3_chart : k3_mtf
+d3 = timeframe1_4 == "" ? d3_chart : d3_mtf
+k4 = timeframe1_4 == "" ? k4_chart : k4_mtf
+d4 = timeframe1_4 == "" ? d4_chart : d4_mtf
+
+// Compute D5-D8 with timeframe5_8
+[k5_chart, d5_chart] = getStoch(length5, smoothK5, periodD5)
+[k6_chart, d6_chart] = getStoch(length6, smoothK6, periodD6)
+[k7_chart, d7_chart] = getStoch(length7, smoothK7, periodD7)
+[k8_chart, d8_chart] = getStoch(length8, smoothK8, periodD8)
+
+[k5_mtf, d5_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length5, smoothK5, periodD5), lookahead=barmerge.lookahead_off)
+[k6_mtf, d6_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length6, smoothK6, periodD6), lookahead=barmerge.lookahead_off)
+[k7_mtf, d7_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length7, smoothK7, periodD7), lookahead=barmerge.lookahead_off)
+[k8_mtf, d8_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length8, smoothK8, periodD8), lookahead=barmerge.lookahead_off)
+
+k5 = timeframe5_8 == "" ? k5_chart : k5_mtf
+d5 = timeframe5_8 == "" ? d5_chart : d5_mtf
+k6 = timeframe5_8 == "" ? k6_chart : k6_mtf
+d6 = timeframe5_8 == "" ? d6_chart : d6_mtf
+k7 = timeframe5_8 == "" ? k7_chart : k7_mtf
+d7 = timeframe5_8 == "" ? d7_chart : d7_mtf
+k8 = timeframe5_8 == "" ? k8_chart : k8_mtf
+d8 = timeframe5_8 == "" ? d8_chart : d8_mtf
+
+// Plot %D8 first (z-index as last/behind) - use fill for better z-order control
+// Extract RGB from colorD8 and apply transparencyD8 to ensure proper opacity control
+d8FillColor = color.rgb(color.r(colorD8), color.g(colorD8), color.b(colorD8), transparencyD8)
+p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(colorD8, 100), linewidth=linewidthD8, display=display.pane)
 p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
-fill(p_base, p_d4, color=showD4 ? d4FillColor : na, title="D4 Fill")
+fill(p_base, p_d8, color=showD8 ? d8FillColor : na, title="D8 Fill")
 
-// Plot %D lines with customizable colors (on top of D4)
+// Plot %D lines with customizable colors (on top of D8)
 plot(showD1 ? d1 : na, title="%d1", color=colorD1, linewidth=linewidthD1, display=display.pane)
 plot(showD2 ? d2 : na, title="%d2", color=colorD2, linewidth=linewidthD2, display=display.pane)
 plot(showD3 ? d3 : na, title="%d3", color=colorD3, linewidth=linewidthD3, display=display.pane)
+plot(showD4 ? d4 : na, title="%d4", color=colorD4, linewidth=linewidthD4, display=display.pane)
+plot(showD5 ? d5 : na, title="%d5", color=colorD5, linewidth=linewidthD5, display=display.pane)
+plot(showD6 ? d6 : na, title="%d6", color=colorD6, linewidth=linewidthD6, display=display.pane)
+plot(showD7 ? d7 : na, title="%d7", color=colorD7, linewidth=linewidthD7, display=display.pane)
 
 // Plot Mid line above D1, D2, D3 (z-index on top)
 plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
@@ -187,68 +264,109 @@ plotshape(showCrossover and crossunderD1D2 ? crossValue : na, title="D1 Cross Un
 bgcolor(showCrossoverBG and crossoverD1D2 ? color.new(crossoverColor, 90) : na, title="Crossover BG")
 bgcolor(showCrossoverBG and crossunderD1D2 ? color.new(crossunderColor, 90) : na, title="Crossunder BG")
 
-// ===== D1/D2/D3/D4 DIRECTION TRACKING =====
+// ===== D1-D8 DIRECTION TRACKING =====
 var float prevD1 = na
 var float prevD2 = na
 var float prevD3 = na
 var float prevD4 = na
+var float prevD5 = na
+var float prevD6 = na
+var float prevD7 = na
+var float prevD8 = na
 
 // Determine direction for each stochastic
 d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
 d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
 d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
 d4Direction = na(prevD4) ? "flat" : d4 > prevD4 ? "up" : d4 < prevD4 ? "down" : "flat"
+d5Direction = na(prevD5) ? "flat" : d5 > prevD5 ? "up" : d5 < prevD5 ? "down" : "flat"
+d6Direction = na(prevD6) ? "flat" : d6 > prevD6 ? "up" : d6 < prevD6 ? "down" : "flat"
+d7Direction = na(prevD7) ? "flat" : d7 > prevD7 ? "up" : d7 < prevD7 ? "down" : "flat"
+d8Direction = na(prevD8) ? "flat" : d8 > prevD8 ? "up" : d8 < prevD8 ? "down" : "flat"
 
-// ===== D4 TREND DIRECTION + WEBHOOK SIGNALS =====
-d4Up = na(prevD4) ? false : d4 > prevD4
-d4Down = na(prevD4) ? false : d4 < prevD4
+// ===== WEBHOOK ALERT - SEND ALL 8 STOCH DATA =====
+// Enable/disable webhook
+sendWebhook = input.bool(true, title="Send Webhook Alerts", group="Webhook Settings")
+webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="Webhook Settings")
 
-// Detect cross levels (20, 50, 80)
-crossUp20 = ta.crossover(d4, 20)
-crossDown20 = ta.crossunder(d4, 20)
-crossUp50 = ta.crossover(d4, 50)
-crossDown50 = ta.crossunder(d4, 50)
-crossUp80 = ta.crossover(d4, 80)
-crossDown80 = ta.crossunder(d4, 80)
+// Determine alert frequency
+alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : alert.freq_all
 
-// Webhook message text
-signal = ""
-if d4Up
-    signal := "D4_Uptrend"
-else if d4Down
-    signal := "D4_Downtrend"
+// D8 Trend and cross signals (for reference in JSON)
+d8Up = na(prevD8) ? false : d8 > prevD8
+d8Down = na(prevD8) ? false : d8 < prevD8
 
+crossUp20 = ta.crossover(d8, 20)
+crossDown20 = ta.crossunder(d8, 20)
+crossUp50 = ta.crossover(d8, 50)
+crossDown50 = ta.crossunder(d8, 50)
+crossUp80 = ta.crossover(d8, 80)
+crossDown80 = ta.crossunder(d8, 80)
+
+// Determine D8 signal
+d8Signal = ""
 if crossUp20
-    signal := "D4_Cross_Up_20"
+    d8Signal := "D8_Cross_Up_20"
 else if crossDown20
-    signal := "D4_Cross_Down_20"
+    d8Signal := "D8_Cross_Down_20"
 else if crossUp50
-    signal := "D4_Cross_Up_50"
+    d8Signal := "D8_Cross_Up_50"
 else if crossDown50
-    signal := "D4_Cross_Down_50"
+    d8Signal := "D8_Cross_Down_50"
 else if crossUp80
-    signal := "D4_Cross_Up_80"
+    d8Signal := "D8_Cross_Up_80"
 else if crossDown80
-    signal := "D4_Cross_Down_80"
+    d8Signal := "D8_Cross_Down_80"
+else if d8Up
+    d8Signal := "D8_Uptrend"
+else if d8Down
+    d8Signal := "D8_Downtrend"
+else
+    d8Signal := "D8_Flat"
 
-// === Trigger webhook alert ===
-// Create JSON alert message with symbol for webhook
-if signal != ""
+// D1 x D2 crossover signals
+d1d2Cross = ""
+if crossoverD1D2
+    d1d2Cross := "D1_Cross_Over_D2"
+else if crossunderD1D2
+    d1d2Cross := "D1_Cross_Under_D2"
+else
+    d1d2Cross := "No_Cross"
+
+// === Create and send webhook with all 8 stoch data ===
+if sendWebhook
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
-      '"d4Signal": "' + signal + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"timestamp": ' + str.tostring(time) + ',' +
       '"d1": ' + str.tostring(d1) + ',' +
       '"d2": ' + str.tostring(d2) + ',' +
       '"d3": ' + str.tostring(d3) + ',' +
       '"d4": ' + str.tostring(d4) + ',' +
+      '"d5": ' + str.tostring(d5) + ',' +
+      '"d6": ' + str.tostring(d6) + ',' +
+      '"d7": ' + str.tostring(d7) + ',' +
+      '"d8": ' + str.tostring(d8) + ',' +
       '"d1Direction": "' + d1Direction + '",' +
       '"d2Direction": "' + d2Direction + '",' +
       '"d3Direction": "' + d3Direction + '",' +
-      '"d4Direction": "' + d4Direction + '"}'
-    alert(jsonMsg, freq=alert.freq_once_per_bar_close)
+      '"d4Direction": "' + d4Direction + '",' +
+      '"d5Direction": "' + d5Direction + '",' +
+      '"d6Direction": "' + d6Direction + '",' +
+      '"d7Direction": "' + d7Direction + '",' +
+      '"d8Direction": "' + d8Direction + '",' +
+      '"d8Signal": "' + d8Signal + '",' +
+      '"d1d2Cross": "' + d1d2Cross + '",' +
+      '"timeframe1_4": "' + timeframe1_4 + '",' +
+      '"timeframe5_8": "' + timeframe5_8 + '"}'
+    alert(jsonMsg, freq=alertFreq)
 
 // Store previous values for next comparison
 prevD1 := d1
 prevD2 := d2
 prevD3 := d3
 prevD4 := d4
+prevD5 := d5
+prevD6 := d6
+prevD7 := d7
+prevD8 := d8
