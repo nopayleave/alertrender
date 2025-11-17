@@ -1,11 +1,40 @@
 import express from 'express'
 import cors from 'cors'
+import nodemailer from 'nodemailer'
 
 const app = express()
 const port = process.env.PORT || 3000
 
 app.use(cors())
 app.use(express.json())
+
+// Notification settings (configure via environment variables or update here)
+const NOTIFICATION_CONFIG = {
+  email: {
+    enabled: process.env.EMAIL_ENABLED === 'true' || false,
+    from: process.env.EMAIL_FROM || 'alerts@tradingdashboard.com',
+    to: process.env.EMAIL_TO || 'your-email@example.com',
+    smtp: {
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER || '',
+        pass: process.env.SMTP_PASS || ''
+      }
+    }
+  },
+  discord: {
+    enabled: process.env.DISCORD_ENABLED !== 'false', // Default to true if webhook URL is set
+    webhookUrl: process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1440117112566710352/O-s1YsYR93f783PEjMhR9fmnan_agrmw8L3Me9F9SAl7rfdMWsxpFuIHHFkDyFrqE0Hq'
+  }
+}
+
+// Create email transporter
+let emailTransporter = null
+if (NOTIFICATION_CONFIG.email.enabled && NOTIFICATION_CONFIG.email.smtp.auth.user) {
+  emailTransporter = nodemailer.createTransport(NOTIFICATION_CONFIG.email.smtp)
+}
 
 // 儲存 alert JSON
 let alerts = [] // All alerts (not just latest per symbol)
@@ -20,6 +49,133 @@ let previousQSValues = {} // Store previous QS values to detect changes
 let previousDirections = {} // Store previous D1-D8 directions to detect switches
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
+let starredSymbols = {} // Store starred symbols (synced from frontend)
+let previousTrends = {} // Store previous trend for each symbol to detect changes
+
+// Helper function to calculate trend based on alert data
+function calculateTrend(alert) {
+  const d1Dir = alert.d1Direction || 'flat'
+  const d7Val = parseFloat(alert.octoStochD7) || 0
+  const d1CrossD7 = alert.d1CrossD7
+  
+  if (d1CrossD7 === 'bull') return '🚀 BULL Cross'
+  if (d1CrossD7 === 'bear') return '🔻 BEAR Cross'
+  if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) return 'Very Long'
+  if (d7Val > 80 && alert.d1SwitchedToDown) return 'Switch Short'
+  if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) return 'Very Short'
+  if (d7Val < 20 && alert.d1SwitchedToUp) return 'Switch Long'
+  if (d7Val > 40 && d1Dir === 'up') return 'Try Long'
+  if (d7Val < 40 && d1Dir === 'down') return 'Try Short'
+  return 'Neutral'
+}
+
+// Send email notification
+async function sendEmailNotification(symbol, oldTrend, newTrend, price) {
+  if (!emailTransporter || !NOTIFICATION_CONFIG.email.enabled) return
+  
+  try {
+    const mailOptions = {
+      from: NOTIFICATION_CONFIG.email.from,
+      to: NOTIFICATION_CONFIG.email.to,
+      subject: `⭐ ${symbol} Trend Changed: ${oldTrend} → ${newTrend}`,
+      html: `
+        <h2>⭐ Starred Alert: ${symbol}</h2>
+        <p><strong>Trend Change Detected:</strong></p>
+        <p style="font-size: 18px;">
+          <span style="color: #999;">${oldTrend}</span> 
+          → 
+          <span style="color: #4CAF50; font-weight: bold;">${newTrend}</span>
+        </p>
+        <p><strong>Current Price:</strong> $${price || 'N/A'}</p>
+        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+        <hr>
+        <p style="color: #666; font-size: 12px;">This is an automated notification from your Trading Dashboard for starred symbols.</p>
+      `
+    }
+    
+    await emailTransporter.sendMail(mailOptions)
+    console.log(`📧 Email notification sent for ${symbol}: ${oldTrend} → ${newTrend}`)
+  } catch (error) {
+    console.error(`❌ Failed to send email for ${symbol}:`, error.message)
+  }
+}
+
+// Send Discord notification
+async function sendDiscordNotification(symbol, oldTrend, newTrend, price) {
+  if (!NOTIFICATION_CONFIG.discord.enabled || !NOTIFICATION_CONFIG.discord.webhookUrl) return
+  
+  try {
+    // Determine embed color based on new trend
+    const trendColors = {
+      '🚀 BULL Cross': 0x00FF00,
+      'Very Long': 0x4CAF50,
+      'Try Long': 0x8BC34A,
+      'Switch Long': 0xCDDC39,
+      'Neutral': 0x9E9E9E,
+      'Switch Short': 0xFF9800,
+      'Try Short': 0xFF5722,
+      'Very Short': 0xF44336,
+      '🔻 BEAR Cross': 0xFF0000
+    }
+    
+    const embed = {
+      title: `⭐ ${symbol} - Trend Changed`,
+      description: `**${oldTrend}** → **${newTrend}**`,
+      color: trendColors[newTrend] || 0x9E9E9E,
+      fields: [
+        {
+          name: 'Price',
+          value: `$${price || 'N/A'}`,
+          inline: true
+        },
+        {
+          name: 'Time',
+          value: new Date().toLocaleTimeString(),
+          inline: true
+        }
+      ],
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'Trading Dashboard Alert'
+      }
+    }
+    
+    const response = await fetch(NOTIFICATION_CONFIG.discord.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    })
+    
+    if (response.ok) {
+      console.log(`💬 Discord notification sent for ${symbol}: ${oldTrend} → ${newTrend}`)
+    } else {
+      console.error(`❌ Discord webhook failed for ${symbol}:`, response.statusText)
+    }
+  } catch (error) {
+    console.error(`❌ Failed to send Discord notification for ${symbol}:`, error.message)
+  }
+}
+
+// Check and send notifications for trend changes
+function checkAndNotifyTrendChange(symbol, alertData) {
+  // Only notify for starred symbols
+  if (!starredSymbols[symbol]) return
+  
+  const currentTrend = calculateTrend(alertData)
+  const previousTrend = previousTrends[symbol]
+  
+  // If trend changed and it's not the first time we're seeing this symbol
+  if (previousTrend && previousTrend !== currentTrend) {
+    console.log(`🔔 Trend change detected for starred symbol ${symbol}: ${previousTrend} → ${currentTrend}`)
+    
+    // Send notifications
+    sendEmailNotification(symbol, previousTrend, currentTrend, alertData.price)
+    sendDiscordNotification(symbol, previousTrend, currentTrend, alertData.price)
+  }
+  
+  // Update previous trend
+  previousTrends[symbol] = currentTrend
+}
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
@@ -316,6 +472,9 @@ app.post('/webhook', (req, res) => {
     }
     
     console.log(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D1xD7=${d1CrossD7 || 'none'}, D8 Signal=${alert.d8Signal}`)
+    
+    // Check and notify trend change for starred symbols
+    checkAndNotifyTrendChange(alert.symbol, octoStochData[alert.symbol])
     
     // Also update existing alert if it exists (don't create new one)
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -690,6 +849,69 @@ app.post('/reset-alerts', (req, res) => {
   previousPrices = {}
   macdCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
+})
+
+// Endpoint to sync starred symbols from frontend
+app.post('/starred-symbols', (req, res) => {
+  try {
+    const { starred } = req.body
+    if (starred && typeof starred === 'object') {
+      starredSymbols = starred
+      console.log(`⭐ Starred symbols updated:`, Object.keys(starredSymbols).filter(k => starredSymbols[k]))
+      res.json({ status: 'ok', message: 'Starred symbols updated', count: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length })
+    } else {
+      res.status(400).json({ status: 'error', message: 'Invalid starred symbols data' })
+    }
+  } catch (error) {
+    console.error('Error updating starred symbols:', error)
+    res.status(500).json({ status: 'error', message: error.message })
+  }
+})
+
+// Endpoint to get notification settings
+app.get('/notification-settings', (req, res) => {
+  res.json({
+    email: {
+      enabled: NOTIFICATION_CONFIG.email.enabled,
+      to: NOTIFICATION_CONFIG.email.to,
+      configured: !!emailTransporter
+    },
+    discord: {
+      enabled: NOTIFICATION_CONFIG.discord.enabled,
+      configured: !!NOTIFICATION_CONFIG.discord.webhookUrl
+    },
+    starredCount: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length
+  })
+})
+
+// Endpoint to update notification settings (runtime)
+app.post('/notification-settings', (req, res) => {
+  try {
+    const { email, discord } = req.body
+    
+    if (email !== undefined) {
+      if (email.enabled !== undefined) NOTIFICATION_CONFIG.email.enabled = email.enabled
+      if (email.to) NOTIFICATION_CONFIG.email.to = email.to
+      if (email.smtp) {
+        Object.assign(NOTIFICATION_CONFIG.email.smtp, email.smtp)
+        // Recreate transporter with new settings
+        if (NOTIFICATION_CONFIG.email.enabled && NOTIFICATION_CONFIG.email.smtp.auth.user) {
+          emailTransporter = nodemailer.createTransport(NOTIFICATION_CONFIG.email.smtp)
+        }
+      }
+    }
+    
+    if (discord !== undefined) {
+      if (discord.enabled !== undefined) NOTIFICATION_CONFIG.discord.enabled = discord.enabled
+      if (discord.webhookUrl) NOTIFICATION_CONFIG.discord.webhookUrl = discord.webhookUrl
+    }
+    
+    console.log('📬 Notification settings updated')
+    res.json({ status: 'ok', message: 'Notification settings updated' })
+  } catch (error) {
+    console.error('Error updating notification settings:', error)
+    res.status(500).json({ status: 'error', message: error.message })
+  }
 })
 
 // Server-Sent Events endpoint for real-time updates
@@ -1497,8 +1719,29 @@ app.get('/', (req, res) => {
         function toggleStar(symbol) {
           starredAlerts[symbol] = !starredAlerts[symbol];
           localStorage.setItem('starredAlerts', JSON.stringify(starredAlerts));
+          
+          // Sync starred symbols to backend for notifications
+          syncStarredSymbolsToBackend();
+          
           renderTable();
         }
+        
+        // Sync starred symbols to backend
+        async function syncStarredSymbolsToBackend() {
+          try {
+            await fetch('/starred-symbols', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ starred: starredAlerts })
+            });
+            console.log('⭐ Starred symbols synced to backend');
+          } catch (error) {
+            console.error('Failed to sync starred symbols:', error);
+          }
+        }
+        
+        // Initial sync on page load
+        syncStarredSymbolsToBackend();
 
         function isStarred(symbol) {
           return starredAlerts[symbol] || false;
