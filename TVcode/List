@@ -196,6 +196,12 @@ currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=bar
 // Get previous day's completed volume from daily timeframe
 prevDayVolume = request.security(syminfo.tickerid, "D", volume[1], lookahead=barmerge.lookahead_on)
 
+// Get previous day's close price
+previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+
+// Calculate change from previous day's close
+changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
+
 // Calculate day range and position
 dayRange = day_high - day_low
 dayMidpoint = day_low + (dayRange / 2)
@@ -307,6 +313,8 @@ if enableAlerts and barstate.isconfirmed
       '"timeframe": "' + timeframe.period + '",' +
       '"time": "' + str.tostring(time) + '",' +
       '"price": ' + str.tostring(close) + ',' +
+      '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
+      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
       '"trend": "' + trend + '",' +
       '"vwap": ' + str.tostring(vwapValue, "#.##") + ',' +
       '"vwapAbove": ' + str.tostring(close > vwapValue) + ',' +

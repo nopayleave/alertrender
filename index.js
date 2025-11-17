@@ -17,6 +17,7 @@ let quadStochData = {} // Store Quad Stochastic crossing status by symbol with t
 let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
 let previousQSValues = {} // Store previous QS values to detect changes
 let previousDirections = {} // Store previous D1/D2/D3/D4 directions to detect switches
+let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 
 // Helper function to find and update alert by symbol (only for Day script merging)
@@ -421,6 +422,18 @@ app.post('/webhook', (req, res) => {
       }
     }
     
+    // Track previous price for color comparison
+    const currentPrice = parseFloat(alert.price)
+    const prevPrice = previousPrices[alert.symbol]
+    if (prevPrice !== undefined && !isNaN(currentPrice)) {
+      alertData.priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'unchanged'
+    }
+    
+    // Store current price as previous for next webhook
+    if (!isNaN(currentPrice)) {
+      previousPrices[alert.symbol] = currentPrice
+    }
+    
     // Add ALL alerts to the front (don't remove existing ones)
     alerts.unshift({
       ...alertData,
@@ -501,6 +514,7 @@ app.post('/reset-alerts', (req, res) => {
   quadStochD4Data = {}
   previousQSValues = {}
   previousDirections = {}
+  previousPrices = {}
   macdCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
@@ -1411,22 +1425,38 @@ app.get('/', (req, res) => {
           lastUpdate.innerHTML = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo + ' <span id="countdown"></span>';
           updateCountdown();
 
-          alertTable.innerHTML = filteredData.map(alert => {
+          alertTable.innerHTML = filteredData.map((alert, index) => {
             const starred = isStarred(alert.symbol);
             const starIcon = starred ? '⭐' : '☆';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
             
+            // Price color based on comparison with previous alert for same symbol
+            let priceClass = 'text-foreground'; // Default white/foreground color for price
+            const currentPrice = parseFloat(alert.price);
+            
+            // Find the previous alert for the same symbol (next in the array since newest is first)
+            const previousAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol);
+            
+            if (previousAlert && !isNaN(currentPrice)) {
+              const previousPrice = parseFloat(previousAlert.price);
+              if (!isNaN(previousPrice)) {
+                if (currentPrice > previousPrice) {
+                  priceClass = 'text-green-400'; // Green if price went up
+                } else if (currentPrice < previousPrice) {
+                  priceClass = 'text-red-400'; // Red if price went down
+                }
+                // Otherwise stays white (no change)
+              }
+            }
+            
             // Calculate price change percentage in frontend
             let priceChangeDisplay = 'N/A';
             let priceChangeClass = 'text-muted-foreground'; // Default for change %
-            let priceClass = 'text-foreground'; // Default white/foreground color for price
             
-            // Priority 1: Use changeFromPrevDay from Day script if available
+            // Priority 1: Use changeFromPrevDay from List script if available
             if (alert.changeFromPrevDay !== undefined) {
               const changeFromPrevDay = parseFloat(alert.changeFromPrevDay);
               priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              // Price color: green if up, red if down
-              priceClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-foreground';
               // Change % color: green if >0%, red if <0%, gray if 0
               priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
             }
@@ -1436,8 +1466,6 @@ app.get('/', (req, res) => {
               const prevDayClose = parseFloat(alert.previousClose);
               const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
               priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              // Price color: green if up, red if down
-              priceClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-foreground';
               // Change % color: green if >0%, red if <0%, gray if 0
               priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
             } 
@@ -1445,8 +1473,6 @@ app.get('/', (req, res) => {
             else if (alert.priceChange) {
               priceChangeDisplay = alert.priceChange;
               const change = parseFloat(alert.priceChange || 0);
-              // Price color: green if up, red if down
-              priceClass = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-foreground';
               // Change % color: green if >0%, red if <0%, gray if 0
               priceChangeClass = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-muted-foreground';
             }
