@@ -16,6 +16,7 @@ let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
 let quadStochData = {} // Store Quad Stochastic crossing status by symbol with timestamp
 let quadStochD4Data = {} // Store Quad Stochastic D4 trend and crossing data by symbol
 let previousQSValues = {} // Store previous QS values to detect changes
+let previousDirections = {} // Store previous D1/D2/D3/D4 directions to detect switches
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 
 // Helper function to find and update alert by symbol (only for Day script merging)
@@ -84,12 +85,24 @@ app.post('/webhook', (req, res) => {
   if (isQuadStochD4Alert) {
     // Check if values changed compared to previous update
     const prevQS = previousQSValues[alert.symbol] || {}
+    const prevDir = previousDirections[alert.symbol] || {}
     const d4Changed = prevQS.d4 !== alert.d4
     const directionChanged = 
       prevQS.d1Direction !== alert.d1Direction ||
       prevQS.d2Direction !== alert.d2Direction ||
       prevQS.d3Direction !== alert.d3Direction ||
       prevQS.d4Direction !== alert.d4Direction
+    
+    // Detect actual direction switches
+    const d1Switched = prevDir.d1 && prevDir.d1 !== alert.d1Direction
+    const d2Switched = prevDir.d2 && prevDir.d2 !== alert.d2Direction
+    const d3Switched = prevDir.d3 && prevDir.d3 !== alert.d3Direction
+    const d4Switched = prevDir.d4 && prevDir.d4 !== alert.d4Direction
+    
+    // Detect specific switch types
+    const d2SwitchedToDown = d2Switched && alert.d2Direction === 'down'
+    const d3SwitchedToUp = d3Switched && alert.d3Direction === 'up'
+    const d3SwitchedToDown = d3Switched && alert.d3Direction === 'down'
     
     // Rank signals from bearish (-3) to bullish (+3) for comparison
     const signalRank = {
@@ -140,6 +153,9 @@ app.post('/webhook', (req, res) => {
       directionChanged: directionChanged,
       changeDirection: changeDirection,
       arrowChangeDirection: arrowChangeDirection,
+      d2SwitchedToDown: d2SwitchedToDown,
+      d3SwitchedToUp: d3SwitchedToUp,
+      d3SwitchedToDown: d3SwitchedToDown,
       changeTimestamp: Date.now(),
       timestamp: Date.now()
     }
@@ -152,6 +168,14 @@ app.post('/webhook', (req, res) => {
       d2Direction: alert.d2Direction,
       d3Direction: alert.d3Direction,
       d4Direction: alert.d4Direction
+    }
+    
+    // Store current directions as previous for next comparison
+    previousDirections[alert.symbol] = {
+      d1: alert.d1Direction,
+      d2: alert.d2Direction,
+      d3: alert.d3Direction,
+      d4: alert.d4Direction
     }
     
     console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${changeDirection}/${arrowChangeDirection}`)
@@ -331,6 +355,9 @@ app.post('/webhook', (req, res) => {
         alertData.qsChangeDirection = quadStochD4Info.changeDirection
         alertData.qsArrowChangeDirection = quadStochD4Info.arrowChangeDirection
         alertData.qsChangeTimestamp = quadStochD4Info.changeTimestamp
+        alertData.d2SwitchedToDown = quadStochD4Info.d2SwitchedToDown
+        alertData.d3SwitchedToUp = quadStochD4Info.d3SwitchedToUp
+        alertData.d3SwitchedToDown = quadStochD4Info.d3SwitchedToDown
         console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
@@ -453,6 +480,7 @@ app.post('/reset-alerts', (req, res) => {
   quadStochData = {}
   quadStochD4Data = {}
   previousQSValues = {}
+  previousDirections = {}
   macdCrossingData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
@@ -1118,23 +1146,15 @@ app.get('/', (req, res) => {
             case 'trend':
               // Sort by trend priority
               const trendOrder = {
-                'Peak High': 18,
-                'Reversal Risk': 17,
-                'Keep Up': 16,
-                'Reverse Bounce': 15,
-                'Uptrend Bounce': 14,
-                'Uptrend': 13,
-                'Pullback': 12,
-                'Short Entry': 11,
-                'Up Strong': 10,
-                'Overbought': 7,
-                'Neutral': 6,
+                'Keep Hi Up': 8,
+                'Bounce Support': 7,
+                'Trend Up': 6,
                 'Oversold': 5,
-                'Down': 4,
-                'Downtrend Drop': 3,
-                'Down Strong': 2,
-                'Strong Bear': 1,
-                'Keep Drop': 0
+                'Neutral': 4,
+                'Overbought': 3,
+                'Trend Down': 2,
+                'Bounce Reject': 1,
+                'Keep Low Down': 0
               };
               // Calculate trend for sorting (reuse same logic)
               const d1Dir_sort = alert.d1Direction || 'flat';
@@ -1153,44 +1173,42 @@ app.get('/', (req, res) => {
               const d123Below30_sort = d1Val_sort < 30 && d2Val_sort < 30 && d3Val_sort < 30;
               
               let trend_sort = 'Neutral';
-              if (d4Val_sort < 10) {
-                trend_sort = 'Keep Drop';
-              } else if (d4Val_sort > 90) {
-                trend_sort = 'Peak High';
-              } else if (d3Val_sort > 90 && d2Dir_sort === 'down' && d2Val_sort < 80) {
-                trend_sort = 'Reversal Risk';
-              } else if (d4Val_sort < 25 && d4Dir_sort === 'down') {
-                trend_sort = 'Strong Bear';
-              } else if (d4Val_sort > 75 && d3Dir_sort === 'up') {
-                trend_sort = 'Keep Up';
-              } else if (d4Val_sort < 25 && d4Dir_sort === 'up' && d123Above50_sort) {
-                trend_sort = 'Reverse Bounce';
-              } else if (d3Val_sort >= 40 && d3Val_sort <= 60 && d3Dir_sort === 'up') {
-                trend_sort = 'Uptrend Bounce';
-              } else if (d4Val_sort > 75 && d4Dir_sort === 'down' && d123Below50_sort) {
-                trend_sort = 'Pullback';
-              } else if (d4Val_sort < 20 && d4Dir_sort === 'down') {
-                trend_sort = 'Short Entry';
-              } else if (d3Val_sort < 40 && d3Dir_sort === 'down') {
-                trend_sort = 'Downtrend Drop';
-              } else if (d3Val_sort < 50 && d3Dir_sort === 'up') {
-                trend_sort = 'Uptrend';
-              } else if (d2Val_sort < 60 && d2Dir_sort === 'up') {
-                trend_sort = 'Uptrend';
-              } else if (d2Val_sort < 80 && d2Dir_sort === 'down') {
-                trend_sort = 'Short Entry';
-              } else if (d123Above70_sort) {
+              
+              // Check if D3 just switched direction
+              const d3SwitchedUp_sort = d3Dir_sort === 'up' // We'll use this as proxy for switch in sorting
+              const d3SwitchedDown_sort = d3Dir_sort === 'down'
+              
+              // Keep Hi Up: D4 >= 75 AND (D3 going up OR D3 switched up)
+              if (d4Val_sort >= 75 && d3Dir_sort === 'up') {
+                trend_sort = 'Keep Hi Up';
+              }
+              // Keep Low Down: D4 <= 25 AND (D3 going down OR D3 switched down)
+              else if (d4Val_sort <= 25 && d3Dir_sort === 'down') {
+                trend_sort = 'Keep Low Down';
+              }
+              // Bounce Support: D3 switched up AND D4 > 75
+              else if (d4Val_sort > 75 && d3SwitchedUp_sort) {
+                trend_sort = 'Bounce Support';
+              }
+              // Bounce Reject: D3 switched down AND D4 < 25
+              else if (d4Val_sort < 25 && d3SwitchedDown_sort) {
+                trend_sort = 'Bounce Reject';
+              }
+              // Overbought: D2 AND D1 crossed below 75 AND D4 > 85 going down
+              else if (d2Val_sort < 75 && d1Val_sort < 75 && d4Val_sort > 85 && d4Dir_sort === 'down') {
                 trend_sort = 'Overbought';
-              } else if (d123Below30_sort) {
+              }
+              // Oversold: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
+              else if (d2Val_sort > 50 && d1Val_sort > 50 && d4Val_sort > 25 && d4Dir_sort === 'up') {
                 trend_sort = 'Oversold';
-              } else if (d4Val_sort < 25) {
-                trend_sort = 'Down Strong';
-              } else if (d4Val_sort > 75) {
-                trend_sort = 'Up Strong';
-              } else if (allDown_sort) {
-                trend_sort = 'Down';
-              } else if (d4Val_sort < 50 && d4Dir_sort === 'down') {
-                trend_sort = 'Down';
+              }
+              // Trend Up: All D1/D2/D3/D4 going up
+              else if (allUp_sort) {
+                trend_sort = 'Trend Up';
+              }
+              // Trend Down: All D1/D2/D3/D4 going down
+              else if (allDown_sort) {
+                trend_sort = 'Trend Down';
               }
               return trendOrder[trend_sort] || 6;
             case 'quadStoch':
@@ -1527,84 +1545,55 @@ app.get('/', (req, res) => {
             const d123Below30 = hasValidD123 && d1Val < 30 && d2Val < 30 && d3Val < 30;
             
             // Priority order for trend determination
-            if (d4Val_trend < 10) {
-              trendDisplay = 'Keep Drop';
-              trendClass = 'text-red-600 font-extrabold animate-pulse';
-              trendTitle = 'D4 < 10 - Extreme bottom, keep dropping zone';
-            } else if (d4Val_trend > 90) {
-              trendDisplay = 'Peak High';
-              trendClass = 'text-green-600 font-extrabold animate-pulse';
-              trendTitle = 'D4 > 90 - Extreme peak, ultra overbought zone';
-            } else if (hasValidD123 && d3Val > 90 && d2Dir === 'down' && d2Val < 80) {
-              trendDisplay = 'Reversal Risk';
-              trendClass = 'text-yellow-400 font-bold animate-pulse';
-              trendTitle = 'D3 > 90, D2 reversing down & crossed under 80 - High reversal risk';
-            } else if (d4Val_trend < 25 && d4Dir === 'down') {
-              trendDisplay = 'Strong Bear';
-              trendClass = 'text-red-500 font-bold';
-              trendTitle = 'D4 < 25 going down - Strong bearish trend';
-            } else if (d4Val_trend > 75 && d3Dir === 'up') {
-              trendDisplay = 'Keep Up';
-              trendClass = 'text-green-500 font-bold';
-              trendTitle = 'D4 > 75, D3 trending up - Keep going up';
-            } else if (d4Val_trend < 25 && d4Dir === 'up' && d123Above50) {
-              trendDisplay = 'Reverse Bounce';
-              trendClass = 'text-lime-400 font-bold';
-              trendTitle = 'D4 < 25 reversing up, D1/D2/D3 > 50 - Reverse bounce signal';
-            } else if (hasValidD123 && d3Val >= 40 && d3Val <= 60 && d3Dir === 'up') {
-              trendDisplay = 'Uptrend Bounce';
-              trendClass = 'text-green-400 font-bold';
+            // Keep Hi Up: D4 >= 75 AND D3 going up or switched up
+            if (d4Val_trend >= 75 && d3Dir === 'up') {
+              trendDisplay = 'Keep Hi Up';
+              trendClass = 'text-green-600 font-extrabold';
+              trendTitle = 'D4 >= 75, D3 trending up - Keep going up';
+            }
+            // Keep Low Down: D4 <= 25 AND D3 going down or switched down
+            else if (d4Val_trend <= 25 && d3Dir === 'down') {
+              trendDisplay = 'Keep Low Down';
+              trendClass = 'text-red-600 font-extrabold';
+              trendTitle = 'D4 <= 25, D3 trending down - Keep going down';
+            }
+            // Bounce Support: D3 switched up AND D4 > 75
+            else if (d4Val_trend > 75 && alert.d3SwitchedToUp) {
+              trendDisplay = 'Bounce Support';
+              trendClass = 'text-lime-400 font-bold animate-pulse';
               trendCellClass = 'bg-green-900/40';
-              trendTitle = 'D3 switched from down to up between 40-60 - Uptrend bounce signal';
-            } else if (d4Val_trend > 75 && d4Dir === 'down' && d123Below50) {
-              trendDisplay = 'Pullback';
-              trendClass = 'text-orange-400 font-bold';
-              trendTitle = 'D4 > 75 reversing down, D1/D2/D3 < 50 - Pullback signal';
-            } else if (d4Val_trend < 20 && d4Dir === 'down') {
-              trendDisplay = 'Short Entry';
-              trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D4 reversed down below 20 - Short entry signal';
-            } else if (hasValidD123 && d3Val < 40 && d3Dir === 'down') {
-              trendDisplay = 'Downtrend Drop';
-              trendClass = 'text-red-400 font-bold';
+              trendTitle = 'D3 just switched up, D4 > 75 - Bounce from support';
+            }
+            // Bounce Reject: D3 switched down AND D4 < 25
+            else if (d4Val_trend < 25 && alert.d3SwitchedToDown) {
+              trendDisplay = 'Bounce Reject';
+              trendClass = 'text-orange-400 font-bold animate-pulse';
               trendCellClass = 'bg-red-900/40';
-              trendTitle = 'D3 switched from up to down below 40 - Downtrend drop signal';
-            } else if (hasValidD123 && d3Val < 50 && d3Dir === 'up') {
-              trendDisplay = 'Uptrend';
-              trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D3 reversed up below 50 - Uptrend signal';
-            } else if (hasValidD123 && d2Val < 60 && d2Dir === 'up') {
-              trendDisplay = 'Uptrend';
-              trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D2 reversed up below 60 - Uptrend signal';
-            } else if (hasValidD123 && d2Val < 80 && d2Dir === 'down') {
-              trendDisplay = 'Short Entry';
-              trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D2 reversed down below 80 - Short entry signal';
-            } else if (d123Above70) {
+              trendTitle = 'D3 just switched down, D4 < 25 - Bounce rejected';
+            }
+            // Overbought: D2 AND D1 crossed below 75 AND D4 > 85 going down
+            else if (hasValidD123 && d2Val < 75 && d1Val < 75 && d4Val_trend > 85 && d4Dir === 'down') {
               trendDisplay = 'Overbought';
-              trendClass = 'text-red-300 font-semibold';
-              trendTitle = 'D1, D2, D3 all > 70 - Overbought zone';
-            } else if (d123Below30) {
-              trendDisplay = 'Oversold';
-              trendClass = 'text-lime-300 font-semibold';
-              trendTitle = 'D1, D2, D3 all < 30 - Oversold zone';
-            } else if (d4Val_trend < 25) {
-              trendDisplay = 'Down Strong';
               trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D4 < 25 - Strong downward momentum';
-            } else if (d4Val_trend > 75) {
-              trendDisplay = 'Up Strong';
-              trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D4 > 75 - Strong upward momentum';
-            } else if (allDown) {
-              trendDisplay = 'Down';
-              trendClass = 'text-red-400';
-              trendTitle = 'All D1/D2/D3/D4 trending down';
-            } else if (d4Val_trend < 50 && d4Dir === 'down') {
-              trendDisplay = 'Down';
-              trendClass = 'text-red-400';
-              trendTitle = 'D4 < 50 trending down';
+              trendTitle = 'D1 & D2 < 75, D4 > 85 going down - Overbought reversal';
+            }
+            // Oversold: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
+            else if (hasValidD123 && d2Val > 50 && d1Val > 50 && d4Val_trend > 25 && d4Dir === 'up') {
+              trendDisplay = 'Oversold';
+              trendClass = 'text-lime-400 font-bold';
+              trendTitle = 'D1 & D2 > 50, D4 > 25 going up - Oversold recovery';
+            }
+            // Trend Up: All D1/D2/D3/D4 going up
+            else if (allUp) {
+              trendDisplay = 'Trend Up';
+              trendClass = 'text-green-400 font-semibold';
+              trendTitle = 'All D1/D2/D3/D4 trending up - Strong uptrend';
+            }
+            // Trend Down: All D1/D2/D3/D4 going down
+            else if (allDown) {
+              trendDisplay = 'Trend Down';
+              trendClass = 'text-red-400 font-semibold';
+              trendTitle = 'All D1/D2/D3/D4 trending down - Strong downtrend';
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color
