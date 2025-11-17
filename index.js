@@ -311,11 +311,11 @@ app.post('/webhook', (req, res) => {
       alertData.quadStochSignal = null
     }
     
-    // Check and add Quad Stochastic D4 trend status if active (within last 30 minutes)
+    // Check and add Quad Stochastic D4 trend status if active (within last 60 minutes)
     const quadStochD4Info = quadStochD4Data[alert.symbol]
     if (quadStochD4Info && quadStochD4Info.signal) {
       const ageInMinutes = (Date.now() - quadStochD4Info.timestamp) / 60000
-      if (ageInMinutes <= 30) {
+      if (ageInMinutes <= 60) {
         // D4 signal is recent (within 30 minutes), mark it
         alertData.quadStochD4Signal = quadStochD4Info.signal
         alertData.quadStochD1 = quadStochD4Info.d1
