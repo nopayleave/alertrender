@@ -1789,11 +1789,7 @@ app.get('/', (req, res) => {
                     \${starIcon}
                   </button>
                 </td>
-                <td class="py-3 pl-1 pr-4 font-medium w-auto whitespace-nowrap">
-                  <a href="https://www.tradingview.com/chart/?symbol=\${alert.symbol || ''}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
-                    \${alert.symbol || 'N/A'}
-                  </a>
-                </td>
+                <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
                 <td class="py-3 px-4 font-mono font-medium \${priceClass}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
