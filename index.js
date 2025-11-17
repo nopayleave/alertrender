@@ -1008,9 +1008,6 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
                       Price <span id="sort-price" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('vwap')" title="Volume Weighted Average Price & % difference">
-                      VWAP <span id="sort-vwap" class="ml-1 text-xs">⇅</span>
-                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Quad Stochastic Trend Analysis">
                       Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -1036,7 +1033,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="12" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1095,7 +1092,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'vwap', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1338,7 +1335,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -1377,7 +1374,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="12" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -1396,13 +1393,17 @@ app.get('/', (req, res) => {
             
             // Calculate price change percentage in frontend
             let priceChangeDisplay = 'N/A';
-            let priceChangeColor = '';
+            let priceChangeClass = 'text-muted-foreground'; // Default for change %
+            let priceClass = 'text-foreground'; // Default white/foreground color for price
             
             // Priority 1: Use changeFromPrevDay from Day script if available
             if (alert.changeFromPrevDay !== undefined) {
               const changeFromPrevDay = parseFloat(alert.changeFromPrevDay);
               priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              priceChangeColor = changeFromPrevDay >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+              // Price color: green if up, red if down
+              priceClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-foreground';
+              // Change % color: green if >0%, red if <0%, gray if 0
+              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
             }
             // Priority 2: Calculate from price and previousClose
             else if (alert.price && alert.previousClose && alert.previousClose !== 0) {
@@ -1410,12 +1411,19 @@ app.get('/', (req, res) => {
               const prevDayClose = parseFloat(alert.previousClose);
               const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
               priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              priceChangeColor = changeFromPrevDay >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+              // Price color: green if up, red if down
+              priceClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-foreground';
+              // Change % color: green if >0%, red if <0%, gray if 0
+              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
             } 
             // Priority 3: Fallback to legacy priceChange field
             else if (alert.priceChange) {
               priceChangeDisplay = alert.priceChange;
-              priceChangeColor = parseFloat(alert.priceChange || 0) >= 0 ? 'color: oklch(0.75 0.15 163);' : 'color: oklch(0.7 0.25 25.331);';
+              const change = parseFloat(alert.priceChange || 0);
+              // Price color: green if up, red if down
+              priceClass = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-foreground';
+              // Change % color: green if >0%, red if <0%, gray if 0
+              priceChangeClass = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-muted-foreground';
             }
             
             // Calculate VWAP percentage difference
@@ -1785,10 +1793,9 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
-                <td class="py-3 px-4 font-mono font-medium text-foreground">$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}</td>
-                <td class="py-3 px-4 font-mono \${vwapClass}" title="Price \${alert.vwapAbove === 'true' || alert.vwapAbove === true ? 'above' : 'below'} VWAP">
-                  $\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
-                  <span class="\${vwapDiffColor} text-sm">\${vwapDiffDisplay}</span>
+                <td class="py-3 px-4 font-mono font-medium \${priceClass}">
+                  $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
+                  <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
                 <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
@@ -1813,7 +1820,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="12" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
