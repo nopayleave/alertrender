@@ -1399,7 +1399,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -1790,6 +1790,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
+                <td class="py-3 px-4 font-mono font-semibold text-foreground" title="Quad Stochastic D4 Value">\${alert.quadStochD4 ? parseFloat(alert.quadStochD4).toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
@@ -1807,7 +1808,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="10" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
