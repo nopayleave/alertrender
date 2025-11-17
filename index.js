@@ -1102,8 +1102,8 @@ app.get('/', (req, res) => {
           // Move chart container to be the first child
           mainContainer.insertBefore(chartContainer, mainContainer.firstChild);
           
-          // Load TradingView chart
-          chartIframe.src = \`https://www.tradingview.com/chart/?symbol=\${symbol}\`;
+          // Load TradingView widget (embeddable version)
+          chartIframe.src = \`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=\${symbol}&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=en&utm_source=localhost&utm_medium=widget&utm_campaign=chart&utm_term=\${symbol}\`;
           
           console.log(\`📈 Opened chart for \${symbol}\`);
         }
