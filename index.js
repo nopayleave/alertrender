@@ -104,6 +104,13 @@ app.post('/webhook', (req, res) => {
     const d3SwitchedToUp = d3Switched && alert.d3Direction === 'up'
     const d3SwitchedToDown = d3Switched && alert.d3Direction === 'down'
     
+    // Detect level crossings
+    const d1CrossedUnder75 = prevQS.d1 > 75 && alert.d1 <= 75
+    const d2CrossedUnder75 = prevQS.d2 > 75 && alert.d2 <= 75
+    const d1CrossedAbove50 = prevQS.d1 < 50 && alert.d1 >= 50
+    const d2CrossedAbove50 = prevQS.d2 < 50 && alert.d2 >= 50
+    const d4CrossedAbove25 = prevQS.d4 < 25 && alert.d4 >= 25
+    
     // Rank signals from bearish (-3) to bullish (+3) for comparison
     const signalRank = {
       'D4_Downtrend': -3,
@@ -156,12 +163,20 @@ app.post('/webhook', (req, res) => {
       d2SwitchedToDown: d2SwitchedToDown,
       d3SwitchedToUp: d3SwitchedToUp,
       d3SwitchedToDown: d3SwitchedToDown,
+      d1CrossedUnder75: d1CrossedUnder75,
+      d2CrossedUnder75: d2CrossedUnder75,
+      d1CrossedAbove50: d1CrossedAbove50,
+      d2CrossedAbove50: d2CrossedAbove50,
+      d4CrossedAbove25: d4CrossedAbove25,
       changeTimestamp: Date.now(),
       timestamp: Date.now()
     }
     
     // Store current values as previous for next comparison
     previousQSValues[alert.symbol] = {
+      d1: alert.d1,
+      d2: alert.d2,
+      d3: alert.d3,
       d4: alert.d4,
       d4Signal: alert.d4Signal,
       d1Direction: alert.d1Direction,
@@ -358,6 +373,11 @@ app.post('/webhook', (req, res) => {
         alertData.d2SwitchedToDown = quadStochD4Info.d2SwitchedToDown
         alertData.d3SwitchedToUp = quadStochD4Info.d3SwitchedToUp
         alertData.d3SwitchedToDown = quadStochD4Info.d3SwitchedToDown
+        alertData.d1CrossedUnder75 = quadStochD4Info.d1CrossedUnder75
+        alertData.d2CrossedUnder75 = quadStochD4Info.d2CrossedUnder75
+        alertData.d1CrossedAbove50 = quadStochD4Info.d1CrossedAbove50
+        alertData.d2CrossedAbove50 = quadStochD4Info.d2CrossedAbove50
+        alertData.d4CrossedAbove25 = quadStochD4Info.d4CrossedAbove25
         console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
@@ -1149,9 +1169,9 @@ app.get('/', (req, res) => {
                 'Keep Hi Up': 8,
                 'Bounce Support': 7,
                 'Trend Up': 6,
-                'Oversold': 5,
+                'Bull Trend Break?': 5,
                 'Neutral': 4,
-                'Overbought': 3,
+                'Bear Trend Break?': 3,
                 'Trend Down': 2,
                 'Bounce Reject': 1,
                 'Keep Low Down': 0
@@ -1194,13 +1214,13 @@ app.get('/', (req, res) => {
               else if (d4Val_sort < 25 && d3SwitchedDown_sort) {
                 trend_sort = 'Bounce Reject';
               }
-              // Overbought: D2 AND D1 crossed below 75 AND D4 > 85 going down
-              else if (d2Val_sort < 75 && d1Val_sort < 75 && d4Val_sort > 85 && d4Dir_sort === 'down') {
-                trend_sort = 'Overbought';
+              // Bull Trend Break?: D2 AND D1 crossed under 75 AND D4 > 85 going down
+              else if (alert.d1CrossedUnder75 && alert.d2CrossedUnder75 && d4Val_sort > 85 && d4Dir_sort === 'down') {
+                trend_sort = 'Bull Trend Break?';
               }
-              // Oversold: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
-              else if (d2Val_sort > 50 && d1Val_sort > 50 && d4Val_sort > 25 && d4Dir_sort === 'up') {
-                trend_sort = 'Oversold';
+              // Bear Trend Break?: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
+              else if (alert.d1CrossedAbove50 && alert.d2CrossedAbove50 && alert.d4CrossedAbove25 && d4Dir_sort === 'up') {
+                trend_sort = 'Bear Trend Break?';
               }
               // Trend Up: All D1/D2/D3/D4 going up
               else if (allUp_sort) {
@@ -1571,17 +1591,17 @@ app.get('/', (req, res) => {
               trendCellClass = 'bg-red-900/40';
               trendTitle = 'D3 just switched down, D4 < 25 - Bounce rejected';
             }
-            // Overbought: D2 AND D1 crossed below 75 AND D4 > 85 going down
-            else if (hasValidD123 && d2Val < 75 && d1Val < 75 && d4Val_trend > 85 && d4Dir === 'down') {
-              trendDisplay = 'Overbought';
-              trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D1 & D2 < 75, D4 > 85 going down - Overbought reversal';
+            // Bull Trend Break?: D2 AND D1 crossed under 75 AND D4 > 85 going down
+            else if (alert.d1CrossedUnder75 && alert.d2CrossedUnder75 && d4Val_trend > 85 && d4Dir === 'down') {
+              trendDisplay = 'Bull Trend Break?';
+              trendClass = 'text-orange-400 font-bold';
+              trendTitle = 'D1 & D2 crossed under 75, D4 > 85 going down - Bullish trend breaking?';
             }
-            // Oversold: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
-            else if (hasValidD123 && d2Val > 50 && d1Val > 50 && d4Val_trend > 25 && d4Dir === 'up') {
-              trendDisplay = 'Oversold';
+            // Bear Trend Break?: D2 AND D1 crossed above 50 AND D4 crossed above 25 going up
+            else if (alert.d1CrossedAbove50 && alert.d2CrossedAbove50 && alert.d4CrossedAbove25 && d4Dir === 'up') {
+              trendDisplay = 'Bear Trend Break?';
               trendClass = 'text-lime-400 font-bold';
-              trendTitle = 'D1 & D2 > 50, D4 > 25 going up - Oversold recovery';
+              trendTitle = 'D1 & D2 crossed above 50, D4 crossed above 25 going up - Bearish trend breaking?';
             }
             // Trend Up: All D1/D2/D3/D4 going up
             else if (allUp) {
