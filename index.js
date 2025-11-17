@@ -1020,9 +1020,6 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
                       MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('rsi')">
-                      <span title="Relative Strength Index">RSI</span> <span id="sort-rsi" class="ml-1 text-xs">⇅</span>
-                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macd')">
                       <span title="MACD Histogram">MACD Hist</span> <span id="sort-macd" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -1033,7 +1030,7 @@ app.get('/', (req, res) => {
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="10" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1092,7 +1089,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
           // Reset all indicators
-          const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'rsi', 'macd', 'priceChange', 'volume'];
+          const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'macd', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1335,7 +1332,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -1374,7 +1371,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = '<tr><td colspan="10" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -1801,7 +1798,6 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono \${rsiClass}" title="RSI\${alert.rsiTf ? ' [' + alert.rsiTf + ']' : ''}">\${alert.rsi ? parseFloat(alert.rsi).toFixed(1) : 'N/A'}</td>
                 <td class="py-3 px-4 font-mono \${macdClass}" title="MACD Histogram\${alert.macdTf ? ' [' + alert.macdTf + ']' : ''}">\${alert.macdHistogram ? parseFloat(alert.macdHistogram).toFixed(3) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
@@ -1820,7 +1816,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = '<tr><td colspan="10" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
           }
         }
 
