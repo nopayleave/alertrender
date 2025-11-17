@@ -1127,24 +1127,22 @@ app.get('/', (req, res) => {
             case 'trend':
               // Sort by trend priority
               const trendOrder = {
-                'Dead Long': 17,
-                'Bounce Alert Fail Back': 16,
-                'Never Short': 15,
+                'Peak High': 17,
+                'Reversal Risk': 16,
+                'Strong Bull': 15,
                 'Bounce': 14,
-                'Try Long': 13,
+                'Long Entry': 13,
                 'Pullback': 12,
-                'Try Short': 11,
-                'Up Day': 10,
+                'Short Entry': 11,
+                'Up Strong': 10,
                 'Up': 9,
-                'Bullish': 8,
                 'Overbought': 7,
                 'Neutral': 6,
                 'Oversold': 5,
-                'Bearish': 4,
-                'Down': 3,
-                'Down Day': 2,
-                'Never Long': 1,
-                'Dead Short': 0
+                'Down': 4,
+                'Down Strong': 3,
+                'Strong Bear': 2,
+                'Bottom Low': 1
               };
               // Calculate trend for sorting (reuse same logic)
               const d1Dir_sort = alert.d1Direction || 'flat';
@@ -1164,43 +1162,43 @@ app.get('/', (req, res) => {
               
               let trend_sort = 'Neutral';
               if (d4Val_sort < 10) {
-                trend_sort = 'Dead Short';
+                trend_sort = 'Bottom Low';
               } else if (d4Val_sort > 90) {
-                trend_sort = 'Dead Long';
+                trend_sort = 'Peak High';
               } else if (d3Val_sort > 90 && d3Dir_sort === 'up') {
-                trend_sort = 'Bounce Alert Fail Back';
+                trend_sort = 'Reversal Risk';
               } else if (d4Val_sort < 25 && d4Dir_sort === 'down') {
-                trend_sort = 'Never Long';
+                trend_sort = 'Strong Bear';
               } else if (d4Val_sort > 75 && d4Dir_sort === 'up') {
-                trend_sort = 'Never Short';
+                trend_sort = 'Strong Bull';
               } else if (d4Val_sort < 25 && d4Dir_sort === 'up' && d123Above50_sort) {
                 trend_sort = 'Bounce';
               } else if (d4Val_sort > 75 && d4Dir_sort === 'down' && d123Below50_sort) {
                 trend_sort = 'Pullback';
               } else if (d4Val_sort < 20 && d4Dir_sort === 'down') {
-                trend_sort = 'Try Short';
+                trend_sort = 'Short Entry';
               } else if (d3Val_sort < 50 && d3Dir_sort === 'up') {
-                trend_sort = 'Try Long';
+                trend_sort = 'Long Entry';
               } else if (d2Val_sort < 60 && d2Dir_sort === 'up') {
-                trend_sort = 'Try Long';
+                trend_sort = 'Long Entry';
               } else if (d2Val_sort < 80 && d2Dir_sort === 'down') {
-                trend_sort = 'Try Short';
+                trend_sort = 'Short Entry';
               } else if (d123Above70_sort) {
                 trend_sort = 'Overbought';
               } else if (d123Below30_sort) {
                 trend_sort = 'Oversold';
               } else if (d4Val_sort < 25) {
-                trend_sort = 'Down Day';
+                trend_sort = 'Down Strong';
               } else if (d4Val_sort > 75) {
-                trend_sort = 'Up Day';
+                trend_sort = 'Up Strong';
               } else if (allDown_sort) {
                 trend_sort = 'Down';
               } else if (allUp_sort) {
                 trend_sort = 'Up';
               } else if (d4Val_sort > 50 && d4Dir_sort === 'up') {
-                trend_sort = 'Bullish';
+                trend_sort = 'Up';
               } else if (d4Val_sort < 50 && d4Dir_sort === 'down') {
-                trend_sort = 'Bearish';
+                trend_sort = 'Down';
               }
               return trendOrder[trend_sort] || 6;
             case 'quadStoch':
@@ -1526,49 +1524,49 @@ app.get('/', (req, res) => {
             
             // Priority order for trend determination
             if (d4Val_trend < 10) {
-              trendDisplay = 'Dead Short';
+              trendDisplay = 'Bottom Low';
               trendClass = 'text-red-600 font-extrabold animate-pulse';
-              trendTitle = 'D4 < 10 - Extremely oversold, dead short zone';
+              trendTitle = 'D4 < 10 - Extreme bottom, ultra oversold zone';
             } else if (d4Val_trend > 90) {
-              trendDisplay = 'Dead Long';
+              trendDisplay = 'Peak High';
               trendClass = 'text-green-600 font-extrabold animate-pulse';
-              trendTitle = 'D4 > 90 - Extremely overbought, dead long zone';
+              trendTitle = 'D4 > 90 - Extreme peak, ultra overbought zone';
             } else if (hasValidD123 && d3Val > 90 && d3Dir === 'up') {
-              trendDisplay = 'Bounce Alert Fail Back';
+              trendDisplay = 'Reversal Risk';
               trendClass = 'text-yellow-400 font-bold animate-pulse';
-              trendTitle = 'D3 crossed above 90 from below - Bounce alert fail back warning';
+              trendTitle = 'D3 crossed above 90 - High reversal risk warning';
             } else if (d4Val_trend < 25 && d4Dir === 'down') {
-              trendDisplay = 'Never Long';
+              trendDisplay = 'Strong Bear';
               trendClass = 'text-red-500 font-bold';
-              trendTitle = 'D4 < 25 going down - Extreme bearish, never long';
+              trendTitle = 'D4 < 25 going down - Strong bearish trend';
             } else if (d4Val_trend > 75 && d4Dir === 'up') {
-              trendDisplay = 'Never Short';
+              trendDisplay = 'Strong Bull';
               trendClass = 'text-green-500 font-bold';
-              trendTitle = 'D4 > 75 going up - Extreme bullish, never short';
+              trendTitle = 'D4 > 75 going up - Strong bullish trend';
             } else if (d4Val_trend < 25 && d4Dir === 'up' && d123Above50) {
               trendDisplay = 'Bounce';
               trendClass = 'text-lime-400 font-bold';
-              trendTitle = 'D4 < 25 going up, D1/D2/D3 > 50 - Bounce signal';
+              trendTitle = 'D4 < 25 reversing up, D1/D2/D3 > 50 - Bounce signal';
             } else if (d4Val_trend > 75 && d4Dir === 'down' && d123Below50) {
               trendDisplay = 'Pullback';
               trendClass = 'text-orange-400 font-bold';
-              trendTitle = 'D4 > 75 going down, D1/D2/D3 < 50 - Pullback signal';
+              trendTitle = 'D4 > 75 reversing down, D1/D2/D3 < 50 - Pullback signal';
             } else if (d4Val_trend < 20 && d4Dir === 'down') {
-              trendDisplay = 'Try Short';
+              trendDisplay = 'Short Entry';
               trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D4 reversed from up to down and below 20 - Try short signal';
+              trendTitle = 'D4 reversed down below 20 - Short entry signal';
             } else if (hasValidD123 && d3Val < 50 && d3Dir === 'up') {
-              trendDisplay = 'Try Long';
+              trendDisplay = 'Long Entry';
               trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D3 reversed from down to up and below 50 - Try long signal';
+              trendTitle = 'D3 reversed up below 50 - Long entry signal';
             } else if (hasValidD123 && d2Val < 60 && d2Dir === 'up') {
-              trendDisplay = 'Try Long';
+              trendDisplay = 'Long Entry';
               trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D2 reversed from down to up and below 60 - Try long signal';
+              trendTitle = 'D2 reversed up below 60 - Long entry signal';
             } else if (hasValidD123 && d2Val < 80 && d2Dir === 'down') {
-              trendDisplay = 'Try Short';
+              trendDisplay = 'Short Entry';
               trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D2 reversed from up to down and crossed under 80 - Try short signal';
+              trendTitle = 'D2 reversed down below 80 - Short entry signal';
             } else if (d123Above70) {
               trendDisplay = 'Overbought';
               trendClass = 'text-red-300 font-semibold';
@@ -1578,29 +1576,29 @@ app.get('/', (req, res) => {
               trendClass = 'text-lime-300 font-semibold';
               trendTitle = 'D1, D2, D3 all < 30 - Oversold zone';
             } else if (d4Val_trend < 25) {
-              trendDisplay = 'Down Day';
+              trendDisplay = 'Down Strong';
               trendClass = 'text-red-400 font-bold';
-              trendTitle = 'D4 < 25 - Strong bearish';
+              trendTitle = 'D4 < 25 - Strong downward momentum';
             } else if (d4Val_trend > 75) {
-              trendDisplay = 'Up Day';
+              trendDisplay = 'Up Strong';
               trendClass = 'text-green-400 font-bold';
-              trendTitle = 'D4 > 75 - Strong bullish';
+              trendTitle = 'D4 > 75 - Strong upward momentum';
             } else if (allDown) {
               trendDisplay = 'Down';
               trendClass = 'text-red-400';
-              trendTitle = 'All D1/D2/D3/D4 going down';
+              trendTitle = 'All D1/D2/D3/D4 trending down';
             } else if (allUp) {
               trendDisplay = 'Up';
               trendClass = 'text-green-400';
-              trendTitle = 'All D1/D2/D3/D4 going up';
+              trendTitle = 'All D1/D2/D3/D4 trending up';
             } else if (d4Val_trend > 50 && d4Dir === 'up') {
-              trendDisplay = 'Bullish';
+              trendDisplay = 'Up';
               trendClass = 'text-green-400';
-              trendTitle = 'D4 > 50 and going up';
+              trendTitle = 'D4 > 50 trending up';
             } else if (d4Val_trend < 50 && d4Dir === 'down') {
-              trendDisplay = 'Bearish';
+              trendDisplay = 'Down';
               trendClass = 'text-red-400';
-              trendTitle = 'D4 < 50 and going down';
+              trendTitle = 'D4 < 50 trending down';
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color
