@@ -1014,9 +1014,6 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Quad Stochastic Trend Analysis">
                       Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('quadStoch')" title="Quad Stochastic D4 Value">
-                      QS D4 Value <span id="sort-quadStoch" class="ml-1 text-xs">⇅</span>
-                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qsArrow')" title="D1/D2/D3/D4 Direction Arrows">
                       QS Arrow <span id="sort-qsArrow" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -1144,7 +1141,8 @@ app.get('/', (req, res) => {
                 'Downtrend Drop': 3,
                 'Down Strong': 2,
                 'Strong Bear': 1,
-                'Bottom Low': 0
+                'Bottom Reversal': 1,
+                'Bottom Falling': 0
               };
               // Calculate trend for sorting (reuse same logic)
               const d1Dir_sort = alert.d1Direction || 'flat';
@@ -1163,8 +1161,10 @@ app.get('/', (req, res) => {
               const d123Below30_sort = d1Val_sort < 30 && d2Val_sort < 30 && d3Val_sort < 30;
               
               let trend_sort = 'Neutral';
-              if (d4Val_sort < 10) {
-                trend_sort = 'Bottom Low';
+              if (d4Val_sort < 10 && d4Dir_sort === 'up') {
+                trend_sort = 'Bottom Reversal';
+              } else if (d4Val_sort < 10 && d4Dir_sort === 'down') {
+                trend_sort = 'Bottom Falling';
               } else if (d4Val_sort > 90) {
                 trend_sort = 'Peak High';
               } else if (d3Val_sort > 90 && d3Dir_sort === 'up') {
@@ -1510,6 +1510,7 @@ app.get('/', (req, res) => {
             // Calculate trend based on D1, D2, D3, D4 values and directions
             let trendDisplay = 'Neutral';
             let trendClass = 'text-gray-400';
+            let trendCellClass = '';
             let trendTitle = 'Trend analysis';
             
             const d1Val = parseFloat(alert.d1Value);
@@ -1529,10 +1530,14 @@ app.get('/', (req, res) => {
             const d123Below30 = hasValidD123 && d1Val < 30 && d2Val < 30 && d3Val < 30;
             
             // Priority order for trend determination
-            if (d4Val_trend < 10) {
-              trendDisplay = 'Bottom Low';
+            if (d4Val_trend < 10 && d4Dir === 'up') {
+              trendDisplay = 'Bottom Reversal';
+              trendClass = 'text-lime-500 font-extrabold animate-pulse';
+              trendTitle = 'D4 < 10 turning up - Extreme oversold reversal signal';
+            } else if (d4Val_trend < 10 && d4Dir === 'down') {
+              trendDisplay = 'Bottom Falling';
               trendClass = 'text-red-600 font-extrabold animate-pulse';
-              trendTitle = 'D4 < 10 - Extreme bottom, ultra oversold zone';
+              trendTitle = 'D4 < 10 still falling - Extreme bottom, continuing down';
             } else if (d4Val_trend > 90) {
               trendDisplay = 'Peak High';
               trendClass = 'text-green-600 font-extrabold animate-pulse';
@@ -1556,6 +1561,7 @@ app.get('/', (req, res) => {
             } else if (hasValidD123 && d3Val >= 40 && d3Val <= 60 && d3Dir === 'up') {
               trendDisplay = 'Uptrend Bounce';
               trendClass = 'text-green-400 font-bold';
+              trendCellClass = 'bg-green-900/40';
               trendTitle = 'D3 switched from down to up between 40-60 - Uptrend bounce signal';
             } else if (d4Val_trend > 75 && d4Dir === 'down' && d123Below50) {
               trendDisplay = 'Pullback';
@@ -1568,6 +1574,7 @@ app.get('/', (req, res) => {
             } else if (hasValidD123 && d3Val < 40 && d3Dir === 'down') {
               trendDisplay = 'Downtrend Drop';
               trendClass = 'text-red-400 font-bold';
+              trendCellClass = 'bg-red-900/40';
               trendTitle = 'D3 switched from up to down below 40 - Downtrend drop signal';
             } else if (hasValidD123 && d3Val < 50 && d3Dir === 'up') {
               trendDisplay = 'Long Entry';
@@ -1783,8 +1790,7 @@ app.get('/', (req, res) => {
                   $\${alert.vwap ? parseFloat(alert.vwap).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="\${vwapDiffColor} text-sm">\${vwapDiffDisplay}</span>
                 </td>
-                <td class="py-3 px-4 font-bold \${trendClass}" title="\${trendTitle}">\${trendDisplay}</td>
-                <td class="py-3 px-4 font-bold \${quadStochClass}" title="\${quadStochTitle}">\${quadStochDisplay}</td>
+                <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
