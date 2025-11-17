@@ -955,26 +955,18 @@ app.get('/', (req, res) => {
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
-      <div id="mainContainer" class="container mx-auto" style="max-width:1360px;">
+      <div class="container mx-auto" style="max-width:1360px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
               <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
             </div>
-            <div class="flex gap-2">
-              <button id="closeSplitView" class="hidden px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
-                ✕ Close Chart
-              </button>
+            <div>
               <a href="/calculator" class="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Calculator
               </a>
             </div>
           </div>
-        </div>
-        
-        <!-- TradingView iframe container (hidden by default) -->
-        <div id="chartContainer" class="hidden mb-4">
-          <iframe id="tradingviewChart" width="100%" height="600" frameborder="0" allowfullscreen></iframe>
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
@@ -1075,67 +1067,6 @@ app.get('/', (req, res) => {
         // Countdown state
         let countdownSeconds = 120;
         let countdownInterval = null;
-
-        // Chart state
-        let currentSymbol = null;
-
-        // Open TradingView chart
-        function openChart(symbol) {
-          if (!symbol || symbol === 'N/A') return;
-          
-          currentSymbol = symbol;
-          const chartContainer = document.getElementById('chartContainer');
-          const chartIframe = document.getElementById('tradingviewChart');
-          const closeButton = document.getElementById('closeSplitView');
-          const mainContainer = document.getElementById('mainContainer');
-          
-          // Show chart container and close button
-          chartContainer.classList.remove('hidden');
-          closeButton.classList.remove('hidden');
-          
-          // Enable split view layout
-          mainContainer.style.display = 'grid';
-          mainContainer.style.gridTemplateColumns = '50% 50%';
-          mainContainer.style.gap = '1rem';
-          mainContainer.style.maxWidth = '100%';
-          
-          // Move chart container to be the first child
-          mainContainer.insertBefore(chartContainer, mainContainer.firstChild);
-          
-          // Load TradingView widget (embeddable version)
-          chartIframe.src = \`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=\${symbol}&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=en&utm_source=localhost&utm_medium=widget&utm_campaign=chart&utm_term=\${symbol}\`;
-          
-          console.log(\`📈 Opened chart for \${symbol}\`);
-        }
-
-        // Close split view
-        function closeSplitView() {
-          const chartContainer = document.getElementById('chartContainer');
-          const chartIframe = document.getElementById('tradingviewChart');
-          const closeButton = document.getElementById('closeSplitView');
-          const mainContainer = document.getElementById('mainContainer');
-          
-          // Hide chart container and close button
-          chartContainer.classList.add('hidden');
-          closeButton.classList.add('hidden');
-          
-          // Disable split view layout
-          mainContainer.style.display = 'block';
-          mainContainer.style.gridTemplateColumns = '';
-          mainContainer.style.gap = '';
-          mainContainer.style.maxWidth = '1360px';
-          
-          // Clear iframe
-          chartIframe.src = '';
-          currentSymbol = null;
-          
-          console.log('❌ Closed chart view');
-        }
-
-        // Add event listener for close button
-        document.addEventListener('DOMContentLoaded', function() {
-          document.getElementById('closeSplitView').addEventListener('click', closeSplitView);
-        });
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
@@ -1859,7 +1790,7 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
                 <td class="py-3 pl-1 pr-4 font-medium w-auto whitespace-nowrap">
-                  <a href="#" onclick="openChart('\${alert.symbol || ''}'); return false;" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors cursor-pointer">
+                  <a href="https://www.tradingview.com/chart/?symbol=\${alert.symbol || ''}" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">
                     \${alert.symbol || 'N/A'}
                   </a>
                 </td>
