@@ -1127,10 +1127,11 @@ app.get('/', (req, res) => {
             case 'trend':
               // Sort by trend priority
               const trendOrder = {
-                'Peak High': 17,
-                'Reversal Risk': 16,
-                'Strong Bull': 15,
-                'Bounce': 14,
+                'Peak High': 18,
+                'Reversal Risk': 17,
+                'Strong Bull': 16,
+                'Bounce': 15,
+                'Uptrend Bounce': 14,
                 'Long Entry': 13,
                 'Pullback': 12,
                 'Short Entry': 11,
@@ -1140,9 +1141,10 @@ app.get('/', (req, res) => {
                 'Neutral': 6,
                 'Oversold': 5,
                 'Down': 4,
-                'Down Strong': 3,
-                'Strong Bear': 2,
-                'Bottom Low': 1
+                'Downtrend Drop': 3,
+                'Down Strong': 2,
+                'Strong Bear': 1,
+                'Bottom Low': 0
               };
               // Calculate trend for sorting (reuse same logic)
               const d1Dir_sort = alert.d1Direction || 'flat';
@@ -1173,10 +1175,14 @@ app.get('/', (req, res) => {
                 trend_sort = 'Strong Bull';
               } else if (d4Val_sort < 25 && d4Dir_sort === 'up' && d123Above50_sort) {
                 trend_sort = 'Bounce';
+              } else if (d3Val_sort >= 40 && d3Val_sort <= 60 && d3Dir_sort === 'up') {
+                trend_sort = 'Uptrend Bounce';
               } else if (d4Val_sort > 75 && d4Dir_sort === 'down' && d123Below50_sort) {
                 trend_sort = 'Pullback';
               } else if (d4Val_sort < 20 && d4Dir_sort === 'down') {
                 trend_sort = 'Short Entry';
+              } else if (d3Val_sort < 40 && d3Dir_sort === 'down') {
+                trend_sort = 'Downtrend Drop';
               } else if (d3Val_sort < 50 && d3Dir_sort === 'up') {
                 trend_sort = 'Long Entry';
               } else if (d2Val_sort < 60 && d2Dir_sort === 'up') {
@@ -1547,6 +1553,10 @@ app.get('/', (req, res) => {
               trendDisplay = 'Bounce';
               trendClass = 'text-lime-400 font-bold';
               trendTitle = 'D4 < 25 reversing up, D1/D2/D3 > 50 - Bounce signal';
+            } else if (hasValidD123 && d3Val >= 40 && d3Val <= 60 && d3Dir === 'up') {
+              trendDisplay = 'Uptrend Bounce';
+              trendClass = 'text-green-400 font-bold';
+              trendTitle = 'D3 switched from down to up between 40-60 - Uptrend bounce signal';
             } else if (d4Val_trend > 75 && d4Dir === 'down' && d123Below50) {
               trendDisplay = 'Pullback';
               trendClass = 'text-orange-400 font-bold';
@@ -1555,6 +1565,10 @@ app.get('/', (req, res) => {
               trendDisplay = 'Short Entry';
               trendClass = 'text-red-400 font-bold';
               trendTitle = 'D4 reversed down below 20 - Short entry signal';
+            } else if (hasValidD123 && d3Val < 40 && d3Dir === 'down') {
+              trendDisplay = 'Downtrend Drop';
+              trendClass = 'text-red-400 font-bold';
+              trendTitle = 'D3 switched from up to down below 40 - Downtrend drop signal';
             } else if (hasValidD123 && d3Val < 50 && d3Dir === 'up') {
               trendDisplay = 'Long Entry';
               trendClass = 'text-green-400 font-bold';
