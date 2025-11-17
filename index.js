@@ -235,6 +235,24 @@ app.post('/webhook', (req, res) => {
     const d7SwitchedToUp = d7Switched && alert.d7Direction === 'up'
     const d7SwitchedToDown = d7Switched && alert.d7Direction === 'down'
     
+    // Detect D1 crossover/crossunder D7
+    const d1Val = parseFloat(alert.d1)
+    const d7Val = parseFloat(alert.d7)
+    const prevD1Val = parseFloat(prevOcto.d1)
+    const prevD7Val = parseFloat(prevOcto.d7)
+    
+    let d1CrossD7 = null
+    if (!isNaN(d1Val) && !isNaN(d7Val) && !isNaN(prevD1Val) && !isNaN(prevD7Val)) {
+      // D1 crossover D7 (bullish) - both going up
+      if (prevD1Val <= prevD7Val && d1Val > d7Val && alert.d1Direction === 'up' && alert.d7Direction === 'up') {
+        d1CrossD7 = 'bull'
+      }
+      // D1 crossunder D7 (bearish) - both going down
+      else if (prevD1Val >= prevD7Val && d1Val < d7Val && alert.d1Direction === 'down' && alert.d7Direction === 'down') {
+        d1CrossD7 = 'bear'
+      }
+    }
+    
     // Store Octo Stochastic data
     octoStochData[alert.symbol] = {
       d1: alert.d1,
@@ -255,6 +273,7 @@ app.post('/webhook', (req, res) => {
       d8Direction: alert.d8Direction,
       d8Signal: alert.d8Signal,
       d1d2Cross: alert.d1d2Cross,
+      d1CrossD7: d1CrossD7,
       timeframe1_4: alert.timeframe1_4,
       timeframe5_8: alert.timeframe5_8,
       d1SwitchedToUp: d1SwitchedToUp,
@@ -296,7 +315,7 @@ app.post('/webhook', (req, res) => {
       d8: alert.d8Direction
     }
     
-    console.log(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D8 Signal=${alert.d8Signal}`)
+    console.log(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D1xD7=${d1CrossD7 || 'none'}, D8 Signal=${alert.d8Signal}`)
     
     // Also update existing alert if it exists (don't create new one)
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -319,6 +338,7 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d8Direction = alert.d8Direction
       alerts[existingIndex].d8Signal = alert.d8Signal
       alerts[existingIndex].d1d2Cross = alert.d1d2Cross
+      alerts[existingIndex].d1CrossD7 = d1CrossD7
       alerts[existingIndex].d1SwitchedToUp = d1SwitchedToUp
       alerts[existingIndex].d1SwitchedToDown = d1SwitchedToDown
       alerts[existingIndex].d7SwitchedToUp = d7SwitchedToUp
@@ -485,13 +505,14 @@ app.post('/webhook', (req, res) => {
         alertData.d8Direction = octoStochInfo.d8Direction
         alertData.d8Signal = octoStochInfo.d8Signal
         alertData.d1d2Cross = octoStochInfo.d1d2Cross
+        alertData.d1CrossD7 = octoStochInfo.d1CrossD7
         alertData.d1SwitchedToUp = octoStochInfo.d1SwitchedToUp
         alertData.d1SwitchedToDown = octoStochInfo.d1SwitchedToDown
         alertData.d7SwitchedToUp = octoStochInfo.d7SwitchedToUp
         alertData.d7SwitchedToDown = octoStochInfo.d7SwitchedToDown
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
         alertData.timeframe5_8 = octoStochInfo.timeframe5_8
-        console.log(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7} (age: ${ageInMinutes.toFixed(1)} min)`)
+        console.log(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7}, D1xD7=${octoStochInfo.d1CrossD7 || 'none'} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete octoStochData[alert.symbol]
@@ -1332,23 +1353,33 @@ app.get('/', (req, res) => {
             case 'trend':
               // Sort by trend priority (NEW D1 & D7 BASED)
               const trendOrder = {
+                '🚀 BULL Cross': 12,
                 'Very Long': 10,
                 'Try Long': 8,
                 'Switch Long': 7,
                 'Neutral': 5,
                 'Switch Short': 4,
                 'Try Short': 3,
-                'Very Short': 1
+                'Very Short': 1,
+                '🔻 BEAR Cross': 0
               };
               // Calculate trend for sorting using D1 and D7
               const d1Dir_sort = alert.d1Direction || 'flat';
               const d7Val_sort = parseFloat(alert.octoStochD7) || 0;
               const d7Dir_sort = alert.d7Direction || 'flat';
+              const d1CrossD7_sort = alert.d1CrossD7;
               
               let trend_sort = 'Neutral';
               
+              // HIGHEST PRIORITY: D1 crossover/crossunder D7
+              if (d1CrossD7_sort === 'bull') {
+                trend_sort = '🚀 BULL Cross';
+              }
+              else if (d1CrossD7_sort === 'bear') {
+                trend_sort = '🔻 BEAR Cross';
+              }
               // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-              if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
+              else if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
                 trend_sort = 'Very Long';
               }
               // Switch Short: D7 > 80 AND D1 switched to down
@@ -1697,10 +1728,24 @@ app.get('/', (req, res) => {
             // Get D7 value and direction (from Octo Stoch data)
             const d7Val = parseFloat(alert.octoStochD7) || 0;
             const d7Dir = alert.d7Direction || 'flat';
+            const d1CrossD7 = alert.d1CrossD7;
             
             // Priority order for trend determination based on D1 and D7
+            // HIGHEST PRIORITY: D1 crossover/crossunder D7
+            if (d1CrossD7 === 'bull') {
+              trendDisplay = '🚀 BULL Cross';
+              trendClass = 'text-green-500 font-extrabold animate-pulse';
+              trendCellClass = 'bg-green-900/70';
+              trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
+            }
+            else if (d1CrossD7 === 'bear') {
+              trendDisplay = '🔻 BEAR Cross';
+              trendClass = 'text-red-500 font-extrabold animate-pulse';
+              trendCellClass = 'bg-red-900/70';
+              trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
+            }
             // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-            if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
+            else if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
               trendDisplay = 'Very Long';
               trendClass = 'text-green-600 font-extrabold animate-pulse';
               trendCellClass = 'bg-green-900/50';
