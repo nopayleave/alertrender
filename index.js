@@ -250,33 +250,54 @@ function checkAndNotifyTrendChange(symbol, alertData) {
   const previousTrend = previousTrends[symbol]
   const isStarred = starredSymbols[symbol]
   
-  // Debug logging
-  if (isStarred) {
-    console.log(`⭐ Checking trend for starred symbol ${symbol}: current=${currentTrend}, previous=${previousTrend || 'none'}`)
-  }
+  // Get D7 value
+  const d7Value = alertData.octoStochD7 !== undefined ? parseFloat(alertData.octoStochD7) : 
+                  alertData.d7 !== undefined ? parseFloat(alertData.d7) : null
   
-  // Only notify for starred symbols
-  if (!isStarred) {
+  // Check for D7 extremes (D7 < 20 or > 80) - ALERT FOR ALL STOCKS (not just starred)
+  const isD7Extreme = d7Value !== null && (d7Value < 20 || d7Value > 80)
+  const wasD7Extreme = previousTrend === 'Very Short' || previousTrend === 'Very Long'
+  
+  // Send alert for D7 extremes (regardless of star status) - only on first detection
+  if (isD7Extreme && !wasD7Extreme) {
+    const extremeTrend = d7Value < 20 ? 'Very Short' : 'Very Long'
+    const oldTrend = previousTrend || 'Neutral'
+    console.log(`🚨 D7 Extreme Alert for ${symbol}: D7=${d7Value.toFixed(2)} (${extremeTrend})`)
+    
+    // Send notifications for D7 extremes (all stocks)
+    sendEmailNotification(symbol, oldTrend, extremeTrend, alertData.price)
+    sendDiscordNotification(symbol, oldTrend, extremeTrend, alertData.price, d7Value)
+    
+    // Update previous trend
+    previousTrends[symbol] = extremeTrend
     return
   }
   
-  // If trend changed and it's not the first time we're seeing this symbol
-  if (previousTrend && previousTrend !== currentTrend) {
-    console.log(`🔔 Trend change detected for starred symbol ${symbol}: ${previousTrend} → ${currentTrend}`)
+  // For starred symbols: check for regular trend changes
+  if (isStarred) {
+    console.log(`⭐ Checking trend for starred symbol ${symbol}: current=${currentTrend}, previous=${previousTrend || 'none'}`)
     
-    // Get D7 value for Discord color logic
-    const d7Value = alertData.octoStochD7 !== undefined ? parseFloat(alertData.octoStochD7) : 
-                    alertData.d7 !== undefined ? parseFloat(alertData.d7) : null
+    // If trend changed and it's not the first time we're seeing this symbol
+    if (previousTrend && previousTrend !== currentTrend) {
+      console.log(`🔔 Trend change detected for starred symbol ${symbol}: ${previousTrend} → ${currentTrend}`)
+      
+      // Send notifications
+      sendEmailNotification(symbol, previousTrend, currentTrend, alertData.price)
+      sendDiscordNotification(symbol, previousTrend, currentTrend, alertData.price, d7Value)
+    } else if (!previousTrend) {
+      console.log(`📊 Initial trend recorded for starred symbol ${symbol}: ${currentTrend}`)
+    }
     
-    // Send notifications
-    sendEmailNotification(symbol, previousTrend, currentTrend, alertData.price)
-    sendDiscordNotification(symbol, previousTrend, currentTrend, alertData.price, d7Value)
-  } else if (!previousTrend) {
-    console.log(`📊 Initial trend recorded for starred symbol ${symbol}: ${currentTrend}`)
+    // Update previous trend for next comparison
+    previousTrends[symbol] = currentTrend
+  } else {
+    // For non-starred symbols: only track trend (no notifications except D7 extremes above)
+    if (!previousTrend) {
+      previousTrends[symbol] = currentTrend
+    } else if (previousTrend !== currentTrend) {
+      previousTrends[symbol] = currentTrend
+    }
   }
-  
-  // Update previous trend
-  previousTrends[symbol] = currentTrend
 }
 
 // Helper function to find and update alert by symbol (only for Day script merging)
@@ -1603,8 +1624,8 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qsArrow')" title="D1/D2/D3/D4 Direction Arrows">
                       QS Arrow <span id="sort-qsArrow" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Quad Stochastic D4 Trend & Crossings">
-                      QS D4 <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Octo Stochastic D7 Trend & Crossings">
+                      QS D7 <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
                     </th>
                      <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
                        MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
@@ -2443,7 +2464,7 @@ app.get('/', (req, res) => {
               macdCrossingTitle = 'MACD line equals Signal line (Neutral)';
             }
             
-            // QS D4 Value gradient color (0-100 scale)
+            // QS D7 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
             const d7Value = alert.octoStochD7 !== undefined
               ? parseFloat(alert.octoStochD7)
