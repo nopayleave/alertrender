@@ -2103,111 +2103,134 @@ app.get('/', (req, res) => {
             let trendCellClass = '';
             let trendTitle = 'Trend analysis based on D1 & D7';
             
+            // Get D7 value for TTS message mapping
+            const d7Val = parseFloat(alert.octoStochD7) || 0;
+            
+            // Function to map trend to TTS message
+            const getTTSMessage = (trend, d7Value) => {
+              if (d7Value < 20) return 'Heavy Sell';
+              if (d7Value > 80) return 'Heavy Buy';
+              if (trend.includes('🚀')) return 'Small Buy';
+              if (trend.includes('🔻')) return 'Small sell';
+              if (trend === 'Very Long') return 'Big Buy';
+              if (trend === 'Switch Short') return 'Medium Short';
+              if (trend === 'Very Short') return 'Big Short';
+              if (trend === 'Switch Long') return 'Medium Buy';
+              if (trend === 'Try Long') return 'Medium Buy';
+              if (trend === 'Try Short') return 'Medium Sell';
+              return 'Neutral';
+            };
+            
             // Use calculatedTrend from Pine Script if available
             if (alert.calculatedTrend) {
-              trendDisplay = alert.calculatedTrend;
+              // Use ttsMessage from Pine Script if available, otherwise map from trend
+              trendDisplay = alert.ttsMessage || getTTSMessage(alert.calculatedTrend, d7Val);
+              const calculatedTrend = alert.calculatedTrend;
               
-              // Apply styling based on trend type
-              if (trendDisplay.includes('🚀')) {
+              // Apply styling based on calculatedTrend (not trendDisplay which is TTS message)
+              if (calculatedTrend.includes('🚀')) {
                 trendClass = 'text-green-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/70';
                 trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
-              } else if (trendDisplay.includes('🔻')) {
+              } else if (calculatedTrend.includes('🔻')) {
                 trendClass = 'text-red-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-red-900/70';
                 trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
-              } else if (trendDisplay === 'Very Long') {
+              } else if (calculatedTrend === 'Very Long') {
                 trendClass = 'text-green-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/50';
                 trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
-              } else if (trendDisplay === 'Switch Short') {
+              } else if (calculatedTrend === 'Switch Short') {
                 trendClass = 'text-orange-400 font-bold animate-pulse';
                 trendCellClass = 'bg-orange-900/40';
                 trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
-              } else if (trendDisplay === 'Very Short') {
+              } else if (calculatedTrend === 'Very Short') {
                 trendClass = 'text-red-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-red-900/50';
                 trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
-              } else if (trendDisplay === 'Switch Long') {
+              } else if (calculatedTrend === 'Switch Long') {
                 trendClass = 'text-lime-400 font-bold animate-pulse';
                 trendCellClass = 'bg-lime-900/40';
                 trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
-              } else if (trendDisplay === 'Try Long') {
+              } else if (calculatedTrend === 'Try Long') {
                 trendClass = 'text-green-400 font-semibold';
                 trendTitle = 'D7 > 40, D1 going up - Try long position';
-              } else if (trendDisplay === 'Try Short') {
+              } else if (calculatedTrend === 'Try Short') {
                 trendClass = 'text-red-400 font-semibold';
                 trendTitle = 'D7 < 40, D1 going down - Try short position';
               } else {
                 trendClass = 'text-gray-400';
-                trendTitle = \`Trend: \${trendDisplay}\`;
+                trendTitle = \`Trend: \${calculatedTrend}\`;
               }
             } else {
               // Fallback: Calculate trend locally if not provided by Pine Script
-              const d7Val = parseFloat(alert.octoStochD7) || 0;
               const d7Dir = alert.d7Direction || 'flat';
               const d1CrossD7 = alert.d1CrossD7;
+              let calculatedTrend = 'Neutral';
               
               // Priority order for trend determination based on D1 and D7
               // HIGHEST PRIORITY: D1 crossover/crossunder D7
               if (d1CrossD7 === 'bull') {
-                trendDisplay = '🚀 BULL Cross';
+                calculatedTrend = '🚀 BULL Cross';
                 trendClass = 'text-green-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/70';
                 trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
               }
               else if (d1CrossD7 === 'bear') {
-                trendDisplay = '🔻 BEAR Cross';
+                calculatedTrend = '🔻 BEAR Cross';
                 trendClass = 'text-red-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-red-900/70';
                 trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
               }
               // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
               else if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
-                trendDisplay = 'Very Long';
+                calculatedTrend = 'Very Long';
                 trendClass = 'text-green-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/50';
                 trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
               }
               // Switch Short: D7 > 80 AND D1 switched to down
               else if (d7Val > 80 && alert.d1SwitchedToDown) {
-                trendDisplay = 'Switch Short';
+                calculatedTrend = 'Switch Short';
                 trendClass = 'text-orange-400 font-bold animate-pulse';
                 trendCellClass = 'bg-orange-900/40';
                 trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
               }
               // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
               else if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) {
-                trendDisplay = 'Very Short';
+                calculatedTrend = 'Very Short';
                 trendClass = 'text-red-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-red-900/50';
                 trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
               }
               // Switch Long: D7 < 20 AND D1 switched to up
               else if (d7Val < 20 && alert.d1SwitchedToUp) {
-                trendDisplay = 'Switch Long';
+                calculatedTrend = 'Switch Long';
                 trendClass = 'text-lime-400 font-bold animate-pulse';
                 trendCellClass = 'bg-lime-900/40';
                 trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
               }
               // Try Long: D7 > 40 AND D1 going up
               else if (d7Val > 40 && d1Dir === 'up') {
-                trendDisplay = 'Try Long';
+                calculatedTrend = 'Try Long';
                 trendClass = 'text-green-400 font-semibold';
                 trendTitle = 'D7 > 40, D1 going up - Try long position';
               }
               // Try Short: D7 < 40 AND D1 going down
               else if (d7Val < 40 && d1Dir === 'down') {
-                trendDisplay = 'Try Short';
+                calculatedTrend = 'Try Short';
                 trendClass = 'text-red-400 font-semibold';
                 trendTitle = 'D7 < 40, D1 going down - Try short position';
               }
               // Neutral zone
               else {
-                trendDisplay = 'Neutral';
+                calculatedTrend = 'Neutral';
                 trendClass = 'text-gray-400';
                 trendTitle = \`D7: \${d7Val.toFixed(1)}, D1: \${d1Dir} - No clear signal\`;
               }
+              
+              // Convert calculated trend to TTS message for display
+              trendDisplay = getTTSMessage(calculatedTrend, d7Val);
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color
