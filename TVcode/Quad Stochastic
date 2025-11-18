@@ -333,6 +333,61 @@ else if crossunderD1D2
 else
     d1d2Cross := "No_Cross"
 
+// ===== D1 x D7 CROSSOVER DETECTION =====
+// Track previous D1 direction to detect switches
+var string prevD1Dir = na
+d1SwitchedToUp = prevD1Dir == "down" and d1Direction == "up"
+d1SwitchedToDown = prevD1Dir == "up" and d1Direction == "down"
+
+// D1 x D7 crossover detection
+crossoverD1D7 = ta.crossover(d1, d7)
+crossunderD1D7 = ta.crossunder(d1, d7)
+
+// D1 x D7 cross signals (both must be going in same direction)
+d1CrossD7 = ""
+if crossoverD1D7 and d1Direction == "up" and d7Direction == "up"
+    d1CrossD7 := "bull"
+else if crossunderD1D7 and d1Direction == "down" and d7Direction == "down"
+    d1CrossD7 := "bear"
+else
+    d1CrossD7 := "none"
+
+// ===== TREND CALCULATION (Based on D1 and D7) =====
+// Priority order:
+// 1. D1 x D7 Cross (BULL/BEAR)
+// 2. Very Long/Short (D7 extremes with D1 confirmation)
+// 3. Switch Long/Short (D7 extremes with D1 switch)
+// 4. Try Long/Short (D7 > 40/< 40 with D1 direction)
+// 5. Neutral
+
+calculatedTrend = "Neutral"
+ttsMessage = ""
+
+// D7-based priority messages (override all trends)
+if d7 < 20
+    calculatedTrend := "Very Short"
+    ttsMessage := "Heavy Sell"
+else if d7 > 80
+    calculatedTrend := "Very Long"
+    ttsMessage := "Heavy Buy"
+else
+    // Trend-specific messages (when D7 is between 20-80)
+    if d1CrossD7 == "bull"
+        calculatedTrend := "🚀 BULL Cross"
+        ttsMessage := "Small Buy"
+    else if d1CrossD7 == "bear"
+        calculatedTrend := "🔻 BEAR Cross"
+        ttsMessage := "Small sell"
+    else if d7 > 40 and d1Direction == "up"
+        calculatedTrend := "Try Long"
+        ttsMessage := "Medium Buy"
+    else if d7 < 40 and d1Direction == "down"
+        calculatedTrend := "Try Short"
+        ttsMessage := "Medium Sell"
+    else
+        calculatedTrend := "Neutral"
+        ttsMessage := ""
+
 // === Create and send webhook with all 8 stoch data ===
 if sendWebhook
     jsonMsg = '{' +
@@ -357,6 +412,11 @@ if sendWebhook
       '"d8Direction": "' + d8Direction + '",' +
       '"d8Signal": "' + d8Signal + '",' +
       '"d1d2Cross": "' + d1d2Cross + '",' +
+      '"d1CrossD7": "' + d1CrossD7 + '",' +
+      '"d1SwitchedToUp": ' + str.tostring(d1SwitchedToUp) + ',' +
+      '"d1SwitchedToDown": ' + str.tostring(d1SwitchedToDown) + ',' +
+      '"calculatedTrend": "' + calculatedTrend + '",' +
+      '"ttsMessage": "' + ttsMessage + '",' +
       '"timeframe1_4": "' + timeframe1_4 + '",' +
       '"timeframe5_8": "' + timeframe5_8 + '"}'
     alert(jsonMsg, freq=alertFreq)
@@ -370,3 +430,4 @@ prevD5 := d5
 prevD6 := d6
 prevD7 := d7
 prevD8 := d8
+prevD1Dir := d1Direction

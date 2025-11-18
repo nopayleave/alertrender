@@ -532,6 +532,8 @@ app.post('/webhook', (req, res) => {
       d1SwitchedToDown: d1SwitchedToDown,
       d7SwitchedToUp: d7SwitchedToUp,
       d7SwitchedToDown: d7SwitchedToDown,
+      calculatedTrend: alert.calculatedTrend || null, // From Pine Script
+      ttsMessage: alert.ttsMessage || null, // From Pine Script
       timestamp: Date.now()
     }
     
@@ -598,6 +600,8 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d1SwitchedToDown = d1SwitchedToDown
       alerts[existingIndex].d7SwitchedToUp = d7SwitchedToUp
       alerts[existingIndex].d7SwitchedToDown = d7SwitchedToDown
+      alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
+      alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
     }
@@ -765,6 +769,8 @@ app.post('/webhook', (req, res) => {
         alertData.d1SwitchedToDown = octoStochInfo.d1SwitchedToDown
         alertData.d7SwitchedToUp = octoStochInfo.d7SwitchedToUp
         alertData.d7SwitchedToDown = octoStochInfo.d7SwitchedToDown
+        alertData.calculatedTrend = octoStochInfo.calculatedTrend || null
+        alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
         alertData.timeframe5_8 = octoStochInfo.timeframe5_8
         console.log(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7}, D1xD7=${octoStochInfo.d1CrossD7 || 'none'} (age: ${ageInMinutes.toFixed(1)} min)`)
@@ -1705,44 +1711,47 @@ app.get('/', (req, res) => {
                 'Very Short': 1,
                 '🔻 BEAR Cross': 0
               };
-              // Calculate trend for sorting using D1 and D7
-              const d1Dir_sort = alert.d1Direction || 'flat';
-              const d7Val_sort = parseFloat(alert.octoStochD7) || 0;
-              const d7Dir_sort = alert.d7Direction || 'flat';
-              const d1CrossD7_sort = alert.d1CrossD7;
               
-              let trend_sort = 'Neutral';
+              // Use calculatedTrend from Pine Script if available
+              let trend_sort = alert.calculatedTrend || 'Neutral';
               
-              // HIGHEST PRIORITY: D1 crossover/crossunder D7
-              if (d1CrossD7_sort === 'bull') {
-                trend_sort = '🚀 BULL Cross';
-              }
-              else if (d1CrossD7_sort === 'bear') {
-                trend_sort = '🔻 BEAR Cross';
-              }
-              // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-              else if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
-                trend_sort = 'Very Long';
-              }
-              // Switch Short: D7 > 80 AND D1 switched to down
-              else if (d7Val_sort > 80 && alert.d1SwitchedToDown) {
-                trend_sort = 'Switch Short';
-              }
-              // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
-              else if (d7Val_sort < 20 && (alert.d1SwitchedToDown || d1Dir_sort === 'down')) {
-                trend_sort = 'Very Short';
-              }
-              // Switch Long: D7 < 20 AND D1 switched to up
-              else if (d7Val_sort < 20 && alert.d1SwitchedToUp) {
-                trend_sort = 'Switch Long';
-              }
-              // Try Long: D7 > 40 AND D1 going up
-              else if (d7Val_sort > 40 && d1Dir_sort === 'up') {
-                trend_sort = 'Try Long';
-              }
-              // Try Short: D7 < 40 AND D1 going down
-              else if (d7Val_sort < 40 && d1Dir_sort === 'down') {
-                trend_sort = 'Try Short';
+              // If not available, calculate locally
+              if (!alert.calculatedTrend) {
+                const d1Dir_sort = alert.d1Direction || 'flat';
+                const d7Val_sort = parseFloat(alert.octoStochD7) || 0;
+                const d1CrossD7_sort = alert.d1CrossD7;
+                
+                // HIGHEST PRIORITY: D1 crossover/crossunder D7
+                if (d1CrossD7_sort === 'bull') {
+                  trend_sort = '🚀 BULL Cross';
+                }
+                else if (d1CrossD7_sort === 'bear') {
+                  trend_sort = '🔻 BEAR Cross';
+                }
+                // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
+                else if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
+                  trend_sort = 'Very Long';
+                }
+                // Switch Short: D7 > 80 AND D1 switched to down
+                else if (d7Val_sort > 80 && alert.d1SwitchedToDown) {
+                  trend_sort = 'Switch Short';
+                }
+                // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
+                else if (d7Val_sort < 20 && (alert.d1SwitchedToDown || d1Dir_sort === 'down')) {
+                  trend_sort = 'Very Short';
+                }
+                // Switch Long: D7 < 20 AND D1 switched to up
+                else if (d7Val_sort < 20 && alert.d1SwitchedToUp) {
+                  trend_sort = 'Switch Long';
+                }
+                // Try Long: D7 > 40 AND D1 going up
+                else if (d7Val_sort > 40 && d1Dir_sort === 'up') {
+                  trend_sort = 'Try Long';
+                }
+                // Try Short: D7 < 40 AND D1 going down
+                else if (d7Val_sort < 40 && d1Dir_sort === 'down') {
+                  trend_sort = 'Try Short';
+                }
               }
               
               return trendOrder[trend_sort] || 5;
@@ -2082,76 +2091,117 @@ app.get('/', (req, res) => {
             const qsArrowTitle = \`D1: \${d1Dir}, D2: \${d2Dir}, D3: \${d3Dir}, D4: \${d4Dir}\`;
             
             // === NEW TREND ANALYSIS - D1 & D7 BASED ===
-            // Calculate trend based on D1 and D7 values and directions
+            // Use calculatedTrend from Pine Script if available, otherwise calculate locally
             let trendDisplay = 'Neutral';
             let trendClass = 'text-gray-400';
             let trendCellClass = '';
             let trendTitle = 'Trend analysis based on D1 & D7';
             
-            // Get D7 value and direction (from Octo Stoch data)
-            const d7Val = parseFloat(alert.octoStochD7) || 0;
-            const d7Dir = alert.d7Direction || 'flat';
-            const d1CrossD7 = alert.d1CrossD7;
-            
-            // Priority order for trend determination based on D1 and D7
-            // HIGHEST PRIORITY: D1 crossover/crossunder D7
-            if (d1CrossD7 === 'bull') {
-              trendDisplay = '🚀 BULL Cross';
-              trendClass = 'text-green-500 font-extrabold animate-pulse';
-              trendCellClass = 'bg-green-900/70';
-              trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
-            }
-            else if (d1CrossD7 === 'bear') {
-              trendDisplay = '🔻 BEAR Cross';
-              trendClass = 'text-red-500 font-extrabold animate-pulse';
-              trendCellClass = 'bg-red-900/70';
-              trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
-            }
-            // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-            else if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
-              trendDisplay = 'Very Long';
-              trendClass = 'text-green-600 font-extrabold animate-pulse';
-              trendCellClass = 'bg-green-900/50';
-              trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
-            }
-            // Switch Short: D7 > 80 AND D1 switched to down
-            else if (d7Val > 80 && alert.d1SwitchedToDown) {
-              trendDisplay = 'Switch Short';
-              trendClass = 'text-orange-400 font-bold animate-pulse';
-              trendCellClass = 'bg-orange-900/40';
-              trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
-            }
-            // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
-            else if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) {
-              trendDisplay = 'Very Short';
-              trendClass = 'text-red-600 font-extrabold animate-pulse';
-              trendCellClass = 'bg-red-900/50';
-              trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
-            }
-            // Switch Long: D7 < 20 AND D1 switched to up
-            else if (d7Val < 20 && alert.d1SwitchedToUp) {
-              trendDisplay = 'Switch Long';
-              trendClass = 'text-lime-400 font-bold animate-pulse';
-              trendCellClass = 'bg-lime-900/40';
-              trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
-            }
-            // Try Long: D7 > 40 AND D1 going up
-            else if (d7Val > 40 && d1Dir === 'up') {
-              trendDisplay = 'Try Long';
-              trendClass = 'text-green-400 font-semibold';
-              trendTitle = 'D7 > 40, D1 going up - Try long position';
-            }
-            // Try Short: D7 < 40 AND D1 going down
-            else if (d7Val < 40 && d1Dir === 'down') {
-              trendDisplay = 'Try Short';
-              trendClass = 'text-red-400 font-semibold';
-              trendTitle = 'D7 < 40, D1 going down - Try short position';
-            }
-            // Neutral zone
-            else {
-              trendDisplay = 'Neutral';
-              trendClass = 'text-gray-400';
-              trendTitle = \`D7: \${d7Val.toFixed(1)}, D1: \${d1Dir} - No clear signal\`;
+            // Use calculatedTrend from Pine Script if available
+            if (alert.calculatedTrend) {
+              trendDisplay = alert.calculatedTrend;
+              
+              // Apply styling based on trend type
+              if (trendDisplay.includes('🚀')) {
+                trendClass = 'text-green-500 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-900/70';
+                trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
+              } else if (trendDisplay.includes('🔻')) {
+                trendClass = 'text-red-500 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-900/70';
+                trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
+              } else if (trendDisplay === 'Very Long') {
+                trendClass = 'text-green-600 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-900/50';
+                trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
+              } else if (trendDisplay === 'Switch Short') {
+                trendClass = 'text-orange-400 font-bold animate-pulse';
+                trendCellClass = 'bg-orange-900/40';
+                trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
+              } else if (trendDisplay === 'Very Short') {
+                trendClass = 'text-red-600 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-900/50';
+                trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
+              } else if (trendDisplay === 'Switch Long') {
+                trendClass = 'text-lime-400 font-bold animate-pulse';
+                trendCellClass = 'bg-lime-900/40';
+                trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
+              } else if (trendDisplay === 'Try Long') {
+                trendClass = 'text-green-400 font-semibold';
+                trendTitle = 'D7 > 40, D1 going up - Try long position';
+              } else if (trendDisplay === 'Try Short') {
+                trendClass = 'text-red-400 font-semibold';
+                trendTitle = 'D7 < 40, D1 going down - Try short position';
+              } else {
+                trendClass = 'text-gray-400';
+                trendTitle = \`Trend: \${trendDisplay}\`;
+              }
+            } else {
+              // Fallback: Calculate trend locally if not provided by Pine Script
+              const d7Val = parseFloat(alert.octoStochD7) || 0;
+              const d7Dir = alert.d7Direction || 'flat';
+              const d1CrossD7 = alert.d1CrossD7;
+              
+              // Priority order for trend determination based on D1 and D7
+              // HIGHEST PRIORITY: D1 crossover/crossunder D7
+              if (d1CrossD7 === 'bull') {
+                trendDisplay = '🚀 BULL Cross';
+                trendClass = 'text-green-500 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-900/70';
+                trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
+              }
+              else if (d1CrossD7 === 'bear') {
+                trendDisplay = '🔻 BEAR Cross';
+                trendClass = 'text-red-500 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-900/70';
+                trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
+              }
+              // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
+              else if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
+                trendDisplay = 'Very Long';
+                trendClass = 'text-green-600 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-900/50';
+                trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
+              }
+              // Switch Short: D7 > 80 AND D1 switched to down
+              else if (d7Val > 80 && alert.d1SwitchedToDown) {
+                trendDisplay = 'Switch Short';
+                trendClass = 'text-orange-400 font-bold animate-pulse';
+                trendCellClass = 'bg-orange-900/40';
+                trendTitle = 'D7 > 80, D1 switched to down - Switch to short';
+              }
+              // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
+              else if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) {
+                trendDisplay = 'Very Short';
+                trendClass = 'text-red-600 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-900/50';
+                trendTitle = 'D7 < 20, D1 going down - Very strong short signal';
+              }
+              // Switch Long: D7 < 20 AND D1 switched to up
+              else if (d7Val < 20 && alert.d1SwitchedToUp) {
+                trendDisplay = 'Switch Long';
+                trendClass = 'text-lime-400 font-bold animate-pulse';
+                trendCellClass = 'bg-lime-900/40';
+                trendTitle = 'D7 < 20, D1 switched to up - Switch to long';
+              }
+              // Try Long: D7 > 40 AND D1 going up
+              else if (d7Val > 40 && d1Dir === 'up') {
+                trendDisplay = 'Try Long';
+                trendClass = 'text-green-400 font-semibold';
+                trendTitle = 'D7 > 40, D1 going up - Try long position';
+              }
+              // Try Short: D7 < 40 AND D1 going down
+              else if (d7Val < 40 && d1Dir === 'down') {
+                trendDisplay = 'Try Short';
+                trendClass = 'text-red-400 font-semibold';
+                trendTitle = 'D7 < 40, D1 going down - Try short position';
+              }
+              // Neutral zone
+              else {
+                trendDisplay = 'Neutral';
+                trendClass = 'text-gray-400';
+                trendTitle = \`D7: \${d7Val.toFixed(1)}, D1: \${d1Dir} - No clear signal\`;
+              }
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color
