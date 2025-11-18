@@ -26,7 +26,8 @@ const NOTIFICATION_CONFIG = {
   },
   discord: {
     enabled: process.env.DISCORD_ENABLED !== 'false', // Default to true if webhook URL is set
-    webhookUrl: process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1440117112566710352/O-s1YsYR93f783PEjMhR9fmnan_agrmw8L3Me9F9SAl7rfdMWsxpFuIHHFkDyFrqE0Hq'
+    webhookUrl: process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1440117112566710352/O-s1YsYR93f783PEjMhR9fmnan_agrmw8L3Me9F9SAl7rfdMWsxpFuIHHFkDyFrqE0Hq',
+    ttsEnabled: process.env.DISCORD_TTS_ENABLED !== 'false' // Default to true - enable TTS for important alerts
   }
 }
 
@@ -101,7 +102,7 @@ async function sendEmailNotification(symbol, oldTrend, newTrend, price) {
 }
 
 // Send Discord notification
-async function sendDiscordNotification(symbol, oldTrend, newTrend, price) {
+async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Value = null) {
   if (!NOTIFICATION_CONFIG.discord.enabled || !NOTIFICATION_CONFIG.discord.webhookUrl) return
   
   try {
@@ -118,10 +119,29 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price) {
       '🔻 BEAR Cross': 0xFF0000
     }
     
+    // If D7 < 20, force red color regardless of trend
+    let embedColor = trendColors[newTrend] || 0x9E9E9E
+    const isD7Low = d7Value !== null && d7Value < 20
+    if (isD7Low) {
+      embedColor = 0xDC143C // Crimson red - darker, more prominent
+    }
+    
+    // Build title with warning if D7 < 20
+    let title = `⭐ ${symbol} - Trend Changed`
+    if (isD7Low) {
+      title = `🔴 ⚠️ ${symbol} - Trend Changed (D7 < 20)`
+    }
+    
+    // Build description with warning if D7 < 20
+    let description = `**${oldTrend}** → **${newTrend}**`
+    if (isD7Low) {
+      description = `🔴 **OVERSOLD CONDITION** 🔴\n**${oldTrend}** → **${newTrend}**`
+    }
+    
     const embed = {
-      title: `⭐ ${symbol} - Trend Changed`,
-      description: `**${oldTrend}** → **${newTrend}**`,
-      color: trendColors[newTrend] || 0x9E9E9E,
+      title: title,
+      description: description,
+      color: embedColor,
       fields: [
         {
           name: 'Price',
@@ -140,10 +160,72 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price) {
       }
     }
     
+    // Add D7 value to fields if available
+    if (d7Value !== null) {
+      const d7Field = {
+        name: isD7Low ? '🔴 D7 (OVERSOLD)' : 'D7',
+        value: isD7Low ? `**${d7Value.toFixed(2)}** ⚠️` : d7Value.toFixed(2),
+        inline: true
+      }
+      embed.fields.push(d7Field)
+    }
+    
+    // Build webhook payload with optional TTS
+    const payload = {
+      embeds: [embed]
+    }
+    
+    // Add TTS (text-to-speech) audio notification
+    // Enable TTS for all trend changes if TTS is enabled
+    if (NOTIFICATION_CONFIG.discord.ttsEnabled && newTrend !== 'Neutral') {
+      payload.tts = true
+      // Add a content message that will be read out
+      // Simple, clear format for TTS
+      // Spell out ticker name letter by letter for clarity
+      // Add commas and periods to create pauses and slow down speech
+      const symbolSpelled = symbol.split('').join(', ') // "ONDS" becomes "O, N, D, S" - commas slow down TTS
+      
+      // TTS messages - D7-based messages take priority only at extremes
+      if (d7Value !== null && d7Value < 20) {
+        // D7 < 20: Heavy Sell
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Sell.`
+      } else if (d7Value !== null && d7Value > 80) {
+        // D7 > 80: Heavy Buy
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Buy.`
+      } else if (newTrend.includes('🚀')) {
+        // BULL Cross - Small Buy
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Small Buy.`
+      } else if (newTrend.includes('🔻')) {
+        // BEAR Cross - Small sell
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Small sell.`
+      } else if (newTrend === 'Very Long') {
+        // Very Long - Big Buy
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Big Buy.`
+      } else if (newTrend === 'Switch Short') {
+        // Switch Short - Medium Short
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Medium Short.`
+      } else if (newTrend === 'Very Short') {
+        // Very Short - Big Short
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Big Short.`
+      } else if (newTrend === 'Switch Long') {
+        // Switch Long - Medium Buy
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Medium Buy.`
+      } else if (newTrend === 'Try Long') {
+        // Try Long - Medium Buy
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Medium Buy.`
+      } else if (newTrend === 'Try Short') {
+        // Try Short - Medium Sell
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Medium Sell.`
+      } else {
+        // Fallback for any other trend
+        payload.content = `Trend Alert. ${symbolSpelled}. ${newTrend}.`
+      }
+    }
+    
     const response = await fetch(NOTIFICATION_CONFIG.discord.webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [embed] })
+      body: JSON.stringify(payload)
     })
     
     if (response.ok) {
@@ -158,19 +240,33 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price) {
 
 // Check and send notifications for trend changes
 function checkAndNotifyTrendChange(symbol, alertData) {
-  // Only notify for starred symbols
-  if (!starredSymbols[symbol]) return
-  
   const currentTrend = calculateTrend(alertData)
   const previousTrend = previousTrends[symbol]
+  const isStarred = starredSymbols[symbol]
+  
+  // Debug logging
+  if (isStarred) {
+    console.log(`⭐ Checking trend for starred symbol ${symbol}: current=${currentTrend}, previous=${previousTrend || 'none'}`)
+  }
+  
+  // Only notify for starred symbols
+  if (!isStarred) {
+    return
+  }
   
   // If trend changed and it's not the first time we're seeing this symbol
   if (previousTrend && previousTrend !== currentTrend) {
     console.log(`🔔 Trend change detected for starred symbol ${symbol}: ${previousTrend} → ${currentTrend}`)
     
+    // Get D7 value for Discord color logic
+    const d7Value = alertData.octoStochD7 !== undefined ? parseFloat(alertData.octoStochD7) : 
+                    alertData.d7 !== undefined ? parseFloat(alertData.d7) : null
+    
     // Send notifications
     sendEmailNotification(symbol, previousTrend, currentTrend, alertData.price)
-    sendDiscordNotification(symbol, previousTrend, currentTrend, alertData.price)
+    sendDiscordNotification(symbol, previousTrend, currentTrend, alertData.price, d7Value)
+  } else if (!previousTrend) {
+    console.log(`📊 Initial trend recorded for starred symbol ${symbol}: ${currentTrend}`)
   }
   
   // Update previous trend
@@ -878,7 +974,8 @@ app.get('/notification-settings', (req, res) => {
     },
     discord: {
       enabled: NOTIFICATION_CONFIG.discord.enabled,
-      configured: !!NOTIFICATION_CONFIG.discord.webhookUrl
+      configured: !!NOTIFICATION_CONFIG.discord.webhookUrl,
+      ttsEnabled: NOTIFICATION_CONFIG.discord.ttsEnabled
     },
     starredCount: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length
   })
@@ -904,12 +1001,35 @@ app.post('/notification-settings', (req, res) => {
     if (discord !== undefined) {
       if (discord.enabled !== undefined) NOTIFICATION_CONFIG.discord.enabled = discord.enabled
       if (discord.webhookUrl) NOTIFICATION_CONFIG.discord.webhookUrl = discord.webhookUrl
+      if (discord.ttsEnabled !== undefined) NOTIFICATION_CONFIG.discord.ttsEnabled = discord.ttsEnabled
     }
     
     console.log('📬 Notification settings updated')
     res.json({ status: 'ok', message: 'Notification settings updated' })
   } catch (error) {
     console.error('Error updating notification settings:', error)
+    res.status(500).json({ status: 'error', message: error.message })
+  }
+})
+
+// Test endpoint to verify Discord notifications
+app.post('/test-discord', async (req, res) => {
+  try {
+    const { symbol = 'TEST', oldTrend = 'Neutral', newTrend = 'Try Long', price = '100.00', d7Value = null } = req.body
+    
+    console.log(`🧪 Testing Discord notification for ${symbol}: ${oldTrend} → ${newTrend}, D7=${d7Value || 'N/A'}`)
+    await sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Value !== null ? parseFloat(d7Value) : null)
+    
+    res.json({ 
+      status: 'ok', 
+      message: 'Test notification sent to Discord',
+      symbol,
+      oldTrend,
+      newTrend,
+      d7Value
+    })
+  } catch (error) {
+    console.error('Test notification error:', error)
     res.status(500).json({ status: 'error', message: error.message })
   }
 })
