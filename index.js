@@ -55,6 +55,12 @@ let previousTrends = {} // Store previous trend for each symbol to detect change
 
 // Helper function to calculate trend based on alert data
 function calculateTrend(alert) {
+  // Use calculatedTrend from Pine Script if available (prioritize)
+  if (alert.calculatedTrend && alert.calculatedTrend !== 'Neutral') {
+    return alert.calculatedTrend
+  }
+  
+  // Fallback to local calculation
   const d1Dir = alert.d1Direction || 'flat'
   const d7Val = parseFloat(alert.octoStochD7) || 0
   const d1CrossD7 = alert.d1CrossD7

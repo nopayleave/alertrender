@@ -1,0 +1,325 @@
+//@version=6
+strategy(title="Octo Stochastic Strategy (8 Stoch)", shorttitle="Octo Stoch Strat", overlay=false, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1)
+
+// ===== STRATEGY SETTINGS =====
+enableStrategy = input.bool(true, title="Enable Strategy", group="Strategy Settings")
+usePyramiding = input.bool(false, title="Allow Pyramiding (Multiple Positions)", group="Strategy Settings")
+maxPositions = input.int(1, minval=1, title="Max Positions", group="Strategy Settings")
+closeOnOpposite = input.bool(true, title="Close Position on Opposite Signal", group="Strategy Settings")
+
+// Trade size settings
+tradeSizeType = input.string("Percent of Equity", title="Trade Size Type", options=["Percent of Equity", "Fixed Quantity", "Contract"], group="Strategy Settings")
+tradeSizePercent = input.float(100.0, minval=0.1, title="Trade Size (% of Equity)", group="Strategy Settings")
+tradeSizeFixed = input.int(1, minval=1, title="Fixed Quantity", group="Strategy Settings")
+
+// Entry/Exit signal settings
+// Only Big Buy (D7 > 80) and Big Sell (D7 < 20) are enabled
+enableBigBuy = input.bool(true, title="Enable Big Buy (D7 > 80)", group="Strategy Signals")
+enableBigSell = input.bool(true, title="Enable Big Sell (D7 < 20)", group="Strategy Signals")
+
+// Trading hours settings
+tradeOnlyRegularHours = input.bool(true, title="Trade Only Regular Hours (No Extended Hours)", group="Strategy Settings", tooltip="If enabled, trades will only execute during regular market hours (9:30 AM - 4:00 PM ET for US markets)")
+
+// ===== TIMEFRAME SETTINGS =====
+timeframe1_4 = input.timeframe("", title="Timeframe for D1-D4", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframe5_8 = input.timeframe("", title="Timeframe for D5-D8", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+
+// Stoch1 - Very Short Term (5min = ~10 bars)
+length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
+smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
+periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
+colorD1 = input.color(color.red, title="D1 Color", group="Stoch1 Settings")
+linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
+showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
+
+// Stoch2 - Short Term (5min = ~18 bars, ~1.5 hours)
+length2 = input.int(18, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
+smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
+periodD2 = input.int(3, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
+colorD2 = input.color(color.blue, title="D2 Color", group="Stoch2 Settings")
+linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
+showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+
+// Stoch3 - Medium Term (5min = ~39 bars, ~3 hours)
+length3 = input.int(39, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
+smoothK3 = input.int(1, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
+periodD3 = input.int(4, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
+colorD3 = input.color(color.aqua, title="D3 Color", group="Stoch3 Settings")
+linewidthD3 = input.int(3, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
+showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
+
+// Stoch4 - Longer Term (5min = ~60 bars, ~5 hours / half day)
+length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
+smoothK4 = input.int(1, minval=1, title="Stoch4 %K Smoothing (smoothK)", group="Stoch4 Settings")
+periodD4 = input.int(10, minval=1, title="Stoch4 %D Smoothing (periodD)", group="Stoch4 Settings")
+colorD4 = input.color(color.yellow, title="D4 Color", group="Stoch4 Settings")
+linewidthD4 = input.int(2, minval=1, maxval=5, title="D4 Line Width", group="Stoch4 Settings")
+showD4 = input.bool(true, title="Show D4", group="Stoch4 Settings")
+
+// Stoch5 - Same as D1 (5min = ~10 bars)
+length5 = input.int(10, minval=1, title="Stoch5 Length (periodK)", group="Stoch5 Settings")
+smoothK5 = input.int(3, minval=1, title="Stoch5 %K Smoothing (smoothK)", group="Stoch5 Settings")
+periodD5 = input.int(3, minval=1, title="Stoch5 %D Smoothing (periodD)", group="Stoch5 Settings")
+colorD5 = input.color(color.orange, title="D5 Color", group="Stoch5 Settings")
+linewidthD5 = input.int(2, minval=1, maxval=5, title="D5 Line Width", group="Stoch5 Settings")
+showD5 = input.bool(true, title="Show D5", group="Stoch5 Settings")
+
+// Stoch6 - Same as D2 (5min = ~18 bars, ~1.5 hours)
+length6 = input.int(18, minval=1, title="Stoch6 Length (periodK)", group="Stoch6 Settings")
+smoothK6 = input.int(1, minval=1, title="Stoch6 %K Smoothing (smoothK)", group="Stoch6 Settings")
+periodD6 = input.int(3, minval=1, title="Stoch6 %D Smoothing (periodD)", group="Stoch6 Settings")
+colorD6 = input.color(color.purple, title="D6 Color", group="Stoch6 Settings")
+linewidthD6 = input.int(2, minval=1, maxval=5, title="D6 Line Width", group="Stoch6 Settings")
+showD6 = input.bool(true, title="Show D6", group="Stoch6 Settings")
+
+// Stoch7 - Same as D3 (5min = ~39 bars, ~3 hours)
+length7 = input.int(39, minval=1, title="Stoch7 Length (periodK)", group="Stoch7 Settings")
+smoothK7 = input.int(1, minval=1, title="Stoch7 %K Smoothing (smoothK)", group="Stoch7 Settings")
+periodD7 = input.int(4, minval=1, title="Stoch7 %D Smoothing (periodD)", group="Stoch7 Settings")
+colorD7 = input.color(color.fuchsia, title="D7 Color", group="Stoch7 Settings")
+linewidthD7 = input.int(2, minval=1, maxval=5, title="D7 Line Width", group="Stoch7 Settings")
+showD7 = input.bool(true, title="Show D7", group="Stoch7 Settings")
+
+// Stoch8 - Same as D4 (5min = ~60 bars, ~5 hours / half day - BACKGROUND FILL)
+length8 = input.int(60, minval=1, title="Stoch8 Length (periodK)", group="Stoch8 Settings")
+smoothK8 = input.int(1, minval=1, title="Stoch8 %K Smoothing (smoothK)", group="Stoch8 Settings")
+periodD8 = input.int(10, minval=1, title="Stoch8 %D Smoothing (periodD)", group="Stoch8 Settings")
+colorD8 = input.color(#000000, title="D8 Color (Area Fill)", group="Stoch8 Settings")
+transparencyD8 = input.int(70, minval=0, maxval=100, title="D8 Transparency", group="Stoch8 Settings")
+linewidthD8 = input.int(2, minval=1, maxval=5, title="D8 Line Width", group="Stoch8 Settings")
+showD8 = input.bool(true, title="Show D8", group="Stoch8 Settings")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute D1-D4 with timeframe1_4
+[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+[k3_chart, d3_chart] = getStoch(length3, smoothK3, periodD3)
+[k4_chart, d4_chart] = getStoch(length4, smoothK4, periodD4)
+
+[k1_mtf, d1_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+[k2_mtf, d2_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+[k3_mtf, d3_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length3, smoothK3, periodD3), lookahead=barmerge.lookahead_off)
+[k4_mtf, d4_mtf] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length4, smoothK4, periodD4), lookahead=barmerge.lookahead_off)
+
+k1 = timeframe1_4 == "" ? k1_chart : k1_mtf
+d1 = timeframe1_4 == "" ? d1_chart : d1_mtf
+k2 = timeframe1_4 == "" ? k2_chart : k2_mtf
+d2 = timeframe1_4 == "" ? d2_chart : d2_mtf
+k3 = timeframe1_4 == "" ? k3_chart : k3_mtf
+d3 = timeframe1_4 == "" ? d3_chart : d3_mtf
+k4 = timeframe1_4 == "" ? k4_chart : k4_mtf
+d4 = timeframe1_4 == "" ? d4_chart : d4_mtf
+
+// Compute D5-D8 with timeframe5_8
+[k5_chart, d5_chart] = getStoch(length5, smoothK5, periodD5)
+[k6_chart, d6_chart] = getStoch(length6, smoothK6, periodD6)
+[k7_chart, d7_chart] = getStoch(length7, smoothK7, periodD7)
+[k8_chart, d8_chart] = getStoch(length8, smoothK8, periodD8)
+
+[k5_mtf, d5_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length5, smoothK5, periodD5), lookahead=barmerge.lookahead_off)
+[k6_mtf, d6_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length6, smoothK6, periodD6), lookahead=barmerge.lookahead_off)
+[k7_mtf, d7_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length7, smoothK7, periodD7), lookahead=barmerge.lookahead_off)
+[k8_mtf, d8_mtf] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length8, smoothK8, periodD8), lookahead=barmerge.lookahead_off)
+
+k5 = timeframe5_8 == "" ? k5_chart : k5_mtf
+d5 = timeframe5_8 == "" ? d5_chart : d5_mtf
+k6 = timeframe5_8 == "" ? k6_chart : k6_mtf
+d6 = timeframe5_8 == "" ? d6_chart : d6_mtf
+k7 = timeframe5_8 == "" ? k7_chart : k7_mtf
+d7 = timeframe5_8 == "" ? d7_chart : d7_mtf
+k8 = timeframe5_8 == "" ? k8_chart : k8_mtf
+d8 = timeframe5_8 == "" ? d8_chart : d8_mtf
+
+// Plot %D8 first (z-index as last/behind) - use fill for better z-order control
+// Extract RGB from colorD8 and apply transparencyD8 to ensure proper opacity control
+d8FillColor = color.rgb(color.r(colorD8), color.g(colorD8), color.b(colorD8), transparencyD8)
+p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(colorD8, 100), linewidth=linewidthD8, display=display.pane)
+p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
+fill(p_base, p_d8, color=showD8 ? d8FillColor : na, title="D8 Fill")
+
+// Plot %D lines with customizable colors (on top of D8)
+plot(showD1 ? d1 : na, title="%d1", color=colorD1, linewidth=linewidthD1, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=colorD2, linewidth=linewidthD2, display=display.pane)
+plot(showD3 ? d3 : na, title="%d3", color=colorD3, linewidth=linewidthD3, display=display.pane)
+plot(showD4 ? d4 : na, title="%d4", color=colorD4, linewidth=linewidthD4, display=display.pane)
+plot(showD5 ? d5 : na, title="%d5", color=colorD5, linewidth=linewidthD5, display=display.pane)
+plot(showD6 ? d6 : na, title="%d6", color=colorD6, linewidth=linewidthD6, display=display.pane)
+plot(showD7 ? d7 : na, title="%d7", color=colorD7, linewidth=linewidthD7, display=display.pane)
+
+// Plot Mid line above D1, D2, D3 (z-index on top)
+plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
+
+// Plot %K line for 10-period Stochastic as a regular line
+plot(k1, title="%K1", color=color.new(#00bcd4, 65), linewidth=1, style=plot.style_line, display=display.none)
+
+// Reference levels
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Strong zones settings
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Strong Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Strong Zones")
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== D1-D8 DIRECTION TRACKING =====
+var float prevD1 = na
+var float prevD2 = na
+var float prevD3 = na
+var float prevD4 = na
+var float prevD5 = na
+var float prevD6 = na
+var float prevD7 = na
+var float prevD8 = na
+
+// Determine direction for each stochastic
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+d4Direction = na(prevD4) ? "flat" : d4 > prevD4 ? "up" : d4 < prevD4 ? "down" : "flat"
+d5Direction = na(prevD5) ? "flat" : d5 > prevD5 ? "up" : d5 < prevD5 ? "down" : "flat"
+d6Direction = na(prevD6) ? "flat" : d6 > prevD6 ? "up" : d6 < prevD6 ? "down" : "flat"
+d7Direction = na(prevD7) ? "flat" : d7 > prevD7 ? "up" : d7 < prevD7 ? "down" : "flat"
+d8Direction = na(prevD8) ? "flat" : d8 > prevD8 ? "up" : d8 < prevD8 ? "down" : "flat"
+
+// ===== D1 x D7 CROSSOVER DETECTION =====
+// Track previous D1 direction to detect switches
+var string prevD1Dir = na
+d1SwitchedToUp = prevD1Dir == "down" and d1Direction == "up"
+d1SwitchedToDown = prevD1Dir == "up" and d1Direction == "down"
+
+// D1 x D7 crossover detection
+crossoverD1D7 = ta.crossover(d1, d7)
+crossunderD1D7 = ta.crossunder(d1, d7)
+
+// D1 x D7 cross signals (both must be going in same direction)
+d1CrossD7 = ""
+if crossoverD1D7 and d1Direction == "up" and d7Direction == "up"
+    d1CrossD7 := "bull"
+else if crossunderD1D7 and d1Direction == "down" and d7Direction == "down"
+    d1CrossD7 := "bear"
+else
+    d1CrossD7 := "none"
+
+// ===== TREND CALCULATION (Based on D1 and D7) =====
+calculatedTrend = "Neutral"
+ttsMessage = ""
+
+// D7-based priority messages (override all trends)
+if d7 < 20
+    calculatedTrend := "Very Short"
+    ttsMessage := "Heavy Sell"
+else if d7 > 80
+    calculatedTrend := "Very Long"
+    ttsMessage := "Heavy Buy"
+else
+    // Trend-specific messages (when D7 is between 20-80)
+    if d1CrossD7 == "bull"
+        calculatedTrend := "🚀 BULL Cross"
+        ttsMessage := "Small Buy"
+    else if d1CrossD7 == "bear"
+        calculatedTrend := "🔻 BEAR Cross"
+        ttsMessage := "Small sell"
+    else if d7 > 40 and d1Direction == "up"
+        calculatedTrend := "Try Long"
+        ttsMessage := "Medium Buy"
+    else if d7 < 40 and d1Direction == "down"
+        calculatedTrend := "Try Short"
+        ttsMessage := "Medium Sell"
+    else
+        calculatedTrend := "Neutral"
+        ttsMessage := ""
+
+// ===== STRATEGY ENTRY/EXIT LOGIC =====
+// Determine trade size
+qty = tradeSizeType == "Percent of Equity" ? math.max(1, math.floor(strategy.equity * (tradeSizePercent / 100.0) / close)) : 
+      tradeSizeType == "Fixed Quantity" ? tradeSizeFixed : 
+      1  // Default to 1 contract/share for Contract type
+
+// Long entry conditions - Only Big Buy (D7 > 80)
+longCondition = false
+longLabel = ""
+
+if enableStrategy and enableBigBuy
+    // Big Buy: D7 > 80
+    if d7 > 80
+        longCondition := true
+        longLabel := "Big Buy"
+
+// Short entry conditions - Only Big Sell (D7 < 20)
+shortCondition = false
+shortLabel = ""
+
+if enableStrategy and enableBigSell
+    // Big Sell: D7 < 20
+    if d7 < 20
+        shortCondition := true
+        shortLabel := "Big Sell"
+
+// Strategy execution
+// Check if we're in regular trading hours (if enabled)
+// Regular hours: 9:30 AM - 4:00 PM (0930-1600)
+inRegularHours = not tradeOnlyRegularHours or not na(time(timeframe.period, "0930-1600"))
+
+if enableStrategy and inRegularHours
+    // Close opposite position if enabled
+    if closeOnOpposite
+        if longCondition and strategy.position_size < 0
+            strategy.close("SHORT", comment="Close Short")
+        if shortCondition and strategy.position_size > 0
+            strategy.close("LONG", comment="Close Long")
+    
+    // Enter long position
+    if longCondition
+        if usePyramiding
+            if strategy.opentrades < maxPositions
+                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
+        else
+            if strategy.position_size == 0
+                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
+            else if strategy.position_size < 0
+                strategy.close("SHORT", comment="Close Short")
+                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
+    
+    // Enter short position
+    if shortCondition
+        if usePyramiding
+            if strategy.opentrades < maxPositions
+                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
+        else
+            if strategy.position_size == 0
+                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
+            else if strategy.position_size > 0
+                strategy.close("LONG", comment="Close Long")
+                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
+
+// Strategy visualization
+plotshape(longCondition, title="Long Entry", style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small)
+plotshape(shortCondition, title="Short Entry", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small)
+
+// Store previous values for next comparison
+prevD1 := d1
+prevD2 := d2
+prevD3 := d3
+prevD4 := d4
+prevD5 := d5
+prevD6 := d6
+prevD7 := d7
+prevD8 := d8
+prevD1Dir := d1Direction
+
