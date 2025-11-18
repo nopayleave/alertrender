@@ -159,8 +159,10 @@ plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, di
 plot(k1, title="%K1", color=color.new(#00bcd4, 65), linewidth=1, style=plot.style_line, display=display.none)
 
 // Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
 hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
 hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
 
 // Strong zones settings
 showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")

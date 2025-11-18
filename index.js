@@ -1609,8 +1609,8 @@ app.get('/', (req, res) => {
                      <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
                        MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
                      </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d4value')" title="Quad Stochastic D4 Value">
-                      QS D4 Val <span id="sort-d4value" class="ml-1 text-xs">⇅</span>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d4value')" title="Octo Stochastic D7 Value">
+                      D7 Value <span id="sort-d4value" class="ml-1 text-xs">⇅</span>
                     </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
                       <span title="Volume since 9:30 AM">Vol</span> <span id="sort-volume" class="ml-1 text-xs">⇅</span>
@@ -1802,7 +1802,11 @@ app.get('/', (req, res) => {
                if (macdSig === 'M = S') return 0.4; // Neutral
                return 0; // Default
             case 'd4value':
-              return parseFloat(alert.quadStochD4) || 0;
+              return alert.octoStochD7 !== undefined
+                ? parseFloat(alert.octoStochD7) || 0
+                : alert.d7 !== undefined
+                  ? parseFloat(alert.d7) || 0
+                  : 0;
             case 'priceChange':
               // Calculate price change percentage for sorting
               // Priority 1: Use changeFromPrevDay from Day script if available
@@ -2441,18 +2445,22 @@ app.get('/', (req, res) => {
             
             // QS D4 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
-            const d4Value = parseFloat(alert.quadStochD4);
-            if (!isNaN(d4Value)) {
+            const d7Value = alert.octoStochD7 !== undefined
+              ? parseFloat(alert.octoStochD7)
+              : alert.d7 !== undefined
+                ? parseFloat(alert.d7)
+                : NaN;
+            if (!isNaN(d7Value)) {
               // Gradient from red (0) → yellow (50) → green (100)
-              if (d4Value >= 75) {
+              if (d7Value >= 75) {
                 d4ValueClass = 'text-green-400 font-bold'; // 75-100: Strong green
-              } else if (d4Value >= 60) {
+              } else if (d7Value >= 60) {
                 d4ValueClass = 'text-green-500 font-semibold'; // 60-75: Green
-              } else if (d4Value >= 50) {
+              } else if (d7Value >= 50) {
                 d4ValueClass = 'text-lime-400 font-semibold'; // 50-60: Lime
-              } else if (d4Value >= 40) {
+              } else if (d7Value >= 40) {
                 d4ValueClass = 'text-yellow-400 font-semibold'; // 40-50: Yellow
-              } else if (d4Value >= 25) {
+              } else if (d7Value >= 25) {
                 d4ValueClass = 'text-orange-400 font-semibold'; // 25-40: Orange
               } else {
                 d4ValueClass = 'text-red-400 font-bold'; // 0-25: Red
@@ -2479,7 +2487,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Quad Stochastic D4 Value (0-100)">\${alert.quadStochD4 ? parseFloat(alert.quadStochD4).toFixed(2) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
