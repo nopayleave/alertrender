@@ -10,6 +10,7 @@ app.use(express.json())
 
 // Notification settings (configure via environment variables or update here)
 const NOTIFICATION_CONFIG = {
+  enabled: process.env.NOTIFICATIONS_ENABLED !== 'false', // Global toggle - default to true
   email: {
     enabled: process.env.EMAIL_ENABLED === 'true' || false,
     from: process.env.EMAIL_FROM || 'alerts@tradingdashboard.com',
@@ -246,6 +247,11 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
 
 // Check and send notifications for trend changes
 function checkAndNotifyTrendChange(symbol, alertData) {
+  // Check global notification toggle first
+  if (!NOTIFICATION_CONFIG.enabled) {
+    return // Notifications disabled globally
+  }
+  
   const currentTrend = calculateTrend(alertData)
   const previousTrend = previousTrends[symbol]
   const isStarred = starredSymbols[symbol]
@@ -1000,6 +1006,7 @@ app.post('/starred-symbols', (req, res) => {
 // Endpoint to get notification settings
 app.get('/notification-settings', (req, res) => {
   res.json({
+    enabled: NOTIFICATION_CONFIG.enabled, // Global notification toggle
     email: {
       enabled: NOTIFICATION_CONFIG.email.enabled,
       to: NOTIFICATION_CONFIG.email.to,
@@ -1017,7 +1024,13 @@ app.get('/notification-settings', (req, res) => {
 // Endpoint to update notification settings (runtime)
 app.post('/notification-settings', (req, res) => {
   try {
-    const { email, discord } = req.body
+    const { enabled, email, discord } = req.body
+    
+    // Update global notification toggle
+    if (enabled !== undefined) {
+      NOTIFICATION_CONFIG.enabled = enabled
+      console.log(`🔔 Global notifications ${enabled ? 'ENABLED' : 'DISABLED'}`)
+    }
     
     if (email !== undefined) {
       if (email.enabled !== undefined) NOTIFICATION_CONFIG.email.enabled = email.enabled
@@ -1038,7 +1051,7 @@ app.post('/notification-settings', (req, res) => {
     }
     
     console.log('📬 Notification settings updated')
-    res.json({ status: 'ok', message: 'Notification settings updated' })
+    res.json({ status: 'ok', message: 'Notification settings updated', enabled: NOTIFICATION_CONFIG.enabled })
   } catch (error) {
     console.error('Error updating notification settings:', error)
     res.status(500).json({ status: 'error', message: error.message })
@@ -1571,7 +1584,11 @@ app.get('/', (req, res) => {
             <div>
               <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
             </div>
-            <div>
+            <div class="flex gap-3 items-center">
+              <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
+                <span id="notificationIcon">🔔</span>
+                <span id="notificationText">Notifications ON</span>
+              </button>
               <a href="/calculator" class="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Calculator
               </a>
@@ -1902,9 +1919,64 @@ app.get('/', (req, res) => {
         
         // Initial sync on page load
         syncStarredSymbolsToBackend();
+        
+        // Load notification settings on page load
+        loadNotificationSettings();
 
         function isStarred(symbol) {
           return starredAlerts[symbol] || false;
+        }
+        
+        // Load notification settings and update UI
+        async function loadNotificationSettings() {
+          try {
+            const response = await fetch('/notification-settings');
+            const settings = await response.json();
+            updateNotificationToggleUI(settings.enabled);
+          } catch (error) {
+            console.error('Failed to load notification settings:', error);
+          }
+        }
+        
+        // Update notification toggle UI
+        function updateNotificationToggleUI(enabled) {
+          const toggle = document.getElementById('notificationToggle');
+          const icon = document.getElementById('notificationIcon');
+          const text = document.getElementById('notificationText');
+          
+          if (enabled) {
+            toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
+            icon.textContent = '🔔';
+            text.textContent = 'Notifications ON';
+          } else {
+            toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
+            icon.textContent = '🔕';
+            text.textContent = 'Notifications OFF';
+          }
+        }
+        
+        // Toggle notifications
+        async function toggleNotifications() {
+          try {
+            const response = await fetch('/notification-settings');
+            const settings = await response.json();
+            const newState = !settings.enabled;
+            
+            const updateResponse = await fetch('/notification-settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled: newState })
+            });
+            
+            const result = await updateResponse.json();
+            if (result.status === 'ok') {
+              updateNotificationToggleUI(newState);
+              console.log(\`🔔 Notifications \${newState ? 'ENABLED' : 'DISABLED'}\`);
+            }
+          } catch (error) {
+            console.error('Failed to toggle notifications:', error);
+            alert('Failed to toggle notifications. Please try again.');
+          }
         }
 
         function updateCountdown() {
