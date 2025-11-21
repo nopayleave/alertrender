@@ -226,8 +226,8 @@ ttsMessage = ""
 if d7 < 20
     calculatedTrend := "Very Short"
     ttsMessage := "Heavy Sell"
-else if d7 > 80
-    calculatedTrend := "Very Long"
+else if d7 > 80 and d3Direction == "up"
+    calculatedTrend := "Heavy Buy"
     ttsMessage := "Heavy Buy"
 else
     // Trend-specific messages (when D7 is between 20-80)
@@ -253,15 +253,15 @@ qty = tradeSizeType == "Percent of Equity" ? math.max(1, math.floor(strategy.equ
       tradeSizeType == "Fixed Quantity" ? tradeSizeFixed : 
       1  // Default to 1 contract/share for Contract type
 
-// Long entry conditions - Only Big Buy (D7 > 80)
+// Long entry conditions - Only Heavy Buy (D7 > 80 AND D3 up)
 longCondition = false
 longLabel = ""
 
 if enableStrategy and enableBigBuy
-    // Big Buy: D7 > 80
-    if d7 > 80
+    // Heavy Buy: D7 > 80 AND D3 going up
+    if d7 > 80 and d3Direction == "up"
         longCondition := true
-        longLabel := "Big Buy"
+        longLabel := "Heavy Buy"
 
 // Short entry conditions - Only Big Sell (D7 < 20)
 shortCondition = false

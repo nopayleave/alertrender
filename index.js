@@ -74,7 +74,7 @@ function calculateTrend(alert) {
   
   if (d1CrossD7 === 'bull') return '🚀 BULL Cross'
   if (d1CrossD7 === 'bear') return '🔻 BEAR Cross'
-  if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) return 'Very Long'
+  if (d7Val > 80 && d3Dir === 'up') return 'Heavy Buy'
   if (d7Val > 80 && alert.d1SwitchedToDown) return 'Switch Short'
   if (d7Val < 20 && (alert.d1SwitchedToDown || d1Dir === 'down')) return 'Very Short'
   if (d7Val < 20 && alert.d1SwitchedToUp) return 'Switch Long'
@@ -123,7 +123,7 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
     const trendColors = {
       'Dead Long': 0x00FF00,  // Bright green for extreme long
       '🚀 BULL Cross': 0x00FF00,
-      'Very Long': 0x4CAF50,
+      'Heavy Buy': 0x4CAF50,
       'Try Long': 0x8BC34A,
       'Switch Long': 0xCDDC39,
       'Neutral': 0x9E9E9E,
@@ -231,21 +231,18 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
       } else if (newTrend === 'Dead Short') {
         // Dead Short - D7 < 10, D7 and D3 both going down
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Dead Short.`
+      } else if (newTrend === 'Heavy Buy') {
+        // Heavy Buy - D7 > 80 AND D3 going up
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Buy.`
       } else if (d7Value !== null && d7Value < 20) {
         // D7 < 20: Heavy Sell
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Sell.`
-      } else if (d7Value !== null && d7Value > 80) {
-        // D7 > 80: Heavy Buy
-        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Buy.`
       } else if (newTrend.includes('🚀')) {
         // BULL Cross - Small Buy
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Small Buy.`
       } else if (newTrend.includes('🔻')) {
         // BEAR Cross - Small sell
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Small sell.`
-      } else if (newTrend === 'Very Long') {
-        // Very Long - Big Buy
-        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Big Buy.`
       } else if (newTrend === 'Switch Short') {
         // Switch Short - Medium Short
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Medium Short.`
@@ -1784,9 +1781,6 @@ app.get('/', (req, res) => {
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qsArrow')" title="D1/D2/D3/D4 Direction Arrows">
                       QS Arrow <span id="sort-qsArrow" class="ml-1 text-xs">⇅</span>
                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qstoch')" title="Octo Stochastic D7 Trend & Crossings">
-                      QS D7 <span id="sort-qstoch" class="ml-1 text-xs">⇅</span>
-                    </th>
                      <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
                        MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
                      </th>
@@ -1890,7 +1884,7 @@ app.get('/', (req, res) => {
               const trendOrder = {
                 'Dead Long': 15,  // Highest priority
                 '🚀 BULL Cross': 12,
-                'Very Long': 10,
+                'Heavy Buy': 10,
                 'Try Long': 8,
                 'Switch Long': 7,
                 'Neutral': 5,
@@ -1917,9 +1911,9 @@ app.get('/', (req, res) => {
                 else if (d1CrossD7_sort === 'bear') {
                   trend_sort = '🔻 BEAR Cross';
                 }
-                // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-                else if (d7Val_sort > 80 && (alert.d1SwitchedToUp || d1Dir_sort === 'up')) {
-                  trend_sort = 'Very Long';
+                // Heavy Buy: D7 > 80 AND D3 going up
+                else if (d7Val_sort > 80 && alert.d3Direction === 'up') {
+                  trend_sort = 'Heavy Buy';
                 }
                 // Switch Short: D7 > 80 AND D1 switched to down
                 else if (d7Val_sort > 80 && alert.d1SwitchedToDown) {
@@ -2352,11 +2346,10 @@ app.get('/', (req, res) => {
             const getTTSMessage = (trend, d7Value) => {
               if (trend === 'Dead Long') return 'Dead Long';
               if (trend === 'Dead Short') return 'Dead Short';
+              if (trend === 'Heavy Buy') return 'Heavy Buy';
               if (d7Value < 20) return 'Heavy Sell';
-              if (d7Value > 80) return 'Heavy Buy';
               if (trend.includes('🚀')) return 'Small Buy';
               if (trend.includes('🔻')) return 'Small sell';
-              if (trend === 'Very Long') return 'Big Buy';
               if (trend === 'Switch Short') return 'Medium Short';
               if (trend === 'Very Short') return 'Big Short';
               if (trend === 'Switch Long') return 'Medium Buy';
@@ -2388,10 +2381,10 @@ app.get('/', (req, res) => {
                 trendClass = 'text-red-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-red-900/70';
                 trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
-              } else if (calculatedTrend === 'Very Long') {
+              } else if (calculatedTrend === 'Heavy Buy') {
                 trendClass = 'text-green-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/50';
-                trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
+                trendTitle = 'D7 > 80, D3 going up - Heavy Buy signal';
               } else if (calculatedTrend === 'Switch Short') {
                 trendClass = 'text-orange-400 font-bold animate-pulse';
                 trendCellClass = 'bg-orange-900/40';
@@ -2448,12 +2441,12 @@ app.get('/', (req, res) => {
                 trendCellClass = 'bg-red-900/70';
                 trendTitle = 'D1 crossed UNDER D7 (both going down) - Strong bearish signal!';
               }
-              // Very Long: D7 > 80 AND D1 switched to up OR D1 uptrend
-              else if (d7Val > 80 && (alert.d1SwitchedToUp || d1Dir === 'up')) {
-                calculatedTrend = 'Very Long';
+              // Heavy Buy: D7 > 80 AND D3 going up
+              else if (d7Val > 80 && d3Dir === 'up') {
+                calculatedTrend = 'Heavy Buy';
                 trendClass = 'text-green-600 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/50';
-                trendTitle = 'D7 > 80, D1 going up - Very strong long signal';
+                trendTitle = 'D7 > 80, D3 going up - Heavy Buy signal';
               }
               // Switch Short: D7 > 80 AND D1 switched to down
               else if (d7Val > 80 && alert.d1SwitchedToDown) {
@@ -2567,142 +2560,117 @@ app.get('/', (req, res) => {
               qstochTitle = 'D4 Crossed Down 80 - Entering Overbought Zone';
             }
             
-            // MACD Crossing Signal Display
+            // MACD Crossing Signal Display - Refined Logic
             let macdCrossingDisplay = '-';
             let macdCrossingClass = 'text-muted-foreground';
-            let macdCrossingTitle = 'No recent MACD crossing signal';
+            let macdCrossingTitle = 'No MACD data available';
             let macdCrossingCellClass = '';
             
             const macdCrossingSignal = alert.macdCrossingSignal;
+            const macdValue = parseFloat(alert.macd) || 0;
+            const signalValue = parseFloat(alert.macdSignal) || 0;
             
             // Check if MACD crossing signal is recent (within last 5 minutes)
             const macdCrossingAge = alert.macdCrossingTimestamp ? (Date.now() - alert.macdCrossingTimestamp) / 60000 : 999;
             const isRecentCrossing = macdCrossingAge <= 5;
             
-            // Bullish Crossing Signals (Green)
+            // Priority 1: Actual Crossing Events (Most Important)
             if (macdCrossingSignal === 'COver >50') {
-              macdCrossingDisplay = 'COver >50';
-              macdCrossingClass = 'text-green-400 font-bold';
-              macdCrossingTitle = 'MACD crosses above Signal AND MACD > 50 (Strong Bullish)';
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/30';
+              macdCrossingDisplay = '↑↑ Cross >50';
+              macdCrossingClass = 'text-green-300 font-extrabold';
+              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) AND MACD > 50 - STRONG BULLISH\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/50 animate-pulse';
             } else if (macdCrossingSignal === 'COver >0') {
-              macdCrossingDisplay = 'COver >0';
+              macdCrossingDisplay = '↑ Cross >0';
               macdCrossingClass = 'text-green-400 font-bold';
-              macdCrossingTitle = 'MACD crosses above Signal AND MACD > 0 (Bullish)';
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/30';
+              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) AND MACD > 0 - BULLISH\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/40';
             } else if (macdCrossingSignal === 'COver <0') {
-              macdCrossingDisplay = 'COver <0';
+              macdCrossingDisplay = '↑ Cross <0';
               macdCrossingClass = 'text-yellow-400 font-semibold';
-              macdCrossingTitle = 'MACD crosses above Signal BUT MACD < 0 (Weak Bullish)';
-            }
-            // Bearish Crossing Signals (Red)
-            else if (macdCrossingSignal === 'CUnder <-50') {
-              macdCrossingDisplay = 'CUnder <-50';
-              macdCrossingClass = 'text-red-400 font-bold';
-              macdCrossingTitle = 'MACD crosses below Signal AND MACD < -50 (Strong Bearish)';
+              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) BUT MACD < 0 - Weak Bullish\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-yellow-900/30';
+            } else if (macdCrossingSignal === 'CUnder <-50') {
+              macdCrossingDisplay = '↓↓ Cross <-50';
+              macdCrossingClass = 'text-red-300 font-extrabold';
+              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) AND MACD < -50 - STRONG BEARISH\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/50 animate-pulse';
             } else if (macdCrossingSignal === 'CUnder <0') {
-              macdCrossingDisplay = 'CUnder <0';
+              macdCrossingDisplay = '↓ Cross <0';
               macdCrossingClass = 'text-red-400 font-bold';
-              macdCrossingTitle = 'MACD crosses below Signal AND MACD < 0 (Bearish)';
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/30';
+              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) AND MACD < 0 - BEARISH\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/40';
             } else if (macdCrossingSignal === 'CUnder >0') {
-              macdCrossingDisplay = 'CUnder >0';
+              macdCrossingDisplay = '↓ Cross >0';
               macdCrossingClass = 'text-orange-400 font-semibold';
-              macdCrossingTitle = 'MACD crosses below Signal BUT MACD > 0 (Weak Bearish)';
+              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) BUT MACD > 0 - Weak Bearish\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-orange-900/30';
             }
-            // Zero Line Crossings (Yellow/Orange)
+            // Priority 2: Zero Line Crossings
             else if (macdCrossingSignal === 'MACD >0') {
-              macdCrossingDisplay = 'MACD >0';
-              macdCrossingClass = 'text-yellow-400 font-semibold';
-              macdCrossingTitle = 'MACD line crosses above zero';
+              macdCrossingDisplay = 'MACD ↑0';
+              macdCrossingClass = 'text-lime-400 font-bold';
+              macdCrossingTitle = \`MACD line crossed ABOVE zero (M:\${macdValue.toFixed(2)}) - Bullish momentum\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-lime-900/30';
             } else if (macdCrossingSignal === 'MACD <0') {
-              macdCrossingDisplay = 'MACD <0';
-              macdCrossingClass = 'text-orange-400 font-semibold';
-              macdCrossingTitle = 'MACD line crosses below zero';
+              macdCrossingDisplay = 'MACD ↓0';
+              macdCrossingClass = 'text-red-400 font-bold';
+              macdCrossingTitle = \`MACD line crossed BELOW zero (M:\${macdValue.toFixed(2)}) - Bearish momentum\`;
+              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/30';
             } else if (macdCrossingSignal === 'Signal >0') {
-              macdCrossingDisplay = 'Signal >0';
-              macdCrossingClass = 'text-yellow-400 font-semibold';
-              macdCrossingTitle = 'Signal line crosses above zero';
+              macdCrossingDisplay = 'Signal ↑0';
+              macdCrossingClass = 'text-lime-300 font-semibold';
+              macdCrossingTitle = \`Signal line crossed ABOVE zero (S:\${signalValue.toFixed(2)}) - Bullish signal\`;
             } else if (macdCrossingSignal === 'Signal <0') {
-              macdCrossingDisplay = 'Signal <0';
-              macdCrossingClass = 'text-orange-400 font-semibold';
-              macdCrossingTitle = 'Signal line crosses below zero';
+              macdCrossingDisplay = 'Signal ↓0';
+              macdCrossingClass = 'text-red-300 font-semibold';
+              macdCrossingTitle = \`Signal line crossed BELOW zero (S:\${signalValue.toFixed(2)}) - Bearish signal\`;
             }
-            // Position States - Check MACD trend direction by comparing with previous alert
+            // Priority 3: Current Position State (when no recent crossing)
             else if (macdCrossingSignal === 'M > S') {
-              const macdValue = parseFloat(alert.macd) || 0;
-              const signalValue = parseFloat(alert.macdSignal) || 0;
-              
-              // Find previous alert for same symbol to detect MACD trend
-              const prevAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol && a.macd !== undefined);
-              let macdTrending = 'flat';
-              
-              if (prevAlert && prevAlert.macd !== undefined) {
-                const prevMacdValue = parseFloat(prevAlert.macd) || 0;
-                if (macdValue > prevMacdValue) {
-                  macdTrending = 'up';
-                } else if (macdValue < prevMacdValue) {
-                  macdTrending = 'down';
-                }
-              }
-              
-              // Show M and S values for debugging
+              // MACD is above Signal - Bullish position
               const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
               
-              // Determine display based on MACD trend direction
-              if (macdTrending === 'down') {
-                macdCrossingDisplay = \`Down \${valueDisplay}\`;
-                macdCrossingClass = 'text-orange-400 font-semibold';
-                macdCrossingTitle = \`M > S but MACD trending down - M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
-              } else if (macdValue > 0) {
-                macdCrossingDisplay = \`Drop in Uptrend \${valueDisplay}\`;
-                macdCrossingClass = 'text-orange-400 font-semibold';
-                macdCrossingTitle = \`M > S (>\${macdValue.toFixed(2)}) - Drop in uptrend\`;
-              } else {
-                macdCrossingDisplay = \`Up in Uptrend \${valueDisplay}\`;
+              if (macdValue > 0 && signalValue > 0) {
+                // Both above zero - Strong bullish
+                macdCrossingDisplay = \`M>S ↑↑ \${valueDisplay}\`;
                 macdCrossingClass = 'text-green-400 font-semibold';
-                macdCrossingTitle = \`M > S (<\${macdValue.toFixed(2)}) - Up in uptrend\`;
+                macdCrossingTitle = \`MACD > Signal, both above zero - Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
+              } else if (macdValue > 0 && signalValue < 0) {
+                // MACD above zero, Signal below - Very bullish
+                macdCrossingDisplay = \`M>S ↑ \${valueDisplay}\`;
+                macdCrossingClass = 'text-green-300 font-bold';
+                macdCrossingTitle = \`MACD > Signal, MACD above zero - Very Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
+              } else {
+                // Both below zero - Weak bullish
+                macdCrossingDisplay = \`M>S \${valueDisplay}\`;
+                macdCrossingClass = 'text-yellow-400 font-semibold';
+                macdCrossingTitle = \`MACD > Signal, both below zero - Weak Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
               }
             } else if (macdCrossingSignal === 'M < S') {
-              const macdValue = parseFloat(alert.macd) || 0;
-              const signalValue = parseFloat(alert.macdSignal) || 0;
-              
-              // Find previous alert for same symbol to detect MACD trend
-              const prevAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol && a.macd !== undefined);
-              let macdTrending = 'flat';
-              
-              if (prevAlert && prevAlert.macd !== undefined) {
-                const prevMacdValue = parseFloat(prevAlert.macd) || 0;
-                if (macdValue > prevMacdValue) {
-                  macdTrending = 'up';
-                } else if (macdValue < prevMacdValue) {
-                  macdTrending = 'down';
-                }
-              }
-              
-              // Show M and S values for debugging
+              // MACD is below Signal - Bearish position
               const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
               
-              // Determine display based on MACD trend direction
-              if (macdTrending === 'up') {
-                macdCrossingDisplay = \`Up \${valueDisplay}\`;
-                macdCrossingClass = 'text-lime-400 font-semibold';
-                macdCrossingTitle = \`M < S but MACD trending up - M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
-              } else if (macdValue > 0) {
-                macdCrossingDisplay = \`Drop in Downtrend \${valueDisplay}\`;
+              if (macdValue < 0 && signalValue < 0) {
+                // Both below zero - Strong bearish
+                macdCrossingDisplay = \`M<S ↓↓ \${valueDisplay}\`;
                 macdCrossingClass = 'text-red-400 font-semibold';
-                macdCrossingTitle = \`M < S (>\${macdValue.toFixed(2)}) - Drop in downtrend\`;
+                macdCrossingTitle = \`MACD < Signal, both below zero - Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
+              } else if (macdValue < 0 && signalValue > 0) {
+                // MACD below zero, Signal above - Very bearish
+                macdCrossingDisplay = \`M<S ↓ \${valueDisplay}\`;
+                macdCrossingClass = 'text-red-300 font-bold';
+                macdCrossingTitle = \`MACD < Signal, MACD below zero - Very Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
               } else {
-                macdCrossingDisplay = \`Up in Downtrend \${valueDisplay}\`;
-                macdCrossingClass = 'text-lime-400 font-semibold';
-                macdCrossingTitle = \`M < S (<\${macdValue.toFixed(2)}) - Up in downtrend\`;
+                // Both above zero - Weak bearish
+                macdCrossingDisplay = \`M<S \${valueDisplay}\`;
+                macdCrossingClass = 'text-orange-400 font-semibold';
+                macdCrossingTitle = \`MACD < Signal, both above zero - Weak Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
               }
             } else if (macdCrossingSignal === 'M = S') {
-              const macdValue = parseFloat(alert.macd) || 0;
-              const signalValue = parseFloat(alert.macdSignal) || 0;
-              macdCrossingDisplay = \`M = S M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
+              macdCrossingDisplay = \`M=S \${macdValue.toFixed(2)}\`;
               macdCrossingClass = 'text-gray-400 font-semibold';
-              macdCrossingTitle = 'MACD line equals Signal line (Neutral)';
+              macdCrossingTitle = \`MACD equals Signal - Neutral (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
             }
             
             // QS D7 Value gradient color (0-100 scale)
@@ -2747,7 +2715,6 @@ app.get('/', (req, res) => {
                 </td>
                 <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
-                <td class="py-3 px-4 font-bold \${qstochClass} \${qsD4CellClass}" title="\${qstochTitle}">\${qstochDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
                 <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : 'N/A'}</td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>

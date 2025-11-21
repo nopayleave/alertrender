@@ -375,8 +375,8 @@ else if d7 < 10 and d7Direction == "down" and d3Direction == "down"
 else if d7 < 20
     calculatedTrend := "Very Short"
     ttsMessage := "Heavy Sell"
-else if d7 > 80
-    calculatedTrend := "Very Long"
+else if d7 > 80 and d3Direction == "up"
+    calculatedTrend := "Heavy Buy"
     ttsMessage := "Heavy Buy"
 else
     // Trend-specific messages (when D7 is between 20-80)
