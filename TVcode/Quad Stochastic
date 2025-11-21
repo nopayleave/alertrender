@@ -354,17 +354,25 @@ else
 
 // ===== TREND CALCULATION (Based on D1 and D7) =====
 // Priority order:
-// 1. D1 x D7 Cross (BULL/BEAR)
-// 2. Very Long/Short (D7 extremes with D1 confirmation)
-// 3. Switch Long/Short (D7 extremes with D1 switch)
-// 4. Try Long/Short (D7 > 40/< 40 with D1 direction)
-// 5. Neutral
+// 1. Dead Long/Short (D7 > 90/< 10 with D7 and D3 both going same direction)
+// 2. D1 x D7 Cross (BULL/BEAR)
+// 3. Very Long/Short (D7 extremes with D1 confirmation)
+// 4. Switch Long/Short (D7 extremes with D1 switch)
+// 5. Try Long/Short (D7 > 40/< 40 with D1 direction)
+// 6. Neutral
 
 calculatedTrend = "Neutral"
 ttsMessage = ""
 
+// HIGHEST PRIORITY: Dead Long/Short (D7 extremes with D7 and D3 both going same direction)
+if d7 > 90 and d7Direction == "up" and d3Direction == "up"
+    calculatedTrend := "Dead Long"
+    ttsMessage := "Dead Long"
+else if d7 < 10 and d7Direction == "down" and d3Direction == "down"
+    calculatedTrend := "Dead Short"
+    ttsMessage := "Dead Short"
 // D7-based priority messages (override all trends)
-if d7 < 20
+else if d7 < 20
     calculatedTrend := "Very Short"
     ttsMessage := "Heavy Sell"
 else if d7 > 80

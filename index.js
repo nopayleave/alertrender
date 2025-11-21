@@ -63,8 +63,14 @@ function calculateTrend(alert) {
   
   // Fallback to local calculation
   const d1Dir = alert.d1Direction || 'flat'
+  const d3Dir = alert.d3Direction || 'flat'
+  const d7Dir = alert.d7Direction || 'flat'
   const d7Val = parseFloat(alert.octoStochD7) || 0
   const d1CrossD7 = alert.d1CrossD7
+  
+  // HIGHEST PRIORITY: Dead Long/Short (D7 > 90/< 10 with D7 and D3 both going same direction)
+  if (d7Val > 90 && d7Dir === 'up' && d3Dir === 'up') return 'Dead Long'
+  if (d7Val < 10 && d7Dir === 'down' && d3Dir === 'down') return 'Dead Short'
   
   if (d1CrossD7 === 'bull') return '🚀 BULL Cross'
   if (d1CrossD7 === 'bear') return '🔻 BEAR Cross'
@@ -115,6 +121,7 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
   try {
     // Determine embed color based on new trend
     const trendColors = {
+      'Dead Long': 0x00FF00,  // Bright green for extreme long
       '🚀 BULL Cross': 0x00FF00,
       'Very Long': 0x4CAF50,
       'Try Long': 0x8BC34A,
@@ -123,44 +130,69 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
       'Switch Short': 0xFF9800,
       'Try Short': 0xFF5722,
       'Very Short': 0xF44336,
-      '🔻 BEAR Cross': 0xFF0000
+      '🔻 BEAR Cross': 0xFF0000,
+      'Dead Short': 0x8B0000  // Dark red for extreme short
     }
     
-    // If D7 < 20, force red color regardless of trend
+    // If D7 < 20, force red color regardless of trend (unless Dead Short which has its own color)
     let embedColor = trendColors[newTrend] || 0x9E9E9E
     const isD7Low = d7Value !== null && d7Value < 20
-    if (isD7Low) {
+    if (isD7Low && newTrend !== 'Dead Short') {
       embedColor = 0xDC143C // Crimson red - darker, more prominent
     }
     
-    // Build title with warning if D7 < 20
+    // Build title with special formatting for extreme conditions
     let title = `⭐ ${symbol} - Trend Changed`
-    if (isD7Low) {
+    if (newTrend === 'Dead Long') {
+      title = `🟢 ⚡ ${symbol} - DEAD LONG (D7 > 90, D7↑ D3↑)`
+    } else if (newTrend === 'Dead Short') {
+      title = `🔴 ⚡ ${symbol} - DEAD SHORT (D7 < 10, D7↓ D3↓)`
+    } else if (isD7Low) {
       title = `🔴 ⚠️ ${symbol} - Trend Changed (D7 < 20)`
     }
     
-    // Build description with warning if D7 < 20
+    // Build description with special formatting
     let description = `**${oldTrend}** → **${newTrend}**`
-    if (isD7Low) {
+    if (newTrend === 'Dead Long') {
+      description = `🟢 **EXTREME LONG CONDITION** 🟢\nD7 > 90, D7 and D3 both going UP\n**${oldTrend}** → **${newTrend}**`
+    } else if (newTrend === 'Dead Short') {
+      description = `🔴 **EXTREME SHORT CONDITION** 🔴\nD7 < 10, D7 and D3 both going DOWN\n**${oldTrend}** → **${newTrend}**`
+    } else if (isD7Low) {
       description = `🔴 **OVERSOLD CONDITION** 🔴\n**${oldTrend}** → **${newTrend}**`
+    }
+    
+    // Build fields array
+    const fields = [
+      {
+        name: 'Price',
+        value: `$${price || 'N/A'}`,
+        inline: true
+      },
+      {
+        name: 'Time',
+        value: new Date().toLocaleTimeString(),
+        inline: true
+      }
+    ]
+    
+    // Add D7 field for Dead Long/Short or D7 < 20
+    if (newTrend === 'Dead Long' || newTrend === 'Dead Short' || isD7Low) {
+      const d7Display = d7Value !== null ? d7Value.toFixed(2) : 'N/A'
+      const d7Label = newTrend === 'Dead Long' ? '🟢 D7 (EXTREME LONG)' : 
+                      newTrend === 'Dead Short' ? '🔴 D7 (EXTREME SHORT)' : 
+                      '🔴 D7 (OVERSOLD)'
+      fields.push({
+        name: d7Label,
+        value: `${d7Display}${newTrend === 'Dead Long' || newTrend === 'Dead Short' ? ' ⚡' : ' ⚠️'}`,
+        inline: true
+      })
     }
     
     const embed = {
       title: title,
       description: description,
       color: embedColor,
-      fields: [
-        {
-          name: 'Price',
-          value: `$${price || 'N/A'}`,
-          inline: true
-        },
-        {
-          name: 'Time',
-          value: new Date().toLocaleTimeString(),
-          inline: true
-        }
-      ],
+      fields: fields,
       timestamp: new Date().toISOString(),
       footer: {
         text: 'Trading Dashboard Alert'
@@ -192,8 +224,14 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
       // Add commas and periods to create pauses and slow down speech
       const symbolSpelled = symbol.split('').join(', ') // "ONDS" becomes "O, N, D, S" - commas slow down TTS
       
-      // TTS messages - D7-based messages take priority only at extremes
-      if (d7Value !== null && d7Value < 20) {
+      // TTS messages - Dead Long/Short have highest priority
+      if (newTrend === 'Dead Long') {
+        // Dead Long - D7 > 90, D7 and D3 both going up
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Dead Long.`
+      } else if (newTrend === 'Dead Short') {
+        // Dead Short - D7 < 10, D7 and D3 both going down
+        payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Dead Short.`
+      } else if (d7Value !== null && d7Value < 20) {
         // D7 < 20: Heavy Sell
         payload.content = `Ticker ${symbolSpelled}. Ticker ${symbolSpelled}. Heavy Sell.`
       } else if (d7Value !== null && d7Value > 80) {
@@ -1745,6 +1783,7 @@ app.get('/', (req, res) => {
             case 'trend':
               // Sort by trend priority (NEW D1 & D7 BASED)
               const trendOrder = {
+                'Dead Long': 15,  // Highest priority
                 '🚀 BULL Cross': 12,
                 'Very Long': 10,
                 'Try Long': 8,
@@ -1753,7 +1792,8 @@ app.get('/', (req, res) => {
                 'Switch Short': 4,
                 'Try Short': 3,
                 'Very Short': 1,
-                '🔻 BEAR Cross': 0
+                '🔻 BEAR Cross': 0,
+                'Dead Short': -1  // Lowest priority (most bearish)
               };
               
               // Use calculatedTrend from Pine Script if available
@@ -2205,6 +2245,8 @@ app.get('/', (req, res) => {
             
             // Function to map trend to TTS message
             const getTTSMessage = (trend, d7Value) => {
+              if (trend === 'Dead Long') return 'Dead Long';
+              if (trend === 'Dead Short') return 'Dead Short';
               if (d7Value < 20) return 'Heavy Sell';
               if (d7Value > 80) return 'Heavy Buy';
               if (trend.includes('🚀')) return 'Small Buy';
@@ -2225,7 +2267,15 @@ app.get('/', (req, res) => {
               const calculatedTrend = alert.calculatedTrend;
               
               // Apply styling based on calculatedTrend (not trendDisplay which is TTS message)
-              if (calculatedTrend.includes('🚀')) {
+              if (calculatedTrend === 'Dead Long') {
+                trendClass = 'text-lime-300 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-800/80';
+                trendTitle = 'D7 > 90, D7 and D3 both going up - EXTREME LONG signal!';
+              } else if (calculatedTrend === 'Dead Short') {
+                trendClass = 'text-red-300 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-800/80';
+                trendTitle = 'D7 < 10, D7 and D3 both going down - EXTREME SHORT signal!';
+              } else if (calculatedTrend.includes('🚀')) {
                 trendClass = 'text-green-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/70';
                 trendTitle = 'D1 crossed OVER D7 (both going up) - Strong bullish signal!';
@@ -2261,13 +2311,27 @@ app.get('/', (req, res) => {
               }
             } else {
               // Fallback: Calculate trend locally if not provided by Pine Script
+              const d3Dir = alert.d3Direction || 'flat';
               const d7Dir = alert.d7Direction || 'flat';
               const d1CrossD7 = alert.d1CrossD7;
               let calculatedTrend = 'Neutral';
               
               // Priority order for trend determination based on D1 and D7
+              // HIGHEST PRIORITY: Dead Long/Short (D7 > 90/< 10 with D7 and D3 both going same direction)
+              if (d7Val > 90 && d7Dir === 'up' && d3Dir === 'up') {
+                calculatedTrend = 'Dead Long';
+                trendClass = 'text-lime-300 font-extrabold animate-pulse';
+                trendCellClass = 'bg-green-800/80';
+                trendTitle = 'D7 > 90, D7 and D3 both going up - EXTREME LONG signal!';
+              }
+              else if (d7Val < 10 && d7Dir === 'down' && d3Dir === 'down') {
+                calculatedTrend = 'Dead Short';
+                trendClass = 'text-red-300 font-extrabold animate-pulse';
+                trendCellClass = 'bg-red-800/80';
+                trendTitle = 'D7 < 10, D7 and D3 both going down - EXTREME SHORT signal!';
+              }
               // HIGHEST PRIORITY: D1 crossover/crossunder D7
-              if (d1CrossD7 === 'bull') {
+              else if (d1CrossD7 === 'bull') {
                 calculatedTrend = '🚀 BULL Cross';
                 trendClass = 'text-green-500 font-extrabold animate-pulse';
                 trendCellClass = 'bg-green-900/70';
