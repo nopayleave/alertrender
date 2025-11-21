@@ -523,7 +523,7 @@ app.post('/webhook', (req, res) => {
     
     console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${changeDirection}/${arrowChangeDirection}`)
     
-    // Also update existing alert if it exists (don't create new one)
+    // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].quadStochD4Signal = alert.d4Signal
@@ -542,6 +542,37 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].qsChangeTimestamp = Date.now()
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        quadStochD4Signal: alert.d4Signal,
+        quadStochD1: alert.d1,
+        quadStochD2: alert.d2,
+        quadStochD3: alert.d3,
+        quadStochD4: alert.d4,
+        d1Direction: alert.d1Direction,
+        d2Direction: alert.d2Direction,
+        d3Direction: alert.d3Direction,
+        d4Direction: alert.d4Direction,
+        qsD4Changed: d4Changed,
+        qsDirectionChanged: directionChanged,
+        qsChangeDirection: changeDirection,
+        qsArrowChangeDirection: arrowChangeDirection,
+        qsChangeTimestamp: Date.now(),
+        d2SwitchedToDown: d2SwitchedToDown,
+        d3SwitchedToUp: d3SwitchedToUp,
+        d3SwitchedToDown: d3SwitchedToDown,
+        d1CrossedUnder75: d1CrossedUnder75,
+        d2CrossedUnder75: d2CrossedUnder75,
+        d1CrossedAbove50: d1CrossedAbove50,
+        d2CrossedAbove50: d2CrossedAbove50,
+        d4CrossedAbove25: d4CrossedAbove25,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with D4 signal and values`)
     }
   } else if (isOctoStochAlert && !alert.price) {
     // Octo Stochastic (8-stoch) alert - store all 8 stochastic data
@@ -645,9 +676,10 @@ app.post('/webhook', (req, res) => {
     // Check and notify trend change for starred symbols
     checkAndNotifyTrendChange(alert.symbol, octoStochData[alert.symbol])
     
-    // Also update existing alert if it exists (don't create new one)
+    // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
+      // Update existing alert
       alerts[existingIndex].octoStochD1 = alert.d1
       alerts[existingIndex].octoStochD2 = alert.d2
       alerts[existingIndex].octoStochD3 = alert.d3
@@ -675,6 +707,42 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        octoStochD1: alert.d1,
+        octoStochD2: alert.d2,
+        octoStochD3: alert.d3,
+        octoStochD4: alert.d4,
+        octoStochD5: alert.d5,
+        octoStochD6: alert.d6,
+        octoStochD7: alert.d7,
+        octoStochD8: alert.d8,
+        d1Direction: alert.d1Direction,
+        d2Direction: alert.d2Direction,
+        d3Direction: alert.d3Direction,
+        d4Direction: alert.d4Direction,
+        d5Direction: alert.d5Direction,
+        d6Direction: alert.d6Direction,
+        d7Direction: alert.d7Direction,
+        d8Direction: alert.d8Direction,
+        d8Signal: alert.d8Signal,
+        d1d2Cross: alert.d1d2Cross,
+        d1CrossD7: d1CrossD7,
+        d1SwitchedToUp: d1SwitchedToUp,
+        d1SwitchedToDown: d1SwitchedToDown,
+        d7SwitchedToUp: d7SwitchedToUp,
+        d7SwitchedToDown: d7SwitchedToDown,
+        calculatedTrend: alert.calculatedTrend || null,
+        ttsMessage: alert.ttsMessage || null,
+        timeframe1_4: alert.timeframe1_4,
+        timeframe5_8: alert.timeframe5_8,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with Octo Stoch data`)
     }
   } else if (isMacdCrossingAlert && !alert.price) {
     // MACD Crossing alert - store crossing signal with timestamp
@@ -687,7 +755,7 @@ app.post('/webhook', (req, res) => {
     }
     console.log(`✅ MACD crossing signal stored for ${alert.symbol}: ${alert.macdCrossingSignal}`)
     
-    // Also update existing alert if it exists (don't create new one)
+    // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
@@ -697,6 +765,20 @@ app.post('/webhook', (req, res) => {
       if (alert.macdHistogram !== undefined) alerts[existingIndex].macdHistogram = alert.macdHistogram
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        macdCrossingSignal: alert.macdCrossingSignal,
+        macdCrossingTimestamp: alert.macdCrossingTimestamp || Date.now(),
+        macd: alert.macd,
+        macdSignal: alert.macdSignal,
+        macdHistogram: alert.macdHistogram,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with MACD crossing signal`)
     }
   } else if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
@@ -724,7 +806,7 @@ app.post('/webhook', (req, res) => {
     }
     console.log(`✅ Quad Stoch D1/D2 signal stored for ${alert.symbol}: ${alert.quadStochSignal}`)
     
-    // Also update existing alert if it exists (don't create new one)
+    // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].quadStochSignal = alert.quadStochSignal
@@ -733,6 +815,19 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].quadStochD4 = alert.d4
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with Quad Stoch signal`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        quadStochSignal: alert.quadStochSignal,
+        quadStochD1: alert.d1,
+        quadStochD2: alert.d2,
+        quadStochD4: alert.d4,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with Quad Stoch signal`)
     }
   } else if (isVwapCrossingAlert) {
     // VWAP Crossing alert - store crossing status with timestamp
@@ -742,12 +837,22 @@ app.post('/webhook', (req, res) => {
     }
     console.log(`✅ VWAP crossing stored for ${alert.symbol}`)
     
-    // Also update existing alert if it exists (don't create new one)
+    // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].vwapCrossing = true
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        vwapCrossing: true,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with VWAP crossing`)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
