@@ -1735,6 +1735,20 @@ app.get('/', (req, res) => {
         .p-4 {
           padding-bottom: 2rem;
         }
+        .draggable-header {
+          user-select: none;
+          position: relative;
+        }
+        .draggable-header:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
+        .draggable-header.dragging {
+          opacity: 0.5;
+          cursor: grabbing;
+        }
+        .draggable-header.drag-over {
+          border-left: 2px solid #3b82f6;
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
@@ -1794,40 +1808,14 @@ app.get('/', (req, res) => {
           <div>
             <div class="overflow-x-auto">
               <table class="w-full table-auto">
-                <thead>
+                <thead id="tableHeader">
                   <tr class="border-b border-border">
-                    <th class="text-left py-3 pl-4 pr-1 font-bold text-muted-foreground w-12">
-                      ⭐
-                    </th>
-                    <th class="text-left py-3 pl-1 pr-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-auto whitespace-nowrap" onclick="sortTable('symbol')">
-                      Ticker <span id="sort-symbol" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('price')">
-                      Price <span id="sort-price" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('trend')" title="Quad Stochastic Trend Analysis">
-                      Trend <span id="sort-trend" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('qsArrow')" title="D1/D2/D3/D4 Direction Arrows">
-                      QS Arrow <span id="sort-qsArrow" class="ml-1 text-xs">⇅</span>
-                    </th>
-                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
-                       MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
-                     </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d3value')" title="Octo Stochastic D3 Value">
-                      D3 Value <span id="sort-d3value" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d4value')" title="Octo Stochastic D7 Value">
-                      D7 Value <span id="sort-d4value" class="ml-1 text-xs">⇅</span>
-                    </th>
-                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('volume')">
-                      <span title="Volume since 9:30 AM">Vol</span> <span id="sort-volume" class="ml-1 text-xs">⇅</span>
-                    </th>
+                    <!-- Headers will be dynamically generated -->
                   </tr>
                 </thead>
                 <tbody id="alertTable">
                   <tr>
-                    <td colspan="11" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                    <td colspan="9" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
                   </tr>
                 </tbody>
               </table>
@@ -1860,6 +1848,23 @@ app.get('/', (req, res) => {
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
+
+        // Column order - stored in localStorage
+        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'qsArrow', 'macdCrossing', 'd3value', 'd4value', 'volume'];
+        let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
+        
+        // Column definitions
+        const columnDefs = {
+          star: { id: 'star', title: '⭐', sortable: false, width: 'w-12' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
+          trend: { id: 'trend', title: 'Trend', sortable: true, sortField: 'trend', width: '', tooltip: 'Quad Stochastic Trend Analysis' },
+          qsArrow: { id: 'qsArrow', title: 'QS Arrow', sortable: true, sortField: 'qsArrow', width: '', tooltip: 'D1/D2/D3/D4 Direction Arrows' },
+          macdCrossing: { id: 'macdCrossing', title: 'MACD Cr', sortable: true, sortField: 'macdCrossing', width: '', tooltip: 'MACD Line & Signal Line Crossings' },
+          d3value: { id: 'd3value', title: 'D3 Value', sortable: true, sortField: 'd3value', width: '', tooltip: 'Octo Stochastic D3 Value' },
+          d4value: { id: 'd4value', title: 'D7 Value', sortable: true, sortField: 'd4value', width: '', tooltip: 'Octo Stochastic D7 Value' },
+          volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
+        };
 
         // Countdown state
         let countdownSeconds = 120;
@@ -1902,7 +1907,126 @@ app.get('/', (req, res) => {
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
+          renderTableHeaders();
+          setupColumnDragAndDrop();
         });
+
+        // Render table headers dynamically based on column order
+        function renderTableHeaders() {
+          const headerRow = document.querySelector('#tableHeader tr');
+          if (!headerRow) return;
+          
+          headerRow.innerHTML = columnOrder.map(colId => {
+            const col = columnDefs[colId];
+            if (!col) return '';
+            
+            const sortableClass = col.sortable ? 'cursor-pointer hover:text-foreground transition-colors' : '';
+            const sortField = col.sortField || col.id;
+            const sortIndicator = col.sortable ? '<span id="sort-' + sortField + '" class="ml-1 text-xs">⇅</span>' : '';
+            const tooltipAttr = col.tooltip ? 'title="' + col.tooltip + '"' : '';
+            const paddingClass = colId === 'star' ? 'pl-4 pr-1' : colId === 'symbol' ? 'pl-1 pr-4' : 'px-4';
+            const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
+            const draggableAttr = colId !== 'star' ? 'true' : 'false';
+            
+            return '<th ' +
+              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
+              'data-column-id="' + colId + '" ' +
+              onclickAttr + ' ' +
+              tooltipAttr + ' ' +
+              'draggable="' + draggableAttr + '" ' +
+              'ondragstart="handleHeaderDragStart(event)" ' +
+              'ondragover="handleHeaderDragOver(event)" ' +
+              'ondrop="handleHeaderDrop(event)" ' +
+              'ondragend="handleHeaderDragEnd(event)"' +
+              '>' +
+              col.title + ' ' + sortIndicator +
+              '</th>';
+          }).join('');
+          
+          updateSortIndicators();
+        }
+
+        // Drag and drop handlers for column reordering
+        let draggedColumnId = null;
+        let draggedElement = null;
+
+        function handleHeaderDragStart(e) {
+          if (e.target.closest('.draggable-header')) {
+            draggedElement = e.target.closest('.draggable-header');
+            draggedColumnId = draggedElement.getAttribute('data-column-id');
+            draggedElement.style.opacity = '0.5';
+            draggedElement.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', draggedElement.innerHTML);
+          }
+        }
+
+        function handleHeaderDragOver(e) {
+          if (e.preventDefault) {
+            e.preventDefault();
+          }
+          e.dataTransfer.dropEffect = 'move';
+          
+          const target = e.target.closest('.draggable-header');
+          if (target && target !== draggedElement && draggedColumnId) {
+            // Remove drag-over class from all headers
+            document.querySelectorAll('.draggable-header').forEach(header => {
+              header.classList.remove('drag-over');
+            });
+            // Add drag-over class to target
+            target.classList.add('drag-over');
+            
+            const allHeaders = Array.from(document.querySelectorAll('.draggable-header'));
+            const targetIndex = allHeaders.indexOf(target);
+            const draggedIndex = allHeaders.indexOf(draggedElement);
+            
+            if (targetIndex < draggedIndex) {
+              target.parentNode.insertBefore(draggedElement, target);
+            } else {
+              target.parentNode.insertBefore(draggedElement, target.nextSibling);
+            }
+          }
+          return false;
+        }
+
+        function handleHeaderDrop(e) {
+          if (e.stopPropagation) {
+            e.stopPropagation();
+          }
+          
+          if (draggedElement && draggedColumnId) {
+            const allHeaders = Array.from(document.querySelectorAll('.draggable-header'));
+            const newOrder = allHeaders.map(header => header.getAttribute('data-column-id'));
+            
+            // Update column order
+            columnOrder = newOrder;
+            localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
+            
+            // Re-render table with new order
+            renderTableHeaders();
+            renderTable();
+          }
+          
+          return false;
+        }
+
+        function handleHeaderDragEnd(e) {
+          if (draggedElement) {
+            draggedElement.style.opacity = '1';
+            draggedElement.classList.remove('dragging');
+          }
+          // Remove drag-over class from all headers
+          document.querySelectorAll('.draggable-header').forEach(header => {
+            header.classList.remove('drag-over');
+          });
+          draggedElement = null;
+          draggedColumnId = null;
+        }
+
+        function setupColumnDragAndDrop() {
+          // Additional setup if needed
+          // The drag handlers are already attached via inline event handlers
+        }
 
         function getSortValue(alert, field) {
           switch(field) {
@@ -2186,7 +2310,7 @@ app.get('/', (req, res) => {
           const lastUpdate = document.getElementById('lastUpdate');
           
           if (alertsData.length === 0) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>';
+            alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
             return;
           }
@@ -2225,7 +2349,7 @@ app.get('/', (req, res) => {
 
           // Show "No results" message if search returns no results
           if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = '<tr><td colspan="11" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>';
+            alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
             return;
@@ -2801,8 +2925,9 @@ app.get('/', (req, res) => {
             const d7Arrow = getArrow(d7DirForArrow);
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
-            return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+            // Generate cell content for each column
+            const cellContent = {
+              star: \`
                 <td class="py-3 pl-4 pr-1 text-center">
                   <button 
                     onclick="toggleStar('\${alert.symbol}')" 
@@ -2812,17 +2937,28 @@ app.get('/', (req, res) => {
                     \${starIcon}
                   </button>
                 </td>
-                <td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>
+              \`,
+              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
+              price: \`
                 <td class="py-3 px-4 font-mono font-medium \${priceClass}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
-                <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
-                <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
-                <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>
-                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>
-                <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
+              \`,
+              trend: \`<td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>\`,
+              qsArrow: \`<td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>\`,
+              macdCrossing: \`<td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>\`,
+              d3value: \`<td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>\`,
+              d4value: \`<td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>\`,
+              volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+            };
+            
+            // Render cells in column order
+            const cells = columnOrder.map(colId => cellContent[colId] || '').join('');
+            
+            return \`
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+                \${cells}
               </tr>
             \`;
           }).join('');
@@ -2839,7 +2975,7 @@ app.get('/', (req, res) => {
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
-            document.getElementById('alertTable').innerHTML = '<tr><td colspan="11" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>';
+            document.getElementById('alertTable').innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-red-400 py-12 relative">Error loading alerts</td></tr>\`;
           }
         }
 
