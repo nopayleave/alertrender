@@ -1,5 +1,5 @@
 //@version=6
-strategy(title="Octo Stochastic Strategy (8 Stoch)", shorttitle="Octo Stoch Strat", overlay=false, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.1)
+indicator(title="Octo Stochastic Strategy (8 Stoch)", shorttitle="Octo Stoch Strat", overlay=false)
 
 // ===== STRATEGY SETTINGS =====
 enableStrategy = input.bool(true, title="Enable Strategy", group="Strategy Settings")
@@ -227,6 +227,27 @@ var float prevD6 = na
 var float prevD7 = na
 var float prevD8 = na
 
+// Store last valid values (for smoothing/avoiding N/A)
+var float lastValidD1 = na
+var float lastValidD2 = na
+var float lastValidD3 = na
+var float lastValidD4 = na
+var float lastValidD5 = na
+var float lastValidD6 = na
+var float lastValidD7 = na
+var float lastValidD8 = na
+var string lastValidD1Dir = "flat"
+var string lastValidD2Dir = "flat"
+var string lastValidD3Dir = "flat"
+var string lastValidD4Dir = "flat"
+var string lastValidD5Dir = "flat"
+var string lastValidD6Dir = "flat"
+var string lastValidD7Dir = "flat"
+var string lastValidD8Dir = "flat"
+var string lastValidD1CrossD7 = "none"
+var string lastValidCalculatedTrend = "Neutral"
+var string lastValidTtsMessage = ""
+
 // Determine direction for each stochastic
 d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
 d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
@@ -286,10 +307,8 @@ else
         ttsMessage := ""
 
 // ===== STRATEGY ENTRY/EXIT LOGIC =====
-// Determine trade size
-qty = tradeSizeType == "Percent of Equity" ? math.max(1, math.floor(strategy.equity * (tradeSizePercent / 100.0) / close)) : 
-      tradeSizeType == "Fixed Quantity" ? tradeSizeFixed : 
-      1  // Default to 1 contract/share for Contract type
+// Determine trade size (Placeholder for indicator)
+qty = tradeSizeType == "Fixed Quantity" ? tradeSizeFixed : 1
 
 // Long entry conditions - Only Heavy Buy (D7 > 80 AND D3 up)
 longCondition = false
@@ -316,41 +335,113 @@ if enableStrategy and enableBigSell
 // Regular hours: 9:30 AM - 4:00 PM (0930-1600)
 inRegularHours = not tradeOnlyRegularHours or not na(time(timeframe.period, "0930-1600"))
 
-if enableStrategy and inRegularHours
-    // Close opposite position if enabled
-    if closeOnOpposite
-        if longCondition and strategy.position_size < 0
-            strategy.close("SHORT", comment="Close Short")
-        if shortCondition and strategy.position_size > 0
-            strategy.close("LONG", comment="Close Long")
-    
-    // Enter long position
-    if longCondition
-        if usePyramiding
-            if strategy.opentrades < maxPositions
-                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
-        else
-            if strategy.position_size == 0
-                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
-            else if strategy.position_size < 0
-                strategy.close("SHORT", comment="Close Short")
-                strategy.entry("LONG", strategy.long, qty=qty, comment=longLabel)
-    
-    // Enter short position
-    if shortCondition
-        if usePyramiding
-            if strategy.opentrades < maxPositions
-                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
-        else
-            if strategy.position_size == 0
-                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
-            else if strategy.position_size > 0
-                strategy.close("LONG", comment="Close Long")
-                strategy.entry("SHORT", strategy.short, qty=qty, comment=shortLabel)
+// Strategy execution placeholder (logic removed for Indicator conversion)
+// if enableStrategy and inRegularHours
+//     ...
+
 
 // Strategy visualization
 plotshape(longCondition, title="Long Entry", style=shape.triangleup, location=location.bottom, color=color.green, size=size.small)
 plotshape(shortCondition, title="Short Entry", style=shape.triangledown, location=location.top, color=color.red, size=size.small)
+
+// Update last valid values when current values are not na
+if not na(d1)
+    lastValidD1 := d1
+if not na(d2)
+    lastValidD2 := d2
+if not na(d3)
+    lastValidD3 := d3
+if not na(d4)
+    lastValidD4 := d4
+if not na(d5)
+    lastValidD5 := d5
+if not na(d6)
+    lastValidD6 := d6
+if not na(d7)
+    lastValidD7 := d7
+if not na(d8)
+    lastValidD8 := d8
+
+// Update last valid directions
+if d1Direction != ""
+    lastValidD1Dir := d1Direction
+if d2Direction != ""
+    lastValidD2Dir := d2Direction
+if d3Direction != ""
+    lastValidD3Dir := d3Direction
+if d4Direction != ""
+    lastValidD4Dir := d4Direction
+if d5Direction != ""
+    lastValidD5Dir := d5Direction
+if d6Direction != ""
+    lastValidD6Dir := d6Direction
+if d7Direction != ""
+    lastValidD7Dir := d7Direction
+if d8Direction != ""
+    lastValidD8Dir := d8Direction
+
+// Update last valid cross and trend
+if d1CrossD7 != ""
+    lastValidD1CrossD7 := d1CrossD7
+if calculatedTrend != ""
+    lastValidCalculatedTrend := calculatedTrend
+if ttsMessage != ""
+    lastValidTtsMessage := ttsMessage
+
+// Alert condition - Manual JSON construction (use last valid values to avoid N/A)
+if barstate.isconfirmed
+    // Use current value if not na, otherwise use last valid value (fallback to 0 if both are na)
+    d1Val = na(d1) ? (na(lastValidD1) ? 0 : lastValidD1) : d1
+    d2Val = na(d2) ? (na(lastValidD2) ? 0 : lastValidD2) : d2
+    d3Val = na(d3) ? (na(lastValidD3) ? 0 : lastValidD3) : d3
+    d4Val = na(d4) ? (na(lastValidD4) ? 0 : lastValidD4) : d4
+    d5Val = na(d5) ? (na(lastValidD5) ? 0 : lastValidD5) : d5
+    d6Val = na(d6) ? (na(lastValidD6) ? 0 : lastValidD6) : d6
+    d7Val = na(d7) ? (na(lastValidD7) ? 0 : lastValidD7) : d7
+    d8Val = na(d8) ? (na(lastValidD8) ? 0 : lastValidD8) : d8
+    
+    // Use current direction if not empty, otherwise use last valid
+    d1DirVal = d1Direction != "" ? d1Direction : lastValidD1Dir
+    d2DirVal = d2Direction != "" ? d2Direction : lastValidD2Dir
+    d3DirVal = d3Direction != "" ? d3Direction : lastValidD3Dir
+    d4DirVal = d4Direction != "" ? d4Direction : lastValidD4Dir
+    d5DirVal = d5Direction != "" ? d5Direction : lastValidD5Dir
+    d6DirVal = d6Direction != "" ? d6Direction : lastValidD6Dir
+    d7DirVal = d7Direction != "" ? d7Direction : lastValidD7Dir
+    d8DirVal = d8Direction != "" ? d8Direction : lastValidD8Dir
+    
+    // Use current cross/trend if not empty, otherwise use last valid
+    crossVal = d1CrossD7 != "" ? d1CrossD7 : lastValidD1CrossD7
+    trendVal = calculatedTrend != "" ? calculatedTrend : lastValidCalculatedTrend
+    ttsVal = ttsMessage != "" ? ttsMessage : lastValidTtsMessage
+    
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"d1\":\"" + str.tostring(d1Val) + "\","
+    alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
+    alertStr += "\"d3\":\"" + str.tostring(d3Val) + "\","
+    alertStr += "\"d4\":\"" + str.tostring(d4Val) + "\","
+    alertStr += "\"d5\":\"" + str.tostring(d5Val) + "\","
+    alertStr += "\"d6\":\"" + str.tostring(d6Val) + "\","
+    alertStr += "\"d7\":\"" + str.tostring(d7Val) + "\","
+    alertStr += "\"d8\":\"" + str.tostring(d8Val) + "\","
+    alertStr += "\"d1Direction\":\"" + d1DirVal + "\","
+    alertStr += "\"d2Direction\":\"" + d2DirVal + "\","
+    alertStr += "\"d3Direction\":\"" + d3DirVal + "\","
+    alertStr += "\"d4Direction\":\"" + d4DirVal + "\","
+    alertStr += "\"d5Direction\":\"" + d5DirVal + "\","
+    alertStr += "\"d6Direction\":\"" + d6DirVal + "\","
+    alertStr += "\"d7Direction\":\"" + d7DirVal + "\","
+    alertStr += "\"d8Direction\":\"" + d8DirVal + "\","
+    alertStr += "\"d8Signal\":\"Octo\","
+    alertStr += "\"d1d2Cross\":\"" + crossVal + "\","
+    alertStr += "\"calculatedTrend\":\"" + trendVal + "\","
+    alertStr += "\"ttsMessage\":\"" + ttsVal + "\","
+    alertStr += "\"timeframe1_4\":\"" + str.tostring(timeframe1_4) + "\","
+    alertStr += "\"timeframe5_8\":\"" + str.tostring(timeframe5_8) + "\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
 
 // Store previous values for next comparison
 prevD1 := d1

@@ -571,7 +571,7 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with D4 signal and values`)
     }
-  } else if (isOctoStochAlert && !alert.price) {
+  } else if (isOctoStochAlert) {
     // Octo Stochastic (8-stoch) alert - store all 8 stochastic data
     const prevOcto = previousQSValues[alert.symbol] || {}
     const prevDir = previousDirections[alert.symbol] || {}
@@ -604,35 +604,55 @@ app.post('/webhook', (req, res) => {
       }
     }
     
-    // Store Octo Stochastic data
+    // Get previous valid values for this symbol
+    const prevOctoData = octoStochData[alert.symbol] || {}
+    
+    // Helper function to get valid value (use previous if current is invalid)
+    const getValidValue = (current, previous, defaultValue = null) => {
+      if (current !== undefined && current !== null && current !== '' && current !== 'N/A' && current !== 'na') {
+        const num = parseFloat(current)
+        if (!isNaN(num)) return current
+      }
+      return previous !== undefined && previous !== null && previous !== '' && previous !== 'N/A' ? previous : defaultValue
+    }
+    
+    // Helper function to get valid string value
+    const getValidString = (current, previous, defaultValue = '') => {
+      if (current !== undefined && current !== null && current !== '' && current !== 'N/A') {
+        return current
+      }
+      return previous !== undefined && previous !== null && previous !== '' && previous !== 'N/A' ? previous : defaultValue
+    }
+    
+    // Store Octo Stochastic data with fallback to previous valid values
     octoStochData[alert.symbol] = {
-      d1: alert.d1,
-      d2: alert.d2,
-      d3: alert.d3,
-      d4: alert.d4,
-      d5: alert.d5,
-      d6: alert.d6,
-      d7: alert.d7,
-      d8: alert.d8,
-      d1Direction: alert.d1Direction,
-      d2Direction: alert.d2Direction,
-      d3Direction: alert.d3Direction,
-      d4Direction: alert.d4Direction,
-      d5Direction: alert.d5Direction,
-      d6Direction: alert.d6Direction,
-      d7Direction: alert.d7Direction,
-      d8Direction: alert.d8Direction,
-      d8Signal: alert.d8Signal,
-      d1d2Cross: alert.d1d2Cross,
-      d1CrossD7: d1CrossD7,
-      timeframe1_4: alert.timeframe1_4,
-      timeframe5_8: alert.timeframe5_8,
+      d1: getValidValue(alert.d1, prevOctoData.d1, '0'),
+      d2: getValidValue(alert.d2, prevOctoData.d2, '0'),
+      d3: getValidValue(alert.d3, prevOctoData.d3, '0'),
+      d4: getValidValue(alert.d4, prevOctoData.d4, '0'),
+      d5: getValidValue(alert.d5, prevOctoData.d5, '0'),
+      d6: getValidValue(alert.d6, prevOctoData.d6, '0'),
+      d7: getValidValue(alert.d7, prevOctoData.d7, '0'),
+      d8: getValidValue(alert.d8, prevOctoData.d8, '0'),
+      d1Direction: getValidString(alert.d1Direction, prevOctoData.d1Direction, 'flat'),
+      d2Direction: getValidString(alert.d2Direction, prevOctoData.d2Direction, 'flat'),
+      d3Direction: getValidString(alert.d3Direction, prevOctoData.d3Direction, 'flat'),
+      d4Direction: getValidString(alert.d4Direction, prevOctoData.d4Direction, 'flat'),
+      d5Direction: getValidString(alert.d5Direction, prevOctoData.d5Direction, 'flat'),
+      d6Direction: getValidString(alert.d6Direction, prevOctoData.d6Direction, 'flat'),
+      d7Direction: getValidString(alert.d7Direction, prevOctoData.d7Direction, 'flat'),
+      d8Direction: getValidString(alert.d8Direction, prevOctoData.d8Direction, 'flat'),
+      d8Signal: getValidString(alert.d8Signal, prevOctoData.d8Signal, 'Octo'),
+      d1d2Cross: getValidString(alert.d1d2Cross, prevOctoData.d1d2Cross, 'none'),
+      d1CrossD7: d1CrossD7 || prevOctoData.d1CrossD7 || null,
+      timeframe1_4: getValidString(alert.timeframe1_4, prevOctoData.timeframe1_4, ''),
+      timeframe5_8: getValidString(alert.timeframe5_8, prevOctoData.timeframe5_8, ''),
       d1SwitchedToUp: d1SwitchedToUp,
       d1SwitchedToDown: d1SwitchedToDown,
       d7SwitchedToUp: d7SwitchedToUp,
       d7SwitchedToDown: d7SwitchedToDown,
-      calculatedTrend: alert.calculatedTrend || null, // From Pine Script
-      ttsMessage: alert.ttsMessage || null, // From Pine Script
+      calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
+      ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
     }
     
@@ -2723,11 +2743,12 @@ app.get('/', (req, res) => {
             
             // QS D7 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
-            const d7Value = alert.octoStochD7 !== undefined
-              ? parseFloat(alert.octoStochD7)
-              : alert.d7 !== undefined
-                ? parseFloat(alert.d7)
-                : NaN;
+            let d7Value = NaN;
+            if (alert.octoStochD7 !== undefined && alert.octoStochD7 !== null && alert.octoStochD7 !== '' && alert.octoStochD7 !== 'N/A') {
+              d7Value = parseFloat(alert.octoStochD7);
+            } else if (alert.d7 !== undefined && alert.d7 !== null && alert.d7 !== '' && alert.d7 !== 'N/A') {
+              d7Value = parseFloat(alert.d7);
+            }
             if (!isNaN(d7Value)) {
               // Gradient from red (0) → yellow (50) → green (100)
               if (d7Value >= 75) {
@@ -2747,11 +2768,12 @@ app.get('/', (req, res) => {
 
             // QS D3 Value gradient color (0-100 scale)
             let d3ValueClass = 'text-foreground';
-            const d3Value = alert.octoStochD3 !== undefined
-              ? parseFloat(alert.octoStochD3)
-              : alert.d3 !== undefined
-                ? parseFloat(alert.d3)
-                : NaN;
+            let d3Value = NaN;
+            if (alert.octoStochD3 !== undefined && alert.octoStochD3 !== null && alert.octoStochD3 !== '' && alert.octoStochD3 !== 'N/A') {
+              d3Value = parseFloat(alert.octoStochD3);
+            } else if (alert.d3 !== undefined && alert.d3 !== null && alert.d3 !== '' && alert.d3 !== 'N/A') {
+              d3Value = parseFloat(alert.d3);
+            }
             
             if (!isNaN(d3Value)) {
               // Gradient from red (0) → yellow (50) → green (100)
@@ -2770,13 +2792,14 @@ app.get('/', (req, res) => {
               }
             }
 
-            // Prepare arrows
-            const d3Arrow = getArrow(d3Dir);
-            const d3ArrowColor = getArrowColor(d3Dir);
+            // Prepare arrows - use fallback values
+            const d3DirForArrow = (alert.d3Direction && alert.d3Direction !== '' && alert.d3Direction !== 'N/A') ? alert.d3Direction : (d3Dir || 'flat');
+            const d3Arrow = getArrow(d3DirForArrow);
+            const d3ArrowColor = getArrowColor(d3DirForArrow);
             
-            const d7Dir = alert.d7Direction || 'flat';
-            const d7Arrow = getArrow(d7Dir);
-            const d7ArrowColor = getArrowColor(d7Dir);
+            const d7DirForArrow = (alert.d7Direction && alert.d7Direction !== '' && alert.d7Direction !== 'N/A') ? alert.d7Direction : 'flat';
+            const d7Arrow = getArrow(d7DirForArrow);
+            const d7ArrowColor = getArrowColor(d7DirForArrow);
             
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
@@ -2797,8 +2820,8 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : 'N/A'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>
-                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : 'N/A'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>
+                <td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>
+                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
