@@ -2732,7 +2732,6 @@ app.get('/', (req, res) => {
             }
 
             // Prepare arrows
-            const d3Dir = alert.d3Direction || 'flat';
             const d3Arrow = getArrow(d3Dir);
             const d3ArrowColor = getArrowColor(d3Dir);
             
