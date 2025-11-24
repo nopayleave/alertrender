@@ -1734,6 +1734,16 @@ app.get('/', (req, res) => {
               </a>
             </div>
           </div>
+          
+          <!-- D7 Counters -->
+          <div class="flex gap-4 mt-2 mb-4 text-sm font-medium">
+            <div class="bg-red-900/30 text-red-400 px-3 py-1 rounded border border-red-900/50">
+              D7 &lt; 20: <span id="d7LowCount" class="font-bold">0</span>/<span id="totalCountLow" class="text-muted-foreground">0</span>
+            </div>
+            <div class="bg-green-900/30 text-green-400 px-3 py-1 rounded border border-green-900/50">
+              D7 &gt; 80: <span id="d7HighCount" class="font-bold">0</span>/<span id="totalCountHigh" class="text-muted-foreground">0</span>
+            </div>
+          </div>
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
@@ -2206,6 +2216,35 @@ app.get('/', (req, res) => {
           const searchInfo = searchTerm ? \` • Showing \${filteredData.length} of \${alertsData.length}\` : '';
           lastUpdate.innerHTML = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo + ' <span id="countdown"></span>';
           updateCountdown();
+
+          // Update D7 Counters
+          let d7Low = 0;
+          let d7High = 0;
+          let totalWithD7 = 0;
+          
+          filteredData.forEach(alert => {
+            const d7Val = alert.octoStochD7 !== undefined 
+              ? parseFloat(alert.octoStochD7) 
+              : alert.d7 !== undefined 
+                ? parseFloat(alert.d7) 
+                : NaN;
+                
+            if (!isNaN(d7Val)) {
+              totalWithD7++;
+              if (d7Val < 20) d7Low++;
+              if (d7Val > 80) d7High++;
+            }
+          });
+          
+          const d7LowElem = document.getElementById('d7LowCount');
+          const totalLowElem = document.getElementById('totalCountLow');
+          const d7HighElem = document.getElementById('d7HighCount');
+          const totalHighElem = document.getElementById('totalCountHigh');
+          
+          if (d7LowElem) d7LowElem.textContent = d7Low;
+          if (totalLowElem) totalLowElem.textContent = totalWithD7;
+          if (d7HighElem) d7HighElem.textContent = d7High;
+          if (totalHighElem) totalHighElem.textContent = totalWithD7;
 
           alertTable.innerHTML = filteredData.map((alert, index) => {
             const starred = isStarred(alert.symbol);
