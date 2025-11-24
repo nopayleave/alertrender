@@ -1784,6 +1784,9 @@ app.get('/', (req, res) => {
                      <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('macdCrossing')" title="MACD Line & Signal Line Crossings">
                        MACD Cr <span id="sort-macdCrossing" class="ml-1 text-xs">⇅</span>
                      </th>
+                    <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d3value')" title="Octo Stochastic D3 Value">
+                      D3 Value <span id="sort-d3value" class="ml-1 text-xs">⇅</span>
+                    </th>
                     <th class="text-left py-3 px-4 font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors" onclick="sortTable('d4value')" title="Octo Stochastic D7 Value">
                       D7 Value <span id="sort-d4value" class="ml-1 text-xs">⇅</span>
                     </th>
@@ -1853,7 +1856,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'd4value', 'priceChange', 'volume'];
+            const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'd3value', 'd4value', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1978,6 +1981,12 @@ app.get('/', (req, res) => {
                if (macdSig === 'M < S') return 0.3; // Neutral bearish
                if (macdSig === 'M = S') return 0.4; // Neutral
                return 0; // Default
+            case 'd3value':
+              return alert.octoStochD3 !== undefined
+                ? parseFloat(alert.octoStochD3) || 0
+                : alert.d3 !== undefined
+                  ? parseFloat(alert.d3) || 0
+                  : 0;
             case 'd4value':
               return alert.octoStochD7 !== undefined
                 ? parseFloat(alert.octoStochD7) || 0
@@ -2696,6 +2705,40 @@ app.get('/', (req, res) => {
                 d4ValueClass = 'text-red-400 font-bold'; // 0-25: Red
               }
             }
+
+            // QS D3 Value gradient color (0-100 scale)
+            let d3ValueClass = 'text-foreground';
+            const d3Value = alert.octoStochD3 !== undefined
+              ? parseFloat(alert.octoStochD3)
+              : alert.d3 !== undefined
+                ? parseFloat(alert.d3)
+                : NaN;
+            
+            if (!isNaN(d3Value)) {
+              // Gradient from red (0) → yellow (50) → green (100)
+              if (d3Value >= 75) {
+                d3ValueClass = 'text-green-400 font-bold'; // 75-100: Strong green
+              } else if (d3Value >= 60) {
+                d3ValueClass = 'text-green-500 font-semibold'; // 60-75: Green
+              } else if (d3Value >= 50) {
+                d3ValueClass = 'text-lime-400 font-semibold'; // 50-60: Lime
+              } else if (d3Value >= 40) {
+                d3ValueClass = 'text-yellow-400 font-semibold'; // 40-50: Yellow
+              } else if (d3Value >= 25) {
+                d3ValueClass = 'text-orange-400 font-semibold'; // 25-40: Orange
+              } else {
+                d3ValueClass = 'text-red-400 font-bold'; // 0-25: Red
+              }
+            }
+
+            // Prepare arrows
+            const d3Dir = alert.d3Direction || 'flat';
+            const d3Arrow = getArrow(d3Dir);
+            const d3ArrowColor = getArrowColor(d3Dir);
+            
+            const d7Dir = alert.d7Direction || 'flat';
+            const d7Arrow = getArrow(d7Dir);
+            const d7ArrowColor = getArrowColor(d7Dir);
             
             return \`
               <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
@@ -2716,7 +2759,8 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>
                 <td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>
                 <td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>
-                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : 'N/A'}</td>
+                <td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : 'N/A'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>
+                <td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : 'N/A'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>
                 <td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>
               </tr>
             \`;
