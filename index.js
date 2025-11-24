@@ -1688,6 +1688,7 @@ app.get('/', (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
       <script>
         tailwind.config = {
           theme: {
@@ -1776,6 +1777,14 @@ app.get('/', (req, res) => {
             </div>
             <div class="bg-green-900/30 text-green-400 px-3 py-1 rounded border border-green-900/50">
               D7 &gt; 80: <span id="d7HighCount" class="font-bold">0</span>/<span id="totalCountHigh" class="text-muted-foreground">0</span>
+            </div>
+          </div>
+          
+          <!-- D7 Count Trend Chart -->
+          <div class="bg-card rounded-lg shadow-sm p-4 mb-4 border border-border">
+            <h3 class="text-lg font-semibold text-foreground mb-3">D7 Count Trend</h3>
+            <div class="relative" style="height: 200px;">
+              <canvas id="d7CountChart"></canvas>
             </div>
           </div>
         </div>
@@ -1870,6 +1879,11 @@ app.get('/', (req, res) => {
         let countdownSeconds = 120;
         let countdownInterval = null;
 
+        // D7 Count Chart
+        let d7CountChart = null;
+        let d7CountHistory = JSON.parse(localStorage.getItem('d7CountHistory')) || [];
+        const maxHistoryPoints = 100; // Keep last 100 data points
+
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
           if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
@@ -1909,7 +1923,125 @@ app.get('/', (req, res) => {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
+          initializeD7Chart();
         });
+
+        // Initialize D7 Count Chart
+        function initializeD7Chart() {
+          const ctx = document.getElementById('d7CountChart');
+          if (!ctx) return;
+
+          d7CountChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: [],
+              datasets: [
+                {
+                  label: 'D7 < 20',
+                  data: [],
+                  borderColor: 'rgb(239, 68, 68)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                },
+                {
+                  label: 'D7 > 80',
+                  data: [],
+                  borderColor: 'rgb(34, 197, 94)',
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  tension: 0.4,
+                  fill: true
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: {
+                    color: 'rgb(215, 215, 215)'
+                  }
+                },
+                tooltip: {
+                  mode: 'index',
+                  intersect: false
+                }
+              },
+              scales: {
+                x: {
+                  ticks: {
+                    color: 'rgb(156, 163, 175)',
+                    maxRotation: 45,
+                    minRotation: 45
+                  },
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                  }
+                },
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    color: 'rgb(156, 163, 175)',
+                    stepSize: 1
+                  },
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }
+              },
+              interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+              }
+            }
+          });
+
+          // Load historical data if available
+          if (d7CountHistory.length > 0) {
+            d7CountChart.data.labels = d7CountHistory.map(d => d.time);
+            d7CountChart.data.datasets[0].data = d7CountHistory.map(d => d.d7Low);
+            d7CountChart.data.datasets[1].data = d7CountHistory.map(d => d.d7High);
+            d7CountChart.update();
+          }
+        }
+
+        // Update D7 Chart with new data
+        function updateD7Chart() {
+          if (!d7CountChart) return;
+
+          // Get current counts
+          const d7Low = parseInt(document.getElementById('d7LowCount')?.textContent || '0');
+          const d7High = parseInt(document.getElementById('d7HighCount')?.textContent || '0');
+          const total = parseInt(document.getElementById('totalCountLow')?.textContent || '0');
+
+          // Add new data point
+          const now = new Date();
+          const timeLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          
+          d7CountHistory.push({
+            time: timeLabel,
+            timestamp: now.getTime(),
+            d7Low: d7Low,
+            d7High: d7High,
+            total: total
+          });
+
+          // Keep only last maxHistoryPoints
+          if (d7CountHistory.length > maxHistoryPoints) {
+            d7CountHistory = d7CountHistory.slice(-maxHistoryPoints);
+          }
+
+          // Save to localStorage
+          localStorage.setItem('d7CountHistory', JSON.stringify(d7CountHistory));
+
+          // Update chart
+          d7CountChart.data.labels = d7CountHistory.map(d => d.time);
+          d7CountChart.data.datasets[0].data = d7CountHistory.map(d => d.d7Low);
+          d7CountChart.data.datasets[1].data = d7CountHistory.map(d => d.d7High);
+          d7CountChart.update('none'); // 'none' mode for smooth updates
+        }
 
         // Render table headers dynamically based on column order
         function renderTableHeaders() {
@@ -2389,6 +2521,20 @@ app.get('/', (req, res) => {
           if (totalLowElem) totalLowElem.textContent = totalWithD7;
           if (d7HighElem) d7HighElem.textContent = d7High;
           if (totalHighElem) totalHighElem.textContent = totalWithD7;
+
+          // Update chart if counts changed (only update if we have data)
+          if (totalWithD7 > 0 && d7CountChart) {
+            const lastData = d7CountHistory.length > 0 ? d7CountHistory[d7CountHistory.length - 1] : null;
+            // Only update if counts changed or it's been more than 30 seconds since last update
+            const shouldUpdate = !lastData || 
+              lastData.d7Low !== d7Low || 
+              lastData.d7High !== d7High ||
+              (Date.now() - lastData.timestamp) > 30000; // Update every 30 seconds minimum
+            
+            if (shouldUpdate) {
+              updateD7Chart();
+            }
+          }
 
           alertTable.innerHTML = filteredData.map((alert, index) => {
             const starred = isStarred(alert.symbol);
