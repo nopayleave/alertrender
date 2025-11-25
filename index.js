@@ -53,6 +53,7 @@ let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
+let patternData = {} // Store latest HL/LH pattern per symbol
 
 // Helper function to calculate trend based on alert data
 function calculateTrend(alert) {
@@ -604,6 +605,40 @@ app.post('/webhook', (req, res) => {
       }
     }
     
+    // Track Higher Low / Lower High pattern (prefer D3, fallback to D7)
+    const normalizePatternValue = value => {
+      if (value === undefined || value === null || value === '' || value === 'N/A') return null
+      const num = parseFloat(value)
+      return isNaN(num) ? value : num
+    }
+
+    const detectedPattern =
+      alert.d3Pattern && alert.d3Pattern !== 'None'
+        ? { type: alert.d3Pattern, value: normalizePatternValue(alert.d3PatternValue), source: 'D3' }
+        : alert.d7Pattern && alert.d7Pattern !== 'None'
+            ? { type: alert.d7Pattern, value: normalizePatternValue(alert.d7PatternValue), source: 'D7' }
+            : null
+
+    const existingPattern = patternData[alert.symbol]
+    if (detectedPattern) {
+      const samePattern = existingPattern && existingPattern.type === detectedPattern.type
+      patternData[alert.symbol] = {
+        type: detectedPattern.type,
+        source: detectedPattern.source,
+        lastValue: detectedPattern.value,
+        startTime: samePattern && existingPattern.startTime ? existingPattern.startTime : Date.now(),
+        lastUpdated: Date.now(),
+        count: samePattern && existingPattern.count ? existingPattern.count + 1 : 1
+      }
+    } else if (existingPattern) {
+      // No fresh pattern, keep previous info but refresh timestamp
+      patternData[alert.symbol] = {
+        ...existingPattern,
+        lastUpdated: Date.now(),
+        count: (existingPattern.count || 0) + 1
+      }
+    }
+
     // Get previous valid values for this symbol
     const prevOctoData = octoStochData[alert.symbol] || {}
     
@@ -651,6 +686,10 @@ app.post('/webhook', (req, res) => {
       d1SwitchedToDown: d1SwitchedToDown,
       d7SwitchedToUp: d7SwitchedToUp,
       d7SwitchedToDown: d7SwitchedToDown,
+      patternType: patternData[alert.symbol]?.type || prevOctoData.patternType || '',
+      patternValue: patternData[alert.symbol]?.lastValue ?? prevOctoData.patternValue ?? null,
+      patternStartTime: patternData[alert.symbol]?.startTime || prevOctoData.patternStartTime || null,
+      patternCount: patternData[alert.symbol]?.count || prevOctoData.patternCount || 0,
       calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
       ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
@@ -720,6 +759,10 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d1SwitchedToDown = d1SwitchedToDown
       alerts[existingIndex].d7SwitchedToUp = d7SwitchedToUp
       alerts[existingIndex].d7SwitchedToDown = d7SwitchedToDown
+      alerts[existingIndex].patternType = patternData[alert.symbol]?.type || alerts[existingIndex].patternType || null
+      alerts[existingIndex].patternValue = patternData[alert.symbol]?.lastValue ?? alerts[existingIndex].patternValue ?? null
+      alerts[existingIndex].patternStartTime = patternData[alert.symbol]?.startTime || alerts[existingIndex].patternStartTime || null
+      alerts[existingIndex].patternCount = patternData[alert.symbol]?.count || alerts[existingIndex].patternCount || 0
       alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
@@ -752,6 +795,10 @@ app.post('/webhook', (req, res) => {
         d1SwitchedToDown: d1SwitchedToDown,
         d7SwitchedToUp: d7SwitchedToUp,
         d7SwitchedToDown: d7SwitchedToDown,
+        patternType: patternData[alert.symbol]?.type || null,
+        patternValue: patternData[alert.symbol]?.lastValue ?? null,
+        patternStartTime: patternData[alert.symbol]?.startTime || null,
+        patternCount: patternData[alert.symbol]?.count || 0,
         calculatedTrend: alert.calculatedTrend || null,
         ttsMessage: alert.ttsMessage || null,
         timeframe1_4: alert.timeframe1_4,
@@ -962,6 +1009,10 @@ app.post('/webhook', (req, res) => {
         alertData.d1SwitchedToDown = octoStochInfo.d1SwitchedToDown
         alertData.d7SwitchedToUp = octoStochInfo.d7SwitchedToUp
         alertData.d7SwitchedToDown = octoStochInfo.d7SwitchedToDown
+        alertData.patternType = octoStochInfo.patternType || null
+        alertData.patternValue = octoStochInfo.patternValue ?? null
+        alertData.patternStartTime = octoStochInfo.patternStartTime || null
+        alertData.patternCount = octoStochInfo.patternCount || 0
         alertData.calculatedTrend = octoStochInfo.calculatedTrend || null
         alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
@@ -1012,6 +1063,29 @@ app.post('/webhook', (req, res) => {
       } else {
         alertData.quadStochD4Signal = null
       }
+    }
+    
+    // Ensure pattern info is attached even if latest alert didn't include it
+    const storedPattern = patternData[alert.symbol]
+    if (storedPattern) {
+      if (!alertData.patternType) {
+        alertData.patternType = storedPattern.type
+      }
+      if (alertData.patternValue === undefined || alertData.patternValue === null) {
+        alertData.patternValue = storedPattern.lastValue ?? null
+      }
+      if (!alertData.patternStartTime && storedPattern.startTime) {
+        alertData.patternStartTime = storedPattern.startTime
+      }
+      if (!alertData.patternCount || alertData.patternCount === 0) {
+        alertData.patternCount = storedPattern.count || 0
+      }
+    } else {
+      // Default when no pattern data is available
+      alertData.patternType = alertData.patternType || null
+      alertData.patternValue = alertData.patternValue ?? null
+      alertData.patternStartTime = alertData.patternStartTime || null
+      alertData.patternCount = alertData.patternCount || 0
     }
     
     // Check and add MACD crossing status if active (within last 15 minutes)
@@ -1143,6 +1217,7 @@ app.post('/reset-alerts', (req, res) => {
   previousDirections = {}
   previousPrices = {}
   macdCrossingData = {}
+  patternData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
 
@@ -1688,7 +1763,6 @@ app.get('/', (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
-      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
       <script>
         tailwind.config = {
           theme: {
@@ -1778,13 +1852,8 @@ app.get('/', (req, res) => {
             <div class="bg-green-900/30 text-green-400 px-3 py-1 rounded border border-green-900/50">
               D7 &gt; 80: <span id="d7HighCount" class="font-bold">0</span>/<span id="totalCountHigh" class="text-muted-foreground">0</span>
             </div>
-          </div>
-          
-          <!-- D7 Count Trend Chart -->
-          <div class="bg-card rounded-lg shadow-sm p-4 mb-4 border border-border">
-            <h3 class="text-lg font-semibold text-foreground mb-3">D7 Count Trend</h3>
-            <div class="relative" style="height: 200px;">
-              <canvas id="d7CountChart"></canvas>
+            <div class="bg-blue-900/30 text-blue-400 px-3 py-1 rounded border border-blue-900/50">
+              Avg D7: <span id="avgD7" class="font-bold">-</span>
             </div>
           </div>
         </div>
@@ -1859,8 +1928,17 @@ app.get('/', (req, res) => {
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'qsArrow', 'macdCrossing', 'd3value', 'd4value', 'volume'];
+        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
+        columnOrder = columnOrder.filter(colId => colId !== 'macdCrossing');
+        if (!columnOrder.includes('pattern')) {
+          const trendIndex = columnOrder.indexOf('trend');
+          if (trendIndex !== -1) {
+            columnOrder.splice(trendIndex + 1, 0, 'pattern');
+          } else {
+            columnOrder.push('pattern');
+          }
+        }
         
         // Column definitions
         const columnDefs = {
@@ -1868,8 +1946,8 @@ app.get('/', (req, res) => {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
           trend: { id: 'trend', title: 'Trend', sortable: true, sortField: 'trend', width: '', tooltip: 'Quad Stochastic Trend Analysis' },
+          pattern: { id: 'pattern', title: 'Pattern', sortable: true, sortField: 'pattern', width: '', tooltip: 'Higher Low / Lower High pattern' },
           qsArrow: { id: 'qsArrow', title: 'QS Arrow', sortable: true, sortField: 'qsArrow', width: '', tooltip: 'D1/D2/D3/D4 Direction Arrows' },
-          macdCrossing: { id: 'macdCrossing', title: 'MACD Cr', sortable: true, sortField: 'macdCrossing', width: '', tooltip: 'MACD Line & Signal Line Crossings' },
           d3value: { id: 'd3value', title: 'D3 Value', sortable: true, sortField: 'd3value', width: '', tooltip: 'Octo Stochastic D3 Value' },
           d4value: { id: 'd4value', title: 'D7 Value', sortable: true, sortField: 'd4value', width: '', tooltip: 'Octo Stochastic D7 Value' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
@@ -1878,11 +1956,6 @@ app.get('/', (req, res) => {
         // Countdown state
         let countdownSeconds = 120;
         let countdownInterval = null;
-
-        // D7 Count Chart
-        let d7CountChart = null;
-        let d7CountHistory = JSON.parse(localStorage.getItem('d7CountHistory')) || [];
-        const maxHistoryPoints = 100; // Keep last 100 data points
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
@@ -1905,7 +1978,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'trend', 'quadStoch', 'qsArrow', 'qstoch', 'macdCrossing', 'd3value', 'd4value', 'priceChange', 'volume'];
+            const indicators = ['symbol', 'price', 'trend', 'pattern', 'quadStoch', 'qsArrow', 'qstoch', 'd3value', 'd4value', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -1923,125 +1996,7 @@ app.get('/', (req, res) => {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
-          initializeD7Chart();
         });
-
-        // Initialize D7 Count Chart
-        function initializeD7Chart() {
-          const ctx = document.getElementById('d7CountChart');
-          if (!ctx) return;
-
-          d7CountChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: [],
-              datasets: [
-                {
-                  label: 'D7 < 20',
-                  data: [],
-                  borderColor: 'rgb(239, 68, 68)',
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                },
-                {
-                  label: 'D7 > 80',
-                  data: [],
-                  borderColor: 'rgb(34, 197, 94)',
-                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                  tension: 0.4,
-                  fill: true
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: {
-                  labels: {
-                    color: 'rgb(215, 215, 215)'
-                  }
-                },
-                tooltip: {
-                  mode: 'index',
-                  intersect: false
-                }
-              },
-              scales: {
-                x: {
-                  ticks: {
-                    color: 'rgb(156, 163, 175)',
-                    maxRotation: 45,
-                    minRotation: 45
-                  },
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  }
-                },
-                y: {
-                  beginAtZero: true,
-                  ticks: {
-                    color: 'rgb(156, 163, 175)',
-                    stepSize: 1
-                  },
-                  grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                  }
-                }
-              },
-              interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-              }
-            }
-          });
-
-          // Load historical data if available
-          if (d7CountHistory.length > 0) {
-            d7CountChart.data.labels = d7CountHistory.map(d => d.time);
-            d7CountChart.data.datasets[0].data = d7CountHistory.map(d => d.d7Low);
-            d7CountChart.data.datasets[1].data = d7CountHistory.map(d => d.d7High);
-            d7CountChart.update();
-          }
-        }
-
-        // Update D7 Chart with new data
-        function updateD7Chart() {
-          if (!d7CountChart) return;
-
-          // Get current counts
-          const d7Low = parseInt(document.getElementById('d7LowCount')?.textContent || '0');
-          const d7High = parseInt(document.getElementById('d7HighCount')?.textContent || '0');
-          const total = parseInt(document.getElementById('totalCountLow')?.textContent || '0');
-
-          // Add new data point
-          const now = new Date();
-          const timeLabel = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          
-          d7CountHistory.push({
-            time: timeLabel,
-            timestamp: now.getTime(),
-            d7Low: d7Low,
-            d7High: d7High,
-            total: total
-          });
-
-          // Keep only last maxHistoryPoints
-          if (d7CountHistory.length > maxHistoryPoints) {
-            d7CountHistory = d7CountHistory.slice(-maxHistoryPoints);
-          }
-
-          // Save to localStorage
-          localStorage.setItem('d7CountHistory', JSON.stringify(d7CountHistory));
-
-          // Update chart
-          d7CountChart.data.labels = d7CountHistory.map(d => d.time);
-          d7CountChart.data.datasets[0].data = d7CountHistory.map(d => d.d7Low);
-          d7CountChart.data.datasets[1].data = d7CountHistory.map(d => d.d7High);
-          d7CountChart.update('none'); // 'none' mode for smooth updates
-        }
 
         // Render table headers dynamically based on column order
         function renderTableHeaders() {
@@ -2227,6 +2182,12 @@ app.get('/', (req, res) => {
               }
               
               return trendOrder[trend_sort] || 5;
+            case 'pattern': {
+              const patternType = alert.patternType || alert.d3Pattern || alert.d7Pattern || ''
+              const patternCount = alert.patternCount || 0
+              const typeRank = patternType === 'Higher Low' ? 2 : patternType === 'Lower High' ? 1 : 0
+              return typeRank * 1000 + patternCount
+            }
             case 'quadStoch':
               // Sort by D4 value numerically
               return parseFloat(alert.quadStochD4) || 0;
@@ -2250,23 +2211,6 @@ app.get('/', (req, res) => {
               if (d4sig === 'D4_Cross_Down_80') return 1;
               if (d4sig === 'D4_Downtrend') return 0;
               return 5; // Default to neutral
-            case 'macdCrossing':
-              // Sort by MACD crossing signal strength (bullish to bearish)
-              const macdSig = alert.macdCrossingSignal;
-              if (macdSig === 'COver >50') return 10; // Strongest bullish
-              if (macdSig === 'COver >0') return 9; // Bullish
-              if (macdSig === 'MACD >0') return 8; // MACD above zero
-              if (macdSig === 'Signal >0') return 7; // Signal above zero
-              if (macdSig === 'COver <0') return 6; // Weak bullish
-              if (macdSig === 'CUnder >0') return 5; // Weak bearish
-              if (macdSig === 'CUnder <0') return 4; // Bearish
-              if (macdSig === 'MACD <0') return 3; // MACD below zero
-              if (macdSig === 'Signal <0') return 2; // Signal below zero
-              if (macdSig === 'CUnder <-50') return 1; // Strongest bearish
-              if (macdSig === 'M > S') return 0.5; // Neutral bullish
-               if (macdSig === 'M < S') return 0.3; // Neutral bearish
-               if (macdSig === 'M = S') return 0.4; // Neutral
-               return 0; // Default
             case 'd3value':
               return alert.octoStochD3 !== undefined
                 ? parseFloat(alert.octoStochD3) || 0
@@ -2493,10 +2437,11 @@ app.get('/', (req, res) => {
           lastUpdate.innerHTML = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo + ' <span id="countdown"></span>';
           updateCountdown();
 
-          // Update D7 Counters
+          // Update D7 Counters and Calculate Average
           let d7Low = 0;
           let d7High = 0;
           let totalWithD7 = 0;
+          let d7Sum = 0;
           
           filteredData.forEach(alert => {
             const d7Val = alert.octoStochD7 !== undefined 
@@ -2507,6 +2452,7 @@ app.get('/', (req, res) => {
                 
             if (!isNaN(d7Val)) {
               totalWithD7++;
+              d7Sum += d7Val;
               if (d7Val < 20) d7Low++;
               if (d7Val > 80) d7High++;
             }
@@ -2516,23 +2462,20 @@ app.get('/', (req, res) => {
           const totalLowElem = document.getElementById('totalCountLow');
           const d7HighElem = document.getElementById('d7HighCount');
           const totalHighElem = document.getElementById('totalCountHigh');
+          const avgD7Elem = document.getElementById('avgD7');
           
           if (d7LowElem) d7LowElem.textContent = d7Low;
           if (totalLowElem) totalLowElem.textContent = totalWithD7;
           if (d7HighElem) d7HighElem.textContent = d7High;
           if (totalHighElem) totalHighElem.textContent = totalWithD7;
-
-          // Update chart if counts changed (only update if we have data)
-          if (totalWithD7 > 0 && d7CountChart) {
-            const lastData = d7CountHistory.length > 0 ? d7CountHistory[d7CountHistory.length - 1] : null;
-            // Only update if counts changed or it's been more than 30 seconds since last update
-            const shouldUpdate = !lastData || 
-              lastData.d7Low !== d7Low || 
-              lastData.d7High !== d7High ||
-              (Date.now() - lastData.timestamp) > 30000; // Update every 30 seconds minimum
-            
-            if (shouldUpdate) {
-              updateD7Chart();
+          
+          // Calculate and display average D7
+          if (avgD7Elem) {
+            if (totalWithD7 > 0) {
+              const avgD7 = d7Sum / totalWithD7;
+              avgD7Elem.textContent = avgD7.toFixed(2);
+            } else {
+              avgD7Elem.textContent = '-';
             }
           }
 
@@ -2898,119 +2841,37 @@ app.get('/', (req, res) => {
               qstochTitle = 'D4 Crossed Down 80 - Entering Overbought Zone';
             }
             
-            // MACD Crossing Signal Display - Refined Logic
-            let macdCrossingDisplay = '-';
-            let macdCrossingClass = 'text-muted-foreground';
-            let macdCrossingTitle = 'No MACD data available';
-            let macdCrossingCellClass = '';
-            
-            const macdCrossingSignal = alert.macdCrossingSignal;
-            const macdValue = parseFloat(alert.macd) || 0;
-            const signalValue = parseFloat(alert.macdSignal) || 0;
-            
-            // Check if MACD crossing signal is recent (within last 5 minutes)
-            const macdCrossingAge = alert.macdCrossingTimestamp ? (Date.now() - alert.macdCrossingTimestamp) / 60000 : 999;
-            const isRecentCrossing = macdCrossingAge <= 5;
-            
-            // Priority 1: Actual Crossing Events (Most Important)
-            if (macdCrossingSignal === 'COver >50') {
-              macdCrossingDisplay = '↑↑ Cross >50';
-              macdCrossingClass = 'text-green-300 font-extrabold';
-              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) AND MACD > 50 - STRONG BULLISH\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/50 animate-pulse';
-            } else if (macdCrossingSignal === 'COver >0') {
-              macdCrossingDisplay = '↑ Cross >0';
-              macdCrossingClass = 'text-green-400 font-bold';
-              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) AND MACD > 0 - BULLISH\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-green-900/40';
-            } else if (macdCrossingSignal === 'COver <0') {
-              macdCrossingDisplay = '↑ Cross <0';
-              macdCrossingClass = 'text-yellow-400 font-semibold';
-              macdCrossingTitle = \`MACD crossed ABOVE Signal (M:\${macdValue.toFixed(2)} > S:\${signalValue.toFixed(2)}) BUT MACD < 0 - Weak Bullish\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-yellow-900/30';
-            } else if (macdCrossingSignal === 'CUnder <-50') {
-              macdCrossingDisplay = '↓↓ Cross <-50';
-              macdCrossingClass = 'text-red-300 font-extrabold';
-              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) AND MACD < -50 - STRONG BEARISH\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/50 animate-pulse';
-            } else if (macdCrossingSignal === 'CUnder <0') {
-              macdCrossingDisplay = '↓ Cross <0';
-              macdCrossingClass = 'text-red-400 font-bold';
-              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) AND MACD < 0 - BEARISH\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/40';
-            } else if (macdCrossingSignal === 'CUnder >0') {
-              macdCrossingDisplay = '↓ Cross >0';
-              macdCrossingClass = 'text-orange-400 font-semibold';
-              macdCrossingTitle = \`MACD crossed BELOW Signal (M:\${macdValue.toFixed(2)} < S:\${signalValue.toFixed(2)}) BUT MACD > 0 - Weak Bearish\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-orange-900/30';
-            }
-            // Priority 2: Zero Line Crossings
-            else if (macdCrossingSignal === 'MACD >0') {
-              macdCrossingDisplay = 'MACD ↑0';
-              macdCrossingClass = 'text-lime-400 font-bold';
-              macdCrossingTitle = \`MACD line crossed ABOVE zero (M:\${macdValue.toFixed(2)}) - Bullish momentum\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-lime-900/30';
-            } else if (macdCrossingSignal === 'MACD <0') {
-              macdCrossingDisplay = 'MACD ↓0';
-              macdCrossingClass = 'text-red-400 font-bold';
-              macdCrossingTitle = \`MACD line crossed BELOW zero (M:\${macdValue.toFixed(2)}) - Bearish momentum\`;
-              if (isRecentCrossing) macdCrossingCellClass = 'bg-red-900/30';
-            } else if (macdCrossingSignal === 'Signal >0') {
-              macdCrossingDisplay = 'Signal ↑0';
-              macdCrossingClass = 'text-lime-300 font-semibold';
-              macdCrossingTitle = \`Signal line crossed ABOVE zero (S:\${signalValue.toFixed(2)}) - Bullish signal\`;
-            } else if (macdCrossingSignal === 'Signal <0') {
-              macdCrossingDisplay = 'Signal ↓0';
-              macdCrossingClass = 'text-red-300 font-semibold';
-              macdCrossingTitle = \`Signal line crossed BELOW zero (S:\${signalValue.toFixed(2)}) - Bearish signal\`;
-            }
-            // Priority 3: Current Position State (when no recent crossing)
-            else if (macdCrossingSignal === 'M > S') {
-              // MACD is above Signal - Bullish position
-              const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
-              
-              if (macdValue > 0 && signalValue > 0) {
-                // Both above zero - Strong bullish
-                macdCrossingDisplay = \`M>S ↑↑ \${valueDisplay}\`;
-                macdCrossingClass = 'text-green-400 font-semibold';
-                macdCrossingTitle = \`MACD > Signal, both above zero - Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
-              } else if (macdValue > 0 && signalValue < 0) {
-                // MACD above zero, Signal below - Very bullish
-                macdCrossingDisplay = \`M>S ↑ \${valueDisplay}\`;
-                macdCrossingClass = 'text-green-300 font-bold';
-                macdCrossingTitle = \`MACD > Signal, MACD above zero - Very Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
-              } else {
-                // Both below zero - Weak bullish
-                macdCrossingDisplay = \`M>S \${valueDisplay}\`;
-                macdCrossingClass = 'text-yellow-400 font-semibold';
-                macdCrossingTitle = \`MACD > Signal, both below zero - Weak Bullish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
+            // Pattern (Higher Low / Lower High) display
+            const patternTypeRaw = alert.patternType || alert.d3Pattern || alert.d7Pattern || ''
+            const isHigherLow = patternTypeRaw === 'Higher Low'
+            const isLowerHigh = patternTypeRaw === 'Lower High'
+            const patternCount = alert.patternCount || 0
+            const patternStartTime = alert.patternStartTime || null
+            let patternDurationDisplay = ''
+            if (patternStartTime) {
+              const durationMs = Date.now() - patternStartTime
+              if (durationMs >= 60000) {
+                const minutes = Math.floor(durationMs / 60000)
+                patternDurationDisplay = `${minutes}m`
+              } else if (durationMs >= 1000) {
+                const seconds = Math.max(1, Math.floor(durationMs / 1000))
+                patternDurationDisplay = `${seconds}s`
               }
-            } else if (macdCrossingSignal === 'M < S') {
-              // MACD is below Signal - Bearish position
-              const valueDisplay = \`M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)}\`;
-              
-              if (macdValue < 0 && signalValue < 0) {
-                // Both below zero - Strong bearish
-                macdCrossingDisplay = \`M<S ↓↓ \${valueDisplay}\`;
-                macdCrossingClass = 'text-red-400 font-semibold';
-                macdCrossingTitle = \`MACD < Signal, both below zero - Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
-              } else if (macdValue < 0 && signalValue > 0) {
-                // MACD below zero, Signal above - Very bearish
-                macdCrossingDisplay = \`M<S ↓ \${valueDisplay}\`;
-                macdCrossingClass = 'text-red-300 font-bold';
-                macdCrossingTitle = \`MACD < Signal, MACD below zero - Very Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
-              } else {
-                // Both above zero - Weak bearish
-                macdCrossingDisplay = \`M<S \${valueDisplay}\`;
-                macdCrossingClass = 'text-orange-400 font-semibold';
-                macdCrossingTitle = \`MACD < Signal, both above zero - Weak Bearish (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
-              }
-            } else if (macdCrossingSignal === 'M = S') {
-              macdCrossingDisplay = \`M=S \${macdValue.toFixed(2)}\`;
-              macdCrossingClass = 'text-gray-400 font-semibold';
-              macdCrossingTitle = \`MACD equals Signal - Neutral (M:\${macdValue.toFixed(2)} S:\${signalValue.toFixed(2)})\`;
             }
-            
+            const patternLabel = isHigherLow ? 'HL' : isLowerHigh ? 'LH' : '—'
+            const patternClass = isHigherLow ? 'text-green-400 font-semibold' : isLowerHigh ? 'text-red-400 font-semibold' : 'text-muted-foreground'
+            const patternValueDisplay =
+              alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? ''
+            const patternTitleParts = []
+            if (patternTypeRaw) patternTitleParts.push(`Pattern: ${patternTypeRaw}`)
+            if (patternCount) patternTitleParts.push(`Count: ${patternCount}`)
+            if (patternDurationDisplay) patternTitleParts.push(`Duration: ${patternDurationDisplay}`)
+            if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(`Value: ${patternValueDisplay}`)
+            const patternTitle = patternTitleParts.join(' | ') || 'No HL/LH pattern detected'
+            const patternDisplay = patternTypeRaw
+              ? `${patternLabel}${patternCount ? ' ×' + patternCount : ''}${patternDurationDisplay ? ' · ' + patternDurationDisplay : ''}`
+              : '—'
+
             // QS D7 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
             let d7Value = NaN;
@@ -3093,7 +2954,7 @@ app.get('/', (req, res) => {
               \`,
               trend: \`<td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>\`,
               qsArrow: \`<td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>\`,
-              macdCrossing: \`<td class="py-3 px-4 font-bold \${macdCrossingClass} \${macdCrossingCellClass}" title="\${macdCrossingTitle}">\${macdCrossingDisplay}</td>\`,
+              pattern: \`<td class="py-3 px-4 font-bold \${patternClass}" title="\${patternTitle}">\${patternDisplay}</td>\`,
               d3value: \`<td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>\`,
               d4value: \`<td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>\`,
               volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`

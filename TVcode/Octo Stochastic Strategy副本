@@ -1,0 +1,568 @@
+//@version=6
+indicator(title="Octo Stochastic Strategy (8 Stoch)", shorttitle="Octo Stoch Strat", overlay=false)
+
+// ===== STRATEGY SETTINGS =====
+enableStrategy = input.bool(true, title="Enable Strategy", group="Strategy Settings")
+usePyramiding = input.bool(false, title="Allow Pyramiding (Multiple Positions)", group="Strategy Settings")
+maxPositions = input.int(1, minval=1, title="Max Positions", group="Strategy Settings")
+closeOnOpposite = input.bool(true, title="Close Position on Opposite Signal", group="Strategy Settings")
+
+// Trade size settings
+tradeSizeType = input.string("Percent of Equity", title="Trade Size Type", options=["Percent of Equity", "Fixed Quantity", "Contract"], group="Strategy Settings")
+tradeSizePercent = input.float(100.0, minval=0.1, title="Trade Size (% of Equity)", group="Strategy Settings")
+tradeSizeFixed = input.int(1, minval=1, title="Fixed Quantity", group="Strategy Settings")
+
+// Entry/Exit signal settings
+// Only Big Buy (D7 > 80) and Big Sell (D7 < 20) are enabled
+enableBigBuy = input.bool(true, title="Enable Big Buy (D7 > 80)", group="Strategy Signals")
+enableBigSell = input.bool(true, title="Enable Big Sell (D7 < 20)", group="Strategy Signals")
+
+// Trading hours settings
+tradeOnlyRegularHours = input.bool(true, title="Trade Only Regular Hours (No Extended Hours)", group="Strategy Settings", tooltip="If enabled, trades will only execute during regular market hours (9:30 AM - 4:00 PM ET for US markets)")
+
+// ===== TIMEFRAME SETTINGS =====
+// D1-D4 Settings
+timeframe1_4 = input.timeframe("", title="Timeframe for D1-D4", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines1_4 = input.bool(false, title="Smooth MTF Lines (D1-D4)", group="Timeframe Settings")
+mtfSmoothLen1_4 = input.int(3, minval=1, title="MTF Smoothing Length (D1-D4)", group="Timeframe Settings")
+
+// D5-D8 Settings
+timeframe5_8 = input.timeframe("", title="Timeframe for D5-D8", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines5_8 = input.bool(false, title="Smooth MTF Lines (D5-D8)", group="Timeframe Settings")
+mtfSmoothLen5_8 = input.int(3, minval=1, title="MTF Smoothing Length (D5-D8)", group="Timeframe Settings")
+
+// Stoch1 - Very Short Term (5min = ~10 bars)
+length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
+smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
+periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
+colorD1Up = input.color(#00FF00, title="D1 Up Color", group="Stoch1 Settings")
+colorD1Down = input.color(#FF0000, title="D1 Down Color", group="Stoch1 Settings")
+linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
+showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
+
+// Stoch2 - Short Term (5min = ~18 bars, ~1.5 hours)
+length2 = input.int(18, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
+smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
+periodD2 = input.int(3, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
+colorD2Up = input.color(#00FF00, title="D2 Up Color", group="Stoch2 Settings")
+colorD2Down = input.color(#FF0000, title="D2 Down Color", group="Stoch2 Settings")
+linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
+showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+
+// Stoch3 - Medium Term (5min = ~39 bars, ~3 hours)
+length3 = input.int(39, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
+smoothK3 = input.int(1, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
+periodD3 = input.int(4, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
+colorD3Up = input.color(#00FF00, title="D3 Up Color", group="Stoch3 Settings")
+colorD3Down = input.color(#FF0000, title="D3 Down Color", group="Stoch3 Settings")
+linewidthD3 = input.int(3, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
+showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
+showD3Switches = input.bool(true, title="Show D3 Direction Switches", group="Stoch3 Settings")
+showD3HLLH = input.bool(true, title="Show D3 Higher Low/Lower High", group="Stoch3 Settings")
+pivotLengthD3 = input.int(5, minval=1, title="D3 Pivot Length", group="Stoch3 Settings")
+colorHL_D3 = input.color(color.lime, title="D3 Higher Low Color", group="Stoch3 Settings")
+colorLH_D3 = input.color(color.orange, title="D3 Lower High Color", group="Stoch3 Settings")
+
+// Stoch4 - Longer Term (5min = ~60 bars, ~5 hours / half day)
+length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
+smoothK4 = input.int(1, minval=1, title="Stoch4 %K Smoothing (smoothK)", group="Stoch4 Settings")
+periodD4 = input.int(10, minval=1, title="Stoch4 %D Smoothing (periodD)", group="Stoch4 Settings")
+colorD4Up = input.color(#00FF00, title="D4 Up Color", group="Stoch4 Settings")
+colorD4Down = input.color(#FF0000, title="D4 Down Color", group="Stoch4 Settings")
+linewidthD4 = input.int(2, minval=1, maxval=5, title="D4 Line Width", group="Stoch4 Settings")
+showD4 = input.bool(true, title="Show D4", group="Stoch4 Settings")
+
+// Stoch5 - Same as D1 (5min = ~10 bars)
+length5 = input.int(10, minval=1, title="Stoch5 Length (periodK)", group="Stoch5 Settings")
+smoothK5 = input.int(3, minval=1, title="Stoch5 %K Smoothing (smoothK)", group="Stoch5 Settings")
+periodD5 = input.int(3, minval=1, title="Stoch5 %D Smoothing (periodD)", group="Stoch5 Settings")
+colorD5Up = input.color(#00FF00, title="D5 Up Color", group="Stoch5 Settings")
+colorD5Down = input.color(#FF0000, title="D5 Down Color", group="Stoch5 Settings")
+linewidthD5 = input.int(2, minval=1, maxval=5, title="D5 Line Width", group="Stoch5 Settings")
+showD5 = input.bool(true, title="Show D5", group="Stoch5 Settings")
+
+// Stoch6 - Same as D2 (5min = ~18 bars, ~1.5 hours)
+length6 = input.int(18, minval=1, title="Stoch6 Length (periodK)", group="Stoch6 Settings")
+smoothK6 = input.int(1, minval=1, title="Stoch6 %K Smoothing (smoothK)", group="Stoch6 Settings")
+periodD6 = input.int(3, minval=1, title="Stoch6 %D Smoothing (periodD)", group="Stoch6 Settings")
+colorD6Up = input.color(#00FF00, title="D6 Up Color", group="Stoch6 Settings")
+colorD6Down = input.color(#FF0000, title="D6 Down Color", group="Stoch6 Settings")
+linewidthD6 = input.int(2, minval=1, maxval=5, title="D6 Line Width", group="Stoch6 Settings")
+showD6 = input.bool(true, title="Show D6", group="Stoch6 Settings")
+
+// Stoch7 - Same as D3 (5min = ~39 bars, ~3 hours)
+length7 = input.int(39, minval=1, title="Stoch7 Length (periodK)", group="Stoch7 Settings")
+smoothK7 = input.int(1, minval=1, title="Stoch7 %K Smoothing (smoothK)", group="Stoch7 Settings")
+periodD7 = input.int(4, minval=1, title="Stoch7 %D Smoothing (periodD)", group="Stoch7 Settings")
+colorD7Up = input.color(#00FF00, title="D7 Up Color", group="Stoch7 Settings")
+colorD7Down = input.color(#FF0000, title="D7 Down Color", group="Stoch7 Settings")
+linewidthD7 = input.int(2, minval=1, maxval=5, title="D7 Line Width", group="Stoch7 Settings")
+showD7 = input.bool(true, title="Show D7", group="Stoch7 Settings")
+showD7Switches = input.bool(true, title="Show D7 Direction Switches", group="Stoch7 Settings")
+showD7HLLH = input.bool(true, title="Show D7 Higher Low/Lower High", group="Stoch7 Settings")
+pivotLengthD7 = input.int(5, minval=1, title="D7 Pivot Length", group="Stoch7 Settings")
+colorHL_D7 = input.color(color.aqua, title="D7 Higher Low Color", group="Stoch7 Settings")
+colorLH_D7 = input.color(color.red, title="D7 Lower High Color", group="Stoch7 Settings")
+
+// Stoch8 - Same as D4 (5min = ~60 bars, ~5 hours / half day - BACKGROUND FILL)
+length8 = input.int(60, minval=1, title="Stoch8 Length (periodK)", group="Stoch8 Settings")
+smoothK8 = input.int(1, minval=1, title="Stoch8 %K Smoothing (smoothK)", group="Stoch8 Settings")
+periodD8 = input.int(10, minval=1, title="Stoch8 %D Smoothing (periodD)", group="Stoch8 Settings")
+colorD8Up = input.color(#00FF00, title="D8 Up Color (Area Fill)", group="Stoch8 Settings")
+colorD8Down = input.color(#FF0000, title="D8 Down Color (Area Fill)", group="Stoch8 Settings")
+transparencyD8 = input.int(70, minval=0, maxval=100, title="D8 Transparency", group="Stoch8 Settings")
+linewidthD8 = input.int(2, minval=1, maxval=5, title="D8 Line Width", group="Stoch8 Settings")
+showD8 = input.bool(true, title="Show D8", group="Stoch8 Settings")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute D1-D4 with timeframe1_4
+[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+[k3_chart, d3_chart] = getStoch(length3, smoothK3, periodD3)
+[k4_chart, d4_chart] = getStoch(length4, smoothK4, periodD4)
+
+[k1_mtf_raw, d1_mtf_raw] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+[k2_mtf_raw, d2_mtf_raw] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+[k3_mtf_raw, d3_mtf_raw] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length3, smoothK3, periodD3), lookahead=barmerge.lookahead_off)
+[k4_mtf_raw, d4_mtf_raw] = request.security(syminfo.tickerid, timeframe1_4, getStoch(length4, smoothK4, periodD4), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled (D1-D4)
+k1_mtf = smoothMtfLines1_4 ? ta.sma(k1_mtf_raw, mtfSmoothLen1_4) : k1_mtf_raw
+d1_mtf = smoothMtfLines1_4 ? ta.sma(d1_mtf_raw, mtfSmoothLen1_4) : d1_mtf_raw
+k2_mtf = smoothMtfLines1_4 ? ta.sma(k2_mtf_raw, mtfSmoothLen1_4) : k2_mtf_raw
+d2_mtf = smoothMtfLines1_4 ? ta.sma(d2_mtf_raw, mtfSmoothLen1_4) : d2_mtf_raw
+k3_mtf = smoothMtfLines1_4 ? ta.sma(k3_mtf_raw, mtfSmoothLen1_4) : k3_mtf_raw
+d3_mtf = smoothMtfLines1_4 ? ta.sma(d3_mtf_raw, mtfSmoothLen1_4) : d3_mtf_raw
+k4_mtf = smoothMtfLines1_4 ? ta.sma(k4_mtf_raw, mtfSmoothLen1_4) : k4_mtf_raw
+d4_mtf = smoothMtfLines1_4 ? ta.sma(d4_mtf_raw, mtfSmoothLen1_4) : d4_mtf_raw
+
+k1 = timeframe1_4 == "" ? k1_chart : k1_mtf
+d1 = timeframe1_4 == "" ? d1_chart : d1_mtf
+k2 = timeframe1_4 == "" ? k2_chart : k2_mtf
+d2 = timeframe1_4 == "" ? d2_chart : d2_mtf
+k3 = timeframe1_4 == "" ? k3_chart : k3_mtf
+d3 = timeframe1_4 == "" ? d3_chart : d3_mtf
+k4 = timeframe1_4 == "" ? k4_chart : k4_mtf
+d4 = timeframe1_4 == "" ? d4_chart : d4_mtf
+
+// Compute D5-D8 with timeframe5_8
+[k5_chart, d5_chart] = getStoch(length5, smoothK5, periodD5)
+[k6_chart, d6_chart] = getStoch(length6, smoothK6, periodD6)
+[k7_chart, d7_chart] = getStoch(length7, smoothK7, periodD7)
+[k8_chart, d8_chart] = getStoch(length8, smoothK8, periodD8)
+
+[k5_mtf_raw, d5_mtf_raw] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length5, smoothK5, periodD5), lookahead=barmerge.lookahead_off)
+[k6_mtf_raw, d6_mtf_raw] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length6, smoothK6, periodD6), lookahead=barmerge.lookahead_off)
+[k7_mtf_raw, d7_mtf_raw] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length7, smoothK7, periodD7), lookahead=barmerge.lookahead_off)
+[k8_mtf_raw, d8_mtf_raw] = request.security(syminfo.tickerid, timeframe5_8, getStoch(length8, smoothK8, periodD8), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled (D5-D8)
+k5_mtf = smoothMtfLines5_8 ? ta.sma(k5_mtf_raw, mtfSmoothLen5_8) : k5_mtf_raw
+d5_mtf = smoothMtfLines5_8 ? ta.sma(d5_mtf_raw, mtfSmoothLen5_8) : d5_mtf_raw
+k6_mtf = smoothMtfLines5_8 ? ta.sma(k6_mtf_raw, mtfSmoothLen5_8) : k6_mtf_raw
+d6_mtf = smoothMtfLines5_8 ? ta.sma(d6_mtf_raw, mtfSmoothLen5_8) : d6_mtf_raw
+k7_mtf = smoothMtfLines5_8 ? ta.sma(k7_mtf_raw, mtfSmoothLen5_8) : k7_mtf_raw
+d7_mtf = smoothMtfLines5_8 ? ta.sma(d7_mtf_raw, mtfSmoothLen5_8) : d7_mtf_raw
+k8_mtf = smoothMtfLines5_8 ? ta.sma(k8_mtf_raw, mtfSmoothLen5_8) : k8_mtf_raw
+d8_mtf = smoothMtfLines5_8 ? ta.sma(d8_mtf_raw, mtfSmoothLen5_8) : d8_mtf_raw
+
+k5 = timeframe5_8 == "" ? k5_chart : k5_mtf
+d5 = timeframe5_8 == "" ? d5_chart : d5_mtf
+k6 = timeframe5_8 == "" ? k6_chart : k6_mtf
+d6 = timeframe5_8 == "" ? d6_chart : d6_mtf
+k7 = timeframe5_8 == "" ? k7_chart : k7_mtf
+d7 = timeframe5_8 == "" ? d7_chart : d7_mtf
+k8 = timeframe5_8 == "" ? k8_chart : k8_mtf
+d8 = timeframe5_8 == "" ? d8_chart : d8_mtf
+
+// Plot %D8 first (z-index as last/behind) - use fill for better z-order control
+// Extract RGB from colorD8 and apply transparencyD8 to ensure proper opacity control
+colorD8 = d8 >= d8[1] ? colorD8Up : colorD8Down
+d8FillColor = color.new(colorD8, transparencyD8)
+p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(colorD8, 100), linewidth=linewidthD8, display=display.pane)
+p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
+fill(p_base, p_d8, color=showD8 ? d8FillColor : na, title="D8 Fill")
+
+// Plot %D lines with customizable colors (on top of D8)
+plot(showD1 ? d1 : na, title="%d1", color=d1 >= d1[1] ? colorD1Up : colorD1Down, linewidth=linewidthD1, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=d2 >= d2[1] ? colorD2Up : colorD2Down, linewidth=linewidthD2, display=display.pane)
+plot(showD3 ? d3 : na, title="%d3", color=d3 >= d3[1] ? colorD3Up : colorD3Down, linewidth=linewidthD3, display=display.pane)
+plot(showD4 ? d4 : na, title="%d4", color=d4 >= d4[1] ? colorD4Up : colorD4Down, linewidth=linewidthD4, display=display.pane)
+plot(showD5 ? d5 : na, title="%d5", color=d5 >= d5[1] ? colorD5Up : colorD5Down, linewidth=linewidthD5, display=display.pane)
+plot(showD6 ? d6 : na, title="%d6", color=d6 >= d6[1] ? colorD6Up : colorD6Down, linewidth=linewidthD6, display=display.pane)
+plot(showD7 ? d7 : na, title="%d7", color=d7 >= d7[1] ? colorD7Up : colorD7Down, linewidth=linewidthD7, display=display.pane)
+
+// Plot Mid line above D1, D2, D3 (z-index on top)
+plot(60, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
+plot(40, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
+
+
+// Plot %K line for 10-period Stochastic as a regular line
+plot(k1, title="%K1", color=color.new(#00bcd4, 65), linewidth=1, style=plot.style_line, display=display.none)
+
+// Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Strong zones settings
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Strong Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Strong Zones")
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== D1-D8 DIRECTION TRACKING =====
+var float prevD1 = na
+var float prevD2 = na
+var float prevD3 = na
+var float prevD4 = na
+var float prevD5 = na
+var float prevD6 = na
+var float prevD7 = na
+var float prevD8 = na
+
+// Store last valid values (for smoothing/avoiding N/A)
+var float lastValidD1 = na
+var float lastValidD2 = na
+var float lastValidD3 = na
+var float lastValidD4 = na
+var float lastValidD5 = na
+var float lastValidD6 = na
+var float lastValidD7 = na
+var float lastValidD8 = na
+var string lastValidD1Dir = "flat"
+var string lastValidD2Dir = "flat"
+var string lastValidD3Dir = "flat"
+var string lastValidD4Dir = "flat"
+var string lastValidD5Dir = "flat"
+var string lastValidD6Dir = "flat"
+var string lastValidD7Dir = "flat"
+var string lastValidD8Dir = "flat"
+var string lastValidD1CrossD7 = "none"
+var string lastValidCalculatedTrend = "Neutral"
+var string lastValidTtsMessage = ""
+var string lastValidD3Pattern = "None"
+var string lastValidD7Pattern = "None"
+var float lastValidD3HLLHValue = na
+var float lastValidD7HLLHValue = na
+
+// Determine direction for each stochastic
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+d4Direction = na(prevD4) ? "flat" : d4 > prevD4 ? "up" : d4 < prevD4 ? "down" : "flat"
+d5Direction = na(prevD5) ? "flat" : d5 > prevD5 ? "up" : d5 < prevD5 ? "down" : "flat"
+d6Direction = na(prevD6) ? "flat" : d6 > prevD6 ? "up" : d6 < prevD6 ? "down" : "flat"
+d7Direction = na(prevD7) ? "flat" : d7 > prevD7 ? "up" : d7 < prevD7 ? "down" : "flat"
+d8Direction = na(prevD8) ? "flat" : d8 > prevD8 ? "up" : d8 < prevD8 ? "down" : "flat"
+
+// ===== D1 x D7 CROSSOVER DETECTION =====
+// Track previous D1 direction to detect switches
+var string prevD1Dir = na
+d1SwitchedToUp = prevD1Dir == "down" and d1Direction == "up"
+d1SwitchedToDown = prevD1Dir == "up" and d1Direction == "down"
+
+// ===== D3 AND D7 DIRECTION SWITCH DETECTION =====
+// Track previous D3 and D7 directions to detect switches
+var string prevD3Dir = na
+var string prevD7Dir = na
+
+// D3 switch detection
+d3SwitchedToUp = prevD3Dir == "down" and d3Direction == "up"
+d3SwitchedToDown = prevD3Dir == "up" and d3Direction == "down"
+
+// D7 switch detection
+d7SwitchedToUp = prevD7Dir == "down" and d7Direction == "up"
+d7SwitchedToDown = prevD7Dir == "up" and d7Direction == "down"
+
+// ===== D3 AND D7 HIGHER LOW / LOWER HIGH DETECTION =====
+// Detect pivots on D3
+pivotHighD3 = ta.pivothigh(d3, pivotLengthD3, pivotLengthD3)
+pivotLowD3 = ta.pivotlow(d3, pivotLengthD3, pivotLengthD3)
+
+// Detect pivots on D7
+pivotHighD7 = ta.pivothigh(d7, pivotLengthD7, pivotLengthD7)
+pivotLowD7 = ta.pivotlow(d7, pivotLengthD7, pivotLengthD7)
+
+// Track previous pivot values for D3
+var float lastHighD3 = na
+var float lastLowD3 = na
+
+// Track previous pivot values for D7
+var float lastHighD7 = na
+var float lastLowD7 = na
+
+// D3 Higher Low / Lower High detection
+float d3HigherLowValue = na
+float d3LowerHighValue = na
+
+if not na(pivotLowD3) and showD3HLLH
+    if not na(lastLowD3) and pivotLowD3 > lastLowD3
+        d3HigherLowValue := pivotLowD3
+    lastLowD3 := pivotLowD3
+
+if not na(pivotHighD3) and showD3HLLH
+    if not na(lastHighD3) and pivotHighD3 < lastHighD3
+        d3LowerHighValue := pivotHighD3
+    lastHighD3 := pivotHighD3
+
+string d3Pattern = not na(d3HigherLowValue) ? "Higher Low" : not na(d3LowerHighValue) ? "Lower High" : ""
+float d3PatternValue = not na(d3HigherLowValue) ? d3HigherLowValue : not na(d3LowerHighValue) ? d3LowerHighValue : na
+
+// D7 Higher Low / Lower High detection
+float d7HigherLowValue = na
+float d7LowerHighValue = na
+
+if not na(pivotLowD7) and showD7HLLH
+    if not na(lastLowD7) and pivotLowD7 > lastLowD7
+        d7HigherLowValue := pivotLowD7
+    lastLowD7 := pivotLowD7
+
+if not na(pivotHighD7) and showD7HLLH
+    if not na(lastHighD7) and pivotHighD7 < lastHighD7
+        d7LowerHighValue := pivotHighD7
+    lastHighD7 := pivotHighD7
+
+string d7Pattern = not na(d7HigherLowValue) ? "Higher Low" : not na(d7LowerHighValue) ? "Lower High" : ""
+float d7PatternValue = not na(d7HigherLowValue) ? d7HigherLowValue : not na(d7LowerHighValue) ? d7LowerHighValue : na
+
+// D1 x D7 crossover detection
+crossoverD1D7 = ta.crossover(d1, d7)
+crossunderD1D7 = ta.crossunder(d1, d7)
+
+// D1 x D7 cross signals (both must be going in same direction)
+d1CrossD7 = ""
+if crossoverD1D7 and d1Direction == "up" and d7Direction == "up"
+    d1CrossD7 := "bull"
+else if crossunderD1D7 and d1Direction == "down" and d7Direction == "down"
+    d1CrossD7 := "bear"
+else
+    d1CrossD7 := "none"
+
+// ===== TREND CALCULATION (Based on D1 and D7) =====
+calculatedTrend = "Neutral"
+ttsMessage = ""
+
+// D7-based priority messages (override all trends)
+if d7 < 20
+    calculatedTrend := "Very Short"
+    ttsMessage := "Heavy Sell"
+else if d7 > 80 and d3Direction == "up"
+    calculatedTrend := "Heavy Buy"
+    ttsMessage := "Heavy Buy"
+else
+    // Trend-specific messages (when D7 is between 20-80)
+    if d1CrossD7 == "bull"
+        calculatedTrend := "🚀 BULL Cross"
+        ttsMessage := "Small Buy"
+    else if d1CrossD7 == "bear"
+        calculatedTrend := "🔻 BEAR Cross"
+        ttsMessage := "Small sell"
+    else if d7 > 40 and d1Direction == "up"
+        calculatedTrend := "Try Long"
+        ttsMessage := "Medium Buy"
+    else if d7 < 40 and d1Direction == "down"
+        calculatedTrend := "Try Short"
+        ttsMessage := "Medium Sell"
+    else
+        calculatedTrend := "Neutral"
+        ttsMessage := ""
+
+// ===== STRATEGY ENTRY/EXIT LOGIC =====
+// Determine trade size (Placeholder for indicator)
+qty = tradeSizeType == "Fixed Quantity" ? tradeSizeFixed : 1
+
+// Long entry conditions - Only Heavy Buy (D7 > 80 AND D3 up)
+longCondition = false
+longLabel = ""
+
+if enableStrategy and enableBigBuy
+    // Heavy Buy: D7 > 80 AND D3 going up
+    if d7 > 80 and d3Direction == "up"
+        longCondition := true
+        longLabel := "Heavy Buy"
+
+// Short entry conditions - Only Big Sell (D7 < 20)
+shortCondition = false
+shortLabel = ""
+
+if enableStrategy and enableBigSell
+    // Big Sell: D7 < 20
+    if d7 < 20
+        shortCondition := true
+        shortLabel := "Big Sell"
+
+// Strategy execution
+// Check if we're in regular trading hours (if enabled)
+// Regular hours: 9:30 AM - 4:00 PM (0930-1600)
+inRegularHours = not tradeOnlyRegularHours or not na(time(timeframe.period, "0930-1600"))
+
+// Strategy execution placeholder (logic removed for Indicator conversion)
+// if enableStrategy and inRegularHours
+//     ...
+
+
+// Strategy visualization
+plotshape(longCondition, title="Long Entry", style=shape.triangleup, location=location.bottom, color=color.green, size=size.small)
+plotshape(shortCondition, title="Short Entry", style=shape.triangledown, location=location.top, color=color.red, size=size.small)
+
+// Plot D3 direction switches (circles at D3 line value)
+plotshape(showD3Switches and d3SwitchedToUp ? d3 : na, title="D3 Switch Up", style=shape.circle, location=location.absolute, color=color.new(#00FF00, 0), size=size.small)
+plotshape(showD3Switches and d3SwitchedToDown ? d3 : na, title="D3 Switch Down", style=shape.circle, location=location.absolute, color=color.new(#FF0000, 0), size=size.small)
+
+// Plot D7 direction switches (diamonds at D7 line value)
+plotshape(showD7Switches and d7SwitchedToUp ? d7 : na, title="D7 Switch Up", style=shape.diamond, location=location.absolute, color=color.new(#00FF00, 0), size=size.normal)
+plotshape(showD7Switches and d7SwitchedToDown ? d7 : na, title="D7 Switch Down", style=shape.diamond, location=location.absolute, color=color.new(#FF0000, 0), size=size.normal)
+
+// Plot D3 Higher Low / Lower High patterns (with offsets to avoid covering lines)
+plotshape(showD3HLLH and not na(d3HigherLowValue) ? d3HigherLowValue - 2 : na, title="D3 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D3, size=size.small)
+plotshape(showD3HLLH and not na(d3LowerHighValue) ? d3LowerHighValue + 2 : na, title="D3 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D3, size=size.small)
+
+// Plot D7 Higher Low / Lower High patterns (with offsets to avoid covering lines)
+plotshape(showD7HLLH and not na(d7HigherLowValue) ? d7HigherLowValue - 2 : na, title="D7 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D7, size=size.normal)
+plotshape(showD7HLLH and not na(d7LowerHighValue) ? d7LowerHighValue + 2 : na, title="D7 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D7, size=size.normal)
+
+// Update last valid values when current values are not na
+if not na(d1)
+    lastValidD1 := d1
+if not na(d2)
+    lastValidD2 := d2
+if not na(d3)
+    lastValidD3 := d3
+if not na(d4)
+    lastValidD4 := d4
+if not na(d5)
+    lastValidD5 := d5
+if not na(d6)
+    lastValidD6 := d6
+if not na(d7)
+    lastValidD7 := d7
+if not na(d8)
+    lastValidD8 := d8
+
+// Update last valid directions
+if d1Direction != ""
+    lastValidD1Dir := d1Direction
+if d2Direction != ""
+    lastValidD2Dir := d2Direction
+if d3Direction != ""
+    lastValidD3Dir := d3Direction
+if d4Direction != ""
+    lastValidD4Dir := d4Direction
+if d5Direction != ""
+    lastValidD5Dir := d5Direction
+if d6Direction != ""
+    lastValidD6Dir := d6Direction
+if d7Direction != ""
+    lastValidD7Dir := d7Direction
+if d8Direction != ""
+    lastValidD8Dir := d8Direction
+if d3Pattern != ""
+    lastValidD3Pattern := d3Pattern
+if d7Pattern != ""
+    lastValidD7Pattern := d7Pattern
+if not na(d3PatternValue)
+    lastValidD3HLLHValue := d3PatternValue
+if not na(d7PatternValue)
+    lastValidD7HLLHValue := d7PatternValue
+
+// Update last valid cross and trend
+if d1CrossD7 != ""
+    lastValidD1CrossD7 := d1CrossD7
+if calculatedTrend != ""
+    lastValidCalculatedTrend := calculatedTrend
+if ttsMessage != ""
+    lastValidTtsMessage := ttsMessage
+
+// Alert condition - Manual JSON construction (use last valid values to avoid N/A)
+if barstate.isconfirmed
+    // Use current value if not na, otherwise use last valid value (fallback to 0 if both are na)
+    d1Val = na(d1) ? (na(lastValidD1) ? 0 : lastValidD1) : d1
+    d2Val = na(d2) ? (na(lastValidD2) ? 0 : lastValidD2) : d2
+    d3Val = na(d3) ? (na(lastValidD3) ? 0 : lastValidD3) : d3
+    d4Val = na(d4) ? (na(lastValidD4) ? 0 : lastValidD4) : d4
+    d5Val = na(d5) ? (na(lastValidD5) ? 0 : lastValidD5) : d5
+    d6Val = na(d6) ? (na(lastValidD6) ? 0 : lastValidD6) : d6
+    d7Val = na(d7) ? (na(lastValidD7) ? 0 : lastValidD7) : d7
+    d8Val = na(d8) ? (na(lastValidD8) ? 0 : lastValidD8) : d8
+    
+    // Use current direction if not empty, otherwise use last valid
+    d1DirVal = d1Direction != "" ? d1Direction : lastValidD1Dir
+    d2DirVal = d2Direction != "" ? d2Direction : lastValidD2Dir
+    d3DirVal = d3Direction != "" ? d3Direction : lastValidD3Dir
+    d4DirVal = d4Direction != "" ? d4Direction : lastValidD4Dir
+    d5DirVal = d5Direction != "" ? d5Direction : lastValidD5Dir
+    d6DirVal = d6Direction != "" ? d6Direction : lastValidD6Dir
+    d7DirVal = d7Direction != "" ? d7Direction : lastValidD7Dir
+    d8DirVal = d8Direction != "" ? d8Direction : lastValidD8Dir
+    d3PatternVal = d3Pattern != "" ? d3Pattern : lastValidD3Pattern
+    d7PatternVal = d7Pattern != "" ? d7Pattern : lastValidD7Pattern
+    d3PatternValueVal = na(d3PatternValue) ? (na(lastValidD3HLLHValue) ? 0 : lastValidD3HLLHValue) : d3PatternValue
+    d7PatternValueVal = na(d7PatternValue) ? (na(lastValidD7HLLHValue) ? 0 : lastValidD7HLLHValue) : d7PatternValue
+    
+    // Use current cross/trend if not empty, otherwise use last valid
+    crossVal = d1CrossD7 != "" ? d1CrossD7 : lastValidD1CrossD7
+    trendVal = calculatedTrend != "" ? calculatedTrend : lastValidCalculatedTrend
+    ttsVal = ttsMessage != "" ? ttsMessage : lastValidTtsMessage
+    
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"d1\":\"" + str.tostring(d1Val) + "\","
+    alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
+    alertStr += "\"d3\":\"" + str.tostring(d3Val) + "\","
+    alertStr += "\"d4\":\"" + str.tostring(d4Val) + "\","
+    alertStr += "\"d5\":\"" + str.tostring(d5Val) + "\","
+    alertStr += "\"d6\":\"" + str.tostring(d6Val) + "\","
+    alertStr += "\"d7\":\"" + str.tostring(d7Val) + "\","
+    alertStr += "\"d8\":\"" + str.tostring(d8Val) + "\","
+    alertStr += "\"d1Direction\":\"" + d1DirVal + "\","
+    alertStr += "\"d2Direction\":\"" + d2DirVal + "\","
+    alertStr += "\"d3Direction\":\"" + d3DirVal + "\","
+    alertStr += "\"d4Direction\":\"" + d4DirVal + "\","
+    alertStr += "\"d5Direction\":\"" + d5DirVal + "\","
+    alertStr += "\"d6Direction\":\"" + d6DirVal + "\","
+    alertStr += "\"d7Direction\":\"" + d7DirVal + "\","
+    alertStr += "\"d8Direction\":\"" + d8DirVal + "\","
+    alertStr += "\"d3Pattern\":\"" + d3PatternVal + "\","
+    alertStr += "\"d7Pattern\":\"" + d7PatternVal + "\","
+    alertStr += "\"d3PatternValue\":\"" + str.tostring(d3PatternValueVal) + "\","
+    alertStr += "\"d7PatternValue\":\"" + str.tostring(d7PatternValueVal) + "\","
+    alertStr += "\"d8Signal\":\"Octo\","
+    alertStr += "\"d1d2Cross\":\"" + crossVal + "\","
+    alertStr += "\"calculatedTrend\":\"" + trendVal + "\","
+    alertStr += "\"ttsMessage\":\"" + ttsVal + "\","
+    alertStr += "\"timeframe1_4\":\"" + str.tostring(timeframe1_4) + "\","
+    alertStr += "\"timeframe5_8\":\"" + str.tostring(timeframe5_8) + "\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
+
+// Store previous values for next comparison
+prevD1 := d1
+prevD2 := d2
+prevD3 := d3
+prevD4 := d4
+prevD5 := d5
+prevD6 := d6
+prevD7 := d7
+prevD8 := d8
+prevD1Dir := d1Direction
+prevD3Dir := d3Direction
+prevD7Dir := d7Direction
+
