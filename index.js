@@ -628,14 +628,29 @@ app.post('/webhook', (req, res) => {
         lastValue: detectedPattern.value,
         startTime: samePattern && existingPattern.startTime ? existingPattern.startTime : Date.now(),
         lastUpdated: Date.now(),
-        count: samePattern && existingPattern.count ? existingPattern.count + 1 : 1
+        count: samePattern && existingPattern.count ? existingPattern.count + 1 : 1,
+        trendBreak: false
       }
     } else if (existingPattern) {
+      // Check for trend break: D3 went below HL or above LH
+      const currentD3 = parseFloat(alert.d3)
+      const patternValue = existingPattern.lastValue
+      let trendBreak = existingPattern.trendBreak || false
+      
+      if (!isNaN(currentD3) && patternValue !== null && !isNaN(patternValue)) {
+        if (existingPattern.type === 'Higher Low' && currentD3 < patternValue) {
+          trendBreak = true
+        } else if (existingPattern.type === 'Lower High' && currentD3 > patternValue) {
+          trendBreak = true
+        }
+      }
+      
       // No fresh pattern, keep previous info but refresh timestamp
       patternData[alert.symbol] = {
         ...existingPattern,
         lastUpdated: Date.now(),
-        count: (existingPattern.count || 0) + 1
+        count: (existingPattern.count || 0) + 1,
+        trendBreak: trendBreak
       }
     }
 
@@ -690,6 +705,7 @@ app.post('/webhook', (req, res) => {
       patternValue: patternData[alert.symbol]?.lastValue ?? prevOctoData.patternValue ?? null,
       patternStartTime: patternData[alert.symbol]?.startTime || prevOctoData.patternStartTime || null,
       patternCount: patternData[alert.symbol]?.count || prevOctoData.patternCount || 0,
+      patternTrendBreak: patternData[alert.symbol]?.trendBreak || false,
       calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
       ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
@@ -2847,6 +2863,7 @@ app.get('/', (req, res) => {
             const isLowerHigh = patternTypeRaw === 'Lower High'
             const patternCount = alert.patternCount || 0
             const patternStartTime = alert.patternStartTime || null
+            const patternTrendBreak = alert.patternTrendBreak || false
             let patternDurationDisplay = ''
             if (patternStartTime) {
               const durationMs = Date.now() - patternStartTime
@@ -2859,18 +2876,24 @@ app.get('/', (req, res) => {
               }
             }
             const patternLabel = isHigherLow ? 'HL' : isLowerHigh ? 'LH' : '—'
-            const patternClass = isHigherLow ? 'text-green-400 font-semibold' : isLowerHigh ? 'text-red-400 font-semibold' : 'text-muted-foreground'
+            let patternClass = isHigherLow ? 'text-green-400 font-semibold' : isLowerHigh ? 'text-red-400 font-semibold' : 'text-muted-foreground'
+            if (patternTrendBreak) {
+              patternClass = 'text-yellow-400 font-bold animate-pulse'
+            }
             const patternValueDisplay =
               alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? ''
             const patternTitleParts = []
             if (patternTypeRaw) patternTitleParts.push(\`Pattern: \${patternTypeRaw}\`)
+            if (patternTrendBreak) patternTitleParts.push('⚠️ TREND BREAK')
             if (patternCount) patternTitleParts.push(\`Count: \${patternCount}\`)
             if (patternDurationDisplay) patternTitleParts.push(\`Duration: \${patternDurationDisplay}\`)
             if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(\`Value: \${patternValueDisplay}\`)
             const patternTitle = patternTitleParts.join(' | ') || 'No HL/LH pattern detected'
-            const patternDisplayStatic = patternTypeRaw
-              ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
-              : '—'
+            const patternDisplayStatic = patternTrendBreak
+              ? '⚠️ Break'
+              : patternTypeRaw
+                ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
+                : '—'
 
             // QS D7 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
