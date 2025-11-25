@@ -2852,10 +2852,10 @@ app.get('/', (req, res) => {
               const durationMs = Date.now() - patternStartTime
               if (durationMs >= 60000) {
                 const minutes = Math.floor(durationMs / 60000)
-                patternDurationDisplay = `${minutes}m`
+                patternDurationDisplay = \`\${minutes}m\`
               } else if (durationMs >= 1000) {
                 const seconds = Math.max(1, Math.floor(durationMs / 1000))
-                patternDurationDisplay = `${seconds}s`
+                patternDurationDisplay = \`\${seconds}s\`
               }
             }
             const patternLabel = isHigherLow ? 'HL' : isLowerHigh ? 'LH' : '—'
@@ -2863,13 +2863,13 @@ app.get('/', (req, res) => {
             const patternValueDisplay =
               alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? ''
             const patternTitleParts = []
-            if (patternTypeRaw) patternTitleParts.push(`Pattern: ${patternTypeRaw}`)
-            if (patternCount) patternTitleParts.push(`Count: ${patternCount}`)
-            if (patternDurationDisplay) patternTitleParts.push(`Duration: ${patternDurationDisplay}`)
-            if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(`Value: ${patternValueDisplay}`)
+            if (patternTypeRaw) patternTitleParts.push(\`Pattern: \${patternTypeRaw}\`)
+            if (patternCount) patternTitleParts.push(\`Count: \${patternCount}\`)
+            if (patternDurationDisplay) patternTitleParts.push(\`Duration: \${patternDurationDisplay}\`)
+            if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(\`Value: \${patternValueDisplay}\`)
             const patternTitle = patternTitleParts.join(' | ') || 'No HL/LH pattern detected'
             const patternDisplay = patternTypeRaw
-              ? `${patternLabel}${patternCount ? ' ×' + patternCount : ''}${patternDurationDisplay ? ' · ' + patternDurationDisplay : ''}`
+              ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\${patternDurationDisplay ? ' · ' + patternDurationDisplay : ''}\`
               : '—'
 
             // QS D7 Value gradient color (0-100 scale)
