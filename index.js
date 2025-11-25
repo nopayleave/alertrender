@@ -2868,8 +2868,8 @@ app.get('/', (req, res) => {
             if (patternDurationDisplay) patternTitleParts.push(\`Duration: \${patternDurationDisplay}\`)
             if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(\`Value: \${patternValueDisplay}\`)
             const patternTitle = patternTitleParts.join(' | ') || 'No HL/LH pattern detected'
-            const patternDisplay = patternTypeRaw
-              ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\${patternDurationDisplay ? ' · ' + patternDurationDisplay : ''}\`
+            const patternDisplayStatic = patternTypeRaw
+              ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
               : '—'
 
             // QS D7 Value gradient color (0-100 scale)
@@ -2954,7 +2954,7 @@ app.get('/', (req, res) => {
               \`,
               trend: \`<td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>\`,
               qsArrow: \`<td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>\`,
-              pattern: \`<td class="py-3 px-4 font-bold \${patternClass}" title="\${patternTitle}">\${patternDisplay}</td>\`,
+              pattern: \`<td class="py-3 px-4 font-bold \${patternClass}" title="\${patternTitle}">\${patternDisplayStatic}\${patternStartTime ? ' · <span class="pattern-timer" data-start="' + patternStartTime + '">' + patternDurationDisplay + '</span>' : ''}</td>\`,
               d3value: \`<td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>\`,
               d4value: \`<td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>\`,
               volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
@@ -3030,6 +3030,36 @@ app.get('/', (req, res) => {
         window.addEventListener('beforeunload', function() {
           eventSource.close();
         });
+        
+        // Live pattern duration timer - updates every second
+        function formatPatternDuration(startTime) {
+          const durationMs = Date.now() - startTime
+          if (durationMs >= 3600000) {
+            const hours = Math.floor(durationMs / 3600000)
+            const minutes = Math.floor((durationMs % 3600000) / 60000)
+            return \`\${hours}h \${minutes}m\`
+          } else if (durationMs >= 60000) {
+            const minutes = Math.floor(durationMs / 60000)
+            const seconds = Math.floor((durationMs % 60000) / 1000)
+            return \`\${minutes}m \${seconds}s\`
+          } else {
+            const seconds = Math.max(1, Math.floor(durationMs / 1000))
+            return \`\${seconds}s\`
+          }
+        }
+        
+        function updatePatternTimers() {
+          const timers = document.querySelectorAll('.pattern-timer')
+          timers.forEach(timer => {
+            const startTime = parseInt(timer.dataset.start, 10)
+            if (startTime && !isNaN(startTime)) {
+              timer.textContent = formatPatternDuration(startTime)
+            }
+          })
+        }
+        
+        // Update pattern timers every second
+        setInterval(updatePatternTimers, 1000)
       </script>
     </body>
     </html>
