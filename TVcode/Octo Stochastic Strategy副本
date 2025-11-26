@@ -67,6 +67,7 @@ colorBreakD3HL = input.color(color.red, title="D3 Below HL Break Color", group="
 colorBreakD3LH = input.color(color.lime, title="D3 Above LH Break Color", group="Stoch3 Settings")
 colorBreakD7HL = input.color(color.maroon, title="D3 Below D7 HL Break Color", group="Stoch3 Settings")
 colorBreakD7LH = input.color(color.green, title="D3 Above D7 LH Break Color", group="Stoch3 Settings")
+colorPredictedBreak = input.color(color.purple, title="Predicted LH Break Color", group="Stoch3 Settings")
 
 // Stoch4 - Longer Term (5min = ~60 bars, ~5 hours / half day)
 length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
@@ -347,6 +348,68 @@ if not na(pivotHighD7) and showD7HLLH
 string d7Pattern = not na(d7HigherLowValue) ? "Higher Low" : not na(d7LowerHighValue) ? "Lower High" : ""
 float d7PatternValue = not na(d7HigherLowValue) ? d7HigherLowValue : not na(d7LowerHighValue) ? d7LowerHighValue : na
 
+// ===== PREDICTED THIRD POINT CALCULATION =====
+// Track the last two LH points for D3 and D7 to predict the third
+var float d3FirstLH = na
+var float d3SecondLH = na
+var float d3PredictedThirdLH = na
+var int d3FirstLHBar = na
+var int d3SecondLHBar = na
+
+var float d7FirstLH = na
+var float d7SecondLH = na
+var float d7PredictedThirdLH = na
+var int d7FirstLHBar = na
+var int d7SecondLHBar = na
+
+// Update D3 LH sequence when new LH is detected
+if not na(d3LowerHighValue)
+    // Shift the sequence: second becomes first, new becomes second
+    d3FirstLH := d3SecondLH
+    d3FirstLHBar := d3SecondLHBar
+    d3SecondLH := d3LowerHighValue
+    d3SecondLHBar := bar_index
+    
+    // Calculate predicted third point if we have two LH points
+    if not na(d3FirstLH) and not na(d3SecondLH) and d3FirstLHBar != d3SecondLHBar
+        // Calculate the decline rate per bar
+        barDifference = d3SecondLHBar - d3FirstLHBar
+        valueDifference = d3SecondLH - d3FirstLH
+        declinePerBar = valueDifference / barDifference
+        
+        // Predict third point assuming same time interval
+        d3PredictedThirdLH := d3SecondLH + (declinePerBar * barDifference)
+        
+        // Ensure predicted value is reasonable (not negative and follows declining trend)
+        if d3PredictedThirdLH < 0
+            d3PredictedThirdLH := d3SecondLH * 0.7  // Fallback: 30% decline from second LH
+
+// Update D7 LH sequence when new LH is detected
+if not na(d7LowerHighValue)
+    // Shift the sequence: second becomes first, new becomes second
+    d7FirstLH := d7SecondLH
+    d7FirstLHBar := d7SecondLHBar
+    d7SecondLH := d7LowerHighValue
+    d7SecondLHBar := bar_index
+    
+    // Calculate predicted third point if we have two LH points
+    if not na(d7FirstLH) and not na(d7SecondLH) and d7FirstLHBar != d7SecondLHBar
+        // Calculate the decline rate per bar
+        barDifference = d7SecondLHBar - d7FirstLHBar
+        valueDifference = d7SecondLH - d7FirstLH
+        declinePerBar = valueDifference / barDifference
+        
+        // Predict third point assuming same time interval
+        d7PredictedThirdLH := d7SecondLH + (declinePerBar * barDifference)
+        
+        // Ensure predicted value is reasonable (not negative and follows declining trend)
+        if d7PredictedThirdLH < 0
+            d7PredictedThirdLH := d7SecondLH * 0.7  // Fallback: 30% decline from second LH
+
+// Detect breaks above predicted third LH points
+d3AbovePredictedLH = not na(d3PredictedThirdLH) and d3 > d3PredictedThirdLH
+d7AbovePredictedLH = not na(d7PredictedThirdLH) and d7 > d7PredictedThirdLH
+
 // ===== TREND BREAK DETECTION =====
 // Track last pattern values for trend break detection
 var float lastD3HLValue = na
@@ -389,7 +452,7 @@ if d3AboveLastD7LH
     d7LHBroken := true
 
 // Combined trend break signals (only trigger once per pattern)
-d3TrendBreak = d3BelowLastHL or d3AboveLastLH or d3BelowLastD7HL or d3AboveLastD7LH
+d3TrendBreak = d3BelowLastHL or d3AboveLastLH or d3BelowLastD7HL or d3AboveLastD7LH or d3AbovePredictedLH or d7AbovePredictedLH
 
 // D1 x D7 crossover detection
 crossoverD1D7 = ta.crossover(d1, d7)
@@ -492,6 +555,14 @@ plotshape(showTrendBreaks and d3BelowLastHL ? d3 : na, title="D3 Below HL Break"
 plotshape(showTrendBreaks and d3AboveLastLH ? d3 : na, title="D3 Above LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD3LH, size=size.large)
 plotshape(showTrendBreaks and d3BelowLastD7HL ? d3 : na, title="D3 Below D7 HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD7HL, size=size.large)
 plotshape(showTrendBreaks and d3AboveLastD7LH ? d3 : na, title="D3 Above D7 LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD7LH, size=size.large)
+
+// Plot Predicted Trend Break Crosses (when D3/D7 goes above predicted third LH)
+plotshape(showTrendBreaks and d3AbovePredictedLH ? d3 : na, title="D3 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.large)
+plotshape(showTrendBreaks and d7AbovePredictedLH ? d7 : na, title="D7 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.large)
+
+// Plot predicted LH levels as reference lines (optional)
+plot(d3PredictedThirdLH, title="D3 Predicted 3rd LH", color=color.new(color.purple, 70), linewidth=1, style=plot.style_circles)
+plot(d7PredictedThirdLH, title="D7 Predicted 3rd LH", color=color.new(color.purple, 70), linewidth=1, style=plot.style_circles)
 
 // Update last valid values when current values are not na
 if not na(d1)
@@ -603,6 +674,10 @@ if barstate.isconfirmed
     alertStr += "\"d3AboveLastLH\":\"" + str.tostring(d3AboveLastLH) + "\","
     alertStr += "\"d3BelowLastD7HL\":\"" + str.tostring(d3BelowLastD7HL) + "\","
     alertStr += "\"d3AboveLastD7LH\":\"" + str.tostring(d3AboveLastD7LH) + "\","
+    alertStr += "\"d3AbovePredictedLH\":\"" + str.tostring(d3AbovePredictedLH) + "\","
+    alertStr += "\"d7AbovePredictedLH\":\"" + str.tostring(d7AbovePredictedLH) + "\","
+    alertStr += "\"d3PredictedThirdLH\":\"" + str.tostring(d3PredictedThirdLH) + "\","
+    alertStr += "\"d7PredictedThirdLH\":\"" + str.tostring(d7PredictedThirdLH) + "\","
     alertStr += "\"d8Signal\":\"Octo\","
     alertStr += "\"d1d2Cross\":\"" + crossVal + "\","
     alertStr += "\"calculatedTrend\":\"" + trendVal + "\","

@@ -710,6 +710,10 @@ app.post('/webhook', (req, res) => {
       d3AboveLastLH: alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false,
       d3BelowLastD7HL: alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false,
       d3AboveLastD7LH: alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false,
+      d3AbovePredictedLH: alert.d3AbovePredictedLH === 'true' || alert.d3AbovePredictedLH === true || false,
+      d7AbovePredictedLH: alert.d7AbovePredictedLH === 'true' || alert.d7AbovePredictedLH === true || false,
+      d3PredictedThirdLH: parseFloat(alert.d3PredictedThirdLH) || null,
+      d7PredictedThirdLH: parseFloat(alert.d7PredictedThirdLH) || null,
       calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
       ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
@@ -788,6 +792,10 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d3AboveLastLH = alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false
       alerts[existingIndex].d3BelowLastD7HL = alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false
       alerts[existingIndex].d3AboveLastD7LH = alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false
+      alerts[existingIndex].d3AbovePredictedLH = alert.d3AbovePredictedLH === 'true' || alert.d3AbovePredictedLH === true || false
+      alerts[existingIndex].d7AbovePredictedLH = alert.d7AbovePredictedLH === 'true' || alert.d7AbovePredictedLH === true || false
+      alerts[existingIndex].d3PredictedThirdLH = parseFloat(alert.d3PredictedThirdLH) || null
+      alerts[existingIndex].d7PredictedThirdLH = parseFloat(alert.d7PredictedThirdLH) || null
       alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
@@ -829,6 +837,10 @@ app.post('/webhook', (req, res) => {
         d3AboveLastLH: alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false,
         d3BelowLastD7HL: alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false,
         d3AboveLastD7LH: alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false,
+        d3AbovePredictedLH: alert.d3AbovePredictedLH === 'true' || alert.d3AbovePredictedLH === true || false,
+        d7AbovePredictedLH: alert.d7AbovePredictedLH === 'true' || alert.d7AbovePredictedLH === true || false,
+        d3PredictedThirdLH: parseFloat(alert.d3PredictedThirdLH) || null,
+        d7PredictedThirdLH: parseFloat(alert.d7PredictedThirdLH) || null,
         calculatedTrend: alert.calculatedTrend || null,
         ttsMessage: alert.ttsMessage || null,
         timeframe1_4: alert.timeframe1_4,
@@ -1048,6 +1060,10 @@ app.post('/webhook', (req, res) => {
         alertData.d3AboveLastLH = octoStochInfo.d3AboveLastLH || false
         alertData.d3BelowLastD7HL = octoStochInfo.d3BelowLastD7HL || false
         alertData.d3AboveLastD7LH = octoStochInfo.d3AboveLastD7LH || false
+        alertData.d3AbovePredictedLH = octoStochInfo.d3AbovePredictedLH || false
+        alertData.d7AbovePredictedLH = octoStochInfo.d7AbovePredictedLH || false
+        alertData.d3PredictedThirdLH = octoStochInfo.d3PredictedThirdLH || null
+        alertData.d7PredictedThirdLH = octoStochInfo.d7PredictedThirdLH || null
         alertData.calculatedTrend = octoStochInfo.calculatedTrend || null
         alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
@@ -2893,10 +2909,13 @@ app.get('/', (req, res) => {
             const d3AboveLastLH = alert.d3AboveLastLH || false
             const d3BelowLastD7HL = alert.d3BelowLastD7HL || false
             const d3AboveLastD7LH = alert.d3AboveLastD7LH || false
+            const d3AbovePredictedLH = alert.d3AbovePredictedLH || false
+            const d7AbovePredictedLH = alert.d7AbovePredictedLH || false
             
             // Determine break direction
-            const isBreakUp = d3AboveLastLH || d3AboveLastD7LH
+            const isBreakUp = d3AboveLastLH || d3AboveLastD7LH || d3AbovePredictedLH || d7AbovePredictedLH
             const isBreakDown = d3BelowLastHL || d3BelowLastD7HL
+            const isPredictedBreak = d3AbovePredictedLH || d7AbovePredictedLH
             
             let patternDurationDisplay = ''
             if (patternStartTime) {
@@ -2917,7 +2936,10 @@ app.get('/', (req, res) => {
               ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
               : '—'
               
-            if (isBreakUp) {
+            if (isPredictedBreak) {
+              patternClass = 'text-purple-400 font-bold animate-pulse'
+              patternDisplayStatic = '🔮 Predicted ↑'
+            } else if (isBreakUp) {
               patternClass = 'text-lime-400 font-bold animate-pulse'
               patternDisplayStatic = '⚠️ Break ↑'
             } else if (isBreakDown) {
@@ -2932,7 +2954,10 @@ app.get('/', (req, res) => {
               alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? ''
             const patternTitleParts = []
             if (patternTypeRaw) patternTitleParts.push(\`Pattern: \${patternTypeRaw}\`)
-            if (isBreakUp) patternTitleParts.push('⚠️ BREAK UP - D3 above LH level')
+            if (isPredictedBreak) {
+              const predictedLevel = alert.d3PredictedThirdLH || alert.d7PredictedThirdLH
+              patternTitleParts.push(\`🔮 PREDICTED BREAK - Above calculated 3rd LH (\${predictedLevel ? predictedLevel.toFixed(2) : 'N/A'})\`)
+            } else if (isBreakUp) patternTitleParts.push('⚠️ BREAK UP - D3 above LH level')
             else if (isBreakDown) patternTitleParts.push('⚠️ BREAK DOWN - D3 below HL level')
             else if (patternTrendBreak) patternTitleParts.push('⚠️ TREND BREAK')
             if (patternCount) patternTitleParts.push(\`Count: \${patternCount}\`)
