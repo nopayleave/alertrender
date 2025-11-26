@@ -705,7 +705,7 @@ app.post('/webhook', (req, res) => {
       patternValue: patternData[alert.symbol]?.lastValue ?? prevOctoData.patternValue ?? null,
       patternStartTime: patternData[alert.symbol]?.startTime || prevOctoData.patternStartTime || null,
       patternCount: patternData[alert.symbol]?.count || prevOctoData.patternCount || 0,
-      patternTrendBreak: patternData[alert.symbol]?.trendBreak || false,
+      patternTrendBreak: patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false,
       calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
       ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
@@ -779,6 +779,7 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].patternValue = patternData[alert.symbol]?.lastValue ?? alerts[existingIndex].patternValue ?? null
       alerts[existingIndex].patternStartTime = patternData[alert.symbol]?.startTime || alerts[existingIndex].patternStartTime || null
       alerts[existingIndex].patternCount = patternData[alert.symbol]?.count || alerts[existingIndex].patternCount || 0
+      alerts[existingIndex].patternTrendBreak = patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false
       alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
@@ -815,6 +816,7 @@ app.post('/webhook', (req, res) => {
         patternValue: patternData[alert.symbol]?.lastValue ?? null,
         patternStartTime: patternData[alert.symbol]?.startTime || null,
         patternCount: patternData[alert.symbol]?.count || 0,
+        patternTrendBreak: patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false,
         calculatedTrend: alert.calculatedTrend || null,
         ttsMessage: alert.ttsMessage || null,
         timeframe1_4: alert.timeframe1_4,
@@ -1029,6 +1031,7 @@ app.post('/webhook', (req, res) => {
         alertData.patternValue = octoStochInfo.patternValue ?? null
         alertData.patternStartTime = octoStochInfo.patternStartTime || null
         alertData.patternCount = octoStochInfo.patternCount || 0
+        alertData.patternTrendBreak = octoStochInfo.patternTrendBreak || false
         alertData.calculatedTrend = octoStochInfo.calculatedTrend || null
         alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
@@ -1096,12 +1099,16 @@ app.post('/webhook', (req, res) => {
       if (!alertData.patternCount || alertData.patternCount === 0) {
         alertData.patternCount = storedPattern.count || 0
       }
+      if (alertData.patternTrendBreak === undefined || alertData.patternTrendBreak === null) {
+        alertData.patternTrendBreak = storedPattern.trendBreak || false
+      }
     } else {
       // Default when no pattern data is available
       alertData.patternType = alertData.patternType || null
       alertData.patternValue = alertData.patternValue ?? null
       alertData.patternStartTime = alertData.patternStartTime || null
       alertData.patternCount = alertData.patternCount || 0
+      alertData.patternTrendBreak = alertData.patternTrendBreak || false
     }
     
     // Check and add MACD crossing status if active (within last 15 minutes)

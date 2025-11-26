@@ -599,6 +599,7 @@ if barstate.isconfirmed
     alertStr += "\"d7Pattern\":\"" + d7PatternVal + "\","
     alertStr += "\"d3PatternValue\":\"" + str.tostring(d3PatternValueVal) + "\","
     alertStr += "\"d7PatternValue\":\"" + str.tostring(d7PatternValueVal) + "\","
+    alertStr += "\"d3TrendBreak\":\"" + str.tostring(d3TrendBreak) + "\","
     alertStr += "\"d8Signal\":\"Octo\","
     alertStr += "\"d1d2Cross\":\"" + crossVal + "\","
     alertStr += "\"calculatedTrend\":\"" + trendVal + "\","
