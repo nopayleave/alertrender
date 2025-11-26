@@ -2694,10 +2694,25 @@ app.get('/', (req, res) => {
               return 'Neutral';
             };
             
+            // Get current D3 value for display
+            const currentD3 = alert.octoStochD3 !== undefined ? parseFloat(alert.octoStochD3) : 
+                             alert.d3 !== undefined ? parseFloat(alert.d3) : null;
+            
             // Use calculatedTrend from Pine Script if available
             if (alert.calculatedTrend) {
               // Use ttsMessage from Pine Script if available, otherwise map from trend
-              trendDisplay = alert.ttsMessage || getTTSMessage(alert.calculatedTrend, d7Val);
+              let baseTrendDisplay = alert.ttsMessage || getTTSMessage(alert.calculatedTrend, d7Val);
+              
+              // Add D3 value if there's a pattern
+              const patternValue = alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? null;
+              if (patternValue !== null && !isNaN(patternValue) && currentD3 !== null && !isNaN(currentD3)) {
+                trendDisplay = \`\${baseTrendDisplay} (D3: \${currentD3.toFixed(1)}→\${patternValue.toFixed(1)})\`;
+              } else if (currentD3 !== null && !isNaN(currentD3)) {
+                trendDisplay = \`\${baseTrendDisplay} (D3: \${currentD3.toFixed(1)})\`;
+              } else {
+                trendDisplay = baseTrendDisplay;
+              }
+              
               const calculatedTrend = alert.calculatedTrend;
               
               // Apply styling based on calculatedTrend (not trendDisplay which is TTS message)
@@ -2825,7 +2840,17 @@ app.get('/', (req, res) => {
               }
               
               // Convert calculated trend to TTS message for display
-              trendDisplay = getTTSMessage(calculatedTrend, d7Val);
+              let baseTrendDisplay = getTTSMessage(calculatedTrend, d7Val);
+              
+              // Add D3 value if there's a pattern
+              const patternValue = alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? null;
+              if (patternValue !== null && !isNaN(patternValue) && currentD3 !== null && !isNaN(currentD3)) {
+                trendDisplay = \`\${baseTrendDisplay} (D3: \${currentD3.toFixed(1)}→\${patternValue.toFixed(1)})\`;
+              } else if (currentD3 !== null && !isNaN(currentD3)) {
+                trendDisplay = \`\${baseTrendDisplay} (D3: \${currentD3.toFixed(1)})\`;
+              } else {
+                trendDisplay = baseTrendDisplay;
+              }
             }
             
             // Check if QS values changed recently (within last 2 minutes) and determine color

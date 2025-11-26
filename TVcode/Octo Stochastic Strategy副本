@@ -362,6 +362,10 @@ var float d7PredictedThirdLH = na
 var int d7FirstLHBar = na
 var int d7SecondLHBar = na
 
+// Break flags for predicted levels
+var bool d3PredictedLHBroken = false
+var bool d7PredictedLHBroken = false
+
 // Update D3 LH sequence when new LH is detected
 if not na(d3LowerHighValue)
     // Shift the sequence: second becomes first, new becomes second
@@ -406,9 +410,9 @@ if not na(d7LowerHighValue)
         if d7PredictedThirdLH < 0
             d7PredictedThirdLH := d7SecondLH * 0.7  // Fallback: 30% decline from second LH
 
-// Detect breaks above predicted third LH points
-d3AbovePredictedLH = not na(d3PredictedThirdLH) and d3 > d3PredictedThirdLH
-d7AbovePredictedLH = not na(d7PredictedThirdLH) and d7 > d7PredictedThirdLH
+// Detect breaks above predicted third LH points (only first time)
+d3AbovePredictedLH = not na(d3PredictedThirdLH) and not d3PredictedLHBroken and ta.crossover(d3, d3PredictedThirdLH)
+d7AbovePredictedLH = not na(d7PredictedThirdLH) and not d7PredictedLHBroken and ta.crossover(d7, d7PredictedThirdLH)
 
 // ===== TREND BREAK DETECTION =====
 // Track last pattern values for trend break detection
@@ -428,12 +432,14 @@ if not na(d3HigherLowValue)
 if not na(d3LowerHighValue)
     lastD3LHValue := d3LowerHighValue
     d3LHBroken := false  // Reset break flag when new LH is detected
+    d3PredictedLHBroken := false  // Reset predicted break flag when new LH is detected
 if not na(d7HigherLowValue)
     lastD7HLValue := d7HigherLowValue
     d7HLBroken := false  // Reset break flag when new HL is detected
 if not na(d7LowerHighValue)
     lastD7LHValue := d7LowerHighValue
     d7LHBroken := false  // Reset break flag when new LH is detected
+    d7PredictedLHBroken := false  // Reset predicted break flag when new LH is detected
 
 // Detect trend breaks: D3 crosses below HL or above LH (only first time)
 d3BelowLastHL = not na(lastD3HLValue) and not d3HLBroken and ta.crossunder(d3, lastD3HLValue)
@@ -450,6 +456,12 @@ if d3BelowLastD7HL
     d7HLBroken := true
 if d3AboveLastD7LH
     d7LHBroken := true
+
+// Set predicted break flags when breaks occur
+if d3AbovePredictedLH
+    d3PredictedLHBroken := true
+if d7AbovePredictedLH
+    d7PredictedLHBroken := true
 
 // Combined trend break signals (only trigger once per pattern)
 d3TrendBreak = d3BelowLastHL or d3AboveLastLH or d3BelowLastD7HL or d3AboveLastD7LH or d3AbovePredictedLH or d7AbovePredictedLH
