@@ -620,10 +620,6 @@ app.post('/webhook', (req, res) => {
             : null
 
     const existingPattern = patternData[alert.symbol]
-    
-    // Get trend break status from Pine Script alert (prioritize over local calculation)
-    const alertTrendBreak = alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true
-    
     if (detectedPattern) {
       const samePattern = existingPattern && existingPattern.type === detectedPattern.type
       patternData[alert.symbol] = {
@@ -633,23 +629,19 @@ app.post('/webhook', (req, res) => {
         startTime: samePattern && existingPattern.startTime ? existingPattern.startTime : Date.now(),
         lastUpdated: Date.now(),
         count: samePattern && existingPattern.count ? existingPattern.count + 1 : 1,
-        trendBreak: alertTrendBreak || false
+        trendBreak: false
       }
     } else if (existingPattern) {
-      // Use trend break from Pine Script if available, otherwise calculate locally
-      let trendBreak = alertTrendBreak || existingPattern.trendBreak || false
+      // Check for trend break: D3 went below HL or above LH
+      const currentD3 = parseFloat(alert.d3)
+      const patternValue = existingPattern.lastValue
+      let trendBreak = existingPattern.trendBreak || false
       
-      // Fallback: Check for trend break locally if not provided by Pine Script
-      if (!alertTrendBreak) {
-        const currentD3 = parseFloat(alert.d3)
-        const patternValue = existingPattern.lastValue
-        
-        if (!isNaN(currentD3) && patternValue !== null && !isNaN(patternValue)) {
-          if (existingPattern.type === 'Higher Low' && currentD3 < patternValue) {
-            trendBreak = true
-          } else if (existingPattern.type === 'Lower High' && currentD3 > patternValue) {
-            trendBreak = true
-          }
+      if (!isNaN(currentD3) && patternValue !== null && !isNaN(patternValue)) {
+        if (existingPattern.type === 'Higher Low' && currentD3 < patternValue) {
+          trendBreak = true
+        } else if (existingPattern.type === 'Lower High' && currentD3 > patternValue) {
+          trendBreak = true
         }
       }
       
