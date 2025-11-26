@@ -62,6 +62,11 @@ showD3HLLH = input.bool(true, title="Show D3 Higher Low/Lower High", group="Stoc
 pivotLengthD3 = input.int(5, minval=1, title="D3 Pivot Length", group="Stoch3 Settings")
 colorHL_D3 = input.color(color.lime, title="D3 Higher Low Color", group="Stoch3 Settings")
 colorLH_D3 = input.color(color.orange, title="D3 Lower High Color", group="Stoch3 Settings")
+showTrendBreaks = input.bool(true, title="Show Trend Break Crosses", group="Stoch3 Settings")
+colorBreakD3HL = input.color(color.red, title="D3 Below HL Break Color", group="Stoch3 Settings")
+colorBreakD3LH = input.color(color.lime, title="D3 Above LH Break Color", group="Stoch3 Settings")
+colorBreakD7HL = input.color(color.maroon, title="D3 Below D7 HL Break Color", group="Stoch3 Settings")
+colorBreakD7LH = input.color(color.green, title="D3 Above D7 LH Break Color", group="Stoch3 Settings")
 
 // Stoch4 - Longer Term (5min = ~60 bars, ~5 hours / half day)
 length4 = input.int(60, minval=1, title="Stoch4 Length (periodK)", group="Stoch4 Settings")
@@ -342,6 +347,50 @@ if not na(pivotHighD7) and showD7HLLH
 string d7Pattern = not na(d7HigherLowValue) ? "Higher Low" : not na(d7LowerHighValue) ? "Lower High" : ""
 float d7PatternValue = not na(d7HigherLowValue) ? d7HigherLowValue : not na(d7LowerHighValue) ? d7LowerHighValue : na
 
+// ===== TREND BREAK DETECTION =====
+// Track last pattern values for trend break detection
+var float lastD3HLValue = na
+var float lastD3LHValue = na
+var float lastD7HLValue = na  
+var float lastD7LHValue = na
+var bool d3HLBroken = false
+var bool d3LHBroken = false
+var bool d7HLBroken = false
+var bool d7LHBroken = false
+
+// Update last pattern values when new patterns are detected and reset break flags
+if not na(d3HigherLowValue)
+    lastD3HLValue := d3HigherLowValue
+    d3HLBroken := false  // Reset break flag when new HL is detected
+if not na(d3LowerHighValue)
+    lastD3LHValue := d3LowerHighValue
+    d3LHBroken := false  // Reset break flag when new LH is detected
+if not na(d7HigherLowValue)
+    lastD7HLValue := d7HigherLowValue
+    d7HLBroken := false  // Reset break flag when new HL is detected
+if not na(d7LowerHighValue)
+    lastD7LHValue := d7LowerHighValue
+    d7LHBroken := false  // Reset break flag when new LH is detected
+
+// Detect trend breaks: D3 crosses below HL or above LH (only first time)
+d3BelowLastHL = not na(lastD3HLValue) and not d3HLBroken and ta.crossunder(d3, lastD3HLValue)
+d3AboveLastLH = not na(lastD3LHValue) and not d3LHBroken and ta.crossover(d3, lastD3LHValue)
+d3BelowLastD7HL = not na(lastD7HLValue) and not d7HLBroken and ta.crossunder(d3, lastD7HLValue)
+d3AboveLastD7LH = not na(lastD7LHValue) and not d7LHBroken and ta.crossover(d3, lastD7LHValue)
+
+// Set break flags when breaks occur
+if d3BelowLastHL
+    d3HLBroken := true
+if d3AboveLastLH
+    d3LHBroken := true
+if d3BelowLastD7HL
+    d7HLBroken := true
+if d3AboveLastD7LH
+    d7LHBroken := true
+
+// Combined trend break signals (only trigger once per pattern)
+d3TrendBreak = d3BelowLastHL or d3AboveLastLH or d3BelowLastD7HL or d3AboveLastD7LH
+
 // D1 x D7 crossover detection
 crossoverD1D7 = ta.crossover(d1, d7)
 crossunderD1D7 = ta.crossunder(d1, d7)
@@ -437,6 +486,12 @@ plotshape(showD3HLLH and not na(d3LowerHighValue) ? d3LowerHighValue + 2 : na, t
 // Plot D7 Higher Low / Lower High patterns (with offsets to avoid covering lines)
 plotshape(showD7HLLH and not na(d7HigherLowValue) ? d7HigherLowValue - 2 : na, title="D7 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D7, size=size.normal)
 plotshape(showD7HLLH and not na(d7LowerHighValue) ? d7LowerHighValue + 2 : na, title="D7 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D7, size=size.normal)
+
+// Plot Trend Break Crosses (when D3 goes below HL or above LH) - Different colors for each type
+plotshape(showTrendBreaks and d3BelowLastHL ? d3 : na, title="D3 Below HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD3HL, size=size.large)
+plotshape(showTrendBreaks and d3AboveLastLH ? d3 : na, title="D3 Above LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD3LH, size=size.large)
+plotshape(showTrendBreaks and d3BelowLastD7HL ? d3 : na, title="D3 Below D7 HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD7HL, size=size.large)
+plotshape(showTrendBreaks and d3AboveLastD7LH ? d3 : na, title="D3 Above D7 LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD7LH, size=size.large)
 
 // Update last valid values when current values are not na
 if not na(d1)
@@ -544,6 +599,7 @@ if barstate.isconfirmed
     alertStr += "\"d7Pattern\":\"" + d7PatternVal + "\","
     alertStr += "\"d3PatternValue\":\"" + str.tostring(d3PatternValueVal) + "\","
     alertStr += "\"d7PatternValue\":\"" + str.tostring(d7PatternValueVal) + "\","
+    alertStr += "\"d3TrendBreak\":\"" + str.tostring(d3TrendBreak) + "\","
     alertStr += "\"d8Signal\":\"Octo\","
     alertStr += "\"d1d2Cross\":\"" + crossVal + "\","
     alertStr += "\"calculatedTrend\":\"" + trendVal + "\","
