@@ -706,6 +706,10 @@ app.post('/webhook', (req, res) => {
       patternStartTime: patternData[alert.symbol]?.startTime || prevOctoData.patternStartTime || null,
       patternCount: patternData[alert.symbol]?.count || prevOctoData.patternCount || 0,
       patternTrendBreak: patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false,
+      d3BelowLastHL: alert.d3BelowLastHL === 'true' || alert.d3BelowLastHL === true || false,
+      d3AboveLastLH: alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false,
+      d3BelowLastD7HL: alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false,
+      d3AboveLastD7LH: alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false,
       calculatedTrend: getValidString(alert.calculatedTrend, prevOctoData.calculatedTrend, 'Neutral'),
       ttsMessage: getValidString(alert.ttsMessage, prevOctoData.ttsMessage, ''),
       timestamp: Date.now()
@@ -780,6 +784,10 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].patternStartTime = patternData[alert.symbol]?.startTime || alerts[existingIndex].patternStartTime || null
       alerts[existingIndex].patternCount = patternData[alert.symbol]?.count || alerts[existingIndex].patternCount || 0
       alerts[existingIndex].patternTrendBreak = patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false
+      alerts[existingIndex].d3BelowLastHL = alert.d3BelowLastHL === 'true' || alert.d3BelowLastHL === true || false
+      alerts[existingIndex].d3AboveLastLH = alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false
+      alerts[existingIndex].d3BelowLastD7HL = alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false
+      alerts[existingIndex].d3AboveLastD7LH = alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false
       alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
       alerts[existingIndex].receivedAt = Date.now()
@@ -817,6 +825,10 @@ app.post('/webhook', (req, res) => {
         patternStartTime: patternData[alert.symbol]?.startTime || null,
         patternCount: patternData[alert.symbol]?.count || 0,
         patternTrendBreak: patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false,
+        d3BelowLastHL: alert.d3BelowLastHL === 'true' || alert.d3BelowLastHL === true || false,
+        d3AboveLastLH: alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false,
+        d3BelowLastD7HL: alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false,
+        d3AboveLastD7LH: alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false,
         calculatedTrend: alert.calculatedTrend || null,
         ttsMessage: alert.ttsMessage || null,
         timeframe1_4: alert.timeframe1_4,
@@ -1032,6 +1044,10 @@ app.post('/webhook', (req, res) => {
         alertData.patternStartTime = octoStochInfo.patternStartTime || null
         alertData.patternCount = octoStochInfo.patternCount || 0
         alertData.patternTrendBreak = octoStochInfo.patternTrendBreak || false
+        alertData.d3BelowLastHL = octoStochInfo.d3BelowLastHL || false
+        alertData.d3AboveLastLH = octoStochInfo.d3AboveLastLH || false
+        alertData.d3BelowLastD7HL = octoStochInfo.d3BelowLastD7HL || false
+        alertData.d3AboveLastD7LH = octoStochInfo.d3AboveLastD7LH || false
         alertData.calculatedTrend = octoStochInfo.calculatedTrend || null
         alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
@@ -2871,6 +2887,17 @@ app.get('/', (req, res) => {
             const patternCount = alert.patternCount || 0
             const patternStartTime = alert.patternStartTime || null
             const patternTrendBreak = alert.patternTrendBreak || false
+            
+            // Check specific break types
+            const d3BelowLastHL = alert.d3BelowLastHL || false
+            const d3AboveLastLH = alert.d3AboveLastLH || false
+            const d3BelowLastD7HL = alert.d3BelowLastD7HL || false
+            const d3AboveLastD7LH = alert.d3AboveLastD7LH || false
+            
+            // Determine break direction
+            const isBreakUp = d3AboveLastLH || d3AboveLastD7LH
+            const isBreakDown = d3BelowLastHL || d3BelowLastD7HL
+            
             let patternDurationDisplay = ''
             if (patternStartTime) {
               const durationMs = Date.now() - patternStartTime
@@ -2884,23 +2911,34 @@ app.get('/', (req, res) => {
             }
             const patternLabel = isHigherLow ? 'HL' : isLowerHigh ? 'LH' : '—'
             let patternClass = isHigherLow ? 'text-green-400 font-semibold' : isLowerHigh ? 'text-red-400 font-semibold' : 'text-muted-foreground'
-            if (patternTrendBreak) {
+            
+            // Override class and display for trend breaks
+            let patternDisplayStatic = patternTypeRaw
+              ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
+              : '—'
+              
+            if (isBreakUp) {
+              patternClass = 'text-lime-400 font-bold animate-pulse'
+              patternDisplayStatic = '⚠️ Break ↑'
+            } else if (isBreakDown) {
+              patternClass = 'text-red-400 font-bold animate-pulse'
+              patternDisplayStatic = '⚠️ Break ↓'
+            } else if (patternTrendBreak) {
               patternClass = 'text-yellow-400 font-bold animate-pulse'
+              patternDisplayStatic = '⚠️ Break'
             }
+            
             const patternValueDisplay =
               alert.patternValue ?? alert.d3PatternValue ?? alert.d7PatternValue ?? ''
             const patternTitleParts = []
             if (patternTypeRaw) patternTitleParts.push(\`Pattern: \${patternTypeRaw}\`)
-            if (patternTrendBreak) patternTitleParts.push('⚠️ TREND BREAK')
+            if (isBreakUp) patternTitleParts.push('⚠️ BREAK UP - D3 above LH level')
+            else if (isBreakDown) patternTitleParts.push('⚠️ BREAK DOWN - D3 below HL level')
+            else if (patternTrendBreak) patternTitleParts.push('⚠️ TREND BREAK')
             if (patternCount) patternTitleParts.push(\`Count: \${patternCount}\`)
             if (patternDurationDisplay) patternTitleParts.push(\`Duration: \${patternDurationDisplay}\`)
             if (patternValueDisplay !== '' && patternValueDisplay !== null) patternTitleParts.push(\`Value: \${patternValueDisplay}\`)
             const patternTitle = patternTitleParts.join(' | ') || 'No HL/LH pattern detected'
-            const patternDisplayStatic = patternTrendBreak
-              ? '⚠️ Break'
-              : patternTypeRaw
-                ? \`\${patternLabel}\${patternCount ? ' ×' + patternCount : ''}\`
-                : '—'
             
             // QS D7 Value gradient color (0-100 scale)
             let d4ValueClass = 'text-foreground';
