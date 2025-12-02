@@ -96,12 +96,13 @@ colorD6Down = input.color(#FF0000, title="D6 Down Color", group="Stoch6 Settings
 linewidthD6 = input.int(2, minval=1, maxval=5, title="D6 Line Width", group="Stoch6 Settings")
 showD6 = input.bool(true, title="Show D6", group="Stoch6 Settings")
 
-// Stoch7 - Same as D3 (5min = ~39 bars, ~3 hours)
+// Stoch7 - Same as D3 (5min = ~39 bars, ~3 hours - AREA FILL)
 length7 = input.int(39, minval=1, title="Stoch7 Length (periodK)", group="Stoch7 Settings")
 smoothK7 = input.int(1, minval=1, title="Stoch7 %K Smoothing (smoothK)", group="Stoch7 Settings")
 periodD7 = input.int(4, minval=1, title="Stoch7 %D Smoothing (periodD)", group="Stoch7 Settings")
-colorD7Up = input.color(#00FF00, title="D7 Up Color", group="Stoch7 Settings")
-colorD7Down = input.color(#FF0000, title="D7 Down Color", group="Stoch7 Settings")
+colorD7Up = input.color(#00FF00, title="D7 Up Color (Area Fill)", group="Stoch7 Settings")
+colorD7Down = input.color(#FF0000, title="D7 Down Color (Area Fill)", group="Stoch7 Settings")
+transparencyD7 = input.int(70, minval=0, maxval=100, title="D7 Transparency", group="Stoch7 Settings")
 linewidthD7 = input.int(2, minval=1, maxval=5, title="D7 Line Width", group="Stoch7 Settings")
 showD7 = input.bool(true, title="Show D7", group="Stoch7 Settings")
 showD7Switches = input.bool(true, title="Show D7 Direction Switches", group="Stoch7 Settings")
@@ -195,14 +196,19 @@ p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(colorD8, 100), linewi
 p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
 fill(p_base, p_d8, color=showD8 ? d8FillColor : na, title="D8 Fill")
 
-// Plot %D lines with customizable colors (on top of D8)
+// Plot %D7 with area fill (z-index behind D1-D6, above D8)
+colorD7 = d7 >= d7[1] ? colorD7Up : colorD7Down
+d7FillColor = color.new(colorD7, transparencyD7)
+p_d7 = plot(showD7 ? d7 : na, title="%d7", color=color.new(colorD7, 100), linewidth=linewidthD7, display=display.pane)
+fill(p_base, p_d7, color=showD7 ? d7FillColor : na, title="D7 Fill")
+
+// Plot %D lines with customizable colors (on top of D7 and D8)
 plot(showD1 ? d1 : na, title="%d1", color=d1 >= d1[1] ? colorD1Up : colorD1Down, linewidth=linewidthD1, display=display.pane)
 plot(showD2 ? d2 : na, title="%d2", color=d2 >= d2[1] ? colorD2Up : colorD2Down, linewidth=linewidthD2, display=display.pane)
 plot(showD3 ? d3 : na, title="%d3", color=d3 >= d3[1] ? colorD3Up : colorD3Down, linewidth=linewidthD3, display=display.pane)
 plot(showD4 ? d4 : na, title="%d4", color=d4 >= d4[1] ? colorD4Up : colorD4Down, linewidth=linewidthD4, display=display.pane)
 plot(showD5 ? d5 : na, title="%d5", color=d5 >= d5[1] ? colorD5Up : colorD5Down, linewidth=linewidthD5, display=display.pane)
 plot(showD6 ? d6 : na, title="%d6", color=d6 >= d6[1] ? colorD6Up : colorD6Down, linewidth=linewidthD6, display=display.pane)
-plot(showD7 ? d7 : na, title="%d7", color=d7 >= d7[1] ? colorD7Up : colorD7Down, linewidth=linewidthD7, display=display.pane)
 
 // Plot Mid line above D1, D2, D3 (z-index on top)
 plot(60, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
@@ -563,14 +569,14 @@ plotshape(showD7HLLH and not na(d7HigherLowValue) ? d7HigherLowValue - 2 : na, t
 plotshape(showD7HLLH and not na(d7LowerHighValue) ? d7LowerHighValue + 2 : na, title="D7 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D7, size=size.normal)
 
 // Plot Trend Break Crosses (when D3 goes below HL or above LH) - Different colors for each type
-plotshape(showTrendBreaks and d3BelowLastHL ? d3 : na, title="D3 Below HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD3HL, size=size.large)
-plotshape(showTrendBreaks and d3AboveLastLH ? d3 : na, title="D3 Above LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD3LH, size=size.large)
-plotshape(showTrendBreaks and d3BelowLastD7HL ? d3 : na, title="D3 Below D7 HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD7HL, size=size.large)
-plotshape(showTrendBreaks and d3AboveLastD7LH ? d3 : na, title="D3 Above D7 LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD7LH, size=size.large)
+plotshape(showTrendBreaks and d3BelowLastHL ? d3 : na, title="D3 Below HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD3HL, size=size.small)
+plotshape(showTrendBreaks and d3AboveLastLH ? d3 : na, title="D3 Above LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD3LH, size=size.small)
+plotshape(showTrendBreaks and d3BelowLastD7HL ? d3 : na, title="D3 Below D7 HL Break", style=shape.xcross, location=location.absolute, color=colorBreakD7HL, size=size.small)
+plotshape(showTrendBreaks and d3AboveLastD7LH ? d3 : na, title="D3 Above D7 LH Break", style=shape.xcross, location=location.absolute, color=colorBreakD7LH, size=size.small)
 
 // Plot Predicted Trend Break Crosses (when D3/D7 goes above predicted third LH)
-plotshape(showTrendBreaks and d3AbovePredictedLH ? d3 : na, title="D3 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.large)
-plotshape(showTrendBreaks and d7AbovePredictedLH ? d7 : na, title="D7 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.large)
+plotshape(showTrendBreaks and d3AbovePredictedLH ? d3 : na, title="D3 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.small)
+plotshape(showTrendBreaks and d7AbovePredictedLH ? d7 : na, title="D7 Above Predicted LH", style=shape.xcross, location=location.absolute, color=colorPredictedBreak, size=size.small)
 
 // Plot predicted LH levels as reference lines (optional)
 plot(d3PredictedThirdLH, title="D3 Predicted 3rd LH", color=color.new(color.purple, 70), linewidth=1, style=plot.style_circles)
@@ -628,6 +634,19 @@ if calculatedTrend != ""
 if ttsMessage != ""
     lastValidTtsMessage := ttsMessage
 
+// ===== DAILY COMPARISON AND VOLUME DATA =====
+// Get previous day's close price
+previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+
+// Calculate change from previous day's close
+changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
+
+// Get current day's volume from daily timeframe
+currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+// Get previous day's completed volume from daily timeframe
+prevDayVolume = request.security(syminfo.tickerid, "D", volume[1], lookahead=barmerge.lookahead_on)
+
 // Alert condition - Manual JSON construction (use last valid values to avoid N/A)
 if barstate.isconfirmed
     // Use current value if not na, otherwise use last valid value (fallback to 0 if both are na)
@@ -661,7 +680,13 @@ if barstate.isconfirmed
     
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
     alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"previousClose\":\"" + str.tostring(previousClose, "#.##") + "\","
+    alertStr += "\"changeFromPrevDay\":\"" + str.tostring(changeFromPrevDay, "#.##") + "\","
+    alertStr += "\"volume\":\"" + str.tostring(currentDayVolume) + "\","
+    alertStr += "\"prevDayVolume\":\"" + str.tostring(prevDayVolume) + "\","
     alertStr += "\"d1\":\"" + str.tostring(d1Val) + "\","
     alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
     alertStr += "\"d3\":\"" + str.tostring(d3Val) + "\","

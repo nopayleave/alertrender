@@ -1,0 +1,383 @@
+//@version=6
+indicator(title="Fast D / Slow D", shorttitle="Fast Slow D", overlay=false)
+
+// ===== TIMEFRAME SETTINGS =====
+// Fast D Settings
+timeframe1_4 = input.timeframe("", title="Timeframe for Fast D", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines1_4 = input.bool(false, title="Smooth MTF Lines (Fast D)", group="Timeframe Settings")
+mtfSmoothLen1_4 = input.int(3, minval=1, title="MTF Smoothing Length (Fast D)", group="Timeframe Settings")
+
+// Slow D Settings
+timeframe5_8 = input.timeframe("", title="Timeframe for Slow D", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines5_8 = input.bool(false, title="Smooth MTF Lines (Slow D)", group="Timeframe Settings")
+mtfSmoothLen5_8 = input.int(3, minval=1, title="MTF Smoothing Length (Slow D)", group="Timeframe Settings")
+
+// Fast D (formerly D3) - Medium Term (5min = ~39 bars, ~3 hours)
+fastDLength = input.int(39, minval=1, title="Fast D Length (periodK)", group="Fast D Settings")
+fastDSmoothK = input.int(1, minval=1, title="Fast D %K Smoothing (smoothK)", group="Fast D Settings")
+fastDPeriodD = input.int(4, minval=1, title="Fast D %D Smoothing (periodD)", group="Fast D Settings")
+colorFastDUp = input.color(#00FF00, title="Fast D Up Color", group="Fast D Settings")
+colorFastDDown = input.color(#FF0000, title="Fast D Down Color", group="Fast D Settings")
+linewidthFastD = input.int(3, minval=1, maxval=5, title="Fast D Line Width", group="Fast D Settings")
+showFastD = input.bool(true, title="Show Fast D", group="Fast D Settings")
+showFastDSwitches = input.bool(true, title="Show Fast D Direction Switches", group="Fast D Settings")
+showFastDHLLH = input.bool(true, title="Show Fast D Higher Low/Lower High", group="Fast D Settings")
+pivotLengthFastD = input.int(5, minval=1, title="Fast D Pivot Length", group="Fast D Settings")
+colorHL_FastD = input.color(color.lime, title="Fast D Higher Low Color", group="Fast D Settings")
+colorLH_FastD = input.color(color.orange, title="Fast D Lower High Color", group="Fast D Settings")
+showTrendBreaks = input.bool(true, title="Show Trend Break Crosses", group="Fast D Settings")
+colorBreakFastDHL = input.color(color.red, title="Fast D Below HL Break Color", group="Fast D Settings")
+colorBreakFastDLH = input.color(color.lime, title="Fast D Above LH Break Color", group="Fast D Settings")
+colorBreakSlowDHL = input.color(color.maroon, title="Fast D Below Slow D HL Break Color", group="Fast D Settings")
+colorBreakSlowDLH = input.color(color.green, title="Fast D Above Slow D LH Break Color", group="Fast D Settings")
+
+// Slow D (formerly D7) - Same as Fast D (5min = ~39 bars, ~3 hours - AREA FILL)
+slowDLength = input.int(39, minval=1, title="Slow D Length (periodK)", group="Slow D Settings")
+slowDSmoothK = input.int(1, minval=1, title="Slow D %K Smoothing (smoothK)", group="Slow D Settings")
+slowDPeriodD = input.int(4, minval=1, title="Slow D %D Smoothing (periodD)", group="Slow D Settings")
+colorSlowDUp = input.color(#00FF00, title="Slow D Up Color (Area Fill)", group="Slow D Settings")
+colorSlowDDown = input.color(#FF0000, title="Slow D Down Color (Area Fill)", group="Slow D Settings")
+transparencySlowD = input.int(70, minval=0, maxval=100, title="Slow D Transparency", group="Slow D Settings")
+linewidthSlowD = input.int(2, minval=1, maxval=5, title="Slow D Line Width", group="Slow D Settings")
+showSlowD = input.bool(true, title="Show Slow D", group="Slow D Settings")
+showSlowDSwitches = input.bool(true, title="Show Slow D Direction Switches", group="Slow D Settings")
+showSlowDHLLH = input.bool(true, title="Show Slow D Higher Low/Lower High", group="Slow D Settings")
+pivotLengthSlowD = input.int(5, minval=1, title="Slow D Pivot Length", group="Slow D Settings")
+colorHL_SlowD = input.color(color.aqua, title="Slow D Higher Low Color", group="Slow D Settings")
+colorLH_SlowD = input.color(color.red, title="Slow D Lower High Color", group="Slow D Settings")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute Fast D with timeframe1_4
+[fastK_chart, fastD_chart] = getStoch(fastDLength, fastDSmoothK, fastDPeriodD)
+
+[fastK_mtf_raw, fastD_mtf_raw] = request.security(syminfo.tickerid, timeframe1_4, getStoch(fastDLength, fastDSmoothK, fastDPeriodD), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled (Fast D)
+fastK_mtf = smoothMtfLines1_4 ? ta.sma(fastK_mtf_raw, mtfSmoothLen1_4) : fastK_mtf_raw
+fastD_mtf = smoothMtfLines1_4 ? ta.sma(fastD_mtf_raw, mtfSmoothLen1_4) : fastD_mtf_raw
+
+fastK = timeframe1_4 == "" ? fastK_chart : fastK_mtf
+fastD = timeframe1_4 == "" ? fastD_chart : fastD_mtf
+
+// Compute Slow D with timeframe5_8
+[slowK_chart, slowD_chart] = getStoch(slowDLength, slowDSmoothK, slowDPeriodD)
+
+[slowK_mtf_raw, slowD_mtf_raw] = request.security(syminfo.tickerid, timeframe5_8, getStoch(slowDLength, slowDSmoothK, slowDPeriodD), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled (Slow D)
+slowK_mtf = smoothMtfLines5_8 ? ta.sma(slowK_mtf_raw, mtfSmoothLen5_8) : slowK_mtf_raw
+slowD_mtf = smoothMtfLines5_8 ? ta.sma(slowD_mtf_raw, mtfSmoothLen5_8) : slowD_mtf_raw
+
+slowK = timeframe5_8 == "" ? slowK_chart : slowK_mtf
+slowD = timeframe5_8 == "" ? slowD_chart : slowD_mtf
+
+// Plot Slow D with area fill (background)
+colorSlowD = slowD >= slowD[1] ? colorSlowDUp : colorSlowDDown
+slowDFillColor = color.new(colorSlowD, transparencySlowD)
+p_slowD = plot(showSlowD ? slowD : na, title="Slow D", color=color.new(colorSlowD, 100), linewidth=linewidthSlowD, display=display.pane)
+p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
+fill(p_base, p_slowD, color=showSlowD ? slowDFillColor : na, title="Slow D Fill")
+
+// Plot Fast D line (on top of Slow D)
+plot(showFastD ? fastD : na, title="Fast D", color=fastD >= fastD[1] ? colorFastDUp : colorFastDDown, linewidth=linewidthFastD, display=display.pane)
+
+// Plot Mid lines
+plot(60, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane)
+plot(40, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane)
+
+// Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Strong zones settings
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Strong Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Strong Zones")
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== FAST D AND SLOW D DIRECTION TRACKING =====
+var float prevFastD = na
+var float prevSlowD = na
+
+// Store last valid values (for smoothing/avoiding N/A)
+var float lastValidFastD = na
+var float lastValidSlowD = na
+var string lastValidFastDDir = "flat"
+var string lastValidSlowDDir = "flat"
+var string lastValidFastDCrossSlowD = "none"
+var string lastValidCalculatedTrend = "Neutral"
+var string lastValidTtsMessage = ""
+var string lastValidFastDPattern = "None"
+var string lastValidSlowDPattern = "None"
+var float lastValidFastDHLLHValue = na
+var float lastValidSlowDHLLHValue = na
+
+// Determine direction for each stochastic
+fastDDirection = na(prevFastD) ? "flat" : fastD > prevFastD ? "up" : fastD < prevFastD ? "down" : "flat"
+slowDDirection = na(prevSlowD) ? "flat" : slowD > prevSlowD ? "up" : slowD < prevSlowD ? "down" : "flat"
+
+// ===== FAST D AND SLOW D DIRECTION SWITCH DETECTION =====
+// Track previous Fast D and Slow D directions to detect switches
+var string prevFastDDir = na
+var string prevSlowDDir = na
+
+// Fast D switch detection
+fastDSwitchedToUp = prevFastDDir == "down" and fastDDirection == "up"
+fastDSwitchedToDown = prevFastDDir == "up" and fastDDirection == "down"
+
+// Slow D switch detection
+slowDSwitchedToUp = prevSlowDDir == "down" and slowDDirection == "up"
+slowDSwitchedToDown = prevSlowDDir == "up" and slowDDirection == "down"
+
+// ===== FAST D AND SLOW D HIGHER LOW / LOWER HIGH DETECTION =====
+// Detect pivots on Fast D
+pivotHighFastD = ta.pivothigh(fastD, pivotLengthFastD, pivotLengthFastD)
+pivotLowFastD = ta.pivotlow(fastD, pivotLengthFastD, pivotLengthFastD)
+
+// Detect pivots on Slow D
+pivotHighSlowD = ta.pivothigh(slowD, pivotLengthSlowD, pivotLengthSlowD)
+pivotLowSlowD = ta.pivotlow(slowD, pivotLengthSlowD, pivotLengthSlowD)
+
+// Track previous pivot values for Fast D
+var float lastHighFastD = na
+var float lastLowFastD = na
+
+// Track previous pivot values for Slow D
+var float lastHighSlowD = na
+var float lastLowSlowD = na
+
+// Fast D Higher Low / Lower High detection
+float fastDHigherLowValue = na
+float fastDLowerHighValue = na
+
+if not na(pivotLowFastD) and showFastDHLLH
+    if not na(lastLowFastD) and pivotLowFastD > lastLowFastD
+        fastDHigherLowValue := pivotLowFastD
+    lastLowFastD := pivotLowFastD
+
+if not na(pivotHighFastD) and showFastDHLLH
+    if not na(lastHighFastD) and pivotHighFastD < lastHighFastD
+        fastDLowerHighValue := pivotHighFastD
+    lastHighFastD := pivotHighFastD
+
+string fastDPattern = not na(fastDHigherLowValue) ? "Higher Low" : not na(fastDLowerHighValue) ? "Lower High" : ""
+float fastDPatternValue = not na(fastDHigherLowValue) ? fastDHigherLowValue : not na(fastDLowerHighValue) ? fastDLowerHighValue : na
+
+// Slow D Higher Low / Lower High detection
+float slowDHigherLowValue = na
+float slowDLowerHighValue = na
+
+if not na(pivotLowSlowD) and showSlowDHLLH
+    if not na(lastLowSlowD) and pivotLowSlowD > lastLowSlowD
+        slowDHigherLowValue := pivotLowSlowD
+    lastLowSlowD := pivotLowSlowD
+
+if not na(pivotHighSlowD) and showSlowDHLLH
+    if not na(lastHighSlowD) and pivotHighSlowD < lastHighSlowD
+        slowDLowerHighValue := pivotHighSlowD
+    lastHighSlowD := pivotHighSlowD
+
+string slowDPattern = not na(slowDHigherLowValue) ? "Higher Low" : not na(slowDLowerHighValue) ? "Lower High" : ""
+float slowDPatternValue = not na(slowDHigherLowValue) ? slowDHigherLowValue : not na(slowDLowerHighValue) ? slowDLowerHighValue : na
+
+// ===== TREND BREAK DETECTION =====
+// Track last pattern values for trend break detection
+var float lastFastDHLValue = na
+var float lastFastDLHValue = na
+var float lastSlowDHLValue = na  
+var float lastSlowDLHValue = na
+var bool fastDHLBroken = false
+var bool fastDLHBroken = false
+var bool slowDHLBroken = false
+var bool slowDLHBroken = false
+
+// Update last pattern values when new patterns are detected and reset break flags
+if not na(fastDHigherLowValue)
+    lastFastDHLValue := fastDHigherLowValue
+    fastDHLBroken := false  // Reset break flag when new HL is detected
+if not na(fastDLowerHighValue)
+    lastFastDLHValue := fastDLowerHighValue
+    fastDLHBroken := false  // Reset break flag when new LH is detected
+if not na(slowDHigherLowValue)
+    lastSlowDHLValue := slowDHigherLowValue
+    slowDHLBroken := false  // Reset break flag when new HL is detected
+if not na(slowDLowerHighValue)
+    lastSlowDLHValue := slowDLowerHighValue
+    slowDLHBroken := false  // Reset break flag when new LH is detected
+
+// Detect trend breaks: Fast D crosses below HL or above LH (only first time)
+fastDBelowLastHL = not na(lastFastDHLValue) and not fastDHLBroken and ta.crossunder(fastD, lastFastDHLValue)
+fastDAboveLastLH = not na(lastFastDLHValue) and not fastDLHBroken and ta.crossover(fastD, lastFastDLHValue)
+fastDBelowLastSlowDHL = not na(lastSlowDHLValue) and not slowDHLBroken and ta.crossunder(fastD, lastSlowDHLValue)
+fastDAboveLastSlowDLH = not na(lastSlowDLHValue) and not slowDLHBroken and ta.crossover(fastD, lastSlowDLHValue)
+
+// Set break flags when breaks occur
+if fastDBelowLastHL
+    fastDHLBroken := true
+if fastDAboveLastLH
+    fastDLHBroken := true
+if fastDBelowLastSlowDHL
+    slowDHLBroken := true
+if fastDAboveLastSlowDLH
+    slowDLHBroken := true
+
+// Combined trend break signals (only trigger once per pattern)
+fastDTrendBreak = fastDBelowLastHL or fastDAboveLastLH or fastDBelowLastSlowDHL or fastDAboveLastSlowDLH
+
+// Fast D x Slow D crossover detection
+crossoverFastDSlowD = ta.crossover(fastD, slowD)
+crossunderFastDSlowD = ta.crossunder(fastD, slowD)
+
+// Fast D x Slow D cross signals (both must be going in same direction)
+fastDCrossSlowD = ""
+if crossoverFastDSlowD and fastDDirection == "up" and slowDDirection == "up"
+    fastDCrossSlowD := "bull"
+else if crossunderFastDSlowD and fastDDirection == "down" and slowDDirection == "down"
+    fastDCrossSlowD := "bear"
+else
+    fastDCrossSlowD := "none"
+
+// ===== TREND CALCULATION (Based on Fast D and Slow D) =====
+calculatedTrend = "Neutral"
+ttsMessage = ""
+
+// Slow D-based priority messages (override all trends)
+if slowD < 20
+    calculatedTrend := "Very Short"
+    ttsMessage := "Heavy Sell"
+else if slowD > 80 and fastDDirection == "up"
+    calculatedTrend := "Heavy Buy"
+    ttsMessage := "Heavy Buy"
+else
+    // Trend-specific messages (when Slow D is between 20-80)
+    if fastDCrossSlowD == "bull"
+        calculatedTrend := "🚀 BULL Cross"
+        ttsMessage := "Small Buy"
+    else if fastDCrossSlowD == "bear"
+        calculatedTrend := "🔻 BEAR Cross"
+        ttsMessage := "Small sell"
+    else if slowD > 40 and fastDDirection == "up"
+        calculatedTrend := "Try Long"
+        ttsMessage := "Medium Buy"
+    else if slowD < 40 and fastDDirection == "down"
+        calculatedTrend := "Try Short"
+        ttsMessage := "Medium Sell"
+    else
+        calculatedTrend := "Neutral"
+        ttsMessage := ""
+
+// Plot Fast D direction switches (circles at Fast D line value)
+plotshape(showFastDSwitches and fastDSwitchedToUp ? fastD : na, title="Fast D Switch Up", style=shape.circle, location=location.absolute, color=color.new(#00FF00, 0), size=size.small)
+plotshape(showFastDSwitches and fastDSwitchedToDown ? fastD : na, title="Fast D Switch Down", style=shape.circle, location=location.absolute, color=color.new(#FF0000, 0), size=size.small)
+
+// Plot Slow D direction switches (diamonds at Slow D line value)
+plotshape(showSlowDSwitches and slowDSwitchedToUp ? slowD : na, title="Slow D Switch Up", style=shape.diamond, location=location.absolute, color=color.new(#00FF00, 0), size=size.normal)
+plotshape(showSlowDSwitches and slowDSwitchedToDown ? slowD : na, title="Slow D Switch Down", style=shape.diamond, location=location.absolute, color=color.new(#FF0000, 0), size=size.normal)
+
+// Plot Fast D Higher Low / Lower High patterns (with offsets to avoid covering lines)
+plotshape(showFastDHLLH and not na(fastDHigherLowValue) ? fastDHigherLowValue - 2 : na, title="Fast D Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_FastD, size=size.small)
+plotshape(showFastDHLLH and not na(fastDLowerHighValue) ? fastDLowerHighValue + 2 : na, title="Fast D Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_FastD, size=size.small)
+
+// Plot Slow D Higher Low / Lower High patterns (with offsets to avoid covering lines)
+plotshape(showSlowDHLLH and not na(slowDHigherLowValue) ? slowDHigherLowValue - 2 : na, title="Slow D Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_SlowD, size=size.normal)
+plotshape(showSlowDHLLH and not na(slowDLowerHighValue) ? slowDLowerHighValue + 2 : na, title="Slow D Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_SlowD, size=size.normal)
+
+// Plot Trend Break Crosses (when Fast D goes below HL or above LH) - Different colors for each type
+plotshape(showTrendBreaks and fastDBelowLastHL ? fastD : na, title="Fast D Below HL Break", style=shape.xcross, location=location.absolute, color=colorBreakFastDHL, size=size.small)
+plotshape(showTrendBreaks and fastDAboveLastLH ? fastD : na, title="Fast D Above LH Break", style=shape.xcross, location=location.absolute, color=colorBreakFastDLH, size=size.small)
+plotshape(showTrendBreaks and fastDBelowLastSlowDHL ? fastD : na, title="Fast D Below Slow D HL Break", style=shape.xcross, location=location.absolute, color=colorBreakSlowDHL, size=size.small)
+plotshape(showTrendBreaks and fastDAboveLastSlowDLH ? fastD : na, title="Fast D Above Slow D LH Break", style=shape.xcross, location=location.absolute, color=colorBreakSlowDLH, size=size.small)
+
+// Update last valid values when current values are not na
+if not na(fastD)
+    lastValidFastD := fastD
+if not na(slowD)
+    lastValidSlowD := slowD
+
+// Update last valid directions
+if fastDDirection != ""
+    lastValidFastDDir := fastDDirection
+if slowDDirection != ""
+    lastValidSlowDDir := slowDDirection
+if fastDPattern != ""
+    lastValidFastDPattern := fastDPattern
+if slowDPattern != ""
+    lastValidSlowDPattern := slowDPattern
+if not na(fastDPatternValue)
+    lastValidFastDHLLHValue := fastDPatternValue
+if not na(slowDPatternValue)
+    lastValidSlowDHLLHValue := slowDPatternValue
+
+// Update last valid cross and trend
+if fastDCrossSlowD != ""
+    lastValidFastDCrossSlowD := fastDCrossSlowD
+if calculatedTrend != ""
+    lastValidCalculatedTrend := calculatedTrend
+if ttsMessage != ""
+    lastValidTtsMessage := ttsMessage
+
+// Alert condition - Manual JSON construction (use last valid values to avoid N/A)
+if barstate.isconfirmed
+    // Use current value if not na, otherwise use last valid value (fallback to 0 if both are na)
+    fastDVal = na(fastD) ? (na(lastValidFastD) ? 0 : lastValidFastD) : fastD
+    slowDVal = na(slowD) ? (na(lastValidSlowD) ? 0 : lastValidSlowD) : slowD
+    
+    // Use current direction if not empty, otherwise use last valid
+    fastDDirVal = fastDDirection != "" ? fastDDirection : lastValidFastDDir
+    slowDDirVal = slowDDirection != "" ? slowDDirection : lastValidSlowDDir
+    fastDPatternVal = fastDPattern != "" ? fastDPattern : lastValidFastDPattern
+    slowDPatternVal = slowDPattern != "" ? slowDPattern : lastValidSlowDPattern
+    fastDPatternValueVal = na(fastDPatternValue) ? (na(lastValidFastDHLLHValue) ? 0 : lastValidFastDHLLHValue) : fastDPatternValue
+    slowDPatternValueVal = na(slowDPatternValue) ? (na(lastValidSlowDHLLHValue) ? 0 : lastValidSlowDHLLHValue) : slowDPatternValue
+    
+    // Use current cross/trend if not empty, otherwise use last valid
+    crossVal = fastDCrossSlowD != "" ? fastDCrossSlowD : lastValidFastDCrossSlowD
+    trendVal = calculatedTrend != "" ? calculatedTrend : lastValidCalculatedTrend
+    ttsVal = ttsMessage != "" ? ttsMessage : lastValidTtsMessage
+    
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"fastD\":\"" + str.tostring(fastDVal) + "\","
+    alertStr += "\"slowD\":\"" + str.tostring(slowDVal) + "\","
+    alertStr += "\"fastDDirection\":\"" + fastDDirVal + "\","
+    alertStr += "\"slowDDirection\":\"" + slowDDirVal + "\","
+    alertStr += "\"fastDPattern\":\"" + fastDPatternVal + "\","
+    alertStr += "\"slowDPattern\":\"" + slowDPatternVal + "\","
+    alertStr += "\"fastDPatternValue\":\"" + str.tostring(fastDPatternValueVal) + "\","
+    alertStr += "\"slowDPatternValue\":\"" + str.tostring(slowDPatternValueVal) + "\","
+    alertStr += "\"fastDBelowLastHL\":\"" + str.tostring(fastDBelowLastHL) + "\","
+    alertStr += "\"fastDAboveLastLH\":\"" + str.tostring(fastDAboveLastLH) + "\","
+    alertStr += "\"fastDBelowLastSlowDHL\":\"" + str.tostring(fastDBelowLastSlowDHL) + "\","
+    alertStr += "\"fastDAboveLastSlowDLH\":\"" + str.tostring(fastDAboveLastSlowDLH) + "\","
+    alertStr += "\"fastDCrossSlowD\":\"" + crossVal + "\","
+    alertStr += "\"calculatedTrend\":\"" + trendVal + "\","
+    alertStr += "\"ttsMessage\":\"" + ttsVal + "\","
+    alertStr += "\"timeframe1_4\":\"" + str.tostring(timeframe1_4) + "\","
+    alertStr += "\"timeframe5_8\":\"" + str.tostring(timeframe5_8) + "\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
+
+// Store previous values for next comparison
+prevFastD := fastD
+prevSlowD := slowD
+prevFastDDir := fastDDirection
+prevSlowDDir := slowDDirection
+

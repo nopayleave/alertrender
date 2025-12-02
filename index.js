@@ -798,6 +798,14 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].d7PredictedThirdLH = parseFloat(alert.d7PredictedThirdLH) || null
       alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
       alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
+      // Update basic info, daily comparison, and volume fields
+      if (alert.price !== undefined) alerts[existingIndex].price = alert.price
+      if (alert.timeframe !== undefined) alerts[existingIndex].timeframe = alert.timeframe
+      if (alert.time !== undefined) alerts[existingIndex].time = alert.time
+      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      if (alert.prevDayVolume !== undefined) alerts[existingIndex].prevDayVolume = alert.prevDayVolume
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
     } else {
@@ -805,6 +813,12 @@ app.post('/webhook', (req, res) => {
       const newAlert = {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
+        time: alert.time || null,
+        price: alert.price || null,
+        previousClose: alert.previousClose || null,
+        changeFromPrevDay: alert.changeFromPrevDay || null,
+        volume: alert.volume || null,
+        prevDayVolume: alert.prevDayVolume || null,
         octoStochD1: alert.d1,
         octoStochD2: alert.d2,
         octoStochD3: alert.d3,
