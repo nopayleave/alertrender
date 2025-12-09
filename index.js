@@ -3270,11 +3270,15 @@ app.get('/', (req, res) => {
             // - Upper: if current value (a) > 50% of premarket range = (y+x)/2
             let pmRangeDisplay = '-';
             let pmRangeClass = 'text-muted-foreground';
+            let pmRangeValues = ''; // Store the range values for display
             if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && !isNaN(premarketRangeUpper) && premarketRangeLower !== null && !isNaN(premarketRangeLower)) {
               const x = premarketRangeLower; // lowest value
               const y = premarketRangeUpper; // highest value
               const a = bjTsi; // current value
               const rangeMid = (y + x) / 2; // 50% of premarket range
+              
+              // Format range values for display
+              pmRangeValues = ' (' + x.toFixed(2) + ' - ' + y.toFixed(2) + ')';
               
               if (a < x) {
                 // Below: current value < lowest value
@@ -3355,7 +3359,7 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, PM Range=\${pmRangeDisplay}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
-                    <div class="text-foreground">PM Range: <span class="\${pmRangeClass}">\${pmRangeDisplay}</span></div>
+                    <div class="text-foreground">PM Range: <span class="\${pmRangeClass}">\${pmRangeDisplay}\${pmRangeValues}</span></div>
                     <div class="text-foreground">V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>
                     <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
                   </div>
