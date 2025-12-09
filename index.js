@@ -2451,7 +2451,7 @@ app.get('/', (req, res) => {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-12' },
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
-          d2: { id: 'd2', title: 'D2', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
         };
@@ -2929,16 +2929,30 @@ app.get('/', (req, res) => {
             let priceClass = 'text-foreground'; // Default white/foreground color for price
             const currentPrice = parseFloat(alert.price);
             
-            // Find the previous alert for the same symbol (next in the array since newest is first)
-            const previousAlert = filteredData.slice(index + 1).find(a => a.symbol === alert.symbol);
+            // Find the most recent previous alert for the same symbol
+            // Look through all alertsData to find previous price for this symbol
+            const currentReceivedAt = alert.receivedAt || 0;
+            const previousAlerts = alertsData.filter(a => 
+              a.symbol === alert.symbol && 
+              a.price && 
+              !isNaN(parseFloat(a.price)) &&
+              (a.receivedAt || 0) < currentReceivedAt
+            );
+            
+            // Get the most recent previous alert (highest receivedAt)
+            const previousAlert = previousAlerts.length > 0
+              ? previousAlerts.reduce((prev, curr) => 
+                  (curr.receivedAt || 0) > (prev.receivedAt || 0) ? curr : prev
+                )
+              : null;
             
             if (previousAlert && !isNaN(currentPrice)) {
               const previousPrice = parseFloat(previousAlert.price);
               if (!isNaN(previousPrice)) {
                 if (currentPrice > previousPrice) {
-                  priceClass = 'text-green-400'; // Green if price went up
+                  priceClass = 'text-green-400 font-semibold'; // Green if price went up
                 } else if (currentPrice < previousPrice) {
-                  priceClass = 'text-red-400'; // Red if price went down
+                  priceClass = 'text-red-400 font-semibold'; // Red if price went down
                 }
                 // Otherwise stays white (no change)
               }
@@ -3683,8 +3697,8 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               d2: \`
-                <td class="py-3 px-4 text-center" title="Solo Stoch D2: Value=\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(2) : 'N/A'}, Dir=\${soloD2Direction}\${d2PatternDisplay ? ', Pattern=' + soloD2Pattern : ''}">
-                  <div class="flex flex-row items-center justify-center gap-2">
+                <td class="py-3 px-4 text-left" title="Solo Stoch D2: Value=\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(2) : 'N/A'}, Dir=\${soloD2Direction}\${d2PatternDisplay ? ', Pattern=' + soloD2Pattern : ''}">
+                  <div class="flex flex-row items-center justify-start gap-2">
                     <div class="font-mono text-lg \${d2ValueClass}">\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(1) : '-'}</div>
                     <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                     \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
