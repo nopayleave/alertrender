@@ -2214,7 +2214,8 @@ app.get('/', (req, res) => {
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
         <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border py-4">
           <div class="container mx-auto" style="max-width:1360px;padding-bottom:1rem;">
-            <div class="relative">
+            <!-- Search input -->
+            <div class="relative mb-3">
               <input 
                 type="text" 
                 id="searchInput" 
@@ -2230,6 +2231,69 @@ app.get('/', (req, res) => {
                 aria-label="Clear search"
               >
                 ✕
+              </button>
+            </div>
+            
+            <!-- BJ TSI Filters -->
+            <div class="flex flex-wrap gap-2 items-center text-xs">
+              <span class="text-muted-foreground font-medium">BJ Filters:</span>
+              
+              <!-- PM Range Filter -->
+              <select 
+                id="filterPmRange" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">PM Range: All</option>
+                <option value="Below">Below</option>
+                <option value="Lower">Lower</option>
+                <option value="Upper">Upper</option>
+                <option value="Above">Above</option>
+              </select>
+              
+              <!-- V Dir Filter -->
+              <select 
+                id="filterVDir" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">V Dir: All</option>
+                <option value="Up">Up</option>
+                <option value="Down">Down</option>
+              </select>
+              
+              <!-- S Dir Filter -->
+              <select 
+                id="filterSDir" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">S Dir: All</option>
+                <option value="Up">Up</option>
+                <option value="Down">Down</option>
+              </select>
+              
+              <!-- Area Filter -->
+              <select 
+                id="filterArea" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">Area: All</option>
+                <option value="strong_bullish">Strong Bullish</option>
+                <option value="bullish">Bullish</option>
+                <option value="light_bullish">Light Bullish</option>
+                <option value="light_bearish">Light Bearish</option>
+                <option value="bearish">Bearish</option>
+                <option value="strong_bearish">Strong Bearish</option>
+              </select>
+              
+              <!-- Clear Filters Button -->
+              <button 
+                onclick="clearBjFilters()" 
+                class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
+              >
+                Clear Filters
               </button>
             </div>
           </div>
@@ -2276,6 +2340,12 @@ app.get('/', (req, res) => {
         
         // Search state
         let searchTerm = '';
+        
+        // BJ TSI Filter state
+        let bjFilterPmRange = '';
+        let bjFilterVDir = '';
+        let bjFilterSDir = '';
+        let bjFilterArea = '';
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
@@ -2616,6 +2686,25 @@ app.get('/', (req, res) => {
 
         function filterAlerts() {
           searchTerm = document.getElementById('searchInput').value.toLowerCase();
+          
+          // BJ TSI Filters
+          bjFilterPmRange = document.getElementById('filterPmRange')?.value || '';
+          bjFilterVDir = document.getElementById('filterVDir')?.value || '';
+          bjFilterSDir = document.getElementById('filterSDir')?.value || '';
+          bjFilterArea = document.getElementById('filterArea')?.value || '';
+          
+          renderTable();
+        }
+        
+        function clearBjFilters() {
+          document.getElementById('filterPmRange').value = '';
+          document.getElementById('filterVDir').value = '';
+          document.getElementById('filterSDir').value = '';
+          document.getElementById('filterArea').value = '';
+          bjFilterPmRange = '';
+          bjFilterVDir = '';
+          bjFilterSDir = '';
+          bjFilterArea = '';
           renderTable();
         }
 
@@ -2763,6 +2852,63 @@ app.get('/', (req, res) => {
             filteredData = alertsData.filter(alert => 
               (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
+          }
+          
+          // Apply BJ TSI Filters
+          if (bjFilterPmRange || bjFilterVDir || bjFilterSDir || bjFilterArea) {
+            filteredData = filteredData.filter(alert => {
+              // Calculate BJ TSI values for filtering
+              const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+              const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
+              const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+              
+              // Get premarket range values
+              let premarketRangeUpper = null;
+              let premarketRangeLower = null;
+              if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+                const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+                if (!isNaN(upperVal)) premarketRangeUpper = upperVal;
+              }
+              if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+                const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+                if (!isNaN(lowerVal)) premarketRangeLower = lowerVal;
+              }
+              
+              // Calculate PM Range status
+              let pmRangeStatus = '';
+              if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && premarketRangeLower !== null) {
+                const x = premarketRangeLower;
+                const y = premarketRangeUpper;
+                const rangeMid = (y + x) / 2;
+                if (bjTsi < x) pmRangeStatus = 'Below';
+                else if (bjTsi > y) pmRangeStatus = 'Above';
+                else if (bjTsi < rangeMid) pmRangeStatus = 'Lower';
+                else pmRangeStatus = 'Upper';
+              }
+              
+              // Calculate V Dir and S Dir
+              const vDir = bjTsiIsBull ? 'Up' : 'Down';
+              const sDir = bjTslIsBull ? 'Up' : 'Down';
+              
+              // Calculate Area
+              let areaValue = '';
+              if (bjTsi !== null && !isNaN(bjTsi)) {
+                if (bjTsi > 40) areaValue = 'strong_bullish';
+                else if (bjTsi >= 15) areaValue = 'bullish';
+                else if (bjTsi >= 0) areaValue = 'light_bullish';
+                else if (bjTsi >= -15) areaValue = 'light_bearish';
+                else if (bjTsi >= -40) areaValue = 'bearish';
+                else areaValue = 'strong_bearish';
+              }
+              
+              // Apply filters
+              if (bjFilterPmRange && pmRangeStatus !== bjFilterPmRange) return false;
+              if (bjFilterVDir && vDir !== bjFilterVDir) return false;
+              if (bjFilterSDir && sDir !== bjFilterSDir) return false;
+              if (bjFilterArea && areaValue !== bjFilterArea) return false;
+              
+              return true;
+            });
           }
 
           // Sort filtered data - starred items always come first
@@ -3416,27 +3562,34 @@ app.get('/', (req, res) => {
               }
             }
             
-            // Calculate Area
+            // Calculate Area with text labels
             let areaDisplay = '-';
             let areaClass = 'text-muted-foreground';
+            let areaValue = ''; // For filtering
             if (!isNaN(bjTsi)) {
               if (bjTsi > 40) {
-                areaDisplay = 'Above 40';
+                areaDisplay = 'Strong Bullish';
+                areaValue = 'strong_bullish';
                 areaClass = 'text-green-400 font-bold';
               } else if (bjTsi >= 15) {
-                areaDisplay = '40-15';
+                areaDisplay = 'Bullish';
+                areaValue = 'bullish';
                 areaClass = 'text-green-500 font-semibold';
               } else if (bjTsi >= 0) {
-                areaDisplay = '15-0';
+                areaDisplay = 'Light Bullish';
+                areaValue = 'light_bullish';
                 areaClass = 'text-lime-400 font-semibold';
               } else if (bjTsi >= -15) {
-                areaDisplay = '-15-0';
+                areaDisplay = 'Light Bearish';
+                areaValue = 'light_bearish';
                 areaClass = 'text-orange-400 font-semibold';
               } else if (bjTsi >= -40) {
-                areaDisplay = '-40--15';
+                areaDisplay = 'Bearish';
+                areaValue = 'bearish';
                 areaClass = 'text-red-500 font-semibold';
               } else {
-                areaDisplay = 'Below -40';
+                areaDisplay = 'Strong Bearish';
+                areaValue = 'strong_bearish';
                 areaClass = 'text-red-400 font-bold';
               }
             }
