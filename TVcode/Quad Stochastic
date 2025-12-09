@@ -5,6 +5,12 @@ indicator(title="Octo Stochastic (8 Stoch)", shorttitle="Octo Stoch", overlay=fa
 timeframe1_4 = input.timeframe("", title="Timeframe for D1-D4", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
 timeframe5_8 = input.timeframe("", title="Timeframe for D5-D8", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
 
+// ===== GLOBAL COLOR SETTINGS =====
+useAbove80Color = input.bool(true, title="Use Green#3 Above 80", group="Global Color Settings", tooltip="Apply Green#3 color to all D lines when value is above 80")
+colorGreen3 = input.color(color.new(#00ff00, 0), title="Green#3 Color (Above 80)", group="Global Color Settings")
+useBelow20Color = input.bool(true, title="Use Red Below 20", group="Global Color Settings", tooltip="Apply red color to all D lines when value is below 20")
+colorRedBelow20 = input.color(color.new(#ff0000, 0), title="Red Color (Below 20)", group="Global Color Settings")
+
 // Stoch1 - Very Short Term (5min = ~10 bars)
 length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
 smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
@@ -17,7 +23,10 @@ showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
 length2 = input.int(18, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
 smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
 periodD2 = input.int(3, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
-colorD2 = input.color(color.blue, title="D2 Color", group="Stoch2 Settings")
+useD2ColorLogic = input.bool(false, title="Use Up/Down Color Logic", group="Stoch2 Settings", tooltip="Enable to color D2 based on direction")
+colorD2 = input.color(color.blue, title="D2 Color (when disabled)", group="Stoch2 Settings")
+colorD2Up = input.color(color.green, title="D2 Up Color", group="Stoch2 Settings")
+colorD2Down = input.color(color.red, title="D2 Down Color", group="Stoch2 Settings")
 linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
 showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
 
@@ -117,21 +126,57 @@ d7 = timeframe5_8 == "" ? d7_chart : d7_mtf
 k8 = timeframe5_8 == "" ? k8_chart : k8_mtf
 d8 = timeframe5_8 == "" ? d8_chart : d8_mtf
 
+// ===== D1-D8 DIRECTION TRACKING VARIABLES =====
+var float prevD1 = na
+var float prevD2 = na
+var float prevD3 = na
+var float prevD4 = na
+var float prevD5 = na
+var float prevD6 = na
+var float prevD7 = na
+var float prevD8 = na
+
 // Plot %D8 first (z-index as last/behind) - use fill for better z-order control
-// Extract RGB from colorD8 and apply transparencyD8 to ensure proper opacity control
-d8FillColor = color.rgb(color.r(colorD8), color.g(colorD8), color.b(colorD8), transparencyD8)
-p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(colorD8, 100), linewidth=linewidthD8, display=display.pane)
+// D8 color logic (calculate before plot)
+d8LineColorForPlot = useBelow20Color and d8 < 20 ? colorRedBelow20 : useAbove80Color and d8 > 80 ? colorGreen3 : colorD8
+// Extract RGB from d8LineColorForPlot and apply transparencyD8 to ensure proper opacity control
+d8FillColor = color.rgb(color.r(d8LineColorForPlot), color.g(d8LineColorForPlot), color.b(d8LineColorForPlot), transparencyD8)
+p_d8 = plot(showD8 ? d8 : na, title="%d8", color=color.new(d8LineColorForPlot, 100), linewidth=linewidthD8, display=display.pane)
 p_base = plot(0, title="Base", color=color.new(color.white, 100), display=display.none, editable=false)
 fill(p_base, p_d8, color=showD8 ? d8FillColor : na, title="D8 Fill")
 
+// ===== D COLOR LOGIC (Below 20 = Red, Above 80 = Green#3) =====
+// D1 color logic (check below 20 first, then above 80, then default)
+d1LineColor = useBelow20Color and d1 < 20 ? colorRedBelow20 : useAbove80Color and d1 > 80 ? colorGreen3 : colorD1
+
+// D2 color logic (check below 20 first, then above 80, then direction logic)
+d2DirForColor = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+d2BaseColor = useD2ColorLogic ? (d2DirForColor == "up" ? colorD2Up : d2DirForColor == "down" ? colorD2Down : colorD2) : colorD2
+d2LineColor = useBelow20Color and d2 < 20 ? colorRedBelow20 : useAbove80Color and d2 > 80 ? colorGreen3 : d2BaseColor
+
+// D3 color logic
+d3LineColor = useBelow20Color and d3 < 20 ? colorRedBelow20 : useAbove80Color and d3 > 80 ? colorGreen3 : colorD3
+
+// D4 color logic
+d4LineColor = useBelow20Color and d4 < 20 ? colorRedBelow20 : useAbove80Color and d4 > 80 ? colorGreen3 : colorD4
+
+// D5 color logic
+d5LineColor = useBelow20Color and d5 < 20 ? colorRedBelow20 : useAbove80Color and d5 > 80 ? colorGreen3 : colorD5
+
+// D6 color logic
+d6LineColor = useBelow20Color and d6 < 20 ? colorRedBelow20 : useAbove80Color and d6 > 80 ? colorGreen3 : colorD6
+
+// D7 color logic
+d7LineColor = useBelow20Color and d7 < 20 ? colorRedBelow20 : useAbove80Color and d7 > 80 ? colorGreen3 : colorD7
+
 // Plot %D lines with customizable colors (on top of D8)
-plot(showD1 ? d1 : na, title="%d1", color=colorD1, linewidth=linewidthD1, display=display.pane)
-plot(showD2 ? d2 : na, title="%d2", color=colorD2, linewidth=linewidthD2, display=display.pane)
-plot(showD3 ? d3 : na, title="%d3", color=colorD3, linewidth=linewidthD3, display=display.pane)
-plot(showD4 ? d4 : na, title="%d4", color=colorD4, linewidth=linewidthD4, display=display.pane)
-plot(showD5 ? d5 : na, title="%d5", color=colorD5, linewidth=linewidthD5, display=display.pane)
-plot(showD6 ? d6 : na, title="%d6", color=colorD6, linewidth=linewidthD6, display=display.pane)
-plot(showD7 ? d7 : na, title="%d7", color=colorD7, linewidth=linewidthD7, display=display.pane)
+plot(showD1 ? d1 : na, title="%d1", color=d1LineColor, linewidth=linewidthD1, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
+plot(showD3 ? d3 : na, title="%d3", color=d3LineColor, linewidth=linewidthD3, display=display.pane)
+plot(showD4 ? d4 : na, title="%d4", color=d4LineColor, linewidth=linewidthD4, display=display.pane)
+plot(showD5 ? d5 : na, title="%d5", color=d5LineColor, linewidth=linewidthD5, display=display.pane)
+plot(showD6 ? d6 : na, title="%d6", color=d6LineColor, linewidth=linewidthD6, display=display.pane)
+plot(showD7 ? d7 : na, title="%d7", color=d7LineColor, linewidth=linewidthD7, display=display.pane)
 
 // Plot Mid line above D1, D2, D3 (z-index on top)
 plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane) // Mid line at 50
@@ -141,6 +186,8 @@ plot(k1, title="%K1", color=color.new(#00bcd4, 65), linewidth=1, style=plot.styl
 
 // Reference levels
 hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(60, "Level 60", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(40, "Level 40", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
 hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
 
 // Strong zones settings
@@ -265,15 +312,6 @@ bgcolor(showCrossoverBG and crossoverD1D2 ? color.new(crossoverColor, 90) : na, 
 bgcolor(showCrossoverBG and crossunderD1D2 ? color.new(crossunderColor, 90) : na, title="Crossunder BG")
 
 // ===== D1-D8 DIRECTION TRACKING =====
-var float prevD1 = na
-var float prevD2 = na
-var float prevD3 = na
-var float prevD4 = na
-var float prevD5 = na
-var float prevD6 = na
-var float prevD7 = na
-var float prevD8 = na
-
 // Determine direction for each stochastic
 d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
 d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"

@@ -28,6 +28,15 @@ color histDownColor = input.color(color.new(#ff5252, 0), "Histogram Down Color",
 int macdLineWidth = input.int(2, title="MACD Line Width", group=GRP3, minval=1, maxval=5)
 int signalLineWidth = input.int(1, title="Signal Line Width", group=GRP3, minval=1, maxval=5)
 
+// ===== Premarket MACD Range Background =====
+string GRP4 = "Premarket MACD Range"
+bool showPremarketRange = input.bool(true, title="Show Premarket Range", group=GRP4)
+color premarketRangeColor = input.color(color.new(#787b86, 90), title="Premarket Range Color", group=GRP4)
+int premarketStartHour = input.int(4, title="Premarket Start Hour", group=GRP4, minval=0, maxval=23, tooltip="Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
+int premarketStartMinute = input.int(0, title="Premarket Start Minute", group=GRP4, minval=0, maxval=59)
+int premarketEndHour = input.int(9, title="Premarket End Hour", group=GRP4, minval=0, maxval=23, tooltip="Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
+int premarketEndMinute = input.int(30, title="Premarket End Minute", group=GRP4, minval=0, maxval=59)
+
 // ===== Calculations =====
 fast_ma = sma_source == "SMA" ? ta.sma(src, fast_length) : ta.ema(src, fast_length)
 slow_ma = sma_source == "SMA" ? ta.sma(src, slow_length) : ta.ema(src, slow_length)
@@ -82,8 +91,51 @@ else if signalDown and histDown
 else
     signalLineColor := signalElseColor
 
+// ===== Premarket MACD Range Calculation =====
+// Check if we're in premarket session based on time
+currentHour = hour(time)
+currentMinute = minute(time)
+currentTime = currentHour * 100 + currentMinute
+premarketStartTime = premarketStartHour * 100 + premarketStartMinute
+premarketEndTime = premarketEndHour * 100 + premarketEndMinute
+
+// Check if current time is within premarket session
+inPremarket = currentTime >= premarketStartTime and currentTime < premarketEndTime
+
+// Track premarket high/low MACD values
+var float premarketMacdHigh = na
+var float premarketMacdLow = na
+
+// Reset at start of new day (when we exit premarket and enter regular session)
+isNewDay = ta.change(dayofweek) != 0 or ta.change(dayofmonth) != 0
+wasInPremarket = inPremarket[1]
+exitedPremarket = wasInPremarket and not inPremarket
+
+if isNewDay or exitedPremarket
+    // Keep the values from previous premarket session for display during regular hours
+    // Only reset if it's a new day
+    if isNewDay
+        premarketMacdHigh := na
+        premarketMacdLow := na
+
+// Update premarket high/low during premarket session
+if inPremarket
+    if na(premarketMacdHigh) or macd > premarketMacdHigh
+        premarketMacdHigh := macd
+    if na(premarketMacdLow) or macd < premarketMacdLow
+        premarketMacdLow := macd
+
+// Use the tracked values for the background range
+premarketRangeUpper = math.max(premarketMacdHigh, premarketMacdLow)
+premarketRangeLower = math.min(premarketMacdHigh, premarketMacdLow)
+
 // ===== Display =====
 hline(0, "Zero Line", color=color.new(#787b86, 50))
+
+// Premarket MACD range background
+p_premarketUpper = plot(not na(premarketRangeUpper) and showPremarketRange ? premarketRangeUpper : na, "Premarket High", color=color.new(color.white, 100), display=display.none)
+p_premarketLower = plot(not na(premarketRangeLower) and showPremarketRange ? premarketRangeLower : na, "Premarket Low", color=color.new(color.white, 100), display=display.none)
+fill(p_premarketUpper, p_premarketLower, color=showPremarketRange and not na(premarketRangeUpper) and not na(premarketRangeLower) ? premarketRangeColor : na, title="Premarket MACD Range")
 
 // Plot histogram
 plot(hist, title="Histogram", style=plot.style_columns, color=histColor)

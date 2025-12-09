@@ -48,6 +48,13 @@ colorD2Up = input.color(#00FF00, title="D2 Up Color", group="Stoch2 Settings")
 colorD2Down = input.color(#FF0000, title="D2 Down Color", group="Stoch2 Settings")
 linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
 showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+showD2HLLH = input.bool(true, title="Show D2 Higher Low/Lower High", group="Stoch2 Settings")
+pivotLengthD2 = input.int(5, minval=1, title="D2 Pivot Length", group="Stoch2 Settings")
+colorHL_D2 = input.color(color.aqua, title="D2 Higher Low Color", group="Stoch2 Settings")
+colorLH_D2 = input.color(color.orange, title="D2 Lower High Color", group="Stoch2 Settings")
+useD2Above80Below20 = input.bool(true, title="Use D2 Above 80/Below 20 Colors", group="Stoch2 Settings", tooltip="Apply green above 80, red below 20")
+colorD2Above80 = input.color(color.green, title="D2 Above 80 Color", group="Stoch2 Settings")
+colorD2Below20 = input.color(color.red, title="D2 Below 20 Color", group="Stoch2 Settings")
 
 // Stoch3 - Medium Term (5min = ~39 bars, ~3 hours)
 length3 = input.int(39, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
@@ -202,9 +209,14 @@ d7FillColor = color.new(colorD7, transparencyD7)
 p_d7 = plot(showD7 ? d7 : na, title="%d7", color=color.new(colorD7, 100), linewidth=linewidthD7, display=display.pane)
 fill(p_base, p_d7, color=showD7 ? d7FillColor : na, title="D7 Fill")
 
+// ===== D2 COLOR LOGIC (Above 80 = Green, Below 20 = Red) =====
+// D2 color logic (check above 80 first, then below 20, then up/down)
+d2BaseColor = d2 >= d2[1] ? colorD2Up : colorD2Down
+d2LineColor = useD2Above80Below20 ? (d2 > 80 ? colorD2Above80 : d2 < 20 ? colorD2Below20 : d2BaseColor) : d2BaseColor
+
 // Plot %D lines with customizable colors (on top of D7 and D8)
 plot(showD1 ? d1 : na, title="%d1", color=d1 >= d1[1] ? colorD1Up : colorD1Down, linewidth=linewidthD1, display=display.pane)
-plot(showD2 ? d2 : na, title="%d2", color=d2 >= d2[1] ? colorD2Up : colorD2Down, linewidth=linewidthD2, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
 plot(showD3 ? d3 : na, title="%d3", color=d3 >= d3[1] ? colorD3Up : colorD3Down, linewidth=linewidthD3, display=display.pane)
 plot(showD4 ? d4 : na, title="%d4", color=d4 >= d4[1] ? colorD4Up : colorD4Down, linewidth=linewidthD4, display=display.pane)
 plot(showD5 ? d5 : na, title="%d5", color=d5 >= d5[1] ? colorD5Up : colorD5Down, linewidth=linewidthD5, display=display.pane)
@@ -269,8 +281,10 @@ var string lastValidD8Dir = "flat"
 var string lastValidD1CrossD7 = "none"
 var string lastValidCalculatedTrend = "Neutral"
 var string lastValidTtsMessage = ""
+var string lastValidD2Pattern = "None"
 var string lastValidD3Pattern = "None"
 var string lastValidD7Pattern = "None"
+var float lastValidD2HLLHValue = na
 var float lastValidD3HLLHValue = na
 var float lastValidD7HLLHValue = na
 
@@ -303,7 +317,11 @@ d3SwitchedToDown = prevD3Dir == "up" and d3Direction == "down"
 d7SwitchedToUp = prevD7Dir == "down" and d7Direction == "up"
 d7SwitchedToDown = prevD7Dir == "up" and d7Direction == "down"
 
-// ===== D3 AND D7 HIGHER LOW / LOWER HIGH DETECTION =====
+// ===== D2, D3 AND D7 HIGHER LOW / LOWER HIGH DETECTION =====
+// Detect pivots on D2
+pivotHighD2 = ta.pivothigh(d2, pivotLengthD2, pivotLengthD2)
+pivotLowD2 = ta.pivotlow(d2, pivotLengthD2, pivotLengthD2)
+
 // Detect pivots on D3
 pivotHighD3 = ta.pivothigh(d3, pivotLengthD3, pivotLengthD3)
 pivotLowD3 = ta.pivotlow(d3, pivotLengthD3, pivotLengthD3)
@@ -311,6 +329,10 @@ pivotLowD3 = ta.pivotlow(d3, pivotLengthD3, pivotLengthD3)
 // Detect pivots on D7
 pivotHighD7 = ta.pivothigh(d7, pivotLengthD7, pivotLengthD7)
 pivotLowD7 = ta.pivotlow(d7, pivotLengthD7, pivotLengthD7)
+
+// Track previous pivot values for D2
+var float lastHighD2 = na
+var float lastLowD2 = na
 
 // Track previous pivot values for D3
 var float lastHighD3 = na
@@ -336,6 +358,23 @@ if not na(pivotHighD3) and showD3HLLH
 
 string d3Pattern = not na(d3HigherLowValue) ? "Higher Low" : not na(d3LowerHighValue) ? "Lower High" : ""
 float d3PatternValue = not na(d3HigherLowValue) ? d3HigherLowValue : not na(d3LowerHighValue) ? d3LowerHighValue : na
+
+// D2 Higher Low / Lower High detection
+float d2HigherLowValue = na
+float d2LowerHighValue = na
+
+if not na(pivotLowD2) and showD2HLLH
+    if not na(lastLowD2) and pivotLowD2 > lastLowD2
+        d2HigherLowValue := pivotLowD2
+    lastLowD2 := pivotLowD2
+
+if not na(pivotHighD2) and showD2HLLH
+    if not na(lastHighD2) and pivotHighD2 < lastHighD2
+        d2LowerHighValue := pivotHighD2
+    lastHighD2 := pivotHighD2
+
+string d2Pattern = not na(d2HigherLowValue) ? "Higher Low" : not na(d2LowerHighValue) ? "Lower High" : ""
+float d2PatternValue = not na(d2HigherLowValue) ? d2HigherLowValue : not na(d2LowerHighValue) ? d2LowerHighValue : na
 
 // D7 Higher Low / Lower High detection
 float d7HigherLowValue = na
@@ -560,6 +599,10 @@ plotshape(showD3Switches and d3SwitchedToDown ? d3 : na, title="D3 Switch Down",
 plotshape(showD7Switches and d7SwitchedToUp ? d7 : na, title="D7 Switch Up", style=shape.diamond, location=location.absolute, color=color.new(#00FF00, 0), size=size.normal)
 plotshape(showD7Switches and d7SwitchedToDown ? d7 : na, title="D7 Switch Down", style=shape.diamond, location=location.absolute, color=color.new(#FF0000, 0), size=size.normal)
 
+// Plot D2 Higher Low / Lower High patterns (with offsets to avoid covering lines)
+plotshape(showD2HLLH and not na(d2HigherLowValue) ? d2HigherLowValue - 2 : na, title="D2 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D2, size=size.small)
+plotshape(showD2HLLH and not na(d2LowerHighValue) ? d2LowerHighValue + 2 : na, title="D2 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D2, size=size.small)
+
 // Plot D3 Higher Low / Lower High patterns (with offsets to avoid covering lines)
 plotshape(showD3HLLH and not na(d3HigherLowValue) ? d3HigherLowValue - 2 : na, title="D3 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D3, size=size.small)
 plotshape(showD3HLLH and not na(d3LowerHighValue) ? d3LowerHighValue + 2 : na, title="D3 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D3, size=size.small)
@@ -617,10 +660,14 @@ if d7Direction != ""
     lastValidD7Dir := d7Direction
 if d8Direction != ""
     lastValidD8Dir := d8Direction
+if d2Pattern != ""
+    lastValidD2Pattern := d2Pattern
 if d3Pattern != ""
     lastValidD3Pattern := d3Pattern
 if d7Pattern != ""
     lastValidD7Pattern := d7Pattern
+if not na(d2PatternValue)
+    lastValidD2HLLHValue := d2PatternValue
 if not na(d3PatternValue)
     lastValidD3HLLHValue := d3PatternValue
 if not na(d7PatternValue)
@@ -668,8 +715,10 @@ if barstate.isconfirmed
     d6DirVal = d6Direction != "" ? d6Direction : lastValidD6Dir
     d7DirVal = d7Direction != "" ? d7Direction : lastValidD7Dir
     d8DirVal = d8Direction != "" ? d8Direction : lastValidD8Dir
+    d2PatternVal = d2Pattern != "" ? d2Pattern : lastValidD2Pattern
     d3PatternVal = d3Pattern != "" ? d3Pattern : lastValidD3Pattern
     d7PatternVal = d7Pattern != "" ? d7Pattern : lastValidD7Pattern
+    d2PatternValueVal = na(d2PatternValue) ? (na(lastValidD2HLLHValue) ? 0 : lastValidD2HLLHValue) : d2PatternValue
     d3PatternValueVal = na(d3PatternValue) ? (na(lastValidD3HLLHValue) ? 0 : lastValidD3HLLHValue) : d3PatternValue
     d7PatternValueVal = na(d7PatternValue) ? (na(lastValidD7HLLHValue) ? 0 : lastValidD7HLLHValue) : d7PatternValue
     
@@ -703,8 +752,10 @@ if barstate.isconfirmed
     alertStr += "\"d6Direction\":\"" + d6DirVal + "\","
     alertStr += "\"d7Direction\":\"" + d7DirVal + "\","
     alertStr += "\"d8Direction\":\"" + d8DirVal + "\","
+    alertStr += "\"d2Pattern\":\"" + d2PatternVal + "\","
     alertStr += "\"d3Pattern\":\"" + d3PatternVal + "\","
     alertStr += "\"d7Pattern\":\"" + d7PatternVal + "\","
+    alertStr += "\"d2PatternValue\":\"" + str.tostring(d2PatternValueVal) + "\","
     alertStr += "\"d3PatternValue\":\"" + str.tostring(d3PatternValueVal) + "\","
     alertStr += "\"d7PatternValue\":\"" + str.tostring(d7PatternValueVal) + "\","
     alertStr += "\"d3BelowLastHL\":\"" + str.tostring(d3BelowLastHL) + "\","

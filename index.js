@@ -1997,15 +1997,25 @@ app.get('/', (req, res) => {
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value', 'volume'];
+        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value', 'bj', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         columnOrder = columnOrder.filter(colId => colId !== 'macdCrossing');
+        // Remove any List-related columns (vwap, ema, macd, rsi from List script)
+        columnOrder = columnOrder.filter(colId => !['vwap', 'ema1', 'ema2', 'macd', 'rsi'].includes(colId));
         if (!columnOrder.includes('pattern')) {
           const trendIndex = columnOrder.indexOf('trend');
           if (trendIndex !== -1) {
             columnOrder.splice(trendIndex + 1, 0, 'pattern');
           } else {
             columnOrder.push('pattern');
+          }
+        }
+        if (!columnOrder.includes('bj')) {
+          const d4Index = columnOrder.indexOf('d4value');
+          if (d4Index !== -1) {
+            columnOrder.splice(d4Index + 1, 0, 'bj');
+          } else {
+            columnOrder.push('bj');
           }
         }
         
@@ -2019,6 +2029,7 @@ app.get('/', (req, res) => {
           qsArrow: { id: 'qsArrow', title: 'QS Arrow', sortable: true, sortField: 'qsArrow', width: '', tooltip: 'D1/D2/D3/D4 Direction Arrows' },
           d3value: { id: 'd3value', title: 'D3 Value', sortable: true, sortField: 'd3value', width: '', tooltip: 'Octo Stochastic D3 Value' },
           d4value: { id: 'd4value', title: 'D7 Value', sortable: true, sortField: 'd4value', width: '', tooltip: 'Octo Stochastic D7 Value' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
         };
 
@@ -2047,7 +2058,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'trend', 'pattern', 'quadStoch', 'qsArrow', 'qstoch', 'd3value', 'd4value', 'priceChange', 'volume'];
+            const indicators = ['symbol', 'price', 'trend', 'pattern', 'quadStoch', 'qsArrow', 'qstoch', 'd3value', 'd4value', 'priceChange', 'volume', 'bjValue'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -2312,6 +2323,8 @@ app.get('/', (req, res) => {
               return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
+            case 'bjValue':
+              return parseFloat(alert.bjTsi) || 0;
             default:
               return '';
           }
@@ -3064,6 +3077,65 @@ app.get('/', (req, res) => {
             const d7Arrow = getArrow(d7DirForArrow);
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
+            // BJ TSI calculations
+            const bjTsi = parseFloat(alert.bjTsi) || null;
+            const bjTsl = parseFloat(alert.bjTsl) || null;
+            const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
+            const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+            const premarketRangeUpper = parseFloat(alert.bjPremarketRangeUpper);
+            const premarketRangeLower = parseFloat(alert.bjPremarketRangeLower);
+            
+            // Calculate PM Range status
+            let pmRangeDisplay = '-';
+            let pmRangeClass = 'text-muted-foreground';
+            if (!isNaN(bjTsi) && !isNaN(premarketRangeUpper) && !isNaN(premarketRangeLower)) {
+              const rangeMid = (premarketRangeUpper + premarketRangeLower) / 2;
+              if (bjTsi > premarketRangeUpper) {
+                pmRangeDisplay = 'Above';
+                pmRangeClass = 'text-green-400 font-semibold';
+              } else if (bjTsi < premarketRangeLower) {
+                pmRangeDisplay = 'Below';
+                pmRangeClass = 'text-red-400 font-semibold';
+              } else if (bjTsi >= rangeMid) {
+                pmRangeDisplay = 'Upper';
+                pmRangeClass = 'text-lime-400 font-semibold';
+              } else {
+                pmRangeDisplay = 'Lower';
+                pmRangeClass = 'text-yellow-400 font-semibold';
+              }
+            }
+            
+            // Calculate Area
+            let areaDisplay = '-';
+            let areaClass = 'text-muted-foreground';
+            if (!isNaN(bjTsi)) {
+              if (bjTsi > 40) {
+                areaDisplay = 'Above 40';
+                areaClass = 'text-green-400 font-bold';
+              } else if (bjTsi >= 15) {
+                areaDisplay = '40-15';
+                areaClass = 'text-green-500 font-semibold';
+              } else if (bjTsi >= 0) {
+                areaDisplay = '15-0';
+                areaClass = 'text-lime-400 font-semibold';
+              } else if (bjTsi >= -15) {
+                areaDisplay = '-15-0';
+                areaClass = 'text-orange-400 font-semibold';
+              } else if (bjTsi >= -40) {
+                areaDisplay = '-40--15';
+                areaClass = 'text-red-500 font-semibold';
+              } else {
+                areaDisplay = 'Below -40';
+                areaClass = 'text-red-400 font-bold';
+              }
+            }
+            
+            // V Dir and S Dir
+            const vDirDisplay = bjTsiIsBull ? 'Up' : 'Down';
+            const vDirClass = bjTsiIsBull ? 'text-green-400' : 'text-red-400';
+            const sDirDisplay = bjTslIsBull ? 'Up' : 'Down';
+            const sDirClass = bjTslIsBull ? 'text-green-400' : 'text-red-400';
+            
             // Generate cell content for each column
             const cellContent = {
               star: \`
@@ -3089,6 +3161,16 @@ app.get('/', (req, res) => {
               pattern: \`<td class="py-3 px-4 font-bold \${patternClass}" title="\${patternTitle}">\${patternDisplayStatic}\${patternStartTime ? ' · <span class="pattern-timer" data-start="' + patternStartTime + '">' + patternDurationDisplay + '</span>' : ''}</td>\`,
               d3value: \`<td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>\`,
               d4value: \`<td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>\`,
+              bj: \`
+                <td class="py-3 px-4 text-xs" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, PM Range=\${pmRangeDisplay}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                  <div class="space-y-1">
+                    <div class="font-mono">Value: <span class="font-semibold">\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
+                    <div>PM Range: <span class="\${pmRangeClass}">\${pmRangeDisplay}</span></div>
+                    <div>V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>
+                    <div>Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
+                  </div>
+                </td>
+              \`,
               volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
             };
             

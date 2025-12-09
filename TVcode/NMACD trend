@@ -1,0 +1,109 @@
+//@version=6
+indicator("Normalized MACD", shorttitle='N MACD', overlay=false)
+
+// ===== Basic Settings =====
+string GRP1 = "Basic Settings"
+sma = input.int(12, title='Fast MA', group=GRP1)
+lma = input.int(21, title='Slow MA', group=GRP1)
+tsp = input.int(9, title='Trigger', group=GRP1)
+np = input.int(50, title='Normalize', group=GRP1)
+h = input.bool(true, title='Histogram', group=GRP1)
+dofill = input.bool(false, title="Fill", group=GRP1)
+type = input.int(1, minval=1, maxval=3, title="1=Ema, 2=Wma, 3=Sma", group=GRP1)
+
+// ===== Color Settings =====
+string GRP2 = "MACD Line Colors"
+color macdUpHistUpColor = input.color(color.new(#00ff00, 0), "MACD Up + Hist Up (Green)", group=GRP2)
+color macdUpHistUpAboveSignalColor = input.color(color.new(#00ff00, 0), "MACD Up + Hist Up + Above Signal (Green #2)", group=GRP2, tooltip="When MACD is up, histogram is up, and MACD is above signal line")
+color macdUpHistDownColor = input.color(color.new(#ffffff, 0), "MACD Up + Hist Down (White)", group=GRP2)
+color macdDownHistUpColor = input.color(color.new(#ffffff, 0), "MACD Down + Hist Up (White)", group=GRP2, tooltip="When MACD is down but histogram is up")
+color macdDownHistDownColor = input.color(color.new(#ff0000, 0), "MACD Down + Hist Down (Red)", group=GRP2, tooltip="When MACD is down and histogram is down")
+color macdDownHistDownBelowSignalColor = input.color(color.new(#ff0000, 0), "MACD Down + Hist Down + Below Signal (Red #2)", group=GRP2, tooltip="When MACD is down, histogram is down, and MACD is below signal line")
+
+string GRP3 = "Signal Line & Histogram"
+color signalUpHistUpColor = input.color(color.new(#00ff00, 0), "Signal Up + Hist Up (Green)", group=GRP3)
+color signalDownHistDownColor = input.color(color.new(#ff0000, 0), "Signal Down + Hist Down (Red)", group=GRP3)
+color signalElseColor = input.color(color.new(#ffaa00, 0), "Signal Else (Orange)", group=GRP3, tooltip="When signal and histogram directions don't match")
+color histUpColor = input.color(color.new(#26a69a, 0), "Histogram Up Color", group=GRP3)
+color histDownColor = input.color(color.new(#ff5252, 0), "Histogram Down Color", group=GRP3)
+int macdLineWidth = input.int(2, title="MACD Line Width", group=GRP3, minval=1, maxval=5)
+int signalLineWidth = input.int(1, title="Signal Line Width", group=GRP3, minval=1, maxval=5)
+
+// ===== Calculations =====
+sh = type == 1 ? ta.ema(close, sma)  
+ : type == 2 ? ta.wma(close, sma)
+ : ta.sma(close, sma)
+
+lon = type == 1 ? ta.ema(close, lma) 
+ : type == 2 ? ta.wma(close, lma)
+ : ta.sma(close, lma)
+
+ratio = math.min(sh, lon) / math.max(sh, lon)
+Mac = (sh > lon ? 2 - ratio : ratio) - 1
+MacNorm = ((Mac - ta.lowest(Mac, np)) / (ta.highest(Mac, np) - ta.lowest(Mac, np) + 0.000001) * 2) - 1
+MacNorm2 = np < 2 ? Mac : MacNorm
+Trigger = ta.wma(MacNorm2, tsp)
+Hist = (MacNorm2 - Trigger)
+Hist2 = Hist > 1 ? 1 : Hist < -1 ? -1 : Hist
+
+// ===== Conditions =====
+// MACD position relative to signal line
+macdAboveSignal = MacNorm2 >= Trigger
+macdBelowSignal = MacNorm2 < Trigger
+
+// MACD direction
+macdUp = MacNorm2 >= MacNorm2[1]
+macdDown = MacNorm2 < MacNorm2[1]
+
+// Histogram direction
+histUp = Hist2 >= Hist2[1]
+histDown = Hist2 < Hist2[1]
+
+// Signal direction
+signalUp = Trigger >= Trigger[1]
+signalDown = Trigger < Trigger[1]
+
+// ===== MACD Line Color Logic =====
+// When MACD is up and histogram is up: green (green #2 if above signal line)
+// When MACD is up and histogram is down: white
+// When MACD is down and histogram is up: white
+// When MACD is down and histogram is down: red (red #2 if below signal line)
+color macdLineColor = na
+if macdUp and histUp
+    macdLineColor := macdAboveSignal ? macdUpHistUpAboveSignalColor : macdUpHistUpColor
+else if macdUp and histDown
+    macdLineColor := macdUpHistDownColor
+else if macdDown and histUp
+    macdLineColor := macdDownHistUpColor
+else
+    macdLineColor := macdBelowSignal ? macdDownHistDownBelowSignalColor : macdDownHistDownColor
+
+// ===== Histogram Color =====
+histColor = histUp ? histUpColor : histDownColor
+
+// ===== Signal Line Color Logic =====
+// Signal up + histogram up = green
+// Signal down + histogram down = red
+// Else = orange
+color signalLineColor = na
+if signalUp and histUp
+    signalLineColor := signalUpHistUpColor
+else if signalDown and histDown
+    signalLineColor := signalDownHistDownColor
+else
+    signalLineColor := signalElseColor
+
+// ===== Display =====
+hline(0, "Zero Line", color=color.new(#787b86, 50))
+
+// Plot histogram
+plot(h ? Hist2 : na, color=histColor, style=plot.style_columns, title='Hist', histbase=0)
+
+// Plot MACD line with conditional coloring
+plot(MacNorm2, color=macdLineColor, linewidth=macdLineWidth, title='MacNorm')
+
+// Plot fill if enabled
+plot(dofill ? MacNorm2 : na, color=MacNorm2 > 0 ? color.green : color.red, style=plot.style_columns, title='Fill')
+
+// Plot signal line with conditional coloring
+plot(Trigger, color=signalLineColor, linewidth=signalLineWidth, title='Trigger')

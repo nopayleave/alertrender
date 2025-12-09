@@ -1,3 +1,4 @@
+//@version=5
 //  ________________                                        
 //  ___  __ )_____(_)___________________ ____  ________ ___ 
 //  __  __  |____  /_  __ \_  ___/_  __ `/  / / /_  __ `__ \
@@ -5,7 +6,6 @@
 //  /_____/ ___  /  \____//_/    _\__, / \__,_/ /_/ /_/ /_/ 
 //          /___/                /____/                     
 
-//@version=5
 indicator( "Bjorgum TSI", "BJ TSI", precision = 3, explicit_plot_zorder = true)
 
 
@@ -95,6 +95,22 @@ int    signalsLenInput  = input.int(13, "Signal Length", group = GRP13)
 string GRP14            = "Timeframe Settings"
 bool   useCustomTF      = input.bool(false, "Use Custom Timeframe", group = GRP14)
 string customTF         = input.timeframe("", "Timeframe", group = GRP14)
+
+string GRP15            = "Color Switch Plot"
+bool   showTrendContinueBear = input.bool(true, "Show Trend Continue Bear", group = GRP15, tooltip = "Green to red below signal line")
+bool   showTrendContinueBull = input.bool(true, "Show Trend Continue Bull", group = GRP15, tooltip = "Red to green above signal line")
+color  trendContinueBearColor = input.color(color.new(#ff8800, 0), "Trend Continue Bear Color", group = GRP15)
+color  trendContinueBullColor = input.color(color.new(#00ff88, 0), "Trend Continue Bull Color", group = GRP15)
+int    switchSize       = input.int(3, "Switch Plot Size", group = GRP15)
+float  switchOffset     = input.float(10.0, "Offset from Value Line", group = GRP15, step = 1.0)
+
+string GRP16            = "Premarket TSI Range"
+bool   showPremarketRange = input.bool(true, "Show Premarket Range", group = GRP16)
+color  premarketRangeColor = input.color(color.new(#787b86, 90), "Premarket Range Color", group = GRP16)
+int    premarketStartHour = input.int(4, "Premarket Start Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
+int    premarketStartMinute = input.int(0, "Premarket Start Minute", group = GRP16, minval = 0, maxval = 59)
+int    premarketEndHour = input.int(9, "Premarket End Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
+int    premarketEndMinute = input.int(30, "Premarket End Minute", group = GRP16, minval = 0, maxval = 59)
 //#endregion
 
 
@@ -175,6 +191,60 @@ bool  isBeachy    = themeInput == TI3
 
 bool showObFill   = tsl > oBotInput  and not isClassic 
 bool showOsFill   = tsl < oSoldInput and not isClassic 
+
+// Detect switch from curlUp (tsiBullInput) to tsiMidBelowInput
+// Previous bar: curlUp[1] was true (using tsiBullInput - green)
+// Current bar: curlUp is false and trendIsBull is false (using tsiMidBelowInput - red)
+bool prevWasCurlUp = isClassic and curlUp[1]
+bool currIsMidBelow = isClassic and not curlUp and not trendIsBull
+bool colorSwitchCurlUpToMidBelow = prevWasCurlUp and currIsMidBelow
+bool newColorSwitchCurlUpToMidBelow = colorSwitchCurlUpToMidBelow and not colorSwitchCurlUpToMidBelow[1]
+
+// Detect switch from curlDn (tsiBearInput) to tsiMidAboveInput
+// Previous bar: curlDn[1] was true (using tsiBearInput - red)
+// Current bar: curlDn is false and trendIsBull is true (using tsiMidAboveInput - green)
+bool prevWasCurlDn = isClassic and curlDn[1]
+bool currIsMidAbove = isClassic and not curlDn and trendIsBull
+bool colorSwitchCurlDnToMidAbove = prevWasCurlDn and currIsMidAbove
+bool newColorSwitchCurlDnToMidAbove = colorSwitchCurlDnToMidAbove and not colorSwitchCurlDnToMidAbove[1]
+
+// ===== Premarket TSI Range Calculation =====
+// Check if we're in premarket session based on time
+currentHour = hour(time)
+currentMinute = minute(time)
+currentTime = currentHour * 100 + currentMinute
+premarketStartTime = premarketStartHour * 100 + premarketStartMinute
+premarketEndTime = premarketEndHour * 100 + premarketEndMinute
+
+// Check if current time is within premarket session
+inPremarket = currentTime >= premarketStartTime and currentTime < premarketEndTime
+
+// Track premarket high/low TSI values
+var float premarketTsiHigh = na
+var float premarketTsiLow = na
+
+// Reset at start of new day (when we exit premarket and enter regular session)
+isNewDay = ta.change(dayofweek) != 0 or ta.change(dayofmonth) != 0
+wasInPremarket = inPremarket[1]
+exitedPremarket = wasInPremarket and not inPremarket
+
+if isNewDay or exitedPremarket
+    // Keep the values from previous premarket session for display during regular hours
+    // Only reset if it's a new day
+    if isNewDay
+        premarketTsiHigh := na
+        premarketTsiLow := na
+
+// Update premarket high/low during premarket session
+if inPremarket
+    if na(premarketTsiHigh) or tsi > premarketTsiHigh
+        premarketTsiHigh := tsi
+    if na(premarketTsiLow) or tsi < premarketTsiLow
+        premarketTsiLow := tsi
+
+// Use the tracked values for the background range
+premarketRangeUpper = math.max(premarketTsiHigh, premarketTsiLow)
+premarketRangeLower = math.min(premarketTsiHigh, premarketTsiLow)
 //#endregion
 
 
@@ -231,6 +301,11 @@ fill(h3, h4, showBearArea ? bearAreaColor : na, title = "Bear Area")
 fill(h5, h6, showBullArea ? bullAreaColor : na, title = "Bull Area")
 fill(h6, h8, showStrongBull ? strongBullColor : na, title = "Strong Bull Area")
 
+// Premarket TSI range background
+p_premarketUpper = plot(not na(premarketRangeUpper) and showPremarketRange ? premarketRangeUpper : na, "Premarket High", color = color.new(color.white, 100), display = display.none)
+p_premarketLower = plot(not na(premarketRangeLower) and showPremarketRange ? premarketRangeLower : na, "Premarket Low", color = color.new(color.white, 100), display = display.none)
+fill(p_premarketUpper, p_premarketLower, color = showPremarketRange and not na(premarketRangeUpper) and not na(premarketRangeLower) ? premarketRangeColor : na, title = "Premarket TSI Range")
+
 h1 = hline(isClassic ? na : oBotInput,  color = color(na), display = display.none, editable = false)
 h2 = hline(isClassic ? na : oSoldInput, color = color(na), display = display.none, editable = false)
 
@@ -253,6 +328,22 @@ p8 = plot(showNoShortInput ? noShortInput : na, "No Short Line", noShortColInput
 p9 = plot(showOnLongInput  ? onLongInput  : na, "On Long Line",  onLongColInput)
 p6 = plot(oBotInput , display = display.none, editable = false)
 p7 = plot(oSoldInput, display = display.none, editable = false)
+
+// Plot for Trend Continue Bear: Green to Red below signal line
+// Only plots when switching from curlUp (green) to midBelow (red) while below signal
+float trendContinueBearPlot = na
+if showTrendContinueBear and newColorSwitchCurlUpToMidBelow
+    trendContinueBearPlot := tsi + switchOffset
+
+p11 = plot(trendContinueBearPlot, "Trend Continue Bear", trendContinueBearColor, linewidth = switchSize, style = plot.style_cross)
+
+// Plot for Trend Continue Bull: Red to Green above signal line
+// Only plots when switching from curlDn (red) to midAbove (green) while above signal
+float trendContinueBullPlot = na
+if showTrendContinueBull and newColorSwitchCurlDnToMidAbove
+    trendContinueBullPlot := tsi + switchOffset
+
+p12 = plot(trendContinueBullPlot, "Trend Continue Bull", trendContinueBullColor, linewidth = switchSize, style = plot.style_cross)
 
 displayFill = isClassic ? display.none : display.all
 int obValue = showObFill ? oBotInput  : na
