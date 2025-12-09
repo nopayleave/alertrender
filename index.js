@@ -3263,22 +3263,35 @@ app.get('/', (req, res) => {
             }
             
             // Calculate PM Range status
+            // Logic:
+            // - Below: if current value (a) < lowest value (x) of premarket range
+            // - Above: if current value (a) > highest value (y) of premarket range
+            // - Lower: if current value (a) < 50% of premarket range = (y+x)/2
+            // - Upper: if current value (a) > 50% of premarket range = (y+x)/2
             let pmRangeDisplay = '-';
             let pmRangeClass = 'text-muted-foreground';
             if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && !isNaN(premarketRangeUpper) && premarketRangeLower !== null && !isNaN(premarketRangeLower)) {
-              const rangeMid = (premarketRangeUpper + premarketRangeLower) / 2;
-              if (bjTsi > premarketRangeUpper) {
-                pmRangeDisplay = 'Above';
-                pmRangeClass = 'text-green-400 font-semibold';
-              } else if (bjTsi < premarketRangeLower) {
+              const x = premarketRangeLower; // lowest value
+              const y = premarketRangeUpper; // highest value
+              const a = bjTsi; // current value
+              const rangeMid = (y + x) / 2; // 50% of premarket range
+              
+              if (a < x) {
+                // Below: current value < lowest value
                 pmRangeDisplay = 'Below';
                 pmRangeClass = 'text-red-400 font-semibold';
-              } else if (bjTsi >= rangeMid) {
-                pmRangeDisplay = 'Upper';
-                pmRangeClass = 'text-lime-400 font-semibold';
-              } else {
+              } else if (a > y) {
+                // Above: current value > highest value
+                pmRangeDisplay = 'Above';
+                pmRangeClass = 'text-green-400 font-semibold';
+              } else if (a < rangeMid) {
+                // Lower: current value < 50% of range (below midpoint)
                 pmRangeDisplay = 'Lower';
                 pmRangeClass = 'text-yellow-400 font-semibold';
+              } else {
+                // Upper: current value >= 50% of range (above or equal to midpoint)
+                pmRangeDisplay = 'Upper';
+                pmRangeClass = 'text-lime-400 font-semibold';
               }
             }
             
