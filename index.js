@@ -448,10 +448,12 @@ app.post('/webhook', (req, res) => {
     console.log('🔍 BJ TSI Debug:', {
       symbol: alert.symbol,
       bjTsi: alert.bjTsi,
-      bjPremarketRangeUpper: alert.bjPremarketRangeUpper,
-      bjPremarketRangeLower: alert.bjPremarketRangeLower,
-      upperType: typeof alert.bjPremarketRangeUpper,
-      lowerType: typeof alert.bjPremarketRangeLower
+      bjPremarketTsiHigh: alert.bjPremarketTsiHigh,
+      bjPremarketTsiLow: alert.bjPremarketTsiLow,
+      bjPremarketRangeUpper: alert.bjPremarketRangeUpper, // Legacy support
+      bjPremarketRangeLower: alert.bjPremarketRangeLower, // Legacy support
+      highType: typeof alert.bjPremarketTsiHigh,
+      lowType: typeof alert.bjPremarketTsiLow
     })
   }
   
@@ -1069,9 +1071,33 @@ app.post('/webhook', (req, res) => {
     let pmUpper = null;
     let pmLower = null;
     
-    // Check if Pine script sent premarket range values
+    // Check if Pine script sent premarket TSI high/low values (new field names)
     // Handle both string "null" and actual null values
-    if (alert.bjPremarketRangeUpper !== null && 
+    if (alert.bjPremarketTsiHigh !== null && 
+        alert.bjPremarketTsiHigh !== undefined && 
+        alert.bjPremarketTsiHigh !== '' && 
+        alert.bjPremarketTsiHigh !== 'null' &&
+        String(alert.bjPremarketTsiHigh).toLowerCase() !== 'null') {
+      const highVal = parseFloat(alert.bjPremarketTsiHigh);
+      if (!isNaN(highVal)) {
+        pmUpper = highVal;
+        console.log(`📊 Using Pine script PM High (premarketTsiHigh) for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
+      }
+    }
+    if (alert.bjPremarketTsiLow !== null && 
+        alert.bjPremarketTsiLow !== undefined && 
+        alert.bjPremarketTsiLow !== '' && 
+        alert.bjPremarketTsiLow !== 'null' &&
+        String(alert.bjPremarketTsiLow).toLowerCase() !== 'null') {
+      const lowVal = parseFloat(alert.bjPremarketTsiLow);
+      if (!isNaN(lowVal)) {
+        pmLower = lowVal;
+        console.log(`📊 Using Pine script PM Low (premarketTsiLow) for ${alert.symbol}: ${pmLower.toFixed(3)}`);
+      }
+    }
+    
+    // Legacy support: fallback to old field names if new ones not available
+    if (pmUpper === null && alert.bjPremarketRangeUpper !== null && 
         alert.bjPremarketRangeUpper !== undefined && 
         alert.bjPremarketRangeUpper !== '' && 
         alert.bjPremarketRangeUpper !== 'null' &&
@@ -1079,10 +1105,10 @@ app.post('/webhook', (req, res) => {
       const upperVal = parseFloat(alert.bjPremarketRangeUpper);
       if (!isNaN(upperVal)) {
         pmUpper = upperVal;
-        console.log(`📊 Using Pine script PM Upper for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
+        console.log(`📊 Using Pine script PM Upper (legacy) for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
       }
     }
-    if (alert.bjPremarketRangeLower !== null && 
+    if (pmLower === null && alert.bjPremarketRangeLower !== null && 
         alert.bjPremarketRangeLower !== undefined && 
         alert.bjPremarketRangeLower !== '' && 
         alert.bjPremarketRangeLower !== 'null' &&
@@ -1090,7 +1116,7 @@ app.post('/webhook', (req, res) => {
       const lowerVal = parseFloat(alert.bjPremarketRangeLower);
       if (!isNaN(lowerVal)) {
         pmLower = lowerVal;
-        console.log(`📊 Using Pine script PM Lower for ${alert.symbol}: ${pmLower.toFixed(3)}`);
+        console.log(`📊 Using Pine script PM Lower (legacy) for ${alert.symbol}: ${pmLower.toFixed(3)}`);
       }
     }
     
@@ -1383,15 +1409,40 @@ app.post('/webhook', (req, res) => {
           updateBjPremarketRange(alert.symbol, bjTsiValue);
         }
         
-        // Prioritize Pine script values if available
+        // Prioritize Pine script values if available (new field names: bjPremarketTsiHigh/Low)
         let pmUpper = null;
         let pmLower = null;
         
-        if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+        // Check new field names first
+        if (alert.bjPremarketTsiHigh !== null && 
+            alert.bjPremarketTsiHigh !== undefined && 
+            alert.bjPremarketTsiHigh !== '' && 
+            alert.bjPremarketTsiHigh !== 'null' &&
+            String(alert.bjPremarketTsiHigh).toLowerCase() !== 'null') {
+          const highVal = parseFloat(alert.bjPremarketTsiHigh);
+          if (!isNaN(highVal)) pmUpper = highVal;
+        }
+        if (alert.bjPremarketTsiLow !== null && 
+            alert.bjPremarketTsiLow !== undefined && 
+            alert.bjPremarketTsiLow !== '' && 
+            alert.bjPremarketTsiLow !== 'null' &&
+            String(alert.bjPremarketTsiLow).toLowerCase() !== 'null') {
+          const lowVal = parseFloat(alert.bjPremarketTsiLow);
+          if (!isNaN(lowVal)) pmLower = lowVal;
+        }
+        
+        // Legacy support: fallback to old field names
+        if (pmUpper === null && alert.bjPremarketRangeUpper !== null && 
+            alert.bjPremarketRangeUpper !== undefined && 
+            alert.bjPremarketRangeUpper !== '' && 
+            alert.bjPremarketRangeUpper !== 'null') {
           const upperVal = parseFloat(alert.bjPremarketRangeUpper);
           if (!isNaN(upperVal)) pmUpper = upperVal;
         }
-        if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+        if (pmLower === null && alert.bjPremarketRangeLower !== null && 
+            alert.bjPremarketRangeLower !== undefined && 
+            alert.bjPremarketRangeLower !== '' && 
+            alert.bjPremarketRangeLower !== 'null') {
           const lowerVal = parseFloat(alert.bjPremarketRangeLower);
           if (!isNaN(lowerVal)) pmLower = lowerVal;
         }
