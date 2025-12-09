@@ -980,16 +980,28 @@ app.post('/webhook', (req, res) => {
     }
   } else if (isBjTsiAlert && !alert.price) {
     // BJ TSI alert - store BJ TSI data with timestamp
+    // Handle premarket range values - they might be null, "null" string, or actual numbers
+    let pmUpper = null;
+    let pmLower = null;
+    if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+      const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+      if (!isNaN(upperVal)) pmUpper = upperVal;
+    }
+    if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+      const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+      if (!isNaN(lowerVal)) pmLower = lowerVal;
+    }
+    
     bjTsiDataStorage[alert.symbol] = {
       bjTsi: alert.bjTsi,
       bjTsl: alert.bjTsl,
       bjTsiIsBull: alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true',
       bjTslIsBull: alert.bjTslIsBull === true || alert.bjTslIsBull === 'true',
-      bjPremarketRangeUpper: alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined ? parseFloat(alert.bjPremarketRangeUpper) : null,
-      bjPremarketRangeLower: alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined ? parseFloat(alert.bjPremarketRangeLower) : null,
+      bjPremarketRangeUpper: pmUpper,
+      bjPremarketRangeLower: pmLower,
       timestamp: Date.now()
     }
-    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}`)
+    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}, PM Upper=${pmUpper}, PM Lower=${pmLower}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -1254,13 +1266,25 @@ app.post('/webhook', (req, res) => {
     } else {
       // If no stored BJ TSI data, check if this alert has BJ TSI data
       if (alert.bjTsi !== undefined) {
+        // Handle premarket range values - they might be null, "null" string, or actual numbers
+        let pmUpper = null;
+        let pmLower = null;
+        if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+          const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+          if (!isNaN(upperVal)) pmUpper = upperVal;
+        }
+        if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+          const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+          if (!isNaN(lowerVal)) pmLower = lowerVal;
+        }
+        
         alertData.bjTsi = alert.bjTsi
         alertData.bjTsl = alert.bjTsl
         alertData.bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true'
         alertData.bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true'
-        alertData.bjPremarketRangeUpper = alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined ? parseFloat(alert.bjPremarketRangeUpper) : null
-        alertData.bjPremarketRangeLower = alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined ? parseFloat(alert.bjPremarketRangeLower) : null
-        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}`)
+        alertData.bjPremarketRangeUpper = pmUpper
+        alertData.bjPremarketRangeLower = pmLower
+        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}, PM Upper=${pmUpper}, PM Lower=${pmLower}`)
       }
     }
     
@@ -3154,17 +3178,27 @@ app.get('/', (req, res) => {
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
             // BJ TSI calculations
-            const bjTsi = parseFloat(alert.bjTsi) || null;
-            const bjTsl = parseFloat(alert.bjTsl) || null;
+            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+            const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
             const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
             const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
-            const premarketRangeUpper = parseFloat(alert.bjPremarketRangeUpper);
-            const premarketRangeLower = parseFloat(alert.bjPremarketRangeLower);
+            
+            // Handle premarket range values - they might be null, "null" string, or actual numbers
+            let premarketRangeUpper = null;
+            let premarketRangeLower = null;
+            if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+              const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+              if (!isNaN(upperVal)) premarketRangeUpper = upperVal;
+            }
+            if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+              const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+              if (!isNaN(lowerVal)) premarketRangeLower = lowerVal;
+            }
             
             // Calculate PM Range status
             let pmRangeDisplay = '-';
             let pmRangeClass = 'text-muted-foreground';
-            if (!isNaN(bjTsi) && !isNaN(premarketRangeUpper) && !isNaN(premarketRangeLower)) {
+            if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && !isNaN(premarketRangeUpper) && premarketRangeLower !== null && !isNaN(premarketRangeLower)) {
               const rangeMid = (premarketRangeUpper + premarketRangeLower) / 2;
               if (bjTsi > premarketRangeUpper) {
                 pmRangeDisplay = 'Above';

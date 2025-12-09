@@ -227,17 +227,13 @@ inPremarket = currentTime >= premarketStartTime and currentTime < premarketEndTi
 var float premarketTsiHigh = na
 var float premarketTsiLow = na
 
-// Reset at start of new day (when we exit premarket and enter regular session)
+// Reset at start of new day
 isNewDay = ta.change(dayofweek) != 0 or ta.change(dayofmonth) != 0
-wasInPremarket = inPremarket[1]
-exitedPremarket = wasInPremarket and not inPremarket
 
-if isNewDay or exitedPremarket
-    // Keep the values from previous premarket session for display during regular hours
-    // Only reset if it's a new day
-    if isNewDay
-        premarketTsiHigh := na
-        premarketTsiLow := na
+// Reset premarket values only on new day
+if isNewDay
+    premarketTsiHigh := na
+    premarketTsiLow := na
 
 // Update premarket high/low during premarket session
 if inPremarket
@@ -247,8 +243,10 @@ if inPremarket
         premarketTsiLow := tsi
 
 // Use the tracked values for the background range
-premarketRangeUpper = math.max(premarketTsiHigh, premarketTsiLow)
-premarketRangeLower = math.min(premarketTsiHigh, premarketTsiLow)
+// Values persist after premarket ends until next day
+// Only calculate if we have valid values (not na)
+premarketRangeUpper = na(premarketTsiHigh) or na(premarketTsiLow) ? na : math.max(premarketTsiHigh, premarketTsiLow)
+premarketRangeLower = na(premarketTsiHigh) or na(premarketTsiLow) ? na : math.min(premarketTsiHigh, premarketTsiLow)
 //#endregion
 
 
