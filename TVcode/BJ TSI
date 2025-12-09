@@ -387,8 +387,8 @@ if enableWebhook and barstate.isconfirmed
       '"bjTsl": ' + str.tostring(tsl, "#.###") + ',' +
       '"bjTsiIsBull": ' + str.tostring(tsiIsBull) + ',' +
       '"bjTslIsBull": ' + str.tostring(tslIsBull) + ',' +
-      '"bjPremarketTsiHigh": ' + (na(premarketTsiHigh) ? "null" : str.tostring(premarketTsiHigh, "#.###")) + ',' +
-      '"bjPremarketTsiLow": ' + (na(premarketTsiLow) ? "null" : str.tostring(premarketTsiLow, "#.###")) + '}'
+      '"bjPremarketTsiHigh": ' + (na(premarketRangeUpper) ? "null" : str.tostring(premarketRangeUpper, "#.###")) + ',' +
+      '"bjPremarketTsiLow": ' + (na(premarketRangeLower) ? "null" : str.tostring(premarketRangeLower, "#.###")) + '}'
     alert(jsonMsg, freq = alertFreq)
 
 // Simple alerts (for backward compatibility)
