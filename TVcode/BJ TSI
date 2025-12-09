@@ -107,6 +107,7 @@ float  switchOffset     = input.float(10.0, "Offset from Value Line", group = GR
 string GRP16            = "Premarket TSI Range"
 bool   showPremarketRange = input.bool(true, "Show Premarket Range", group = GRP16)
 color  premarketRangeColor = input.color(color.new(#787b86, 90), "Premarket Range Color", group = GRP16)
+string premarketTimezone = input.string("America/New_York", "Timezone", group = GRP16, tooltip = "Timezone for premarket detection. Use 'America/New_York' for US stocks, 'UTC' for crypto")
 int    premarketStartHour = input.int(4, "Premarket Start Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
 int    premarketStartMinute = input.int(0, "Premarket Start Minute", group = GRP16, minval = 0, maxval = 59)
 int    premarketEndHour = input.int(9, "Premarket End Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
@@ -213,9 +214,9 @@ bool colorSwitchCurlDnToMidAbove = prevWasCurlDn and currIsMidAbove
 bool newColorSwitchCurlDnToMidAbove = colorSwitchCurlDnToMidAbove and not colorSwitchCurlDnToMidAbove[1]
 
 // ===== Premarket TSI Range Calculation =====
-// Check if we're in premarket session based on time
-currentHour = hour(time)
-currentMinute = minute(time)
+// Check if we're in premarket session based on time (using specified timezone)
+currentHour = hour(time, premarketTimezone)
+currentMinute = minute(time, premarketTimezone)
 currentTime = currentHour * 100 + currentMinute
 premarketStartTime = premarketStartHour * 100 + premarketStartMinute
 premarketEndTime = premarketEndHour * 100 + premarketEndMinute
@@ -227,8 +228,10 @@ inPremarket = currentTime >= premarketStartTime and currentTime < premarketEndTi
 var float premarketTsiHigh = na
 var float premarketTsiLow = na
 
-// Reset at start of new day
-isNewDay = ta.change(dayofweek) != 0 or ta.change(dayofmonth) != 0
+// Reset at start of new day (using specified timezone)
+currentDay = dayofweek(time, premarketTimezone)
+currentDayOfMonth = dayofmonth(time, premarketTimezone)
+isNewDay = ta.change(currentDay) != 0 or ta.change(currentDayOfMonth) != 0
 
 // Reset premarket values only on new day
 if isNewDay

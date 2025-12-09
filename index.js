@@ -57,21 +57,28 @@ let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
 
-// Helper function to check if current time is in premarket hours (4:00 AM - 9:30 AM)
+// Helper function to check if current time is in premarket hours (4:00 AM - 9:30 AM Eastern Time)
 function isInPremarketHours() {
+  // Use Eastern Time (America/New_York) for US stock premarket
   const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
+  const easternTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const hour = easternTime.getHours();
+  const minute = easternTime.getMinutes();
   const currentTime = hour * 100 + minute;
-  const premarketStart = 4 * 100 + 0; // 4:00 AM
-  const premarketEnd = 9 * 100 + 30; // 9:30 AM
+  const premarketStart = 4 * 100 + 0; // 4:00 AM ET
+  const premarketEnd = 9 * 100 + 30; // 9:30 AM ET
   return currentTime >= premarketStart && currentTime < premarketEnd;
 }
 
-// Helper function to get current date string (YYYY-MM-DD)
+// Helper function to get current date string (YYYY-MM-DD) in Eastern Time
 function getCurrentDateString() {
   const now = new Date();
-  return now.toISOString().split('T')[0];
+  // Use Eastern Time for date consistency with US stock market
+  const easternDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const year = easternDate.getFullYear();
+  const month = String(easternDate.getMonth() + 1).padStart(2, '0');
+  const day = String(easternDate.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Helper function to track and calculate premarket range for BJ TSI
