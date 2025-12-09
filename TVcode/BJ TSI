@@ -251,9 +251,9 @@ if inPremarket
 
 // Use the tracked values for the background range
 // Values persist after premarket ends until next day
-// Only calculate if we have valid values (not na)
-premarketRangeUpper = na(premarketTsiHigh) or na(premarketTsiLow) ? na : math.max(premarketTsiHigh, premarketTsiLow)
-premarketRangeLower = na(premarketTsiHigh) or na(premarketTsiLow) ? na : math.min(premarketTsiHigh, premarketTsiLow)
+// Calculate range values - use the actual high/low values directly
+premarketRangeUpper = na(premarketTsiHigh) ? na : premarketTsiHigh
+premarketRangeLower = na(premarketTsiLow) ? na : premarketTsiLow
 //#endregion
 
 

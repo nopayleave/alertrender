@@ -443,6 +443,18 @@ app.post('/webhook', (req, res) => {
   // Log incoming webhook for debugging
   console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
   
+  // Debug BJ TSI premarket range values
+  if (alert.bjTsi !== undefined) {
+    console.log('🔍 BJ TSI Debug:', {
+      symbol: alert.symbol,
+      bjTsi: alert.bjTsi,
+      bjPremarketRangeUpper: alert.bjPremarketRangeUpper,
+      bjPremarketRangeLower: alert.bjPremarketRangeLower,
+      upperType: typeof alert.bjPremarketRangeUpper,
+      lowerType: typeof alert.bjPremarketRangeLower
+    })
+  }
+  
   // Store in full history (all alerts)
   alertsHistory.unshift({
     ...alert,
@@ -1058,13 +1070,28 @@ app.post('/webhook', (req, res) => {
     let pmLower = null;
     
     // Check if Pine script sent premarket range values
-    if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+    // Handle both string "null" and actual null values
+    if (alert.bjPremarketRangeUpper !== null && 
+        alert.bjPremarketRangeUpper !== undefined && 
+        alert.bjPremarketRangeUpper !== '' && 
+        alert.bjPremarketRangeUpper !== 'null' &&
+        String(alert.bjPremarketRangeUpper).toLowerCase() !== 'null') {
       const upperVal = parseFloat(alert.bjPremarketRangeUpper);
-      if (!isNaN(upperVal)) pmUpper = upperVal;
+      if (!isNaN(upperVal)) {
+        pmUpper = upperVal;
+        console.log(`📊 Using Pine script PM Upper for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
+      }
     }
-    if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+    if (alert.bjPremarketRangeLower !== null && 
+        alert.bjPremarketRangeLower !== undefined && 
+        alert.bjPremarketRangeLower !== '' && 
+        alert.bjPremarketRangeLower !== 'null' &&
+        String(alert.bjPremarketRangeLower).toLowerCase() !== 'null') {
       const lowerVal = parseFloat(alert.bjPremarketRangeLower);
-      if (!isNaN(lowerVal)) pmLower = lowerVal;
+      if (!isNaN(lowerVal)) {
+        pmLower = lowerVal;
+        console.log(`📊 Using Pine script PM Lower for ${alert.symbol}: ${pmLower.toFixed(3)}`);
+      }
     }
     
     // Fallback to backend calculated range if Pine script values not available
