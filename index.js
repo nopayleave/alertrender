@@ -3684,7 +3684,7 @@ app.get('/', (req, res) => {
               \`,
               d2: \`
                 <td class="py-3 px-4 text-center" title="Solo Stoch D2: Value=\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(2) : 'N/A'}, Dir=\${soloD2Direction}\${d2PatternDisplay ? ', Pattern=' + soloD2Pattern : ''}">
-                  <div class="flex flex-col items-center gap-1">
+                  <div class="flex flex-row items-center justify-center gap-2">
                     <div class="font-mono text-lg \${d2ValueClass}">\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(1) : '-'}</div>
                     <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                     \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
