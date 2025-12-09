@@ -3388,7 +3388,7 @@ app.get('/', (req, res) => {
               const rangeMid = (y + x) / 2; // 50% of premarket range
               
               // Format range values for display
-              pmRangeValues = ' (' + x.toFixed(2) + ' - ' + y.toFixed(2) + ')';
+              pmRangeValues = ' (' + x.toFixed(2) + ' to ' + y.toFixed(2) + ')';
               
               if (a < x) {
                 // Below: current value < lowest value
