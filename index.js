@@ -1182,9 +1182,12 @@ app.post('/webhook', (req, res) => {
       d2Direction: alert.d2Direction,
       d2Pattern: alert.d2Pattern || '',
       d2PatternValue: alert.d2PatternValue || null,
+      previousClose: alert.previousClose || null,
+      changeFromPrevDay: alert.changeFromPrevDay || null,
+      volume: alert.volume || null,
       timestamp: Date.now()
     }
-    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: D2=${alert.d2}, Dir=${alert.d2Direction}, Pattern=${alert.d2Pattern || 'none'}`)
+    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: D2=${alert.d2}, Dir=${alert.d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -1194,6 +1197,9 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
       alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
       if (alert.price) alerts[existingIndex].price = alert.price
+      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
     } else {
@@ -1202,6 +1208,9 @@ app.post('/webhook', (req, res) => {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
         price: alert.price || null,
+        previousClose: alert.previousClose || null,
+        changeFromPrevDay: alert.changeFromPrevDay || null,
+        volume: alert.volume || null,
         soloStochD2: alert.d2,
         soloStochD2Direction: alert.d2Direction,
         soloStochD2Pattern: alert.d2Pattern || '',
@@ -1520,7 +1529,17 @@ app.post('/webhook', (req, res) => {
         alertData.soloStochD2Direction = soloStochInfo.d2Direction
         alertData.soloStochD2Pattern = soloStochInfo.d2Pattern
         alertData.soloStochD2PatternValue = soloStochInfo.d2PatternValue
-        console.log(`✅ Merged Solo Stoch data for ${alert.symbol}: D2=${soloStochInfo.d2}, Dir=${soloStochInfo.d2Direction} (age: ${ageInMinutes.toFixed(1)} min)`)
+        // Also merge day data from Solo Stoch if not already set
+        if (soloStochInfo.previousClose !== undefined && soloStochInfo.previousClose !== null && alertData.previousClose === undefined) {
+          alertData.previousClose = soloStochInfo.previousClose
+        }
+        if (soloStochInfo.changeFromPrevDay !== undefined && soloStochInfo.changeFromPrevDay !== null && alertData.changeFromPrevDay === undefined) {
+          alertData.changeFromPrevDay = soloStochInfo.changeFromPrevDay
+        }
+        if (soloStochInfo.volume !== undefined && soloStochInfo.volume !== null && alertData.volume === undefined) {
+          alertData.volume = soloStochInfo.volume
+        }
+        console.log(`✅ Merged Solo Stoch data for ${alert.symbol}: D2=${soloStochInfo.d2}, Dir=${soloStochInfo.d2Direction}, Chg%=${soloStochInfo.changeFromPrevDay || 'N/A'} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete soloStochDataStorage[alert.symbol]
