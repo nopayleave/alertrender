@@ -111,6 +111,10 @@ int    premarketStartHour = input.int(4, "Premarket Start Hour", group = GRP16, 
 int    premarketStartMinute = input.int(0, "Premarket Start Minute", group = GRP16, minval = 0, maxval = 59)
 int    premarketEndHour = input.int(9, "Premarket End Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
 int    premarketEndMinute = input.int(30, "Premarket End Minute", group = GRP16, minval = 0, maxval = 59)
+
+string GRP17            = "Webhook Settings"
+bool   enableWebhook     = input.bool(true, "Enable Webhook Alerts", group = GRP17)
+string webhookFrequency  = input.string("Once Per Bar Close", "Alert Frequency", group = GRP17, options = ["Once Per Bar Close", "Once Per Bar", "All"])
 //#endregion
 
 
@@ -362,6 +366,27 @@ bgcolor(obCrossDn and showHiLoInput ? isClassic ? color.new(oSoldColInput, 80) :
 
 //#region ———————————————————— Alerts
 
+// Determine alert frequency
+alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
+           webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : 
+           alert.freq_all
+
+// Webhook JSON payload
+if enableWebhook and barstate.isconfirmed
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"time": "' + str.tostring(time) + '",' +
+      '"price": ' + str.tostring(close) + ',' +
+      '"bjTsi": ' + str.tostring(tsi, "#.###") + ',' +
+      '"bjTsl": ' + str.tostring(tsl, "#.###") + ',' +
+      '"bjTsiIsBull": ' + str.tostring(tsiIsBull) + ',' +
+      '"bjTslIsBull": ' + str.tostring(tslIsBull) + ',' +
+      '"bjPremarketRangeUpper": ' + (na(premarketRangeUpper) ? "null" : str.tostring(premarketRangeUpper, "#.###")) + ',' +
+      '"bjPremarketRangeLower": ' + (na(premarketRangeLower) ? "null" : str.tostring(premarketRangeLower, "#.###")) + '}'
+    alert(jsonMsg, freq = alertFreq)
+
+// Simple alerts (for backward compatibility)
 if osCrossUp
     alert("Turn Bullish", alert.freq_once_per_bar)
 
