@@ -39,12 +39,12 @@ bool   blankBarsInput   = input.bool(false, "Show White Bars",  group = GRP2)
 string GRP3             = "TSI Value Line"
 color  tsiBullInput     = input.color(color.new(#09ff00, 0),  "", group = GRP3, inline = "1")
 color  tsiMidAboveInput = input.color(color.new(#09ff00,0),  "", group = GRP3, inline = "1")
-color  tsiMidBelowInput = input.color(color.new(#ea2b2b, 0),  "", group = GRP3, inline = "1")
-color  tsiBearInput     = input.color(color.new(#ea2b2b,0),  "", group = GRP3, inline = "1") 
+color  tsiMidBelowInput = input.color(color.new(#0088ff, 0),  "", group = GRP3, inline = "1")
+color  tsiBearInput     = input.color(color.new(#0088ff,0),  "", group = GRP3, inline = "1") 
 
 string GRP4             = "TSI Signal Line"
 color  tslBullInput     = input.color(color.new(#09ff00,0),  "", group = GRP4, inline = "2")
-color  tslBearInput     = input.color(color.new(#ea2b2b,0),  "", group = GRP4, inline = "2")
+color  tslBearInput     = input.color(color.new(#0088ff,0),  "", group = GRP4, inline = "2")
 
 string GRP5             = "Fill Color"
 color  fillBullInput    = input.color(color.new(#09ff00,88), "", group = GRP5, inline = "3")
@@ -103,6 +103,14 @@ color  trendContinueBearColor = input.color(color.new(#ff8800, 0), "Trend Contin
 color  trendContinueBullColor = input.color(color.new(#00ff88, 0), "Trend Continue Bull Color", group = GRP15)
 int    switchSize       = input.int(3, "Switch Plot Size", group = GRP15)
 float  switchOffset     = input.float(10.0, "Offset from Value Line", group = GRP15, step = 1.0)
+
+string GRP15A           = "Crossover/Crossunder Plot"
+bool   showCrossover    = input.bool(true, "Show Crossover (TSI crosses above Signal)", group = GRP15A)
+bool   showCrossunder   = input.bool(true, "Show Crossunder (TSI crosses below Signal)", group = GRP15A)
+color  crossoverColor   = input.color(color.new(#00ff00, 0), "Crossover Color", group = GRP15A)
+color  crossunderColor  = input.color(color.new(#0088ff, 0), "Crossunder Color", group = GRP15A)
+int    crossSize        = input.int(4, "Cross Plot Size", group = GRP15A)
+float  crossOffset      = input.float(10.0, "Offset from Value Line", group = GRP15A, step = 1.0)
 
 string GRP16            = "Premarket TSI Range"
 bool   showPremarketRange = input.bool(true, "Show Premarket Range", group = GRP16)
@@ -300,10 +308,10 @@ if not na(premarketTsiLow)
 color tsiDnUpColor = isBeachy ? #1E90FF : #BA33FF
 color tsiDnDnColor = isBeachy ? #FF6B6B : #8100FF
 color tsiUpUpColor = isBeachy ? #00CED1 : #1FE0F3
-color tslBullColor = isBeachy ? #00CED1 : #1FE0F3
-color tslBearColor = isBeachy ? #1E90FF : #0088A3
-color tsiBullColor = isBeachy ? #FFD700 : #33FF57
-color tsiBearColor = isBeachy ? #FF6B6B : #00940D
+color tslBullColor = isBeachy ? #00CED1 : #00ff00
+color tslBearColor = isBeachy ? #1E90FF : #0088ff
+color tsiBullColor = isBeachy ? #FFD700 : #00ff00
+color tsiBearColor = isBeachy ? #FF6B6B : #0088ff
 color tsiUpDnColor = isBeachy ? #FFD700 : #FF21D4
 color bullBgColor  = isBeachy ? #FFD700 : #80FFFF
 color bearBgColor  = isBeachy ? #FF6B6B : #FF80FF
@@ -364,8 +372,8 @@ plotcandle(barLo, barLo, barHi, barHi,
      display     = display.pane
  )
 
-p1 = plot(tsi, "TSI Value Line",  tsiColor)
-p2 = plot(tsl, "TSI Signal Line", tslColor)
+p1 = plot(tsi, "TSI Value Line",  tsiColor, linewidth = 4)
+p2 = plot(tsl, "TSI Signal Line", tslColor, linewidth = 4)
 p3 = plot(showLinesInput ? oBotInput  : na, "Overbought", oBotColor)
 p4 = plot(showLinesInput ? oSoldInput : na, "Oversold",   oSoldColor)
 p5 = plot(showMidInput   ? 0          : na, "Zero",       zeroColInput)
@@ -389,6 +397,20 @@ if showTrendContinueBull and newColorSwitchCurlDnToMidAbove
     trendContinueBullPlot := tsi + switchOffset
 
 p12 = plot(trendContinueBullPlot, "Trend Continue Bull", trendContinueBullColor, linewidth = switchSize, style = plot.style_cross)
+
+// Plot for Crossover: TSI crosses above Signal Line
+float crossoverPlot = na
+if showCrossover and crossUp
+    crossoverPlot := tsi + crossOffset
+
+p13 = plot(crossoverPlot, "Crossover", crossoverColor, linewidth = crossSize, style = plot.style_cross)
+
+// Plot for Crossunder: TSI crosses below Signal Line
+float crossunderPlot = na
+if showCrossunder and crossDn
+    crossunderPlot := tsi + crossOffset
+
+p14 = plot(crossunderPlot, "Crossunder", crossunderColor, linewidth = crossSize, style = plot.style_cross)
 
 displayFill = isClassic ? display.none : display.all
 int obValue = showObFill ? oBotInput  : na
