@@ -3447,6 +3447,105 @@ app.get('/', (req, res) => {
             const sDirDisplay = bjTslIsBull ? 'Up' : 'Down';
             const sDirClass = bjTslIsBull ? 'text-green-400' : 'text-red-400';
             
+            // ===== BJ TSI OVERVIEW LOGIC =====
+            // Combines all signals into a single actionable overview
+            let bjOverviewDisplay = '-';
+            let bjOverviewClass = 'text-muted-foreground';
+            
+            if (bjTsi !== null && !isNaN(bjTsi)) {
+              const vUp = bjTsiIsBull;
+              const sUp = bjTslIsBull;
+              const bothUp = vUp && sUp;
+              const bothDown = !vUp && !sUp;
+              const vUpSDown = vUp && !sUp;  // V turning up while S still down (early bullish)
+              const vDownSUp = !vUp && sUp;  // V turning down while S still up (early bearish)
+              
+              // PM Range status checks
+              const isBelow = pmRangeDisplay === 'Below';
+              const isAbove = pmRangeDisplay === 'Above';
+              const isLower = pmRangeDisplay === 'Lower';
+              const isUpper = pmRangeDisplay === 'Upper';
+              const inLowerHalf = isBelow || isLower;
+              const inUpperHalf = isAbove || isUpper;
+              const hasPmRange = pmRangeDisplay !== '-';
+              
+              // Area checks based on TSI value
+              const isStrongBull = bjTsi > 40;
+              const isBullish = bjTsi >= 15;
+              const isStrongBear = bjTsi < -40;
+              const isBearish = bjTsi <= -15;
+              const isNeutralArea = bjTsi > -15 && bjTsi < 15;
+              
+              // Priority 1: Extreme breakout/breakdown
+              if (isAbove && bothUp && isBullish) {
+                bjOverviewDisplay = '🚀 Breakout';
+                bjOverviewClass = 'text-green-400 font-bold';
+              }
+              else if (isBelow && bothDown && isBearish) {
+                bjOverviewDisplay = '💥 Breakdown';
+                bjOverviewClass = 'text-red-400 font-bold';
+              }
+              // Priority 2: Reveal signals (early reversal - KEY SIGNALS)
+              else if (inLowerHalf && vUpSDown) {
+                bjOverviewDisplay = '⚡ Reveal Long';
+                bjOverviewClass = 'text-lime-400 font-bold animate-pulse';
+              }
+              else if (inUpperHalf && vDownSUp) {
+                bjOverviewDisplay = '⚡ Reveal Short';
+                bjOverviewClass = 'text-orange-400 font-bold animate-pulse';
+              }
+              // Priority 3: Strong momentum
+              else if (bothUp && (isUpper || isAbove)) {
+                bjOverviewDisplay = '📈 Go Up Heavy';
+                bjOverviewClass = 'text-green-500 font-semibold';
+              }
+              else if (bothDown && (isLower || isBelow)) {
+                bjOverviewDisplay = '📉 Go Down Heavy';
+                bjOverviewClass = 'text-red-500 font-semibold';
+              }
+              // Priority 4: Strong area signals
+              else if (isStrongBull && vUp) {
+                bjOverviewDisplay = '🔥 Strong Bull';
+                bjOverviewClass = 'text-green-400 font-semibold';
+              }
+              else if (isStrongBear && !vUp) {
+                bjOverviewDisplay = '❄️ Strong Bear';
+                bjOverviewClass = 'text-red-400 font-semibold';
+              }
+              // Priority 5: Building/Recovering (V up, S down - early reversal signs)
+              else if (vUpSDown && isBearish) {
+                bjOverviewDisplay = '💪 Recovering';
+                bjOverviewClass = 'text-cyan-400 font-semibold';
+              }
+              else if (vUpSDown && isNeutralArea) {
+                bjOverviewDisplay = '🌱 Building Long';
+                bjOverviewClass = 'text-lime-500';
+              }
+              // Priority 6: Weakening/Fading (V down, S up - losing momentum)
+              else if (vDownSUp && isBullish) {
+                bjOverviewDisplay = '⚠️ Weakening';
+                bjOverviewClass = 'text-yellow-400 font-semibold';
+              }
+              else if (vDownSUp && isNeutralArea) {
+                bjOverviewDisplay = '🍂 Fading';
+                bjOverviewClass = 'text-orange-400';
+              }
+              // Priority 7: Simple trend following
+              else if (bothUp) {
+                bjOverviewDisplay = '↗️ Trending Up';
+                bjOverviewClass = 'text-green-400';
+              }
+              else if (bothDown) {
+                bjOverviewDisplay = '↘️ Trending Down';
+                bjOverviewClass = 'text-red-400';
+              }
+              // Default: Mixed/Consolidating
+              else {
+                bjOverviewDisplay = '↔️ Mixed';
+                bjOverviewClass = 'text-gray-400';
+              }
+            }
+            
             // Generate cell content for each column
             const cellContent = {
               star: \`
@@ -3475,6 +3574,7 @@ app.get('/', (req, res) => {
               bj: \`
                 <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, PM Range=\${pmRangeDisplay}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
+                    <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
                     <div class="text-foreground">PM Range: <span class="\${pmRangeClass}">\${pmRangeDisplay}\${pmRangeValues}</span></div>
                     <div class="text-foreground">V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>

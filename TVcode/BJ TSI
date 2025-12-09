@@ -224,9 +224,14 @@ premarketEndTime = premarketEndHour * 100 + premarketEndMinute
 // Check if current time is within premarket session
 inPremarket = currentTime >= premarketStartTime and currentTime < premarketEndTime
 
+// Define early market window (first 30 minutes after market open: 9:30-10:00 AM)
+earlyMarketEndTime = premarketEndHour * 100 + premarketEndMinute + 30 // 10:00 AM
+inEarlyMarket = currentTime >= premarketEndTime and currentTime < earlyMarketEndTime
+
 // Track premarket high/low TSI values
 var float premarketTsiHigh = na
 var float premarketTsiLow = na
+var bool premarketDataCaptured = false // Track if we captured any premarket data today
 
 // Reset at start of new day (using specified timezone)
 currentDay = dayofweek(time, premarketTimezone)
@@ -237,9 +242,11 @@ isNewDay = ta.change(currentDay) != 0 or ta.change(currentDayOfMonth) != 0
 if isNewDay
     premarketTsiHigh := na
     premarketTsiLow := na
+    premarketDataCaptured := false
 
 // Update premarket high/low during premarket session
 if inPremarket
+    premarketDataCaptured := true
     // Initialize both high and low with first value
     if na(premarketTsiHigh) and na(premarketTsiLow)
         premarketTsiHigh := tsi
@@ -252,11 +259,37 @@ if inPremarket
         if tsi < premarketTsiLow
             premarketTsiLow := tsi
 
+// FALLBACK: If no premarket data was captured and we're in early market hours,
+// use the first bar(s) after market open as proxy for premarket range
+// This handles stocks without extended hours data
+if not premarketDataCaptured and inEarlyMarket
+    if na(premarketTsiHigh) and na(premarketTsiLow)
+        // First bar after market open - initialize both
+        premarketTsiHigh := tsi
+        premarketTsiLow := tsi
+    else
+        // Continue tracking during early market to build a range
+        if tsi > premarketTsiHigh
+            premarketTsiHigh := tsi
+        if tsi < premarketTsiLow
+            premarketTsiLow := tsi
+
 // Use the tracked values for the background range
 // Values persist after premarket ends until next day
 // Calculate range values - use the actual high/low values directly
 premarketRangeUpper = na(premarketTsiHigh) ? na : premarketTsiHigh
 premarketRangeLower = na(premarketTsiLow) ? na : premarketTsiLow
+
+// Create persistent snapshot variables for webhook (regular variables that hold the last valid values)
+// This ensures the webhook always has access to the premarket range even in alert context
+var float webhookPmHigh = na
+var float webhookPmLow = na
+
+// Update webhook snapshot whenever we have valid premarket values
+if not na(premarketTsiHigh)
+    webhookPmHigh := premarketTsiHigh
+if not na(premarketTsiLow)
+    webhookPmLow := premarketTsiLow
 //#endregion
 
 
@@ -381,6 +414,10 @@ alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_c
 
 // Webhook JSON payload
 if enableWebhook and barstate.isconfirmed
+    // Use webhook snapshot variables (which persist the last valid premarket values)
+    string pmHighStr = na(webhookPmHigh) ? "null" : str.tostring(webhookPmHigh, "#.###")
+    string pmLowStr = na(webhookPmLow) ? "null" : str.tostring(webhookPmLow, "#.###")
+    
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
       '"timeframe": "' + timeframe.period + '",' +
@@ -390,8 +427,8 @@ if enableWebhook and barstate.isconfirmed
       '"bjTsl": ' + str.tostring(tsl, "#.###") + ',' +
       '"bjTsiIsBull": ' + str.tostring(tsiIsBull) + ',' +
       '"bjTslIsBull": ' + str.tostring(tslIsBull) + ',' +
-      '"bjPremarketTsiHigh": ' + (na(premarketTsiHigh) ? "null" : str.tostring(premarketTsiHigh, "#.###")) + ',' +
-      '"bjPremarketTsiLow": ' + (na(premarketTsiLow) ? "null" : str.tostring(premarketTsiLow, "#.###")) + '}'
+      '"bjPremarketTsiHigh": ' + pmHighStr + ',' +
+      '"bjPremarketTsiLow": ' + pmLowStr + '}'
     alert(jsonMsg, freq = alertFreq)
 
 // Simple alerts (for backward compatibility)
