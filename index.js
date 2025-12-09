@@ -1048,24 +1048,42 @@ app.post('/webhook', (req, res) => {
     // BJ TSI alert - store BJ TSI data with timestamp
     const bjTsiValue = parseFloat(alert.bjTsi);
     
-    // Track premarket range in backend (if TSI value is valid)
+    // Track premarket range in backend (if TSI value is valid) - as backup
     if (!isNaN(bjTsiValue)) {
       updateBjPremarketRange(alert.symbol, bjTsiValue);
     }
     
-    // Get calculated premarket range from backend
-    const pmRange = getBjPremarketRange(alert.symbol);
+    // Prioritize Pine script values if available, otherwise use backend calculated
+    let pmUpper = null;
+    let pmLower = null;
+    
+    // Check if Pine script sent premarket range values
+    if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+      const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+      if (!isNaN(upperVal)) pmUpper = upperVal;
+    }
+    if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+      const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+      if (!isNaN(lowerVal)) pmLower = lowerVal;
+    }
+    
+    // Fallback to backend calculated range if Pine script values not available
+    if (pmUpper === null || pmLower === null) {
+      const pmRange = getBjPremarketRange(alert.symbol);
+      if (pmUpper === null) pmUpper = pmRange.upper;
+      if (pmLower === null) pmLower = pmRange.lower;
+    }
     
     bjTsiDataStorage[alert.symbol] = {
       bjTsi: alert.bjTsi,
       bjTsl: alert.bjTsl,
       bjTsiIsBull: alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true',
       bjTslIsBull: alert.bjTslIsBull === true || alert.bjTslIsBull === 'true',
-      bjPremarketRangeUpper: pmRange.upper,
-      bjPremarketRangeLower: pmRange.lower,
+      bjPremarketRangeUpper: pmUpper,
+      bjPremarketRangeLower: pmLower,
       timestamp: Date.now()
     }
-    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}, PM Upper=${pmRange.upper !== null ? pmRange.upper.toFixed(3) : 'null'}, PM Lower=${pmRange.lower !== null ? pmRange.lower.toFixed(3) : 'null'}`)
+    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}, PM Upper=${pmUpper !== null ? pmUpper.toFixed(3) : 'null'}, PM Lower=${pmLower !== null ? pmLower.toFixed(3) : 'null'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -1314,18 +1332,15 @@ app.post('/webhook', (req, res) => {
     if (bjTsiInfo) {
       const ageInMinutes = (Date.now() - bjTsiInfo.timestamp) / 60000
       if (ageInMinutes <= 60) {
-        // Get latest premarket range (backend calculated)
-        const pmRange = getBjPremarketRange(alert.symbol);
-        
         // BJ TSI data is recent (within 60 minutes), merge it
+        // Use stored values (which already prioritize Pine script values)
         alertData.bjTsi = bjTsiInfo.bjTsi
         alertData.bjTsl = bjTsiInfo.bjTsl
         alertData.bjTsiIsBull = bjTsiInfo.bjTsiIsBull
         alertData.bjTslIsBull = bjTsiInfo.bjTslIsBull
-        // Use backend-calculated premarket range
-        alertData.bjPremarketRangeUpper = pmRange.upper
-        alertData.bjPremarketRangeLower = pmRange.lower
-        console.log(`✅ Merged BJ TSI data for ${alert.symbol}: TSI=${bjTsiInfo.bjTsi}, TSL=${bjTsiInfo.bjTsl}, PM Range=[${pmRange.lower !== null ? pmRange.lower.toFixed(3) : 'null'}, ${pmRange.upper !== null ? pmRange.upper.toFixed(3) : 'null'}] (age: ${ageInMinutes.toFixed(1)} min)`)
+        alertData.bjPremarketRangeUpper = bjTsiInfo.bjPremarketRangeUpper
+        alertData.bjPremarketRangeLower = bjTsiInfo.bjPremarketRangeLower
+        console.log(`✅ Merged BJ TSI data for ${alert.symbol}: TSI=${bjTsiInfo.bjTsi}, TSL=${bjTsiInfo.bjTsl}, PM Range=[${bjTsiInfo.bjPremarketRangeLower !== null ? bjTsiInfo.bjPremarketRangeLower.toFixed(3) : 'null'}, ${bjTsiInfo.bjPremarketRangeUpper !== null ? bjTsiInfo.bjPremarketRangeUpper.toFixed(3) : 'null'}] (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete bjTsiDataStorage[alert.symbol]
@@ -1336,21 +1351,38 @@ app.post('/webhook', (req, res) => {
       if (alert.bjTsi !== undefined) {
         const bjTsiValue = parseFloat(alert.bjTsi);
         
-        // Track premarket range if TSI value is valid
+        // Track premarket range if TSI value is valid (as backup)
         if (!isNaN(bjTsiValue)) {
           updateBjPremarketRange(alert.symbol, bjTsiValue);
         }
         
-        // Get calculated premarket range from backend
-        const pmRange = getBjPremarketRange(alert.symbol);
+        // Prioritize Pine script values if available
+        let pmUpper = null;
+        let pmLower = null;
+        
+        if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
+          const upperVal = parseFloat(alert.bjPremarketRangeUpper);
+          if (!isNaN(upperVal)) pmUpper = upperVal;
+        }
+        if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
+          const lowerVal = parseFloat(alert.bjPremarketRangeLower);
+          if (!isNaN(lowerVal)) pmLower = lowerVal;
+        }
+        
+        // Fallback to backend calculated range if Pine script values not available
+        if (pmUpper === null || pmLower === null) {
+          const pmRange = getBjPremarketRange(alert.symbol);
+          if (pmUpper === null) pmUpper = pmRange.upper;
+          if (pmLower === null) pmLower = pmRange.lower;
+        }
         
         alertData.bjTsi = alert.bjTsi
         alertData.bjTsl = alert.bjTsl
         alertData.bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true'
         alertData.bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true'
-        alertData.bjPremarketRangeUpper = pmRange.upper
-        alertData.bjPremarketRangeLower = pmRange.lower
-        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}, PM Range=[${pmRange.lower !== null ? pmRange.lower.toFixed(3) : 'null'}, ${pmRange.upper !== null ? pmRange.upper.toFixed(3) : 'null'}]`)
+        alertData.bjPremarketRangeUpper = pmUpper
+        alertData.bjPremarketRangeLower = pmLower
+        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}, PM Range=[${pmLower !== null ? pmLower.toFixed(3) : 'null'}, ${pmUpper !== null ? pmUpper.toFixed(3) : 'null'}]`)
       }
     }
     

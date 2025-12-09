@@ -237,10 +237,17 @@ if isNewDay
 
 // Update premarket high/low during premarket session
 if inPremarket
-    if na(premarketTsiHigh) or tsi > premarketTsiHigh
+    // Initialize both high and low with first value
+    if na(premarketTsiHigh) and na(premarketTsiLow)
         premarketTsiHigh := tsi
-    if na(premarketTsiLow) or tsi < premarketTsiLow
         premarketTsiLow := tsi
+    else
+        // Update high if current value is higher
+        if tsi > premarketTsiHigh
+            premarketTsiHigh := tsi
+        // Update low if current value is lower
+        if tsi < premarketTsiLow
+            premarketTsiLow := tsi
 
 // Use the tracked values for the background range
 // Values persist after premarket ends until next day
