@@ -53,6 +53,7 @@ let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 let bjTsiDataStorage = {} // Store BJ TSI data by symbol with timestamp
 let bjPremarketRange = {} // Store premarket high/low TSI values per symbol per day: { symbol: { date: 'YYYY-MM-DD', high: number, low: number } }
+let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
@@ -486,6 +487,7 @@ app.post('/webhook', (req, res) => {
   const isOctoStochAlert = alert.d8Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   const isBjTsiAlert = alert.bjTsi !== undefined
+  const isSoloStochAlert = alert.d2Signal === 'Solo'
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -496,6 +498,7 @@ app.post('/webhook', (req, res) => {
     isOctoStochAlert,
     isMacdCrossingAlert,
     isBjTsiAlert,
+    isSoloStochAlert,
     symbol: alert.symbol
   })
   
@@ -1172,6 +1175,42 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with BJ TSI data`)
     }
+  } else if (isSoloStochAlert) {
+    // Solo Stoch alert - store D2 data with timestamp
+    soloStochDataStorage[alert.symbol] = {
+      d2: alert.d2,
+      d2Direction: alert.d2Direction,
+      d2Pattern: alert.d2Pattern || '',
+      d2PatternValue: alert.d2PatternValue || null,
+      timestamp: Date.now()
+    }
+    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: D2=${alert.d2}, Dir=${alert.d2Direction}, Pattern=${alert.d2Pattern || 'none'}`)
+    
+    // Update existing alert if it exists, or create new one if it doesn't
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].soloStochD2 = alert.d2
+      alerts[existingIndex].soloStochD2Direction = alert.d2Direction
+      alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
+      alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
+      if (alert.price) alerts[existingIndex].price = alert.price
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        price: alert.price || null,
+        soloStochD2: alert.d2,
+        soloStochD2Direction: alert.d2Direction,
+        soloStochD2Pattern: alert.d2Pattern || '',
+        soloStochD2PatternValue: alert.d2PatternValue || null,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
+    }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
@@ -1471,6 +1510,24 @@ app.post('/webhook', (req, res) => {
       }
     }
     
+    // Check and add Solo Stoch data if active (within last 60 minutes)
+    const soloStochInfo = soloStochDataStorage[alert.symbol]
+    if (soloStochInfo) {
+      const ageInMinutes = (Date.now() - soloStochInfo.timestamp) / 60000
+      if (ageInMinutes <= 60) {
+        // Solo Stoch data is recent (within 60 minutes), merge it
+        alertData.soloStochD2 = soloStochInfo.d2
+        alertData.soloStochD2Direction = soloStochInfo.d2Direction
+        alertData.soloStochD2Pattern = soloStochInfo.d2Pattern
+        alertData.soloStochD2PatternValue = soloStochInfo.d2PatternValue
+        console.log(`✅ Merged Solo Stoch data for ${alert.symbol}: D2=${soloStochInfo.d2}, Dir=${soloStochInfo.d2Direction} (age: ${ageInMinutes.toFixed(1)} min)`)
+      } else {
+        // Data is old, expire it
+        delete soloStochDataStorage[alert.symbol]
+        console.log(`⏰ Solo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+      }
+    }
+    
     // Track previous price for color comparison
     const currentPrice = parseFloat(alert.price)
     const prevPrice = previousPrices[alert.symbol]
@@ -1507,7 +1564,8 @@ app.post('/webhook', (req, res) => {
                isQuadStochD4Alert ? 'quad_stoch_d4' :
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
-               isBjTsiAlert ? 'bj_tsi' : 'main_script',
+               isBjTsiAlert ? 'bj_tsi' :
+               isSoloStochAlert ? 'solo_stoch' : 'main_script',
     timestamp: Date.now()
   })
   
@@ -1570,6 +1628,8 @@ app.post('/reset-alerts', (req, res) => {
   previousPrices = {}
   macdCrossingData = {}
   bjPremarketRange = {}
+  bjTsiDataStorage = {}
+  soloStochDataStorage = {}
   patternData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
@@ -2196,19 +2256,6 @@ app.get('/', (req, res) => {
               </a>
             </div>
           </div>
-          
-          <!-- D7 Counters -->
-          <div class="flex gap-4 mt-2 mb-4 text-sm font-medium">
-            <div class="bg-red-900/30 text-red-400 px-3 py-1 rounded border border-red-900/50">
-              D7 &lt; 20: <span id="d7LowCount" class="font-bold">0</span>/<span id="totalCountLow" class="text-muted-foreground">0</span>
-            </div>
-            <div class="bg-green-900/30 text-green-400 px-3 py-1 rounded border border-green-900/50">
-              D7 &gt; 80: <span id="d7HighCount" class="font-bold">0</span>/<span id="totalCountHigh" class="text-muted-foreground">0</span>
-            </div>
-            <div class="bg-blue-900/30 text-blue-400 px-3 py-1 rounded border border-blue-900/50">
-              Avg D7: <span id="avgD7" class="font-bold">-</span>
-            </div>
-          </div>
         </div>
         
         <!-- Search bar - sticky on top for desktop, bottom for mobile -->
@@ -2351,23 +2398,30 @@ app.get('/', (req, res) => {
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['star', 'symbol', 'price', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value', 'bj', 'volume'];
+        const defaultColumnOrder = ['star', 'symbol', 'price', 'd2', 'bj', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
-        columnOrder = columnOrder.filter(colId => colId !== 'macdCrossing');
-        // Remove any List-related columns (vwap, ema, macd, rsi from List script)
-        columnOrder = columnOrder.filter(colId => !['vwap', 'ema1', 'ema2', 'macd', 'rsi'].includes(colId));
-        if (!columnOrder.includes('pattern')) {
-          const trendIndex = columnOrder.indexOf('trend');
-          if (trendIndex !== -1) {
-            columnOrder.splice(trendIndex + 1, 0, 'pattern');
+        // Check if stored order has old columns - if so, reset to default
+        const oldColumns = ['macdCrossing', 'vwap', 'ema1', 'ema2', 'macd', 'rsi', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value'];
+        const hasOldColumns = columnOrder.some(colId => oldColumns.includes(colId));
+        if (hasOldColumns) {
+          console.log('🔄 Resetting column order due to old columns detected');
+          columnOrder = defaultColumnOrder;
+          localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
+        }
+        // Ensure d2 column exists
+        if (!columnOrder.includes('d2')) {
+          const priceIndex = columnOrder.indexOf('price');
+          if (priceIndex !== -1) {
+            columnOrder.splice(priceIndex + 1, 0, 'd2');
           } else {
-            columnOrder.push('pattern');
+            columnOrder.push('d2');
           }
         }
+        // Ensure bj column exists
         if (!columnOrder.includes('bj')) {
-          const d4Index = columnOrder.indexOf('d4value');
-          if (d4Index !== -1) {
-            columnOrder.splice(d4Index + 1, 0, 'bj');
+          const d2Index = columnOrder.indexOf('d2');
+          if (d2Index !== -1) {
+            columnOrder.splice(d2Index + 1, 0, 'bj');
           } else {
             columnOrder.push('bj');
           }
@@ -2378,11 +2432,7 @@ app.get('/', (req, res) => {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-12' },
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
-          trend: { id: 'trend', title: 'Trend', sortable: true, sortField: 'trend', width: '', tooltip: 'Quad Stochastic Trend Analysis' },
-          pattern: { id: 'pattern', title: 'Pattern', sortable: true, sortField: 'pattern', width: '', tooltip: 'Higher Low / Lower High pattern' },
-          qsArrow: { id: 'qsArrow', title: 'QS Arrow', sortable: true, sortField: 'qsArrow', width: '', tooltip: 'D1/D2/D3/D4 Direction Arrows' },
-          d3value: { id: 'd3value', title: 'D3 Value', sortable: true, sortField: 'd3value', width: '', tooltip: 'Octo Stochastic D3 Value' },
-          d4value: { id: 'd4value', title: 'D7 Value', sortable: true, sortField: 'd4value', width: '', tooltip: 'Octo Stochastic D7 Value' },
+          d2: { id: 'd2', title: 'D2', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
         };
@@ -2412,7 +2462,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'trend', 'pattern', 'quadStoch', 'qsArrow', 'qstoch', 'd3value', 'd4value', 'priceChange', 'volume', 'bjValue'];
+            const indicators = ['symbol', 'price', 'd2value', 'priceChange', 'volume', 'bjValue'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -2555,122 +2605,24 @@ app.get('/', (req, res) => {
               return alert.symbol || '';
             case 'price':
               return parseFloat(alert.price) || 0;
-            case 'vwap':
-              return parseFloat(alert.vwap) || 0;
-            case 'trend':
-              // Sort by trend priority (NEW D1 & D7 BASED)
-              const trendOrder = {
-                'Dead Long': 15,  // Highest priority
-                '🚀 BULL Cross': 12,
-                'Heavy Buy': 10,
-                'Try Long': 8,
-                'Switch Long': 7,
-                'Neutral': 5,
-                'Switch Short': 4,
-                'Try Short': 3,
-                'Very Short': 1,
-                '🔻 BEAR Cross': 0,
-                'Dead Short': -1  // Lowest priority (most bearish)
-              };
-              
-              // Use calculatedTrend from Pine Script if available
-              let trend_sort = alert.calculatedTrend || 'Neutral';
-              
-              // If not available, calculate locally
-              if (!alert.calculatedTrend) {
-                const d1Dir_sort = alert.d1Direction || 'flat';
-                const d7Val_sort = parseFloat(alert.octoStochD7) || 0;
-                const d1CrossD7_sort = alert.d1CrossD7;
-                
-                // HIGHEST PRIORITY: D1 crossover/crossunder D7
-                if (d1CrossD7_sort === 'bull') {
-                  trend_sort = '🚀 BULL Cross';
-                }
-                else if (d1CrossD7_sort === 'bear') {
-                  trend_sort = '🔻 BEAR Cross';
-                }
-                // Heavy Buy: D7 > 80 AND D3 going up
-                else if (d7Val_sort > 80 && alert.d3Direction === 'up') {
-                  trend_sort = 'Heavy Buy';
-                }
-                // Switch Short: D7 > 80 AND D1 switched to down
-                else if (d7Val_sort > 80 && alert.d1SwitchedToDown) {
-                  trend_sort = 'Switch Short';
-                }
-                // Very Short: D7 < 20 AND D1 switched to down OR D1 downtrend
-                else if (d7Val_sort < 20 && (alert.d1SwitchedToDown || d1Dir_sort === 'down')) {
-                  trend_sort = 'Very Short';
-                }
-                // Switch Long: D7 < 20 AND D1 switched to up
-                else if (d7Val_sort < 20 && alert.d1SwitchedToUp) {
-                  trend_sort = 'Switch Long';
-                }
-                // Try Long: D7 > 40 AND D1 going up
-                else if (d7Val_sort > 40 && d1Dir_sort === 'up') {
-                  trend_sort = 'Try Long';
-                }
-                // Try Short: D7 < 40 AND D1 going down
-                else if (d7Val_sort < 40 && d1Dir_sort === 'down') {
-                  trend_sort = 'Try Short';
-                }
-              }
-              
-              return trendOrder[trend_sort] || 5;
-            case 'pattern': {
-              const patternType = alert.patternType || alert.d3Pattern || alert.d7Pattern || ''
-              const patternCount = alert.patternCount || 0
-              const typeRank = patternType === 'Higher Low' ? 2 : patternType === 'Lower High' ? 1 : 0
-              return typeRank * 1000 + patternCount
-            }
-            case 'quadStoch':
-              // Sort by D4 value numerically
-              return parseFloat(alert.quadStochD4) || 0;
-            case 'qsArrow':
-              // Sort by number of up arrows (bullish first)
-              const d1Dir = alert.d1Direction || 'flat';
-              const d2Dir = alert.d2Direction || 'flat';
-              const d3Dir = alert.d3Direction || 'flat';
-              const d4Dir = alert.d4Direction || 'flat';
-              const upCount = [d1Dir, d2Dir, d3Dir, d4Dir].filter(d => d === 'up').length;
-              return upCount;
-            case 'qstoch':
-              // Sort by D4 signal strength (higher = more bullish)
-              const d4sig = alert.quadStochD4Signal;
-              if (d4sig === 'D4_Uptrend') return 10;
-              if (d4sig === 'D4_Cross_Up_80') return 9;
-              if (d4sig === 'D4_Cross_Up_50') return 8;
-              if (d4sig === 'D4_Cross_Up_20') return 7;
-              if (d4sig === 'D4_Cross_Down_20') return 3;
-              if (d4sig === 'D4_Cross_Down_50') return 2;
-              if (d4sig === 'D4_Cross_Down_80') return 1;
-              if (d4sig === 'D4_Downtrend') return 0;
-              return 5; // Default to neutral
-            case 'd3value':
-              return alert.octoStochD3 !== undefined
-                ? parseFloat(alert.octoStochD3) || 0
-                : alert.d3 !== undefined
-                  ? parseFloat(alert.d3) || 0
-                  : 0;
-            case 'd4value':
-              return alert.octoStochD7 !== undefined
-                ? parseFloat(alert.octoStochD7) || 0
-                : alert.d7 !== undefined
-                  ? parseFloat(alert.d7) || 0
+            case 'd2value':
+              // Sort by D2 value from Solo Stoch
+              return alert.soloStochD2 !== undefined
+                ? parseFloat(alert.soloStochD2) || 0
+                : alert.d2 !== undefined
+                  ? parseFloat(alert.d2) || 0
                   : 0;
             case 'priceChange':
               // Calculate price change percentage for sorting
-              // Priority 1: Use changeFromPrevDay from Day script if available
               if (alert.changeFromPrevDay !== undefined) {
                 return parseFloat(alert.changeFromPrevDay) || 0;
               }
-              // Priority 2: Calculate from price and previousClose
               else if (alert.price && alert.previousClose && alert.previousClose !== 0) {
                 const close = parseFloat(alert.price);
                 const prevDayClose = parseFloat(alert.previousClose);
                 const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
                 return changeFromPrevDay;
               } 
-              // Priority 3: Fallback to legacy priceChange field
               else if (alert.priceChange) {
                 return parseFloat(alert.priceChange) || 0;
               }
@@ -2948,48 +2900,6 @@ app.get('/', (req, res) => {
           const searchInfo = searchTerm ? \` • Showing \${filteredData.length} of \${alertsData.length}\` : '';
           lastUpdate.innerHTML = 'Last updated: ' + new Date(mostRecent).toLocaleString() + searchInfo + ' <span id="countdown"></span>';
           updateCountdown();
-
-          // Update D7 Counters and Calculate Average
-          let d7Low = 0;
-          let d7High = 0;
-          let totalWithD7 = 0;
-          let d7Sum = 0;
-          
-          filteredData.forEach(alert => {
-            const d7Val = alert.octoStochD7 !== undefined 
-              ? parseFloat(alert.octoStochD7) 
-              : alert.d7 !== undefined 
-                ? parseFloat(alert.d7) 
-                : NaN;
-                
-            if (!isNaN(d7Val)) {
-              totalWithD7++;
-              d7Sum += d7Val;
-              if (d7Val < 20) d7Low++;
-              if (d7Val > 80) d7High++;
-            }
-          });
-          
-          const d7LowElem = document.getElementById('d7LowCount');
-          const totalLowElem = document.getElementById('totalCountLow');
-          const d7HighElem = document.getElementById('d7HighCount');
-          const totalHighElem = document.getElementById('totalCountHigh');
-          const avgD7Elem = document.getElementById('avgD7');
-          
-          if (d7LowElem) d7LowElem.textContent = d7Low;
-          if (totalLowElem) totalLowElem.textContent = totalWithD7;
-          if (d7HighElem) d7HighElem.textContent = d7High;
-          if (totalHighElem) totalHighElem.textContent = totalWithD7;
-          
-          // Calculate and display average D7
-          if (avgD7Elem) {
-            if (totalWithD7 > 0) {
-              const avgD7 = d7Sum / totalWithD7;
-              avgD7Elem.textContent = avgD7.toFixed(2);
-            } else {
-              avgD7Elem.textContent = '-';
-            }
-          }
 
           alertTable.innerHTML = filteredData.map((alert, index) => {
             const starred = isStarred(alert.symbol);
@@ -3507,6 +3417,40 @@ app.get('/', (req, res) => {
             const d7Arrow = getArrow(d7DirForArrow);
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
+            // Solo Stoch D2 calculations
+            const soloD2 = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
+            const soloD2Direction = alert.soloStochD2Direction || 'flat';
+            const soloD2Pattern = alert.soloStochD2Pattern || '';
+            const soloD2PatternValue = alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null;
+            
+            // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
+            let d2ValueClass = 'text-foreground';
+            let d2DirClass = soloD2Direction === 'up' ? 'text-green-400' : soloD2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
+            let d2Arrow = soloD2Direction === 'up' ? '↑' : soloD2Direction === 'down' ? '↓' : '→';
+            
+            if (soloD2 !== null && !isNaN(soloD2)) {
+              if (soloD2 > 80) {
+                d2ValueClass = 'text-white font-bold'; // Overbought
+              } else if (soloD2 < 20) {
+                d2ValueClass = 'text-white font-bold'; // Oversold
+              } else if (soloD2Direction === 'up') {
+                d2ValueClass = 'text-green-400 font-semibold';
+              } else if (soloD2Direction === 'down') {
+                d2ValueClass = 'text-blue-500 font-semibold';
+              }
+            }
+            
+            // D2 Pattern display
+            let d2PatternDisplay = '';
+            let d2PatternClass = 'text-muted-foreground';
+            if (soloD2Pattern === 'Higher Low') {
+              d2PatternDisplay = 'HL';
+              d2PatternClass = 'text-cyan-400 font-semibold';
+            } else if (soloD2Pattern === 'Lower High') {
+              d2PatternDisplay = 'LH';
+              d2PatternClass = 'text-orange-400 font-semibold';
+            }
+            
             // BJ TSI calculations
             const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
             const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
@@ -3719,11 +3663,15 @@ app.get('/', (req, res) => {
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
-              trend: \`<td class="py-3 px-4 font-bold \${trendClass} \${trendCellClass}" title="\${trendTitle}">\${trendDisplay}</td>\`,
-              qsArrow: \`<td class="py-3 px-4 text-lg \${qsArrowCellClass}" title="\${qsArrowTitle}">\${qsArrowDisplay}</td>\`,
-              pattern: \`<td class="py-3 px-4 font-bold \${patternClass}" title="\${patternTitle}">\${patternDisplayStatic}\${patternStartTime ? ' · <span class="pattern-timer" data-start="' + patternStartTime + '">' + patternDurationDisplay + '</span>' : ''}</td>\`,
-              d3value: \`<td class="py-3 px-4 font-mono \${d3ValueClass}" title="Octo Stochastic D3 Value (0-100)">\${!isNaN(d3Value) ? d3Value.toFixed(2) : '-'} <span class="\${d3ArrowColor} text-lg ml-1">\${d3Arrow}</span></td>\`,
-              d4value: \`<td class="py-3 px-4 font-mono \${d4ValueClass}" title="Octo Stochastic D7 Value (0-100)">\${!isNaN(d7Value) ? d7Value.toFixed(2) : '-'} <span class="\${d7ArrowColor} text-lg ml-1">\${d7Arrow}</span></td>\`,
+              d2: \`
+                <td class="py-3 px-4 text-center" title="Solo Stoch D2: Value=\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(2) : 'N/A'}, Dir=\${soloD2Direction}\${d2PatternDisplay ? ', Pattern=' + soloD2Pattern : ''}">
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="font-mono text-lg \${d2ValueClass}">\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(1) : '-'}</div>
+                    <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
+                    \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
+                  </div>
+                </td>
+              \`,
               bj: \`
                 <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, PM Range=\${pmRangeDisplay}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">

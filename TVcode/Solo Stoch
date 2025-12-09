@@ -1,0 +1,147 @@
+//@version=6
+indicator(title="Solo Stochastic (D2 Only)", shorttitle="Solo Stoch", overlay=false)
+
+// ===== TIMEFRAME SETTINGS =====
+timeframe_d2 = input.timeframe("", title="Timeframe for D2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines = input.bool(false, title="Smooth MTF Lines", group="Timeframe Settings")
+mtfSmoothLen = input.int(3, minval=1, title="MTF Smoothing Length", group="Timeframe Settings")
+
+// ===== D2 SETTINGS =====
+length2 = input.int(18, minval=1, title="D2 Length (periodK)", group="D2 Settings")
+smoothK2 = input.int(1, minval=1, title="D2 %K Smoothing (smoothK)", group="D2 Settings")
+periodD2 = input.int(3, minval=1, title="D2 %D Smoothing (periodD)", group="D2 Settings")
+linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="D2 Settings")
+
+// Color Settings
+colorD2Up = input.color(#00FF00, title="D2 Up Color", group="D2 Settings")
+colorD2Down = input.color(#0044ff, title="D2 Down Color", group="D2 Settings")
+colorOverbought = input.color(color.white, title="Overbought Color (>80)", group="D2 Settings")
+colorOversold = input.color(color.white, title="Oversold Color (<20)", group="D2 Settings")
+
+// Higher Low / Lower High Settings
+showD2HLLH = input.bool(true, title="Show D2 Higher Low/Lower High", group="D2 Settings")
+pivotLengthD2 = input.int(5, minval=1, title="D2 Pivot Length", group="D2 Settings")
+colorHL_D2 = input.color(color.aqua, title="D2 Higher Low Color", group="D2 Settings")
+colorLH_D2 = input.color(color.orange, title="D2 Lower High Color", group="D2 Settings")
+
+// ===== ZONE SETTINGS =====
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Zones")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute D2 with timeframe
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+[k2_mtf_raw, d2_mtf_raw] = request.security(syminfo.tickerid, timeframe_d2, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled
+k2_mtf = smoothMtfLines ? ta.sma(k2_mtf_raw, mtfSmoothLen) : k2_mtf_raw
+d2_mtf = smoothMtfLines ? ta.sma(d2_mtf_raw, mtfSmoothLen) : d2_mtf_raw
+
+k2 = timeframe_d2 == "" ? k2_chart : k2_mtf
+d2 = timeframe_d2 == "" ? d2_chart : d2_mtf
+
+// ===== D2 COLOR LOGIC =====
+// Priority: Overbought (>80) = white, Oversold (<20) = white, else Up/Down color
+d2IsUp = d2 >= d2[1]
+d2BaseColor = d2IsUp ? colorD2Up : colorD2Down
+d2LineColor = d2 > 80 ? colorOverbought : d2 < 20 ? colorOversold : d2BaseColor
+
+// Plot D2 line
+plot(d2, title="%D2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
+
+// Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(60, "Level 60", color=color.yellow, linestyle=hline.style_solid, linewidth=1, editable=true)
+hline(50, "Mid", color=color.yellow, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(40, "Level 40", color=color.yellow, linestyle=hline.style_solid, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== D2 DIRECTION TRACKING =====
+var float prevD2 = na
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+
+// ===== D2 HIGHER LOW / LOWER HIGH DETECTION =====
+pivotHighD2 = ta.pivothigh(d2, pivotLengthD2, pivotLengthD2)
+pivotLowD2 = ta.pivotlow(d2, pivotLengthD2, pivotLengthD2)
+
+// Track previous pivot values for D2
+var float lastHighD2 = na
+var float lastLowD2 = na
+
+// D2 Higher Low / Lower High detection
+float d2HigherLowValue = na
+float d2LowerHighValue = na
+
+if not na(pivotLowD2) and showD2HLLH
+    if not na(lastLowD2) and pivotLowD2 > lastLowD2
+        d2HigherLowValue := pivotLowD2
+    lastLowD2 := pivotLowD2
+
+if not na(pivotHighD2) and showD2HLLH
+    if not na(lastHighD2) and pivotHighD2 < lastHighD2
+        d2LowerHighValue := pivotHighD2
+    lastHighD2 := pivotHighD2
+
+string d2Pattern = not na(d2HigherLowValue) ? "Higher Low" : not na(d2LowerHighValue) ? "Lower High" : ""
+float d2PatternValue = not na(d2HigherLowValue) ? d2HigherLowValue : not na(d2LowerHighValue) ? d2LowerHighValue : na
+
+// Plot D2 Higher Low / Lower High patterns
+plotshape(showD2HLLH and not na(d2HigherLowValue) ? d2HigherLowValue - 2 : na, title="D2 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D2, size=size.small)
+plotshape(showD2HLLH and not na(d2LowerHighValue) ? d2LowerHighValue + 2 : na, title="D2 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D2, size=size.small)
+
+// ===== LAST VALID VALUES FOR WEBHOOK =====
+var float lastValidD2 = na
+var string lastValidD2Dir = "flat"
+var string lastValidD2Pattern = "None"
+var float lastValidD2HLLHValue = na
+
+if not na(d2)
+    lastValidD2 := d2
+if d2Direction != ""
+    lastValidD2Dir := d2Direction
+if d2Pattern != ""
+    lastValidD2Pattern := d2Pattern
+if not na(d2PatternValue)
+    lastValidD2HLLHValue := d2PatternValue
+
+// ===== ALERT / WEBHOOK =====
+if barstate.isconfirmed
+    d2Val = na(d2) ? (na(lastValidD2) ? 0 : lastValidD2) : d2
+    d2DirVal = d2Direction != "" ? d2Direction : lastValidD2Dir
+    d2PatternVal = d2Pattern != "" ? d2Pattern : lastValidD2Pattern
+    d2PatternValueVal = na(d2PatternValue) ? (na(lastValidD2HLLHValue) ? 0 : lastValidD2HLLHValue) : d2PatternValue
+    
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
+    alertStr += "\"d2Direction\":\"" + d2DirVal + "\","
+    alertStr += "\"d2Pattern\":\"" + d2PatternVal + "\","
+    alertStr += "\"d2PatternValue\":\"" + str.tostring(d2PatternValueVal) + "\","
+    alertStr += "\"d2Signal\":\"Solo\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
+
+// Store previous value for next comparison
+prevD2 := d2
