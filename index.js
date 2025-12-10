@@ -2450,7 +2450,7 @@ app.get('/', (req, res) => {
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-12' },
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-auto' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
@@ -3691,7 +3691,7 @@ app.get('/', (req, res) => {
               \`,
               symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
               price: \`
-                <td class="py-3 px-4 font-mono font-medium whitespace-nowrap \${priceClass}">
+                <td class="py-3 px-4 font-mono font-medium \${priceClass}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
