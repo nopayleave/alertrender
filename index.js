@@ -1231,6 +1231,7 @@ app.post('/webhook', (req, res) => {
       d1Pattern: alert.d1Pattern || '',
       d1PatternValue: alert.d1PatternValue || null,
       d2: alert.d2,
+      d2Direction: alert.d2Direction || 'flat',
       highLevelTrend: alert.highLevelTrend || false,
       highLevelTrendType: alert.highLevelTrendType || 'None',
       highLevelTrendDiff: alert.highLevelTrendDiff || 0,
@@ -1249,6 +1250,7 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].dualStochD1Pattern = alert.d1Pattern || ''
       alerts[existingIndex].dualStochD1PatternValue = alert.d1PatternValue || null
       alerts[existingIndex].dualStochD2 = alert.d2
+      alerts[existingIndex].dualStochD2Direction = alert.d2Direction || 'flat'
       alerts[existingIndex].dualStochHighLevelTrend = alert.highLevelTrend || false
       alerts[existingIndex].dualStochHighLevelTrendType = alert.highLevelTrendType || 'None'
       alerts[existingIndex].dualStochHighLevelTrendDiff = alert.highLevelTrendDiff || 0
@@ -1268,6 +1270,7 @@ app.post('/webhook', (req, res) => {
         dualStochD1Pattern: alert.d1Pattern || '',
         dualStochD1PatternValue: alert.d1PatternValue || null,
         dualStochD2: alert.d2,
+        dualStochD2Direction: alert.d2Direction || 'flat',
         dualStochHighLevelTrend: alert.highLevelTrend || false,
         dualStochHighLevelTrendType: alert.highLevelTrendType || 'None',
         dualStochHighLevelTrendDiff: alert.highLevelTrendDiff || 0,
@@ -1614,6 +1617,7 @@ app.post('/webhook', (req, res) => {
         alertData.dualStochD1Pattern = dualStochInfo.d1Pattern
         alertData.dualStochD1PatternValue = dualStochInfo.d1PatternValue
         alertData.dualStochD2 = dualStochInfo.d2
+        alertData.dualStochD2Direction = dualStochInfo.d2Direction
         alertData.dualStochHighLevelTrend = dualStochInfo.highLevelTrend
         alertData.dualStochHighLevelTrendType = dualStochInfo.highLevelTrendType
         alertData.dualStochHighLevelTrendDiff = dualStochInfo.highLevelTrendDiff
@@ -3601,6 +3605,35 @@ app.get('/', (req, res) => {
               }
             }
             
+            // Trend messages based on D1 and D2 values and directions
+            let trendMessage = '';
+            let trendMessageClass = '';
+            if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
+              const d1Direction = alert.dualStochD1Direction || 'flat';
+              const d2Direction = alert.dualStochD2Direction || 'flat';
+              
+              // Both trending down and both below 20: "Do Not Long"
+              if (d1Direction === 'down' && d2Direction === 'down' && dualStochD1 < 20 && dualStochD2 < 20) {
+                trendMessage = 'Do Not Long';
+                trendMessageClass = 'text-red-500 font-bold';
+              }
+              // Both trending up and both above 80: "Do Not Short"
+              else if (d1Direction === 'up' && d2Direction === 'up' && dualStochD1 > 80 && dualStochD2 > 80) {
+                trendMessage = 'Do Not Short';
+                trendMessageClass = 'text-green-500 font-bold';
+              }
+              // Both trending up and either one above 20: "Try Long"
+              else if (d1Direction === 'up' && d2Direction === 'up' && (dualStochD1 > 20 || dualStochD2 > 20)) {
+                trendMessage = 'Try Long';
+                trendMessageClass = 'text-green-400 font-semibold';
+              }
+              // Both trending down and either one below 80: "Try Short"
+              else if (d1Direction === 'down' && d2Direction === 'down' && (dualStochD1 < 80 || dualStochD2 < 80)) {
+                trendMessage = 'Try Short';
+                trendMessageClass = 'text-red-400 font-semibold';
+              }
+            }
+            
             // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
             let d2ValueClass = 'text-foreground';
             let d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
@@ -3842,10 +3875,10 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               d2: \`
-                <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}\${d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : ''}">
+                <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}\${d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : ''}\${trendMessage ? ', ' + trendMessage : ''}">
                   <div class="flex flex-col items-start gap-1">
                     \${dualStochD1 !== null ? 
-                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-sm ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-sm ' + d1DirClass + '">' + d1Arrow + '</div>' + (d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : '') + '</div>' : 
+                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div>' + (d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : '') + '</div>' : 
                       ''}
                     <div class="flex flex-row items-center justify-start gap-2">
                       <div class="font-mono text-lg \${d2ValueClass}">\${dualStochD1 !== null ? 'D2: ' : ''}\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-'}</div>
@@ -3853,6 +3886,7 @@ app.get('/', (req, res) => {
                       \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
                       \${d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : ''}
                     </div>
+                    \${trendMessage ? '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>' : ''}
                   </div>
                 </td>
               \`,

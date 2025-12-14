@@ -112,6 +112,13 @@ d2IsUp = d2 >= d2[1]
 d2BaseColor = d2IsUp ? colorD2Up : colorD2Down
 d2LineColor = d2 > 80 ? colorOverbought : d2 < 20 ? colorOversold : d2BaseColor
 
+// ===== D2 DIRECTION TRACKING =====
+var float prevD2 = na
+var string prevD2Direction = "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+prevD2 := d2
+prevD2Direction := d2Direction
+
 // Plot D2 line
 plot(d2, title="%D2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
 
@@ -281,6 +288,8 @@ if not na(d1PatternValue)
     lastValidD1HLLHValue := d1PatternValue
 if not na(d2)
     lastValidD2 := d2
+if d2Direction != ""
+    lastValidD2Dir := d2Direction
 if d1SwitchWithLargeDiff
     lastValidWhiteDot := true
     lastValidWhiteDotType := downToUp ? "Bull" : "Bear"
@@ -294,6 +303,7 @@ if barstate.isconfirmed
     d1PatternVal = d1Pattern != "" ? d1Pattern : lastValidD1Pattern
     d1PatternValueVal = na(d1PatternValue) ? (na(lastValidD1HLLHValue) ? 0 : lastValidD1HLLHValue) : d1PatternValue
     d2Val = na(d2) ? (na(lastValidD2) ? 0 : lastValidD2) : d2
+    d2DirVal = d2Direction != "" ? d2Direction : lastValidD2Dir
     whiteDotVal = d1SwitchWithLargeDiff ? true : lastValidWhiteDot
     whiteDotTypeVal = d1SwitchWithLargeDiff ? (downToUp ? "Bull" : "Bear") : lastValidWhiteDotType
     d1D2DiffVal = d1SwitchWithLargeDiff ? d1D2Diff : 0
@@ -311,6 +321,7 @@ if barstate.isconfirmed
     alertStr += "\"d1Pattern\":\"" + d1PatternVal + "\","
     alertStr += "\"d1PatternValue\":\"" + str.tostring(d1PatternValueVal) + "\","
     alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
+    alertStr += "\"d2Direction\":\"" + d2DirVal + "\","
     alertStr += "\"highLevelTrend\":" + str.tostring(whiteDotVal) + ","
     alertStr += "\"highLevelTrendType\":\"" + whiteDotTypeVal + "\","
     alertStr += "\"highLevelTrendDiff\":" + str.tostring(d1D2DiffVal, "#.##") + ","
