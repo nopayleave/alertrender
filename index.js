@@ -55,6 +55,7 @@ let bjTsiDataStorage = {} // Store BJ TSI data by symbol with timestamp
 let bjPremarketRange = {} // Store premarket high/low TSI values per symbol per day: { symbol: { date: 'YYYY-MM-DD', high: number, low: number } }
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
+let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
@@ -1225,6 +1226,7 @@ app.post('/webhook', (req, res) => {
     }
   } else if (isDualStochAlert) {
     // Dual Stoch alert - store D1/D2 data with timestamp
+    const timestamp = Date.now()
     dualStochDataStorage[alert.symbol] = {
       d1: alert.d1,
       d1Direction: alert.d1Direction,
@@ -1238,7 +1240,21 @@ app.post('/webhook', (req, res) => {
       previousClose: alert.previousClose || null,
       changeFromPrevDay: alert.changeFromPrevDay || null,
       volume: alert.volume || null,
-      timestamp: Date.now()
+      timestamp: timestamp
+    }
+    
+    // Store historical data for mini chart (keep last 50 points)
+    if (!dualStochHistory[alert.symbol]) {
+      dualStochHistory[alert.symbol] = []
+    }
+    dualStochHistory[alert.symbol].push({
+      d1: parseFloat(alert.d1) || 0,
+      d2: parseFloat(alert.d2) || 0,
+      timestamp: timestamp
+    })
+    // Keep only last 50 data points per symbol
+    if (dualStochHistory[alert.symbol].length > 50) {
+      dualStochHistory[alert.symbol] = dualStochHistory[alert.symbol].slice(-50)
     }
     console.log(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
@@ -3605,6 +3621,67 @@ app.get('/', (req, res) => {
               }
             }
             
+            // Generate mini chart SVG for D1/D2
+            let miniChartSvg = ''
+            if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
+              const history = dualStochHistory[alert.symbol] || []
+              if (history.length > 1) {
+                const chartWidth = 120
+                const chartHeight = 40
+                const padding = 2
+                const plotWidth = chartWidth - padding * 2
+                const plotHeight = chartHeight - padding * 2
+                
+                // Find min/max values for scaling
+                let minVal = 100
+                let maxVal = 0
+                history.forEach(point => {
+                  minVal = Math.min(minVal, point.d1, point.d2)
+                  maxVal = Math.max(maxVal, point.d1, point.d2)
+                })
+                // Add some padding to the range
+                const range = maxVal - minVal || 1
+                minVal = Math.max(0, minVal - range * 0.1)
+                maxVal = Math.min(100, maxVal + range * 0.1)
+                const scale = (maxVal - minVal) || 1
+                
+                // Generate path for D1 (green) and D2 (blue)
+                let d1Path = ''
+                let d2Path = ''
+                history.forEach((point, index) => {
+                  const x = padding + (index / (history.length - 1)) * plotWidth
+                  const y1 = padding + plotHeight - ((point.d1 - minVal) / scale) * plotHeight
+                  const y2 = padding + plotHeight - ((point.d2 - minVal) / scale) * plotHeight
+                  
+                  if (index === 0) {
+                    d1Path += `M ${x} ${y1}`
+                    d2Path += `M ${x} ${y2}`
+                  } else {
+                    d1Path += ` L ${x} ${y1}`
+                    d2Path += ` L ${x} ${y2}`
+                  }
+                })
+                
+                // Add reference lines at 20, 50, 80
+                const y20 = padding + plotHeight - ((20 - minVal) / scale) * plotHeight
+                const y50 = padding + plotHeight - ((50 - minVal) / scale) * plotHeight
+                const y80 = padding + plotHeight - ((80 - minVal) / scale) * plotHeight
+                
+                miniChartSvg = `
+                  <svg width="${chartWidth}" height="${chartHeight}" style="display: block;">
+                    <!-- Reference lines -->
+                    <line x1="${padding}" y1="${y20}" x2="${chartWidth - padding}" y2="${y20}" stroke="#666" stroke-width="0.5" opacity="0.3"/>
+                    <line x1="${padding}" y1="${y50}" x2="${chartWidth - padding}" y2="${y50}" stroke="#666" stroke-width="0.5" opacity="0.2"/>
+                    <line x1="${padding}" y1="${y80}" x2="${chartWidth - padding}" y2="${y80}" stroke="#666" stroke-width="0.5" opacity="0.3"/>
+                    <!-- D2 line (blue) -->
+                    <path d="${d2Path}" stroke="#0088ff" stroke-width="1.5" fill="none"/>
+                    <!-- D1 line (green) -->
+                    <path d="${d1Path}" stroke="#00ff00" stroke-width="1.5" fill="none"/>
+                  </svg>
+                `
+              }
+            }
+            
             // Trend messages based on D1 and D2 values and directions
             let trendMessage = '';
             let trendMessageClass = '';
@@ -3877,6 +3954,7 @@ app.get('/', (req, res) => {
               d2: \`
                 <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}\${d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : ''}\${trendMessage ? ', ' + trendMessage : ''}">
                   <div class="flex flex-col items-start gap-1">
+                    \${miniChartSvg ? '<div class="mb-1">' + miniChartSvg + '</div>' : ''}
                     \${dualStochD1 !== null ? 
                       '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>' : 
                       ''}
