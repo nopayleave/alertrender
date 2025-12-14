@@ -275,6 +275,7 @@ var string lastValidD1Dir = "flat"
 var string lastValidD1Pattern = "None"
 var float lastValidD1HLLHValue = na
 var float lastValidD2 = na
+var string lastValidD2Dir = "flat"
 var bool lastValidWhiteDot = false
 var string lastValidWhiteDotType = "None"
 

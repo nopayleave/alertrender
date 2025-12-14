@@ -3878,14 +3878,14 @@ app.get('/', (req, res) => {
                 <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}\${d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : ''}\${trendMessage ? ', ' + trendMessage : ''}">
                   <div class="flex flex-col items-start gap-1">
                     \${dualStochD1 !== null ? 
-                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div>' + (d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : '') + '</div>' : 
+                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>' : 
                       ''}
                     <div class="flex flex-row items-center justify-start gap-2">
                       <div class="font-mono text-lg \${d2ValueClass}">\${dualStochD1 !== null ? 'D2: ' : ''}\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-'}</div>
                       <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                       \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
-                      \${d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : ''}
                     </div>
+                    \${d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold mt-1">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : ''}
                     \${trendMessage ? '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>' : ''}
                   </div>
                 </td>
