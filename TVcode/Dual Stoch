@@ -1,0 +1,323 @@
+//@version=6
+indicator(title="Dual Stochastic (D1 & D2)", shorttitle="Dual Stoch", overlay=false)
+
+// ===== TIMEFRAME SETTINGS =====
+timeframe_d1 = input.timeframe("", title="Timeframe for D1", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframe_d2 = input.timeframe("", title="Timeframe for D2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothMtfLines = input.bool(false, title="Smooth MTF Lines", group="Timeframe Settings")
+mtfSmoothLen = input.int(3, minval=1, title="MTF Smoothing Length", group="Timeframe Settings")
+timeframe_barColor = input.timeframe("", title="Timeframe for Bar Color", group="Timeframe Settings", tooltip="Leave empty to use chart timeframe for bar coloring")
+
+// ===== D1 SETTINGS =====
+length1 = input.int(18, minval=1, title="D1 Length (periodK)", group="D1 Settings")
+smoothK1 = input.int(1, minval=1, title="D1 %K Smoothing (smoothK)", group="D1 Settings")
+periodD1 = input.int(3, minval=1, title="D1 %D Smoothing (periodD)", group="D1 Settings")
+linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="D1 Settings")
+
+// Color Settings
+colorD1Up = input.color(#00FF00, title="D1 Up Color", group="D1 Settings")
+colorD1Down = input.color(#0044ff, title="D1 Down Color", group="D1 Settings")
+colorOverbought = input.color(color.white, title="Overbought Color (>80)", group="D1 Settings")
+colorOversold = input.color(color.white, title="Oversold Color (<20)", group="D1 Settings")
+
+// ===== D2 SETTINGS =====
+length2 = input.int(39, minval=1, title="D2 Length (periodK)", group="D2 Settings")
+smoothK2 = input.int(1, minval=1, title="D2 %K Smoothing (smoothK)", group="D2 Settings")
+periodD2 = input.int(4, minval=1, title="D2 %D Smoothing (periodD)", group="D2 Settings")
+linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="D2 Settings")
+
+// Color Settings
+colorD2Up = input.color(#00FF00, title="D2 Up Color", group="D2 Settings")
+colorD2Down = input.color(#0044ff, title="D2 Down Color", group="D2 Settings")
+
+// Higher Low / Lower High Settings
+showD1HLLH = input.bool(true, title="Show D1 Higher Low/Lower High", group="D1 Settings")
+showD1HLLHOnChart = input.bool(true, title="Show D1 Higher Low/Lower High on Main Chart", group="D1 Settings")
+pivotLengthD1 = input.int(5, minval=1, title="D1 Pivot Length", group="D1 Settings")
+colorHL_D1 = input.color(color.aqua, title="D1 Higher Low Color", group="D1 Settings")
+colorLH_D1 = input.color(color.orange, title="D1 Lower High Color", group="D1 Settings")
+
+// Direction Change Settings
+showUpToDown = input.bool(true, title="Show Up to Down", group="D1 Settings")
+showDownToUp = input.bool(true, title="Show Down to Up", group="D1 Settings")
+colorUpToDown = input.color(color.new(#0088ff, 0), title="Up to Down Color", group="D1 Settings")
+colorDownToUp = input.color(color.new(#00ff00, 0), title="Down to Up Color", group="D1 Settings")
+int directionChangeSize = input.int(4, minval=1, maxval=5, title="Direction Change Plot Size", group="D1 Settings")
+float directionChangeOffset = input.float(10.0, title="Direction Change Offset", group="D1 Settings", step=1.0)
+
+// White Dot Settings
+bool showWhiteDot = input.bool(true, title="Show White Dot", group="D1 Settings", tooltip="Dot when D1 switches direction and difference between D1 and D2 exceeds threshold")
+float whiteDotDiffThreshold = input.float(30.0, title="D1-D2 Difference Threshold", group="D1 Settings", minval=0.0, step=1.0, tooltip="Minimum difference between D1 and D2 to show dot")
+color whiteDotBullColor = input.color(color.new(#00ff00, 0), title="Bull Dot Color (D1 switches up)", group="D1 Settings")
+color whiteDotBearColor = input.color(color.new(#ff0000, 0), title="Bear Dot Color (D1 switches down)", group="D1 Settings")
+int whiteDotSize = input.int(3, minval=1, maxval=5, title="White Dot Size", group="D1 Settings")
+float whiteDotOffset = input.float(10.0, title="White Dot Offset", group="D1 Settings", step=1.0)
+
+// ===== ZONE SETTINGS =====
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Zones")
+
+// ===== DAY DATA (for webhook) =====
+// Get previous day's close price
+previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+
+// Calculate change from previous day's close (%)
+changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
+
+// Get current day's volume
+currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute D1 with timeframe
+[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
+[k1_mtf_raw, d1_mtf_raw] = request.security(syminfo.tickerid, timeframe_d1, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled
+k1_mtf = smoothMtfLines ? ta.sma(k1_mtf_raw, mtfSmoothLen) : k1_mtf_raw
+d1_mtf = smoothMtfLines ? ta.sma(d1_mtf_raw, mtfSmoothLen) : d1_mtf_raw
+
+k1 = timeframe_d1 == "" ? k1_chart : k1_mtf
+d1 = timeframe_d1 == "" ? d1_chart : d1_mtf
+
+// Compute D2 with timeframe
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+[k2_mtf_raw, d2_mtf_raw] = request.security(syminfo.tickerid, timeframe_d2, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+
+// Apply smoothing if enabled
+k2_mtf = smoothMtfLines ? ta.sma(k2_mtf_raw, mtfSmoothLen) : k2_mtf_raw
+d2_mtf = smoothMtfLines ? ta.sma(d2_mtf_raw, mtfSmoothLen) : d2_mtf_raw
+
+k2 = timeframe_d2 == "" ? k2_chart : k2_mtf
+d2 = timeframe_d2 == "" ? d2_chart : d2_mtf
+
+// ===== D1 COLOR LOGIC =====
+// Priority: Overbought (>80) = white, Oversold (<20) = white, else Up/Down color
+d1IsUp = d1 >= d1[1]
+d1BaseColor = d1IsUp ? colorD1Up : colorD1Down
+d1LineColor = d1 > 80 ? colorOverbought : d1 < 20 ? colorOversold : d1BaseColor
+
+// Plot D1 line
+plot(d1, title="%D1", color=d1LineColor, linewidth=linewidthD1, display=display.pane)
+
+// ===== D2 COLOR LOGIC =====
+// Priority: Overbought (>80) = white, Oversold (<20) = white, else Up/Down color
+d2IsUp = d2 >= d2[1]
+d2BaseColor = d2IsUp ? colorD2Up : colorD2Down
+d2LineColor = d2 > 80 ? colorOverbought : d2 < 20 ? colorOversold : d2BaseColor
+
+// Plot D2 line
+plot(d2, title="%D2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
+
+// Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(60, "Level 60", color=color.yellow, linestyle=hline.style_solid, linewidth=1, editable=true)
+hline(50, "Mid", color=color.yellow, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(40, "Level 40", color=color.yellow, linestyle=hline.style_solid, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== D1 DIRECTION TRACKING =====
+var float prevD1 = na
+var string prevD1Direction = "flat"
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+
+// Detect direction changes: up to down, down to up
+bool upToDown = prevD1Direction == "up" and d1Direction == "down"
+bool downToUp = prevD1Direction == "down" and d1Direction == "up"
+
+// ===== BAR COLOR TIMEFRAME CALCULATIONS =====
+// Calculate D1 for bar color timeframe
+float bc_d1_val = na
+if timeframe_barColor == ""
+    bc_d1_val := d1
+else
+    [bc_k1_raw, bc_d1_raw] = request.security(syminfo.tickerid, timeframe_barColor, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+    bc_d1_val := smoothMtfLines ? ta.sma(bc_d1_raw, mtfSmoothLen) : bc_d1_raw
+
+// Track direction for bar color timeframe
+var float bc_prevD1 = na
+var string bc_prevD1Direction = "flat"
+bc_d1Direction = na(bc_prevD1) ? "flat" : bc_d1_val > bc_prevD1 ? "up" : bc_d1_val < bc_prevD1 ? "down" : "flat"
+bc_upToDown_val = bc_prevD1Direction == "up" and bc_d1Direction == "down"
+bc_downToUp_val = bc_prevD1Direction == "down" and bc_d1Direction == "up"
+bc_prevD1 := bc_d1_val
+bc_prevD1Direction := bc_d1Direction
+
+// HL/LH detection for bar color timeframe
+bc_pivotHighD1 = ta.pivothigh(bc_d1_val, pivotLengthD1, pivotLengthD1)
+bc_pivotLowD1 = ta.pivotlow(bc_d1_val, pivotLengthD1, pivotLengthD1)
+var float bc_lastHighD1 = na
+var float bc_lastLowD1 = na
+bc_isHigherLow_val = false
+bc_isLowerHigh_val = false
+
+if not na(bc_pivotLowD1) and showD1HLLH
+    if not na(bc_lastLowD1) and bc_pivotLowD1 > bc_lastLowD1
+        bc_isHigherLow_val := true
+    bc_lastLowD1 := bc_pivotLowD1
+
+if not na(bc_pivotHighD1) and showD1HLLH
+    if not na(bc_lastHighD1) and bc_pivotHighD1 < bc_lastHighD1
+        bc_isLowerHigh_val := true
+    bc_lastHighD1 := bc_pivotHighD1
+
+// ===== D1 HIGHER LOW / LOWER HIGH DETECTION =====
+pivotHighD1 = ta.pivothigh(d1, pivotLengthD1, pivotLengthD1)
+pivotLowD1 = ta.pivotlow(d1, pivotLengthD1, pivotLengthD1)
+
+// Track previous pivot values for D1
+var float lastHighD1 = na
+var float lastLowD1 = na
+
+// Track price at pivot points for main chart plotting
+var float lastHighPriceD1 = na
+var float lastLowPriceD1 = na
+
+// Variables to store pattern prices for plotting (persist until next pattern)
+var float plotHigherLowPrice = na
+var float plotLowerHighPrice = na
+
+// D1 Higher Low / Lower High detection
+float d1HigherLowValue = na
+float d1LowerHighValue = na
+bool isHigherLow = false
+bool isLowerHigh = false
+
+if not na(pivotLowD1) and showD1HLLH
+    if not na(lastLowD1) and pivotLowD1 > lastLowD1
+        d1HigherLowValue := pivotLowD1
+        plotHigherLowPrice := low[pivotLengthD1]
+        isHigherLow := true
+    lastLowD1 := pivotLowD1
+    lastLowPriceD1 := low[pivotLengthD1]
+
+if not na(pivotHighD1) and showD1HLLH
+    if not na(lastHighD1) and pivotHighD1 < lastHighD1
+        d1LowerHighValue := pivotHighD1
+        plotLowerHighPrice := high[pivotLengthD1]
+        isLowerHigh := true
+    lastHighD1 := pivotHighD1
+    lastHighPriceD1 := high[pivotLengthD1]
+
+string d1Pattern = not na(d1HigherLowValue) ? "Higher Low" : not na(d1LowerHighValue) ? "Lower High" : ""
+float d1PatternValue = not na(d1HigherLowValue) ? d1HigherLowValue : not na(d1LowerHighValue) ? d1LowerHighValue : na
+
+// Plot D1 Higher Low / Lower High patterns on indicator pane
+plotshape(showD1HLLH and not na(d1HigherLowValue) ? d1HigherLowValue - 2 : na, title="D1 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D1, size=size.small)
+plotshape(showD1HLLH and not na(d1LowerHighValue) ? d1LowerHighValue + 2 : na, title="D1 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D1, size=size.small)
+
+// Plot direction changes: Up to Down and Down to Up
+float upToDownPlot = na
+if showUpToDown and upToDown
+    upToDownPlot := d1 + directionChangeOffset
+
+float downToUpPlot = na
+if showDownToUp and downToUp
+    downToUpPlot := d1 + directionChangeOffset
+
+plot(upToDownPlot, title="Up to Down", color=colorUpToDown, linewidth=directionChangeSize, style=plot.style_cross)
+plot(downToUpPlot, title="Down to Up", color=colorDownToUp, linewidth=directionChangeSize, style=plot.style_cross)
+
+// Dot when D1 switches direction and difference between D1 and D2 exceeds threshold
+float whiteDotPlot = na
+color whiteDotPlotColor = na
+float d1D2Diff = math.abs(d1 - d2)
+bool d1SwitchWithLargeDiff = (upToDown or downToUp) and d1D2Diff > whiteDotDiffThreshold
+
+if showWhiteDot and d1SwitchWithLargeDiff
+    whiteDotPlot := d1 + whiteDotOffset
+    // Bull: D1 switches up (downToUp), Bear: D1 switches down (upToDown)
+    whiteDotPlotColor := downToUp ? whiteDotBullColor : whiteDotBearColor
+
+plot(whiteDotPlot, title="White Dot", color=whiteDotPlotColor, linewidth=whiteDotSize, style=plot.style_circles)
+
+// Color main chart candles when direction changes or HL/LH patterns are detected (using bar color timeframe)
+color barColorValue = na
+if showD1HLLHOnChart and bc_isHigherLow_val
+    barColorValue := colorHL_D1
+else if showD1HLLHOnChart and bc_isLowerHigh_val
+    barColorValue := colorLH_D1
+else if showD1HLLHOnChart and bc_upToDown_val
+    barColorValue := colorUpToDown
+else if showD1HLLHOnChart and bc_downToUp_val
+    barColorValue := colorDownToUp
+
+barcolor(barColorValue)
+
+// ===== LAST VALID VALUES FOR WEBHOOK =====
+var float lastValidD1 = na
+var string lastValidD1Dir = "flat"
+var string lastValidD1Pattern = "None"
+var float lastValidD1HLLHValue = na
+var float lastValidD2 = na
+var bool lastValidWhiteDot = false
+var string lastValidWhiteDotType = "None"
+
+if not na(d1)
+    lastValidD1 := d1
+if d1Direction != ""
+    lastValidD1Dir := d1Direction
+if d1Pattern != ""
+    lastValidD1Pattern := d1Pattern
+if not na(d1PatternValue)
+    lastValidD1HLLHValue := d1PatternValue
+if not na(d2)
+    lastValidD2 := d2
+if d1SwitchWithLargeDiff
+    lastValidWhiteDot := true
+    lastValidWhiteDotType := downToUp ? "Bull" : "Bear"
+else
+    lastValidWhiteDot := false
+
+// ===== ALERT / WEBHOOK =====
+if barstate.isconfirmed
+    d1Val = na(d1) ? (na(lastValidD1) ? 0 : lastValidD1) : d1
+    d1DirVal = d1Direction != "" ? d1Direction : lastValidD1Dir
+    d1PatternVal = d1Pattern != "" ? d1Pattern : lastValidD1Pattern
+    d1PatternValueVal = na(d1PatternValue) ? (na(lastValidD1HLLHValue) ? 0 : lastValidD1HLLHValue) : d1PatternValue
+    d2Val = na(d2) ? (na(lastValidD2) ? 0 : lastValidD2) : d2
+    whiteDotVal = d1SwitchWithLargeDiff ? true : lastValidWhiteDot
+    whiteDotTypeVal = d1SwitchWithLargeDiff ? (downToUp ? "Bull" : "Bear") : lastValidWhiteDotType
+    d1D2DiffVal = d1SwitchWithLargeDiff ? d1D2Diff : 0
+    
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"previousClose\":" + str.tostring(previousClose, "#.##") + ","
+    alertStr += "\"changeFromPrevDay\":" + str.tostring(changeFromPrevDay, "#.##") + ","
+    alertStr += "\"volume\":" + str.tostring(currentDayVolume) + ","
+    alertStr += "\"d1\":\"" + str.tostring(d1Val) + "\","
+    alertStr += "\"d1Direction\":\"" + d1DirVal + "\","
+    alertStr += "\"d1Pattern\":\"" + d1PatternVal + "\","
+    alertStr += "\"d1PatternValue\":\"" + str.tostring(d1PatternValueVal) + "\","
+    alertStr += "\"d2\":\"" + str.tostring(d2Val) + "\","
+    alertStr += "\"highLevelTrend\":" + str.tostring(whiteDotVal) + ","
+    alertStr += "\"highLevelTrendType\":\"" + whiteDotTypeVal + "\","
+    alertStr += "\"highLevelTrendDiff\":" + str.tostring(d1D2DiffVal, "#.##") + ","
+    alertStr += "\"d2Signal\":\"Dual\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
+
+// Store previous value and direction for next comparison
+prevD1 := d1
+prevD1Direction := d1Direction

@@ -5,6 +5,7 @@ indicator(title="Solo Stochastic (D2 Only)", shorttitle="Solo Stoch", overlay=fa
 timeframe_d2 = input.timeframe("", title="Timeframe for D2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
 smoothMtfLines = input.bool(false, title="Smooth MTF Lines", group="Timeframe Settings")
 mtfSmoothLen = input.int(3, minval=1, title="MTF Smoothing Length", group="Timeframe Settings")
+timeframe_barColor = input.timeframe("", title="Timeframe for Bar Color", group="Timeframe Settings", tooltip="Leave empty to use chart timeframe for bar coloring")
 
 // ===== D2 SETTINGS =====
 length2 = input.int(18, minval=1, title="D2 Length (periodK)", group="D2 Settings")
@@ -20,9 +21,18 @@ colorOversold = input.color(color.white, title="Oversold Color (<20)", group="D2
 
 // Higher Low / Lower High Settings
 showD2HLLH = input.bool(true, title="Show D2 Higher Low/Lower High", group="D2 Settings")
+showD2HLLHOnChart = input.bool(true, title="Show D2 Higher Low/Lower High on Main Chart", group="D2 Settings")
 pivotLengthD2 = input.int(5, minval=1, title="D2 Pivot Length", group="D2 Settings")
 colorHL_D2 = input.color(color.aqua, title="D2 Higher Low Color", group="D2 Settings")
 colorLH_D2 = input.color(color.orange, title="D2 Lower High Color", group="D2 Settings")
+
+// Direction Change Settings
+showUpToDown = input.bool(true, title="Show Up to Down", group="D2 Settings")
+showDownToUp = input.bool(true, title="Show Down to Up", group="D2 Settings")
+colorUpToDown = input.color(color.new(#0088ff, 0), title="Up to Down Color", group="D2 Settings")
+colorDownToUp = input.color(color.new(#00ff00, 0), title="Down to Up Color", group="D2 Settings")
+int directionChangeSize = input.int(4, minval=1, maxval=5, title="Direction Change Plot Size", group="D2 Settings")
+float directionChangeOffset = input.float(10.0, title="Direction Change Offset", group="D2 Settings", step=1.0)
 
 // ===== ZONE SETTINGS =====
 showStrongZones = input.bool(true, title="Show Strong Zones", group="Zones")
@@ -87,7 +97,48 @@ fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear
 
 // ===== D2 DIRECTION TRACKING =====
 var float prevD2 = na
+var string prevD2Direction = "flat"
 d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+
+// Detect direction changes: up to down, down to up
+bool upToDown = prevD2Direction == "up" and d2Direction == "down"
+bool downToUp = prevD2Direction == "down" and d2Direction == "up"
+
+// ===== BAR COLOR TIMEFRAME CALCULATIONS =====
+// Calculate D2 for bar color timeframe
+float bc_d2_val = na
+if timeframe_barColor == ""
+    bc_d2_val := d2
+else
+    [bc_k2_raw, bc_d2_raw] = request.security(syminfo.tickerid, timeframe_barColor, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+    bc_d2_val := smoothMtfLines ? ta.sma(bc_d2_raw, mtfSmoothLen) : bc_d2_raw
+
+// Track direction for bar color timeframe
+var float bc_prevD2 = na
+var string bc_prevD2Direction = "flat"
+bc_d2Direction = na(bc_prevD2) ? "flat" : bc_d2_val > bc_prevD2 ? "up" : bc_d2_val < bc_prevD2 ? "down" : "flat"
+bc_upToDown_val = bc_prevD2Direction == "up" and bc_d2Direction == "down"
+bc_downToUp_val = bc_prevD2Direction == "down" and bc_d2Direction == "up"
+bc_prevD2 := bc_d2_val
+bc_prevD2Direction := bc_d2Direction
+
+// HL/LH detection for bar color timeframe
+bc_pivotHighD2 = ta.pivothigh(bc_d2_val, pivotLengthD2, pivotLengthD2)
+bc_pivotLowD2 = ta.pivotlow(bc_d2_val, pivotLengthD2, pivotLengthD2)
+var float bc_lastHighD2 = na
+var float bc_lastLowD2 = na
+bc_isHigherLow_val = false
+bc_isLowerHigh_val = false
+
+if not na(bc_pivotLowD2) and showD2HLLH
+    if not na(bc_lastLowD2) and bc_pivotLowD2 > bc_lastLowD2
+        bc_isHigherLow_val := true
+    bc_lastLowD2 := bc_pivotLowD2
+
+if not na(bc_pivotHighD2) and showD2HLLH
+    if not na(bc_lastHighD2) and bc_pivotHighD2 < bc_lastHighD2
+        bc_isLowerHigh_val := true
+    bc_lastHighD2 := bc_pivotHighD2
 
 // ===== D2 HIGHER LOW / LOWER HIGH DETECTION =====
 pivotHighD2 = ta.pivothigh(d2, pivotLengthD2, pivotLengthD2)
@@ -97,26 +148,67 @@ pivotLowD2 = ta.pivotlow(d2, pivotLengthD2, pivotLengthD2)
 var float lastHighD2 = na
 var float lastLowD2 = na
 
+// Track price at pivot points for main chart plotting
+var float lastHighPriceD2 = na
+var float lastLowPriceD2 = na
+
+// Variables to store pattern prices for plotting (persist until next pattern)
+var float plotHigherLowPrice = na
+var float plotLowerHighPrice = na
+
 // D2 Higher Low / Lower High detection
 float d2HigherLowValue = na
 float d2LowerHighValue = na
+bool isHigherLow = false
+bool isLowerHigh = false
 
 if not na(pivotLowD2) and showD2HLLH
     if not na(lastLowD2) and pivotLowD2 > lastLowD2
         d2HigherLowValue := pivotLowD2
+        plotHigherLowPrice := low[pivotLengthD2]
+        isHigherLow := true
     lastLowD2 := pivotLowD2
+    lastLowPriceD2 := low[pivotLengthD2]
 
 if not na(pivotHighD2) and showD2HLLH
     if not na(lastHighD2) and pivotHighD2 < lastHighD2
         d2LowerHighValue := pivotHighD2
+        plotLowerHighPrice := high[pivotLengthD2]
+        isLowerHigh := true
     lastHighD2 := pivotHighD2
+    lastHighPriceD2 := high[pivotLengthD2]
 
 string d2Pattern = not na(d2HigherLowValue) ? "Higher Low" : not na(d2LowerHighValue) ? "Lower High" : ""
 float d2PatternValue = not na(d2HigherLowValue) ? d2HigherLowValue : not na(d2LowerHighValue) ? d2LowerHighValue : na
 
-// Plot D2 Higher Low / Lower High patterns
+// Plot D2 Higher Low / Lower High patterns on indicator pane
 plotshape(showD2HLLH and not na(d2HigherLowValue) ? d2HigherLowValue - 2 : na, title="D2 Higher Low", style=shape.triangleup, location=location.absolute, color=colorHL_D2, size=size.small)
 plotshape(showD2HLLH and not na(d2LowerHighValue) ? d2LowerHighValue + 2 : na, title="D2 Lower High", style=shape.triangledown, location=location.absolute, color=colorLH_D2, size=size.small)
+
+// Plot direction changes: Up to Down and Down to Up
+float upToDownPlot = na
+if showUpToDown and upToDown
+    upToDownPlot := d2 + directionChangeOffset
+
+float downToUpPlot = na
+if showDownToUp and downToUp
+    downToUpPlot := d2 + directionChangeOffset
+
+plot(upToDownPlot, title="Up to Down", color=colorUpToDown, linewidth=directionChangeSize, style=plot.style_cross)
+plot(downToUpPlot, title="Down to Up", color=colorDownToUp, linewidth=directionChangeSize, style=plot.style_cross)
+
+// Color main chart candles when direction changes or HL/LH patterns are detected (using bar color timeframe)
+color barColorValue = na
+if showD2HLLHOnChart and bc_isHigherLow_val
+    barColorValue := colorHL_D2
+else if showD2HLLHOnChart and bc_isLowerHigh_val
+    barColorValue := colorLH_D2
+else if showD2HLLHOnChart and bc_upToDown_val
+    barColorValue := colorUpToDown
+else if showD2HLLHOnChart and bc_downToUp_val
+    barColorValue := colorDownToUp
+
+barcolor(barColorValue)
 
 // ===== LAST VALID VALUES FOR WEBHOOK =====
 var float lastValidD2 = na
@@ -156,5 +248,6 @@ if barstate.isconfirmed
     alertStr += "}"
     alert(alertStr, alert.freq_once_per_bar_close)
 
-// Store previous value for next comparison
+// Store previous value and direction for next comparison
 prevD2 := d2
+prevD2Direction := d2Direction

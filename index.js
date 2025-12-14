@@ -54,6 +54,7 @@ let macdCrossingData = {} // Store MACD crossing signals by symbol with timestam
 let bjTsiDataStorage = {} // Store BJ TSI data by symbol with timestamp
 let bjPremarketRange = {} // Store premarket high/low TSI values per symbol per day: { symbol: { date: 'YYYY-MM-DD', high: number, low: number } }
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
+let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
@@ -488,6 +489,7 @@ app.post('/webhook', (req, res) => {
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   const isBjTsiAlert = alert.bjTsi !== undefined
   const isSoloStochAlert = alert.d2Signal === 'Solo'
+  const isDualStochAlert = alert.d2Signal === 'Dual'
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -499,6 +501,7 @@ app.post('/webhook', (req, res) => {
     isMacdCrossingAlert,
     isBjTsiAlert,
     isSoloStochAlert,
+    isDualStochAlert,
     symbol: alert.symbol
   })
   
@@ -1220,6 +1223,59 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
     }
+  } else if (isDualStochAlert) {
+    // Dual Stoch alert - store D1/D2 data with timestamp
+    dualStochDataStorage[alert.symbol] = {
+      d1: alert.d1,
+      d1Direction: alert.d1Direction,
+      d1Pattern: alert.d1Pattern || '',
+      d1PatternValue: alert.d1PatternValue || null,
+      d2: alert.d2,
+      highLevelTrend: alert.highLevelTrend || false,
+      highLevelTrendType: alert.highLevelTrendType || 'None',
+      highLevelTrendDiff: alert.highLevelTrendDiff || 0,
+      previousClose: alert.previousClose || null,
+      changeFromPrevDay: alert.changeFromPrevDay || null,
+      volume: alert.volume || null,
+      timestamp: Date.now()
+    }
+    console.log(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
+    
+    // Update existing alert if it exists, or create new one if it doesn't
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].dualStochD1 = alert.d1
+      alerts[existingIndex].dualStochD1Direction = alert.d1Direction
+      alerts[existingIndex].dualStochD1Pattern = alert.d1Pattern || ''
+      alerts[existingIndex].dualStochD1PatternValue = alert.d1PatternValue || null
+      alerts[existingIndex].dualStochD2 = alert.d2
+      alerts[existingIndex].dualStochHighLevelTrend = alert.highLevelTrend || false
+      alerts[existingIndex].dualStochHighLevelTrendType = alert.highLevelTrendType || 'None'
+      alerts[existingIndex].dualStochHighLevelTrendDiff = alert.highLevelTrendDiff || 0
+      if (alert.price) alerts[existingIndex].price = alert.price
+      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with Dual Stoch data`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        dualStochD1: alert.d1,
+        dualStochD1Direction: alert.d1Direction,
+        dualStochD1Pattern: alert.d1Pattern || '',
+        dualStochD1PatternValue: alert.d1PatternValue || null,
+        dualStochD2: alert.d2,
+        dualStochHighLevelTrend: alert.highLevelTrend || false,
+        dualStochHighLevelTrendType: alert.highLevelTrendType || 'None',
+        dualStochHighLevelTrendDiff: alert.highLevelTrendDiff || 0,
+        receivedAt: Date.now()
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with Dual Stoch data`)
+    }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
     const alertData = { ...alert }
@@ -1547,6 +1603,38 @@ app.post('/webhook', (req, res) => {
       }
     }
     
+    // Merge Dual Stoch data if available
+    const dualStochInfo = dualStochDataStorage[alert.symbol]
+    if (dualStochInfo) {
+      const ageInMinutes = (Date.now() - dualStochInfo.timestamp) / 60000
+      if (ageInMinutes <= 60) {
+        // Dual Stoch data is recent (within 60 minutes), merge it
+        alertData.dualStochD1 = dualStochInfo.d1
+        alertData.dualStochD1Direction = dualStochInfo.d1Direction
+        alertData.dualStochD1Pattern = dualStochInfo.d1Pattern
+        alertData.dualStochD1PatternValue = dualStochInfo.d1PatternValue
+        alertData.dualStochD2 = dualStochInfo.d2
+        alertData.dualStochHighLevelTrend = dualStochInfo.highLevelTrend
+        alertData.dualStochHighLevelTrendType = dualStochInfo.highLevelTrendType
+        alertData.dualStochHighLevelTrendDiff = dualStochInfo.highLevelTrendDiff
+        // Also merge day data from Dual Stoch if not already set
+        if (dualStochInfo.previousClose !== undefined && dualStochInfo.previousClose !== null && alertData.previousClose === undefined) {
+          alertData.previousClose = dualStochInfo.previousClose
+        }
+        if (dualStochInfo.changeFromPrevDay !== undefined && dualStochInfo.changeFromPrevDay !== null && alertData.changeFromPrevDay === undefined) {
+          alertData.changeFromPrevDay = dualStochInfo.changeFromPrevDay
+        }
+        if (dualStochInfo.volume !== undefined && dualStochInfo.volume !== null && alertData.volume === undefined) {
+          alertData.volume = dualStochInfo.volume
+        }
+        console.log(`✅ Merged Dual Stoch data for ${alert.symbol}: D1=${dualStochInfo.d1}, D2=${dualStochInfo.d2}, HLT=${dualStochInfo.highLevelTrendType} (age: ${ageInMinutes.toFixed(1)} min)`)
+      } else {
+        // Data is old, expire it
+        delete dualStochDataStorage[alert.symbol]
+        console.log(`⏰ Dual Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+      }
+    }
+    
     // Track previous price for color comparison
     const currentPrice = parseFloat(alert.price)
     const prevPrice = previousPrices[alert.symbol]
@@ -1584,7 +1672,8 @@ app.post('/webhook', (req, res) => {
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
                isBjTsiAlert ? 'bj_tsi' :
-               isSoloStochAlert ? 'solo_stoch' : 'main_script',
+               isSoloStochAlert ? 'solo_stoch' : 
+               isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
   })
   
@@ -1649,6 +1738,7 @@ app.post('/reset-alerts', (req, res) => {
   bjPremarketRange = {}
   bjTsiDataStorage = {}
   soloStochDataStorage = {}
+  dualStochDataStorage = {}
   patternData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
@@ -2452,6 +2542,7 @@ app.get('/', (req, res) => {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: '', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
         };
@@ -2481,7 +2572,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'd2value', 'priceChange', 'volume', 'bjValue'];
+            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'bjValue'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -2631,6 +2722,12 @@ app.get('/', (req, res) => {
                 : alert.d2 !== undefined
                   ? parseFloat(alert.d2) || 0
                   : 0;
+            case 'highLevelTrend':
+              // Sort by High Level Trend type (Bull > Bear > None)
+              const hltType = alert.dualStochHighLevelTrendType || 'None'
+              if (hltType === 'Bull') return 2
+              if (hltType === 'Bear') return 1
+              return 0
             case 'priceChange':
               // Calculate price change percentage for sorting
               if (alert.changeFromPrevDay !== undefined) {
@@ -3703,6 +3800,13 @@ app.get('/', (req, res) => {
                     <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                     \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
                   </div>
+                </td>
+              \`,
+              highLevelTrend: \`
+                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                  \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
+                    '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
+                    '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
               bj: \`

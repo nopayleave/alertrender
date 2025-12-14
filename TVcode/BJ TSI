@@ -40,7 +40,13 @@ string GRP3             = "TSI Value Line"
 color  tsiBullInput     = input.color(color.new(#09ff00, 0),  "", group = GRP3, inline = "1")
 color  tsiMidAboveInput = input.color(color.new(#09ff00,0),  "", group = GRP3, inline = "1")
 color  tsiMidBelowInput = input.color(color.new(#0088ff, 0),  "", group = GRP3, inline = "1")
-color  tsiBearInput     = input.color(color.new(#0088ff,0),  "", group = GRP3, inline = "1") 
+color  tsiBearInput     = input.color(color.new(#0088ff,0),  "", group = GRP3, inline = "1")
+int    tsiCurlUpThreshold = input.int(15, "CurlUp Threshold", group = GRP3, inline = "2")
+color  tsiCurlUpAbove15 = input.color(color.new(#00ff88, 0), "CurlUp Above 15", group = GRP3, inline = "2")
+color  tsiCurlUpBelow15 = input.color(color.new(#00ff88, 0), "CurlUp Below -15", group = GRP3, inline = "2")
+int    tsiCurlDnThreshold = input.int(-15, "CurlDn Threshold", group = GRP3, inline = "3")
+color  tsiCurlDnBelow15  = input.color(color.new(#ff8800, 0), "CurlDn Below -15", group = GRP3, inline = "3")
+color  tsiCurlDnAbove15  = input.color(color.new(#ff8800, 0), "CurlDn Above 15", group = GRP3, inline = "3") 
 
 string GRP4             = "TSI Signal Line"
 color  tslBullInput     = input.color(color.new(#09ff00,0),  "", group = GRP4, inline = "2")
@@ -103,6 +109,10 @@ color  trendContinueBearColor = input.color(color.new(#ff8800, 0), "Trend Contin
 color  trendContinueBullColor = input.color(color.new(#00ff88, 0), "Trend Continue Bull Color", group = GRP15)
 int    switchSize       = input.int(3, "Switch Plot Size", group = GRP15)
 float  switchOffset     = input.float(10.0, "Offset from Value Line", group = GRP15, step = 1.0)
+bool   showCurlUpToDnSwitch = input.bool(true, "Show CurlUp to CurlDn Switch", group = GRP15, tooltip = "Bar color when curlUp switches to curlDn")
+bool   showCurlDnToUpSwitch = input.bool(true, "Show CurlDn to CurlUp Switch", group = GRP15, tooltip = "Bar color when curlDn switches to curlUp")
+color  curlUpToDnColor = input.color(color.new(#ff0000, 0), "CurlUp to CurlDn Color", group = GRP15)
+color  curlDnToUpColor = input.color(color.new(#00ff00, 0), "CurlDn to CurlUp Color", group = GRP15)
 
 string GRP15A           = "Crossover/Crossunder Plot"
 bool   showCrossover    = input.bool(true, "Show Crossover (TSI crosses above Signal)", group = GRP15A)
@@ -115,6 +125,8 @@ float  crossOffset      = input.float(10.0, "Offset from Value Line", group = GR
 string GRP16            = "Premarket TSI Range"
 bool   showPremarketRange = input.bool(true, "Show Premarket Range", group = GRP16)
 color  premarketRangeColor = input.color(color.new(#787b86, 90), "Premarket Range Color", group = GRP16)
+bool   showPremarketMidpoint = input.bool(true, "Show 50% Premarket Range Line", group = GRP16)
+color  premarketMidpointColor = input.color(color.new(#787b86, 50), "50% Range Line Color", group = GRP16)
 string premarketTimezone = input.string("America/New_York", "Timezone", group = GRP16, tooltip = "Timezone for premarket detection. Use 'America/New_York' for US stocks, 'UTC' for crypto")
 int    premarketStartHour = input.int(4, "Premarket Start Hour", group = GRP16, minval = 0, maxval = 23, tooltip = "Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
 int    premarketStartMinute = input.int(0, "Premarket Start Minute", group = GRP16, minval = 0, maxval = 59)
@@ -221,6 +233,14 @@ bool currIsMidAbove = isClassic and not curlDn and trendIsBull
 bool colorSwitchCurlDnToMidAbove = prevWasCurlDn and currIsMidAbove
 bool newColorSwitchCurlDnToMidAbove = colorSwitchCurlDnToMidAbove and not colorSwitchCurlDnToMidAbove[1]
 
+// Detect switch from curlUp to curlDn
+bool switchCurlUpToDn = curlUp[1] and curlDn
+bool newSwitchCurlUpToDn = switchCurlUpToDn and not switchCurlUpToDn[1]
+
+// Detect switch from curlDn to curlUp
+bool switchCurlDnToUp = curlDn[1] and curlUp
+bool newSwitchCurlDnToUp = switchCurlDnToUp and not switchCurlDnToUp[1]
+
 // ===== Premarket TSI Range Calculation =====
 // Check if we're in premarket session based on time (using specified timezone)
 currentHour = hour(time, premarketTimezone)
@@ -287,6 +307,8 @@ if not premarketDataCaptured and inEarlyMarket
 // Calculate range values - use the actual high/low values directly
 premarketRangeUpper = na(premarketTsiHigh) ? na : premarketTsiHigh
 premarketRangeLower = na(premarketTsiLow) ? na : premarketTsiLow
+// Calculate 50% midpoint of premarket range
+premarketRangeMidpoint = (not na(premarketRangeUpper) and not na(premarketRangeLower)) ? (premarketRangeUpper + premarketRangeLower) / 2 : na
 
 // Create persistent snapshot variables for webhook (regular variables that hold the last valid values)
 // This ensures the webhook always has access to the premarket range even in alert context
@@ -325,12 +347,15 @@ int   barBgTransp = isLight ? 90 : 0
 
 color tsiTheme   = tsiIsBull ? tsiBullColor : tsiBearColor
 color tslTheme   = tslIsBull ? tslBullColor : tslBearColor
-color tsiColor   = isClassic ? curlUp ? tsiBullInput : curlDn ? tsiBearInput : trendIsBull ? tsiMidAboveInput : tsiMidBelowInput : tsiTheme
+// TSI color logic: check special conditions first (curlUp/curlDn and trendIsBull/not trendIsBull with TSI thresholds), then regular conditions
+color tsiColor   = isClassic ? (curlUp and tsi > tsiCurlUpThreshold) ? tsiCurlUpAbove15 : (curlDn and tsi < tsiCurlDnThreshold) ? tsiCurlDnBelow15 : (curlDn and tsi > tsiCurlUpThreshold) ? tsiCurlDnAbove15 : (curlUp and tsi < tsiCurlDnThreshold) ? tsiCurlUpBelow15 : (trendIsBull and tsi > tsiCurlUpThreshold) ? tsiCurlUpAbove15 : (not trendIsBull and tsi < tsiCurlDnThreshold) ? tsiCurlDnBelow15 : curlUp ? tsiBullInput : curlDn ? tsiBearInput : trendIsBull ? tsiMidAboveInput : tsiMidBelowInput : tsiTheme
 color tslColor   = isClassic ? tslIsBull ? tslBullInput : tslBearInput : tslTheme
 color fillColor1 = isClassic ? trendIsBull ? fillBullInput : fillBearInput : na
 color oBotColor  = isClassic ? oBotColInput  : color.new(obFillColor, 75)
 color oSoldColor = isClassic ? oSoldColInput : color.new(osFillColor, 75)
 color barColor   = overBought ? obBarInput : overSold ? osBarInput : blankBarsInput ? neBarInput : na
+// Bar color for crossover/crossunder, trend continue, and curlUp/curlDn switches
+color barColorCross = crossUp ? crossoverColor : crossDn ? crossunderColor : newColorSwitchCurlUpToMidBelow ? trendContinueBearColor : newColorSwitchCurlDnToMidAbove ? trendContinueBullColor : (newSwitchCurlUpToDn and trendIsBull) ? curlUpToDnColor : newSwitchCurlDnToUp ? curlDnToUpColor : na
 color fillColor2 = not isClassic ? trendIsBull ? 
 	 tsiIsBull ? tsiUpUpColor : tsiUpDnColor : 
 	 tsiIsBull ? tsiDnUpColor : tsiDnDnColor : color(na)
@@ -358,6 +383,9 @@ fill(h6, h8, showStrongBull ? strongBullColor : na, title = "Strong Bull Area")
 p_premarketUpper = plot(not na(premarketRangeUpper) and showPremarketRange ? premarketRangeUpper : na, "Premarket High", color = color.new(color.white, 100), display = display.none)
 p_premarketLower = plot(not na(premarketRangeLower) and showPremarketRange ? premarketRangeLower : na, "Premarket Low", color = color.new(color.white, 100), display = display.none)
 fill(p_premarketUpper, p_premarketLower, color = showPremarketRange and not na(premarketRangeUpper) and not na(premarketRangeLower) ? premarketRangeColor : na, title = "Premarket TSI Range")
+
+// Premarket 50% midpoint line
+p_premarketMidpoint = plot(showPremarketMidpoint and not na(premarketRangeMidpoint) ? premarketRangeMidpoint : na, "Premarket 50% Range", premarketMidpointColor, linewidth = 1)
 
 h1 = hline(isClassic ? na : oBotInput,  color = color(na), display = display.none, editable = false)
 h2 = hline(isClassic ? na : oSoldInput, color = color(na), display = display.none, editable = false)
@@ -419,7 +447,7 @@ fill(p2, p6, oBotInput + 50, obValue,  color.new(bearBgColor, 30), color.new(bea
 fill(p2, p7, osValue, oSoldInput - 50, color.new(bullBgColor, 90), color.new(bullBgColor, 30), fillgaps = true)
 fill(p1, p2, fillColor1, fillgaps = true)
 fill(p1, p2, tsi, tsl, fillColor2, color.new(fillColor2, 70), fillgaps = true, display = displayFill)
-barcolor(showCurlInput ? barColor : na)
+barcolor((showCrossover and crossUp) or (showCrossunder and crossDn) or (showTrendContinueBear and newColorSwitchCurlUpToMidBelow) or (showTrendContinueBull and newColorSwitchCurlDnToMidAbove) or (showCurlUpToDnSwitch and newSwitchCurlUpToDn and trendIsBull) or (showCurlDnToUpSwitch and newSwitchCurlDnToUp) ? barColorCross : na)
 
 bgcolor(osCrossUp and showHiLoInput ? isClassic ? color.new(oBotColInput,  80) : color.new(bullBgColor, 80) : na)
 bgcolor(obCrossDn and showHiLoInput ? isClassic ? color.new(oSoldColInput, 80) : color.new(bearBgColor, 80) : na)

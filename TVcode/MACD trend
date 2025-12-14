@@ -3,9 +3,9 @@ indicator(title="MACD Trend", shorttitle="MACD Trend", overlay=false, explicit_p
 
 // ===== MACD Settings =====
 string GRP1 = "MACD Settings"
-int fast_length = input.int(12, title="Fast Length", group=GRP1, minval=1)
-int slow_length = input.int(26, title="Slow Length", group=GRP1, minval=1)
-int signal_length = input.int(9, title="Signal Smoothing", group=GRP1, minval=1, maxval=50)
+int fast_length = input.int(10, title="Fast Length", group=GRP1, minval=1)
+int slow_length = input.int(75, title="Slow Length", group=GRP1, minval=1)
+int signal_length = input.int(20, title="Signal Smoothing", group=GRP1, minval=1, maxval=100)
 src = input.source(close, title="Source", group=GRP1)
 string sma_source = input.string("EMA", title="Oscillator MA Type", group=GRP1, options=["SMA", "EMA"])
 string sma_signal = input.string("EMA", title="Signal Line MA Type", group=GRP1, options=["SMA", "EMA"])
@@ -16,26 +16,38 @@ color macdUpHistUpColor = input.color(color.new(#00ff00, 0), "MACD Up + Hist Up 
 color macdUpHistUpAboveSignalColor = input.color(color.new(#00ff00, 0), "MACD Up + Hist Up + Above Signal (Green #2)", group=GRP2, tooltip="When MACD is up, histogram is up, and MACD is above signal line")
 color macdUpHistDownColor = input.color(color.new(#ffffff, 0), "MACD Up + Hist Down (White)", group=GRP2)
 color macdDownHistUpColor = input.color(color.new(#ffffff, 0), "MACD Down + Hist Up (White)", group=GRP2, tooltip="When MACD is down but histogram is up")
-color macdDownHistDownColor = input.color(color.new(#ff0000, 0), "MACD Down + Hist Down (Red)", group=GRP2, tooltip="When MACD is down and histogram is down")
-color macdDownHistDownBelowSignalColor = input.color(color.new(#ff0000, 0), "MACD Down + Hist Down + Below Signal (Red #2)", group=GRP2, tooltip="When MACD is down, histogram is down, and MACD is below signal line")
+color macdDownHistDownColor = input.color(color.new(#0088ff, 0), "MACD Down + Hist Down (Blue)", group=GRP2, tooltip="When MACD is down and histogram is down")
+color macdDownHistDownBelowSignalColor = input.color(color.new(#0088ff, 0), "MACD Down + Hist Down + Below Signal (Blue #2)", group=GRP2, tooltip="When MACD is down, histogram is down, and MACD is below signal line")
 
 string GRP3 = "Signal Line & Histogram"
 color signalUpHistUpColor = input.color(color.new(#00ff00, 0), "Signal Up + Hist Up (Green)", group=GRP3)
-color signalDownHistDownColor = input.color(color.new(#ff0000, 0), "Signal Down + Hist Down (Red)", group=GRP3)
-color signalElseColor = input.color(color.new(#ffaa00, 0), "Signal Else (Orange)", group=GRP3, tooltip="When signal and histogram directions don't match")
-color histUpColor = input.color(color.new(#26a69a, 0), "Histogram Up Color", group=GRP3)
-color histDownColor = input.color(color.new(#ff5252, 0), "Histogram Down Color", group=GRP3)
+color signalDownHistDownColor = input.color(color.new(#0088ff, 0), "Signal Down + Hist Down (Blue)", group=GRP3)
+color signalElseColor = input.color(color.new(#ffffff, 0), "Signal Else (White)", group=GRP3, tooltip="When signal and histogram directions don't match")
+color histUpColor = input.color(color.new(#00ff00, 0), "Histogram Up Color (Green)", group=GRP3)
+color histDownColor = input.color(color.new(#0088ff, 0), "Histogram Down Color (Blue)", group=GRP3)
 int macdLineWidth = input.int(2, title="MACD Line Width", group=GRP3, minval=1, maxval=5)
 int signalLineWidth = input.int(1, title="Signal Line Width", group=GRP3, minval=1, maxval=5)
 
+// ===== Background Colors =====
+string GRP4 = "Background Colors"
+bool showBackground = input.bool(true, title="Show Background Colors", group=GRP4)
+color bgAboveZeroColor = input.color(color.new(#00ff00, 90), title="Background Above 0 (Green)", group=GRP4)
+color bgBelowZeroColor = input.color(color.new(#0088ff, 90), title="Background Below 0 (Blue)", group=GRP4)
+bool showMacdSignalBg = input.bool(true, title="Show MACD/Signal Background", group=GRP4, tooltip="Green when MACD above signal, red when signal above MACD")
+color macdAboveSignalBgColor = input.color(color.new(#00ff00, 90), title="MACD Above Signal (Green)", group=GRP4)
+color signalAboveMacdBgColor = input.color(color.new(#ff0000, 90), title="Signal Above MACD (Red)", group=GRP4)
+
 // ===== Premarket MACD Range Background =====
-string GRP4 = "Premarket MACD Range"
-bool showPremarketRange = input.bool(true, title="Show Premarket Range", group=GRP4)
-color premarketRangeColor = input.color(color.new(#787b86, 90), title="Premarket Range Color", group=GRP4)
-int premarketStartHour = input.int(4, title="Premarket Start Hour", group=GRP4, minval=0, maxval=23, tooltip="Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
-int premarketStartMinute = input.int(0, title="Premarket Start Minute", group=GRP4, minval=0, maxval=59)
-int premarketEndHour = input.int(9, title="Premarket End Hour", group=GRP4, minval=0, maxval=23, tooltip="Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
-int premarketEndMinute = input.int(30, title="Premarket End Minute", group=GRP4, minval=0, maxval=59)
+string GRP5 = "Premarket MACD Range"
+bool showPremarketRange = input.bool(true, title="Show Premarket Range", group=GRP5)
+color premarketRangeColor = input.color(color.new(#787b86, 90), title="Premarket Range Color", group=GRP5)
+bool showSignalRangeBg = input.bool(true, title="Show MACD Line Range Background", group=GRP5, tooltip="Red when MACD below range, green when above range, no bg when within range")
+color signalRangeBgBelowColor = input.color(color.new(#ff0000, 90), title="MACD Below Range (Red)", group=GRP5)
+color signalRangeBgAboveColor = input.color(color.new(#00ff00, 90), title="MACD Above Range (Green)", group=GRP5)
+int premarketStartHour = input.int(4, title="Premarket Start Hour", group=GRP5, minval=0, maxval=23, tooltip="Hour when premarket starts (0-23, e.g., 4 for 4:00 AM)")
+int premarketStartMinute = input.int(0, title="Premarket Start Minute", group=GRP5, minval=0, maxval=59)
+int premarketEndHour = input.int(9, title="Premarket End Hour", group=GRP5, minval=0, maxval=23, tooltip="Hour when premarket ends (0-23, e.g., 9 for 9:00 AM)")
+int premarketEndMinute = input.int(30, title="Premarket End Minute", group=GRP5, minval=0, maxval=59)
 
 // ===== Calculations =====
 fast_ma = sma_source == "SMA" ? ta.sma(src, fast_length) : ta.ema(src, fast_length)
@@ -129,8 +141,24 @@ if inPremarket
 premarketRangeUpper = math.max(premarketMacdHigh, premarketMacdLow)
 premarketRangeLower = math.min(premarketMacdHigh, premarketMacdLow)
 
+// Determine MACD line position relative to premarket range
+bool macdBelowRange = not na(premarketRangeLower) and macd < premarketRangeLower
+bool macdAboveRange = not na(premarketRangeUpper) and macd > premarketRangeUpper
+bool macdWithinRange = not na(premarketRangeLower) and not na(premarketRangeUpper) and macd >= premarketRangeLower and macd <= premarketRangeUpper
+
 // ===== Display =====
+// Zero line
 hline(0, "Zero Line", color=color.new(#787b86, 50))
+
+// Background colors based on MACD position relative to 0
+// Use bgcolor for continuous background fill
+bgcolor(showBackground and macd >= 0 ? bgAboveZeroColor : showBackground and macd < 0 ? bgBelowZeroColor : na)
+
+// Background color based on MACD line position relative to premarket range
+bgcolor(showSignalRangeBg and macdBelowRange ? signalRangeBgBelowColor : showSignalRangeBg and macdAboveRange ? signalRangeBgAboveColor : na)
+
+// Background color based on MACD/Signal relationship
+bgcolor(showMacdSignalBg and macdAboveSignal ? macdAboveSignalBgColor : showMacdSignalBg and macdBelowSignal ? signalAboveMacdBgColor : na)
 
 // Premarket MACD range background
 p_premarketUpper = plot(not na(premarketRangeUpper) and showPremarketRange ? premarketRangeUpper : na, "Premarket High", color=color.new(color.white, 100), display=display.none)
