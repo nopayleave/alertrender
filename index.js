@@ -2716,12 +2716,14 @@ app.get('/', (req, res) => {
             case 'price':
               return parseFloat(alert.price) || 0;
             case 'd2value':
-              // Sort by D2 value from Solo Stoch
-              return alert.soloStochD2 !== undefined
-                ? parseFloat(alert.soloStochD2) || 0
-                : alert.d2 !== undefined
-                  ? parseFloat(alert.d2) || 0
-                  : 0;
+              // Sort by D2 value from Dual Stoch, Solo Stoch, or generic d2
+              return alert.dualStochD2 !== undefined
+                ? parseFloat(alert.dualStochD2) || 0
+                : alert.soloStochD2 !== undefined
+                  ? parseFloat(alert.soloStochD2) || 0
+                  : alert.d2 !== undefined
+                    ? parseFloat(alert.d2) || 0
+                    : 0;
             case 'highLevelTrend':
               // Sort by High Level Trend type (Bull > Bear > None)
               const hltType = alert.dualStochHighLevelTrendType || 'None'
@@ -3547,25 +3549,36 @@ app.get('/', (req, res) => {
             const d7Arrow = getArrow(d7DirForArrow);
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
-            // Solo Stoch D2 calculations
+            // Solo Stoch D2 or Dual Stoch D2 calculations
+            // Check for Dual Stoch first, then Solo Stoch, then fallback to generic d2
+            const dualStochD2 = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined && alert.dualStochD2 !== '' ? parseFloat(alert.dualStochD2) : null;
             const soloD2 = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
-            const soloD2Direction = alert.soloStochD2Direction || 'flat';
-            const soloD2Pattern = alert.soloStochD2Pattern || '';
-            const soloD2PatternValue = alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null;
+            const genericD2 = alert.d2 !== null && alert.d2 !== undefined && alert.d2 !== '' ? parseFloat(alert.d2) : null;
+            
+            // Use Dual Stoch if available, otherwise Solo Stoch, otherwise generic d2
+            const d2Value = dualStochD2 !== null ? dualStochD2 : (soloD2 !== null ? soloD2 : genericD2);
+            const d2Direction = dualStochD2 !== null ? (alert.dualStochD1Direction || 'flat') : (alert.soloStochD2Direction || 'flat');
+            const d2Pattern = dualStochD2 !== null ? (alert.dualStochD1Pattern || '') : (alert.soloStochD2Pattern || '');
+            const d2PatternValue = dualStochD2 !== null ? (alert.dualStochD1PatternValue !== null && alert.dualStochD1PatternValue !== undefined ? parseFloat(alert.dualStochD1PatternValue) : null) : (alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null);
+            
+            // Keep soloD2 variables for backward compatibility in display logic
+            const soloD2Direction = d2Direction;
+            const soloD2Pattern = d2Pattern;
+            const soloD2PatternValue = d2PatternValue;
             
             // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
             let d2ValueClass = 'text-foreground';
-            let d2DirClass = soloD2Direction === 'up' ? 'text-green-400' : soloD2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
-            let d2Arrow = soloD2Direction === 'up' ? '↑' : soloD2Direction === 'down' ? '↓' : '→';
+            let d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
+            let d2Arrow = d2Direction === 'up' ? '↑' : d2Direction === 'down' ? '↓' : '→';
             
-            if (soloD2 !== null && !isNaN(soloD2)) {
-              if (soloD2 > 80) {
+            if (d2Value !== null && !isNaN(d2Value)) {
+              if (d2Value > 80) {
                 d2ValueClass = 'text-white font-bold'; // Overbought
-              } else if (soloD2 < 20) {
+              } else if (d2Value < 20) {
                 d2ValueClass = 'text-white font-bold'; // Oversold
-              } else if (soloD2Direction === 'up') {
+              } else if (d2Direction === 'up') {
                 d2ValueClass = 'text-green-400 font-semibold';
-              } else if (soloD2Direction === 'down') {
+              } else if (d2Direction === 'down') {
                 d2ValueClass = 'text-blue-500 font-semibold';
               }
             }
@@ -3573,10 +3586,10 @@ app.get('/', (req, res) => {
             // D2 Pattern display
             let d2PatternDisplay = '';
             let d2PatternClass = 'text-muted-foreground';
-            if (soloD2Pattern === 'Higher Low') {
+            if (d2Pattern === 'Higher Low') {
               d2PatternDisplay = 'HL';
               d2PatternClass = 'text-cyan-400 font-semibold';
-            } else if (soloD2Pattern === 'Lower High') {
+            } else if (d2Pattern === 'Lower High') {
               d2PatternDisplay = 'LH';
               d2PatternClass = 'text-orange-400 font-semibold';
             }
@@ -3794,9 +3807,9 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               d2: \`
-                <td class="py-3 px-4 text-left" title="Solo Stoch D2: Value=\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(2) : 'N/A'}, Dir=\${soloD2Direction}\${d2PatternDisplay ? ', Pattern=' + soloD2Pattern : ''}">
+                <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D2' : 'Solo Stoch D2'}: Value=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}">
                   <div class="flex flex-row items-center justify-start gap-2">
-                    <div class="font-mono text-lg \${d2ValueClass}">\${soloD2 !== null && !isNaN(soloD2) ? soloD2.toFixed(1) : '-'}</div>
+                    <div class="font-mono text-lg \${d2ValueClass}">\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-'}</div>
                     <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                     \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
                   </div>
