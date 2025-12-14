@@ -3586,6 +3586,21 @@ app.get('/', (req, res) => {
               }
             }
             
+            // Calculate difference between D1 and D2 for Dual Stoch
+            let d1D2Diff = null;
+            let d1D2DiffClass = 'text-gray-400';
+            if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
+              d1D2Diff = dualStochD1 - dualStochD2;
+              // Color based on difference: positive (green), negative (red), zero (gray)
+              if (d1D2Diff > 0) {
+                d1D2DiffClass = 'text-green-400';
+              } else if (d1D2Diff < 0) {
+                d1D2DiffClass = 'text-red-400';
+              } else {
+                d1D2DiffClass = 'text-gray-400';
+              }
+            }
+            
             // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
             let d2ValueClass = 'text-foreground';
             let d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
@@ -3827,15 +3842,16 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               d2: \`
-                <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}">
+                <td class="py-3 px-4 text-left" title="\${dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2'}: \${dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : ''}D2=\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A'}, Dir=\${d2Direction}\${d2PatternDisplay ? ', Pattern=' + d2Pattern : ''}\${d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : ''}">
                   <div class="flex flex-col items-start gap-1">
                     \${dualStochD1 !== null ? 
-                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-sm ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-sm ' + d1DirClass + '">' + d1Arrow + '</div></div>' : 
+                      '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-sm ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-sm ' + d1DirClass + '">' + d1Arrow + '</div>' + (d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : '') + '</div>' : 
                       ''}
                     <div class="flex flex-row items-center justify-start gap-2">
                       <div class="font-mono text-lg \${d2ValueClass}">\${dualStochD1 !== null ? 'D2: ' : ''}\${d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-'}</div>
                       <div class="text-lg \${d2DirClass}">\${d2Arrow}</div>
                       \${d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : ''}
+                      \${d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">(' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : ''}
                     </div>
                   </div>
                 </td>
