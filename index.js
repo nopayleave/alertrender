@@ -3667,18 +3667,16 @@ app.get('/', (req, res) => {
                 const y50 = padding + plotHeight - ((50 - minVal) / scale) * plotHeight
                 const y80 = padding + plotHeight - ((80 - minVal) / scale) * plotHeight
                 
-                miniChartSvg = `
-                  <svg width="${chartWidth}" height="${chartHeight}" style="display: block;">
-                    <!-- Reference lines -->
-                    <line x1="${padding}" y1="${y20}" x2="${chartWidth - padding}" y2="${y20}" stroke="#666" stroke-width="0.5" opacity="0.3"/>
-                    <line x1="${padding}" y1="${y50}" x2="${chartWidth - padding}" y2="${y50}" stroke="#666" stroke-width="0.5" opacity="0.2"/>
-                    <line x1="${padding}" y1="${y80}" x2="${chartWidth - padding}" y2="${y80}" stroke="#666" stroke-width="0.5" opacity="0.3"/>
-                    <!-- D2 line (blue) -->
-                    <path d="${d2Path}" stroke="#0088ff" stroke-width="1.5" fill="none"/>
-                    <!-- D1 line (green) -->
-                    <path d="${d1Path}" stroke="#00ff00" stroke-width="1.5" fill="none"/>
-                  </svg>
-                `
+                miniChartSvg = '<svg width="' + chartWidth + '" height="' + chartHeight + '" style="display: block;">' +
+                  '<!-- Reference lines -->' +
+                  '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+                  '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#666" stroke-width="0.5" opacity="0.2"/>' +
+                  '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+                  '<!-- D2 line (blue) -->' +
+                  '<path d="' + d2Path + '" stroke="#0088ff" stroke-width="1.5" fill="none"/>' +
+                  '<!-- D1 line (green) -->' +
+                  '<path d="' + d1Path + '" stroke="#00ff00" stroke-width="1.5" fill="none"/>' +
+                  '</svg>'
               }
             }
             
