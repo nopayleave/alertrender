@@ -2257,6 +2257,26 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
+        /* Resizable column handle */
+        .resize-handle {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 5px;
+          height: 100%;
+          cursor: col-resize;
+          user-select: none;
+          z-index: 10;
+        }
+        .resize-handle:hover {
+          background-color: rgba(59, 130, 246, 0.5);
+        }
+        .resize-handle.resizing {
+          background-color: rgba(59, 130, 246, 0.8);
+        }
+        th {
+          position: relative;
+        }
         /* iOS-style filter chips */
         .filter-chip {
           user-select: none;
@@ -2798,7 +2818,7 @@ app.get('/', (req, res) => {
             <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
-                  <table class="w-full table-auto border-collapse">
+                  <table class="w-full border-collapse" style="table-layout: fixed;">
                     <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
@@ -3210,10 +3230,105 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
+              (colId !== 'star' ? '<div class="resize-handle" onmousedown="handleResizeStart(event, \'' + colId + '\')"></div>' : '') +
               '</th>';
           }).join('');
           
           updateSortIndicators();
+          setupColumnResize();
+        }
+
+        // Column resize functionality
+        let columnWidths = {};
+        let resizingColumn = null;
+        let resizeStartX = 0;
+        let resizeStartWidth = 0;
+
+        function setupColumnResize() {
+          // Load saved column widths from localStorage
+          const savedWidths = localStorage.getItem('columnWidths');
+          if (savedWidths) {
+            try {
+              columnWidths = JSON.parse(savedWidths);
+              applyColumnWidths();
+            } catch (e) {
+              console.error('Error loading column widths:', e);
+            }
+          }
+        }
+
+        function handleResizeStart(e, columnId) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Prevent drag and drop when resizing
+          if (e.target.closest('.draggable-header')) {
+            e.target.closest('.draggable-header').draggable = false;
+          }
+          
+          resizingColumn = columnId;
+          resizeStartX = e.clientX;
+          
+          const header = e.target.closest('th');
+          resizeStartWidth = header.offsetWidth;
+          
+          e.target.classList.add('resizing');
+          
+          document.addEventListener('mousemove', handleResize);
+          document.addEventListener('mouseup', handleResizeEnd);
+        }
+
+        function handleResize(e) {
+          if (!resizingColumn) return;
+          
+          const diff = e.clientX - resizeStartX;
+          const newWidth = Math.max(50, resizeStartWidth + diff); // Minimum width of 50px
+          
+          columnWidths[resizingColumn] = newWidth;
+          applyColumnWidths();
+        }
+
+        function handleResizeEnd(e) {
+          if (resizingColumn) {
+            // Save widths to localStorage
+            localStorage.setItem('columnWidths', JSON.stringify(columnWidths));
+            
+            document.querySelectorAll('.resize-handle').forEach(handle => {
+              handle.classList.remove('resizing');
+            });
+            
+            // Restore draggable
+            document.querySelectorAll('.draggable-header').forEach(header => {
+              if (header.getAttribute('data-column-id') !== 'star') {
+                header.draggable = true;
+              }
+            });
+            
+            resizingColumn = null;
+          }
+          
+          document.removeEventListener('mousemove', handleResize);
+          document.removeEventListener('mouseup', handleResizeEnd);
+        }
+
+        function applyColumnWidths() {
+          // Apply widths to headers
+          Object.keys(columnWidths).forEach(columnId => {
+            const header = document.querySelector(`th[data-column-id="${columnId}"]`);
+            if (header) {
+              header.style.width = columnWidths[columnId] + 'px';
+              header.style.minWidth = columnWidths[columnId] + 'px';
+              header.style.maxWidth = columnWidths[columnId] + 'px';
+            }
+            
+            // Apply widths to cells
+            const cells = document.querySelectorAll(`td[data-column-id="${columnId}"]`);
+            cells.forEach(cell => {
+              cell.style.width = columnWidths[columnId] + 'px';
+              cell.style.minWidth = columnWidths[columnId] + 'px';
+              cell.style.maxWidth = columnWidths[columnId] + 'px';
+            });
+          });
         }
 
         // Drag and drop handlers for column reordering
@@ -4729,7 +4844,7 @@ app.get('/', (req, res) => {
               parts.push(bigTrendDayHtml)
             }
             
-            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            d2CellHtml = '<td data-column-id="d2" class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -4738,7 +4853,7 @@ app.get('/', (req, res) => {
             // Generate cell content for each column
             const cellContent = {
               star: \`
-                <td class="py-3 pl-4 pr-1 text-center">
+                <td data-column-id="star" class="py-3 pl-4 pr-1 text-center">
                   <button 
                     onclick="toggleStar('\${alert.symbol}')" 
                     class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
@@ -4748,23 +4863,23 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
               \`,
-              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
+              symbol: \`<td data-column-id="symbol" class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
               price: \`
-                <td class="py-3 px-4 font-mono font-medium \${priceClass}">
+                <td data-column-id="price" class="py-3 px-4 font-mono font-medium \${priceClass}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
               d2: d2CellHtml || '',
               highLevelTrend: \`
-                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td data-column-id="highLevelTrend" class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
               bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td data-column-id="bj" class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
@@ -4773,7 +4888,7 @@ app.get('/', (req, res) => {
                   </div>
                 </td>
               \`,
-              volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+              volume: \`<td data-column-id="volume" class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
             };
             
             // Render cells in column order
@@ -4785,6 +4900,11 @@ app.get('/', (req, res) => {
               </tr>
             \`;
           }).join('');
+          
+          // Apply column widths after rendering
+          setTimeout(() => {
+            applyColumnWidths();
+          }, 0);
         }
 
         async function fetchAlerts() {
