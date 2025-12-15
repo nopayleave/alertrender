@@ -2306,6 +2306,14 @@ app.get('/', (req, res) => {
         .filter-chevron.collapsed {
           transform: rotate(-90deg);
         }
+        /* Hide scrollbar but allow scrolling */
+        .hide-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;  /* Chrome, Safari and Opera */
+        }
         /* iOS-style search input focus */
         input:focus {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -2479,7 +2487,7 @@ app.get('/', (req, res) => {
         }
       </style>
     </head>
-    <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
+    <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
       <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -2503,7 +2511,7 @@ app.get('/', (req, res) => {
           <!-- Filters sidebar (left on xl, top on smaller screens) -->
           <div class="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-4 xl:self-start">
             <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-6 py-4 xl:py-0">
+            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-3 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
                 <div class="relative mb-4">
@@ -2771,7 +2779,7 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
-                <div class="overflow-x-auto max-h-[calc(100vh-200px)] pt-2.5">
+                <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
                     <thead id="tableHeader" class="sticky top-0 bg-card z-20">
                       <tr class="border-b border-border/50">
@@ -2865,8 +2873,8 @@ app.get('/', (req, res) => {
         // Column definitions
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-32' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-28' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-36' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-32' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-36', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
