@@ -2507,9 +2507,15 @@ app.get('/', (req, res) => {
           background: hsl(217.2 32.6% 25%);
         }
         .noUi-target[disabled] .noUi-handle {
-          opacity: 0.5;
+          background: #9ca3af !important;
+          border-color: #6b7280 !important;
           cursor: not-allowed;
-          transform: none;
+          transform: none !important;
+        }
+        .noUi-target[disabled] .noUi-handle:hover,
+        .noUi-target[disabled] .noUi-handle:active {
+          transform: none !important;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
         }
         .noUi-tooltip {
           display: none;
