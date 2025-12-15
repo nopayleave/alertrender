@@ -4780,7 +4780,7 @@ app.get('/', (req, res) => {
             const cells = columnOrder.map(colId => cellContent[colId] || '').join('');
             
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors" style="background-color: \${starred ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'};">
                 \${cells}
               </tr>
             \`;
