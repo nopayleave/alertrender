@@ -2662,19 +2662,6 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                   </div>
-              
-                  <!-- Area -->
-                  <div>
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
-                    <div class="filter-group flex flex-wrap gap-1.5" id="areaChips">
-                      <button onclick="toggleFilterChip('area', 'strong_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="area" data-value="strong_bullish">Strong Bull</button>
-                      <button onclick="toggleFilterChip('area', 'bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="area" data-value="bullish">Bullish</button>
-                      <button onclick="toggleFilterChip('area', 'light_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="area" data-value="light_bullish">Light Bull</button>
-                      <button onclick="toggleFilterChip('area', 'light_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="area" data-value="light_bearish">Light Bear</button>
-                      <button onclick="toggleFilterChip('area', 'bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="area" data-value="bearish">Bearish</button>
-                      <button onclick="toggleFilterChip('area', 'strong_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="area" data-value="strong_bearish">Strong Bear</button>
-                    </div>
-                  </div>
                   </div>
                 </div>
                 
@@ -2808,9 +2795,9 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- % Change -->
+                  <!-- Price % -->
                   <div>
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">% Change</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
                       <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2">-5~-2%</button>
@@ -2911,11 +2898,11 @@ app.get('/', (req, res) => {
         // Column definitions
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[54px]' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[114px]' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[160px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[174px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[114px]', tooltip: 'BJ TSI: Value, V Dir, S Dir' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
