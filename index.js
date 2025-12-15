@@ -2263,11 +2263,39 @@ app.get('/', (req, res) => {
           -webkit-tap-highlight-color: transparent;
         }
         .filter-chip.active {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
-          border-color: rgba(59, 130, 246, 0.6) !important;
-          color: rgb(96, 165, 250) !important;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
           opacity: 1 !important;
+          transform: scale(1.02);
+        }
+        /* Enhance existing colors for active state by increasing opacity/intensity */
+        .filter-chip.active[class*="green"] {
+          background: rgba(34, 197, 94, 0.35) !important;
+          border-color: rgba(34, 197, 94, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip.active[class*="red"] {
+          background: rgba(239, 68, 68, 0.35) !important;
+          border-color: rgba(239, 68, 68, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip.active[class*="lime"] {
+          background: rgba(132, 204, 22, 0.35) !important;
+          border-color: rgba(132, 204, 22, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(132, 204, 22, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip.active[class*="orange"] {
+          background: rgba(251, 146, 60, 0.35) !important;
+          border-color: rgba(251, 146, 60, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(251, 146, 60, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip.active[class*="purple"] {
+          background: rgba(168, 85, 247, 0.35) !important;
+          border-color: rgba(168, 85, 247, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip.active[class*="gray"] {
+          background: rgba(156, 163, 175, 0.35) !important;
+          border-color: rgba(156, 163, 175, 0.7) !important;
+          box-shadow: 0 2px 8px rgba(156, 163, 175, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         .filter-chip:active {
           transform: scale(0.95);
