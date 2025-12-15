@@ -2886,8 +2886,15 @@ app.get('/', (req, res) => {
             bjValueSlider.setAttribute('disabled', true);
             sliders.bjValue = bjValueSlider;
             bjValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('bjValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('bjValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('bjValueMinValue');
+              const maxEl = document.getElementById('bjValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: red for negative, yellow for neutral (-15 to 15), green for positive
+              minEl.className = 'font-semibold ' + (minVal < -15 ? 'text-red-400' : minVal > 15 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < -15 ? 'text-red-400' : maxVal > 15 ? 'text-green-400' : 'text-yellow-400');
             });
             bjValueSlider.noUiSlider.on('change', function() {
               updateBjValueFilter();
@@ -2907,8 +2914,15 @@ app.get('/', (req, res) => {
             d1ValueSlider.setAttribute('disabled', true);
             sliders.d1Value = d1ValueSlider;
             d1ValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('d1ValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('d1ValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('d1ValueMinValue');
+              const maxEl = document.getElementById('d1ValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: red (<40), yellow (40-60), green (>60)
+              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
             });
             d1ValueSlider.noUiSlider.on('change', function() {
               updateD1ValueFilter();
@@ -2928,8 +2942,15 @@ app.get('/', (req, res) => {
             d2ValueSlider.setAttribute('disabled', true);
             sliders.d2Value = d2ValueSlider;
             d2ValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('d2ValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('d2ValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('d2ValueMinValue');
+              const maxEl = document.getElementById('d2ValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: red (<40), yellow (40-60), green (>60)
+              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
             });
             d2ValueSlider.noUiSlider.on('change', function() {
               updateD2ValueFilter();
@@ -2949,8 +2970,15 @@ app.get('/', (req, res) => {
             diffSlider.setAttribute('disabled', true);
             sliders.diff = diffSlider;
             diffSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('diffMinValue').textContent = Math.round(values[0]);
-              document.getElementById('diffMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('diffMinValue');
+              const maxEl = document.getElementById('diffMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: blue for small diff (<10), yellow for medium (10-25), orange for large (>25)
+              minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
             });
             diffSlider.noUiSlider.on('change', function() {
               updateDiffFilter();
