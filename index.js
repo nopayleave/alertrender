@@ -3623,6 +3623,7 @@ app.get('/', (req, res) => {
             
             // Generate mini chart SVG for D1/D2
             let miniChartSvg = ''
+            let d2CellHtml = ''
             if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
               const history = dualStochHistory[alert.symbol] || []
               if (history.length > 1) {
@@ -3654,11 +3655,11 @@ app.get('/', (req, res) => {
                   const y2 = padding + plotHeight - ((point.d2 - minVal) / scale) * plotHeight
                   
                   if (index === 0) {
-                    d1Path += `M ${x} ${y1}`
-                    d2Path += `M ${x} ${y2}`
+                    d1Path += 'M ' + x + ' ' + y1
+                    d2Path += 'M ' + x + ' ' + y2
                   } else {
-                    d1Path += ` L ${x} ${y1}`
-                    d2Path += ` L ${x} ${y2}`
+                    d1Path += ' L ' + x + ' ' + y1
+                    d2Path += ' L ' + x + ' ' + y2
                   }
                 })
                 
@@ -3929,6 +3930,43 @@ app.get('/', (req, res) => {
               }
             }
             
+            // Build d2 cell HTML string (to avoid template literal nesting issues)  
+            if (!d2CellHtml) {
+            let chartHtml = miniChartSvg || ''
+            if (chartHtml) {
+              chartHtml = '<div class="mb-1">' + chartHtml + '</div>'
+            }
+            let d1Html = ''
+            if (dualStochD1 !== null) {
+              d1Html = '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
+            }
+            let d2HtmlContent = '<div class="flex flex-row items-center justify-start gap-2">' +
+              '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
+              '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
+              (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
+              '</div>'
+            let diffHtml = ''
+            if (d1D2Diff !== null) {
+              diffHtml = '<div class="text-xs ' + d1D2DiffClass + ' font-semibold mt-1">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>'
+            }
+            let trendHtml = ''
+            if (trendMessage) {
+              trendHtml = '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>'
+            }
+            let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
+              (dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
+              'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
+              ', Dir=' + d2Direction + 
+              (d2PatternDisplay ? ', Pattern=' + d2Pattern : '') + 
+              (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
+              (trendMessage ? ', ' + trendMessage : '')
+            let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + '">' +
+              '<div class="flex flex-col items-start gap-1">' +
+              chartHtml + d1Html + d2HtmlContent + diffHtml + trendHtml +
+              '</div></td>'
+            }
+            
             // Generate cell content for each column
             const cellContent = {
               star: \`
@@ -3949,30 +3987,7 @@ app.get('/', (req, res) => {
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
-              d2: (() => {
-                const chartHtml = miniChartSvg ? '<div class="mb-1">' + miniChartSvg + '</div>' : ''
-                const d1Html = dualStochD1 !== null ? 
-                  '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>' : 
-                  ''
-                const d2Html = '<div class="flex flex-row items-center justify-start gap-2">' +
-                  '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
-                  '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
-                  (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
-                  '</div>'
-                const diffHtml = d1D2Diff !== null ? '<div class="text-xs ' + d1D2DiffClass + ' font-semibold mt-1">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>' : ''
-                const trendHtml = trendMessage ? '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>' : ''
-                const titleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
-                  (dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
-                  'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
-                  ', Dir=' + d2Direction + 
-                  (d2PatternDisplay ? ', Pattern=' + d2Pattern : '') + 
-                  (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
-                  (trendMessage ? ', ' + trendMessage : '')
-                return '<td class="py-3 px-4 text-left" title="' + titleText + '">' +
-                  '<div class="flex flex-col items-start gap-1">' +
-                  chartHtml + d1Html + d2Html + diffHtml + trendHtml +
-                  '</div></td>'
-              })(),
+              d2: d2CellHtml || '',
               highLevelTrend: \`
                 <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
