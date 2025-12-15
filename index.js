@@ -1472,8 +1472,8 @@ app.post('/webhook', (req, res) => {
         let miniChartSvg = ''
         const history = dualStochHistory[alert.symbol] || []
         if (history.length > 1 && dualStochInfo.d1 !== null && dualStochInfo.d2 !== null) {
-          const chartWidth = 120
-          const chartHeight = 40
+          const chartWidth = 80
+          const chartHeight = 32
           const padding = 2
           const plotWidth = chartWidth - padding * 2
           const plotHeight = chartHeight - padding * 2
@@ -2289,6 +2289,23 @@ app.get('/', (req, res) => {
           border-radius: 16px;
           padding: 16px;
         }
+        /* Collapsible filter content */
+        .filter-content {
+          max-height: 1000px;
+          overflow: hidden;
+          transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+          opacity: 1;
+        }
+        .filter-content.collapsed {
+          max-height: 0;
+          opacity: 0;
+        }
+        .filter-chevron {
+          transition: transform 0.2s ease-out;
+        }
+        .filter-chevron.collapsed {
+          transform: rotate(-90deg);
+        }
         /* iOS-style search input focus */
         input:focus {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -2518,15 +2535,21 @@ app.get('/', (req, res) => {
                 <!-- BJ TSI Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90">BJ TSI</h3>
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('bjTsiFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      BJ TSI
+                    </h3>
                     <button 
-                      onclick="clearBjFilters()" 
+                      onclick="event.stopPropagation(); clearBjFilters()" 
                       class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
                     >
                       Clear
                     </button>
                   </div>
                   
+                  <div id="bjTsiFilters" class="filter-content">
                   <!-- V Dir & S Dir -->
                   <div class="grid grid-cols-2 gap-3 mb-3">
                     <div>
@@ -2593,19 +2616,27 @@ app.get('/', (req, res) => {
                       <button onclick="toggleFilterChip('area', 'strong_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="area" data-value="strong_bearish">Strong Bear</button>
                     </div>
                   </div>
+                  </div>
                 </div>
                 
                 <!-- Stoch Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90">Stochastic</h3>
-                  <button 
-                      onclick="clearStochFilters()" 
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      Stochastic
+                    </h3>
+                    <button 
+                      onclick="event.stopPropagation(); clearStochFilters()" 
                       class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                  >
+                    >
                       Clear
-                  </button>
-                </div>
+                    </button>
+                  </div>
+                  
+                  <div id="stochFilters" class="filter-content">
             
                   <!-- D1 Direction -->
                   <div class="mb-3">
@@ -2732,6 +2763,7 @@ app.get('/', (req, res) => {
                       <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5">&gt;5%</button>
                     </div>
                   </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2834,13 +2866,13 @@ app.get('/', (req, res) => {
         
         // Column definitions
         const columnDefs = {
-          star: { id: 'star', title: '⭐', sortable: false, width: 'w-12' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-auto' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
-          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
-          highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: '', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
-          volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
+          star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-32' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-28' },
+          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-36', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
+          volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
         // Countdown state
@@ -3169,6 +3201,17 @@ app.get('/', (req, res) => {
               return parseFloat(alert.bjTsi) || 0;
             default:
               return '';
+          }
+        }
+
+        // Toggle filter section collapse/expand
+        function toggleFilterSection(sectionId, headerElement) {
+          const content = document.getElementById(sectionId);
+          const chevron = headerElement.querySelector('.filter-chevron');
+          
+          if (content && chevron) {
+            content.classList.toggle('collapsed');
+            chevron.classList.toggle('collapsed');
           }
         }
 
@@ -3750,20 +3793,24 @@ app.get('/', (req, res) => {
             let priceChangeClass = 'text-muted-foreground'; // Default for change %
             
             // Priority 1: Use changeFromPrevDay from List script if available
-            if (alert.changeFromPrevDay !== undefined) {
+            if (alert.changeFromPrevDay !== undefined && alert.changeFromPrevDay !== null) {
               const changeFromPrevDay = parseFloat(alert.changeFromPrevDay);
-              priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              // Change % color: green if >0%, red if <0%, gray if 0
-              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              if (!isNaN(changeFromPrevDay)) {
+                priceChangeDisplay = changeFromPrevDay.toFixed(2);
+                // Change % color: green if >0%, red if <0%, gray if 0
+                priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              }
             }
             // Priority 2: Calculate from price and previousClose
             else if (alert.price && alert.previousClose && alert.previousClose !== 0) {
               const close = parseFloat(alert.price);
               const prevDayClose = parseFloat(alert.previousClose);
-              const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
-              priceChangeDisplay = changeFromPrevDay.toFixed(2);
-              // Change % color: green if >0%, red if <0%, gray if 0
-              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              if (!isNaN(close) && !isNaN(prevDayClose) && prevDayClose !== 0) {
+                const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
+                priceChangeDisplay = changeFromPrevDay.toFixed(2);
+                // Change % color: green if >0%, red if <0%, gray if 0
+                priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              }
             } 
             // Priority 3: Fallback to legacy priceChange field
             else if (alert.priceChange) {
@@ -3779,10 +3826,12 @@ app.get('/', (req, res) => {
             if (alert.price && alert.vwap) {
               const price = parseFloat(alert.price);
               const vwap = parseFloat(alert.vwap);
-              const vwapDiff = ((price - vwap) / vwap) * 100;
-              const sign = vwapDiff >= 0 ? '+' : '';
-              vwapDiffDisplay = \` (\${sign}\${vwapDiff.toFixed(2)}%)\`;
-              vwapDiffColor = vwapDiff >= 0 ? 'text-green-400' : 'text-red-400';
+              if (!isNaN(price) && !isNaN(vwap) && vwap !== 0) {
+                const vwapDiff = ((price - vwap) / vwap) * 100;
+                const sign = vwapDiff >= 0 ? '+' : '';
+                vwapDiffDisplay = \` (\${sign}\${vwapDiff.toFixed(2)}%)\`;
+                vwapDiffColor = vwapDiff >= 0 ? 'text-green-400' : 'text-red-400';
+              }
             }
             
             // RSI color coding (overbought/oversold)
@@ -3810,21 +3859,23 @@ app.get('/', (req, res) => {
             
             if (d4Val !== undefined && d4Val !== null) {
               const d4Num = parseFloat(d4Val);
-              quadStochDisplay = d4Num.toFixed(1);
-              
-              // Color coding based on D4 value
-              if (d4Num >= 80) {
-                quadStochClass = 'text-red-400 font-bold'; // Overbought
-                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Overbought)\`;
-              } else if (d4Num >= 50) {
-                quadStochClass = 'text-green-400 font-semibold'; // Bullish
-                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Bullish)\`;
-              } else if (d4Num >= 20) {
-                quadStochClass = 'text-yellow-400'; // Neutral
-                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Neutral)\`;
-              } else {
-                quadStochClass = 'text-lime-400 font-semibold'; // Oversold
-                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Oversold)\`;
+              if (!isNaN(d4Num)) {
+                quadStochDisplay = d4Num.toFixed(1);
+                
+                // Color coding based on D4 value
+                if (d4Num >= 80) {
+                  quadStochClass = 'text-red-400 font-bold'; // Overbought
+                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Overbought)\`;
+                } else if (d4Num >= 50) {
+                  quadStochClass = 'text-green-400 font-semibold'; // Bullish
+                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Bullish)\`;
+                } else if (d4Num >= 20) {
+                  quadStochClass = 'text-yellow-400'; // Neutral
+                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Neutral)\`;
+                } else {
+                  quadStochClass = 'text-lime-400 font-semibold'; // Oversold
+                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Oversold)\`;
+                }
               }
             }
             
@@ -4574,10 +4625,10 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
-                    <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
+                    <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
                     <div class="text-foreground">V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>
                     <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
                   </div>
