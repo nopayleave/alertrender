@@ -3268,7 +3268,7 @@ app.get('/', (req, res) => {
             const sortField = col.sortField || col.id;
             const sortIndicator = col.sortable ? '<span id="sort-' + sortField + '" class="ml-1 text-xs">⇅</span>' : '';
             const tooltipAttr = col.tooltip ? 'title="' + col.tooltip + '"' : '';
-            const paddingClass = colId === 'star' ? 'pl-4 pr-1' : colId === 'symbol' ? 'pl-1 pr-4' : 'px-4';
+            const paddingClass = colId === 'star' ? 'pl-2 pr-1' : colId === 'symbol' ? 'pl-1 pr-2' : 'px-2';
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
             const draggableAttr = colId !== 'star' ? 'true' : 'false';
             
@@ -4988,7 +4988,7 @@ app.get('/', (req, res) => {
               parts.push(bigTrendDayHtml)
             }
             
-            d2CellHtml = '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            d2CellHtml = '<td class="py-3 px-2 text-left" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -4997,7 +4997,7 @@ app.get('/', (req, res) => {
             // Generate cell content for each column
             const cellContent = {
               star: \`
-                <td class="py-3 pl-4 pr-1 text-center" style="\${getCellWidthStyle('star')}">
+                <td class="py-3 pl-2 pr-1 text-center" style="\${getCellWidthStyle('star')}">
                   <button 
                     onclick="toggleStar('\${alert.symbol}')" 
                     class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
@@ -5007,23 +5007,23 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
               \`,
-              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap" style="\${getCellWidthStyle('symbol')}">\${alert.symbol || 'N/A'}</td>\`,
+              symbol: \`<td class="py-3 pl-1 pr-2 font-medium text-foreground w-auto whitespace-nowrap" style="\${getCellWidthStyle('symbol')}">\${alert.symbol || 'N/A'}</td>\`,
               price: \`
-                <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
+                <td class="py-3 px-2 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
               d2: d2CellHtml || '',
               highLevelTrend: \`
-                <td class="py-3 px-4 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td class="py-3 px-2 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
               bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('bj')}" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td class="py-3 px-2 text-xs text-foreground" style="\${getCellWidthStyle('bj')}" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
@@ -5032,7 +5032,7 @@ app.get('/', (req, res) => {
                   </div>
                 </td>
               \`,
-              volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+              volume: \`<td class="py-3 px-2 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
             };
             
             // Render cells in column order
