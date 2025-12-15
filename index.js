@@ -4868,56 +4868,56 @@ app.get('/', (req, res) => {
               
               // Priority 1: Strong area signals
               if (isStrongBull && bothUp) {
-                bjOverviewDisplay = '🚀 Strong Bull';
+                bjOverviewDisplay = 'Strong Bull';
                 bjOverviewClass = 'text-green-400 font-bold';
               }
               else if (isStrongBear && bothDown) {
-                bjOverviewDisplay = '💥 Strong Bear';
+                bjOverviewDisplay = 'Strong Bear';
                 bjOverviewClass = 'text-red-400 font-bold';
               }
               // Priority 2: Reveal signals (early reversal - KEY SIGNALS)
               else if (isBearish && vUpSDown) {
-                bjOverviewDisplay = '⚡ Reveal Long';
+                bjOverviewDisplay = 'Reveal Long';
                 bjOverviewClass = 'text-lime-400 font-bold animate-pulse';
               }
               else if (isBullish && vDownSUp) {
-                bjOverviewDisplay = '⚡ Reveal Short';
+                bjOverviewDisplay = 'Reveal Short';
                 bjOverviewClass = 'text-orange-400 font-bold animate-pulse';
               }
               // Priority 3: Trending with momentum
               else if (bothUp && isBullish) {
-                bjOverviewDisplay = '📈 Bullish';
+                bjOverviewDisplay = 'Bullish';
                 bjOverviewClass = 'text-green-500 font-semibold';
               }
               else if (bothDown && isBearish) {
-                bjOverviewDisplay = '📉 Bearish';
+                bjOverviewDisplay = 'Bearish';
                 bjOverviewClass = 'text-red-500 font-semibold';
               }
               // Priority 4: Building/Recovering (V up, S down - early reversal signs)
               else if (vUpSDown && isBearish) {
-                bjOverviewDisplay = '💪 Recovering';
+                bjOverviewDisplay = 'Recovering';
                 bjOverviewClass = 'text-cyan-400 font-semibold';
               }
               else if (vUpSDown && isNeutralArea) {
-                bjOverviewDisplay = '🌱 Building Long';
+                bjOverviewDisplay = 'Building Long';
                 bjOverviewClass = 'text-lime-500';
               }
               // Priority 5: Weakening/Fading (V down, S up - losing momentum)
               else if (vDownSUp && isBullish) {
-                bjOverviewDisplay = '⚠️ Weakening';
+                bjOverviewDisplay = 'Weakening';
                 bjOverviewClass = 'text-yellow-400 font-semibold';
               }
               else if (vDownSUp && isNeutralArea) {
-                bjOverviewDisplay = '🍂 Fading';
+                bjOverviewDisplay = 'Fading';
                 bjOverviewClass = 'text-orange-400';
               }
               // Priority 7: Simple trend following
               else if (bothUp) {
-                bjOverviewDisplay = '↗️ Trending Up';
+                bjOverviewDisplay = 'Trending Up';
                 bjOverviewClass = 'text-green-400';
               }
               else if (bothDown) {
-                bjOverviewDisplay = '↘️ Trending Down';
+                bjOverviewDisplay = 'Trending Down';
                 bjOverviewClass = 'text-red-400';
               }
               // Default: Mixed/Consolidating
@@ -4944,7 +4944,7 @@ app.get('/', (req, res) => {
               '</div>'
             let diffHtml = ''
             if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
-              diffHtml = '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>'
+              diffHtml = '<div class="inline-block px-2 py-0.5 rounded border ' + d1D2DiffClass + ' font-semibold border-current">' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + '</div>'
             }
             let trendHtml = ''
             if (trendMessage) {
@@ -4961,7 +4961,7 @@ app.get('/', (req, res) => {
             // Add Big Trend Day indicator
             let bigTrendDayHtml = ''
             if (alert.isBigTrendDay) {
-              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Big Trend Day</div>'
+              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Trend</div>'
             }
             let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
               (dualStochD1 !== null && !isNaN(dualStochD1) ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
