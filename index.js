@@ -2257,6 +2257,40 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
+        /* Column resize handle */
+        .column-resize-handle {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 6px;
+          height: 100%;
+          cursor: col-resize;
+          background: transparent;
+          z-index: 20;
+          user-select: none;
+          touch-action: none;
+          margin-right: -3px;
+        }
+        .column-resize-handle:hover {
+          background: rgba(59, 130, 246, 0.5);
+        }
+        .column-resize-handle.resizing {
+          background: rgba(59, 130, 246, 0.9);
+        }
+        th {
+          position: relative;
+        }
+        /* Prevent drag when clicking on resize handle */
+        th .column-resize-handle {
+          pointer-events: auto;
+        }
+        th.draggable-header:has(.column-resize-handle:hover) {
+          cursor: col-resize;
+        }
+        /* Show resize indicator on header hover */
+        th:hover .column-resize-handle {
+          background: rgba(59, 130, 246, 0.2);
+        }
         /* iOS-style filter chips */
         .filter-chip {
           user-select: none;
@@ -3246,7 +3280,7 @@ app.get('/', (req, res) => {
             const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
             
             return '<th ' +
-              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
+              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + sortableClass + ' draggable-header" ' +
               'style="' + widthStyle + '" ' +
               'data-column-id="' + colId + '" ' +
               onclickAttr + ' ' +
@@ -3262,6 +3296,33 @@ app.get('/', (req, res) => {
           }).join('');
           
           updateSortIndicators();
+          
+          // Attach resize handlers after headers are rendered
+          attachResizeHandlers();
+        }
+        
+        // Attach resize handlers to all column headers
+        function attachResizeHandlers() {
+          const headers = document.querySelectorAll('th[data-column-id]');
+          headers.forEach(header => {
+            const columnId = header.getAttribute('data-column-id');
+            if (columnId === 'star') return; // Skip star column
+            
+            // Remove existing resize handle if any
+            const existingHandle = header.querySelector('.column-resize-handle');
+            if (existingHandle) {
+              existingHandle.remove();
+            }
+            
+            // Create and attach resize handle
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'column-resize-handle';
+            resizeHandle.title = 'Drag to resize column';
+            resizeHandle.addEventListener('mousedown', (e) => {
+              handleColumnResizeStart(e, columnId);
+            });
+            header.appendChild(resizeHandle);
+          });
         }
 
         // Drag and drop handlers for column reordering
@@ -3269,6 +3330,18 @@ app.get('/', (req, res) => {
         let draggedElement = null;
 
         function handleHeaderDragStart(e) {
+          // Don't start drag if clicking on resize handle
+          if (e.target.closest('.column-resize-handle')) {
+            e.preventDefault();
+            return false;
+          }
+          
+          // Don't start drag if currently resizing
+          if (resizeState.isResizing) {
+            e.preventDefault();
+            return false;
+          }
+          
           if (e.target.closest('.draggable-header')) {
             draggedElement = e.target.closest('.draggable-header');
             draggedColumnId = draggedElement.getAttribute('data-column-id');
@@ -3344,6 +3417,138 @@ app.get('/', (req, res) => {
         function setupColumnDragAndDrop() {
           // Additional setup if needed
           // The drag handlers are already attached via inline event handlers
+        }
+
+        // Column resize handlers
+        let resizeState = {
+          isResizing: false,
+          columnId: null,
+          startX: 0,
+          startWidth: 0,
+          header: null
+        };
+
+        function handleColumnResizeStart(e, columnId) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          // Prevent drag from starting
+          if (e.target.closest('.column-resize-handle')) {
+            const header = e.target.closest('th');
+            if (!header) return;
+            
+            // Disable dragging on this header
+            header.setAttribute('draggable', 'false');
+            
+            resizeState.isResizing = true;
+            resizeState.columnId = columnId;
+            resizeState.startX = e.clientX;
+            resizeState.startWidth = getColumnWidth(columnId);
+            resizeState.header = header;
+            
+            // Add resizing class
+            const handle = e.target.closest('.column-resize-handle');
+            if (handle) {
+              handle.classList.add('resizing');
+            }
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            
+            // Add global mouse move and mouse up listeners
+            document.addEventListener('mousemove', handleColumnResize, { passive: false });
+            document.addEventListener('mouseup', handleColumnResizeEnd, { once: true });
+          }
+        }
+
+        function handleColumnResize(e) {
+          if (!resizeState.isResizing) return;
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const diff = e.clientX - resizeState.startX;
+          const newWidth = Math.max(30, Math.min(1000, resizeState.startWidth + diff));
+          
+          // Update width in real-time
+          if (resizeState.header) {
+            resizeState.header.style.width = newWidth + 'px';
+            resizeState.header.style.minWidth = newWidth + 'px';
+            resizeState.header.style.maxWidth = newWidth + 'px';
+          }
+          
+          // Update all cells in this column
+          const columnIndex = columnOrder.indexOf(resizeState.columnId);
+          if (columnIndex !== -1) {
+            const rows = document.querySelectorAll('#alertTable tr');
+            rows.forEach(row => {
+              const cell = row.children[columnIndex];
+              if (cell) {
+                cell.style.width = newWidth + 'px';
+                cell.style.minWidth = newWidth + 'px';
+                cell.style.maxWidth = newWidth + 'px';
+              }
+            });
+          }
+        }
+
+        function handleColumnResizeEnd(e) {
+          if (!resizeState.isResizing) return;
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const diff = e.clientX - resizeState.startX;
+          const newWidth = Math.max(30, Math.min(1000, resizeState.startWidth + diff));
+          
+          // Save the new width
+          setColumnWidth(resizeState.columnId, newWidth);
+          
+          // Update all headers and cells
+          const columnIndex = columnOrder.indexOf(resizeState.columnId);
+          if (columnIndex !== -1) {
+            // Update all headers
+            const headers = document.querySelectorAll('th[data-column-id="' + resizeState.columnId + '"]');
+            headers.forEach(header => {
+              header.style.width = newWidth + 'px';
+              header.style.minWidth = newWidth + 'px';
+              header.style.maxWidth = newWidth + 'px';
+              // Re-enable dragging if it's not the star column
+              if (resizeState.columnId !== 'star') {
+                header.setAttribute('draggable', 'true');
+              }
+            });
+            
+            // Update all cells
+            const rows = document.querySelectorAll('#alertTable tr');
+            rows.forEach(row => {
+              const cell = row.children[columnIndex];
+              if (cell) {
+                cell.style.width = newWidth + 'px';
+                cell.style.minWidth = newWidth + 'px';
+                cell.style.maxWidth = newWidth + 'px';
+              }
+            });
+          }
+          
+          // Clean up
+          const resizeHandle = document.querySelector('.column-resize-handle.resizing');
+          if (resizeHandle) {
+            resizeHandle.classList.remove('resizing');
+          }
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          
+          // Remove event listeners
+          document.removeEventListener('mousemove', handleColumnResize);
+          document.removeEventListener('mouseup', handleColumnResizeEnd);
+          
+          // Reset state
+          resizeState.isResizing = false;
+          resizeState.columnId = null;
+          resizeState.startX = 0;
+          resizeState.startWidth = 0;
+          resizeState.header = null;
         }
 
         function getSortValue(alert, field) {
