@@ -1791,7 +1791,7 @@ app.get('/calculator', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
+      <link rel="icon" href="data:,">
       <title>Share Calculator</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <script>
@@ -2182,7 +2182,7 @@ app.get('/', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+      <link rel="icon" href="data:,">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <!-- noUiSlider for range sliders -->
