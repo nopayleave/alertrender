@@ -2898,8 +2898,8 @@ app.get('/', (req, res) => {
         // Column definitions
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[114px]' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[160px]' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[54px]' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[114px]', tooltip: 'BJ TSI: Value, V Dir, S Dir' },
