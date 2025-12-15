@@ -2253,11 +2253,12 @@ app.get('/', (req, res) => {
           -webkit-tap-highlight-color: transparent;
         }
         .filter-chip.active {
-          font-weight: 700;
-          filter: brightness(1.3) saturate(1.2);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
+          border-color: rgba(59, 130, 246, 0.6) !important;
+          color: rgb(96, 165, 250) !important;
+          font-weight: 600;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
           opacity: 1 !important;
-          transform: scale(1.02);
-          border-width: 2px;
         }
         .filter-chip:active {
           transform: scale(0.95);
@@ -2394,7 +2395,7 @@ app.get('/', (req, res) => {
           box-shadow: none;
         }
         .noUi-connect {
-          background: linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0%, rgba(200, 200, 200, 0.8) 100%);
+          background: rgb(59, 130, 246);
           border-radius: 4px;
         }
         .noUi-horizontal {
@@ -2407,7 +2408,7 @@ app.get('/', (req, res) => {
           top: -6px;
           border-radius: 50%;
           background: hsl(210 40% 98%);
-          border: 2px solid rgba(255, 255, 255, 0.8);
+          border: 2px solid rgb(59, 130, 246);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
           cursor: pointer;
         }
@@ -2417,11 +2418,11 @@ app.get('/', (req, res) => {
         }
         .noUi-handle:hover {
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4), 0 0 0 4px rgba(255, 255, 255, 0.1);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
         .noUi-handle:active {
           transform: scale(1.15);
-          box-shadow: 0 6px 16px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.15);
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
         }
         .noUi-target[disabled] .noUi-connect {
           background: hsl(217.2 32.6% 25%);
@@ -2542,8 +2543,8 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="bjValueSliderContainer">
@@ -2608,8 +2609,8 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="d1ValueSliderContainer">
@@ -2647,8 +2648,8 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="d2ValueSliderContainer">
@@ -2676,8 +2677,8 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="diffSliderContainer">
@@ -2882,18 +2883,11 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            // Slider enabled by default
+            bjValueSlider.setAttribute('disabled', true);
             sliders.bjValue = bjValueSlider;
             bjValueSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('bjValueMinValue');
-              const maxEl = document.getElementById('bjValueMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              // Apply color based on value: red for negative, yellow for neutral (-15 to 15), green for positive
-              minEl.className = 'font-semibold ' + (minVal < -15 ? 'text-red-400' : minVal > 15 ? 'text-green-400' : 'text-yellow-400');
-              maxEl.className = 'font-semibold ' + (maxVal < -15 ? 'text-red-400' : maxVal > 15 ? 'text-green-400' : 'text-yellow-400');
+              document.getElementById('bjValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('bjValueMaxValue').textContent = Math.round(values[1]);
             });
             bjValueSlider.noUiSlider.on('change', function() {
               updateBjValueFilter();
@@ -2910,18 +2904,11 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            // Slider enabled by default
+            d1ValueSlider.setAttribute('disabled', true);
             sliders.d1Value = d1ValueSlider;
             d1ValueSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('d1ValueMinValue');
-              const maxEl = document.getElementById('d1ValueMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              // Apply color: red (<40), yellow (40-60), green (>60)
-              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              document.getElementById('d1ValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('d1ValueMaxValue').textContent = Math.round(values[1]);
             });
             d1ValueSlider.noUiSlider.on('change', function() {
               updateD1ValueFilter();
@@ -2938,18 +2925,11 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            // Slider enabled by default
+            d2ValueSlider.setAttribute('disabled', true);
             sliders.d2Value = d2ValueSlider;
             d2ValueSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('d2ValueMinValue');
-              const maxEl = document.getElementById('d2ValueMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              // Apply color: red (<40), yellow (40-60), green (>60)
-              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              document.getElementById('d2ValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('d2ValueMaxValue').textContent = Math.round(values[1]);
             });
             d2ValueSlider.noUiSlider.on('change', function() {
               updateD2ValueFilter();
@@ -2966,18 +2946,11 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            // Slider enabled by default
+            diffSlider.setAttribute('disabled', true);
             sliders.diff = diffSlider;
             diffSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('diffMinValue');
-              const maxEl = document.getElementById('diffMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              // Apply color: blue for small diff, yellow for medium, orange for large
-              minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              document.getElementById('diffMinValue').textContent = Math.round(values[0]);
+              document.getElementById('diffMaxValue').textContent = Math.round(values[1]);
             });
             diffSlider.noUiSlider.on('change', function() {
               updateDiffFilter();
@@ -3010,9 +2983,6 @@ app.get('/', (req, res) => {
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
             const draggableAttr = colId !== 'star' ? 'true' : 'false';
             
-            // Add ticker count badge for symbol column
-            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
-            
             return '<th ' +
               'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
               'data-column-id="' + colId + '" ' +
@@ -3024,7 +2994,7 @@ app.get('/', (req, res) => {
               'ondrop="handleHeaderDrop(event)" ' +
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
-              col.title + tickerCountBadge + ' ' + sortIndicator +
+              col.title + ' ' + sortIndicator +
               '</th>';
           }).join('');
           
@@ -3511,9 +3481,6 @@ app.get('/', (req, res) => {
           if (alertsData.length === 0) {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
-            // Update ticker count badge
-            const tickerCountEl = document.getElementById('tickerCount');
-            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
 
@@ -3677,15 +3644,8 @@ app.get('/', (req, res) => {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
-            // Update ticker count badge
-            const tickerCountEl = document.getElementById('tickerCount');
-            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
-
-          // Update ticker count badge
-          const tickerCountEl = document.getElementById('tickerCount');
-          if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
