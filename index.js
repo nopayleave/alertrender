@@ -4939,7 +4939,7 @@ app.get('/', (req, res) => {
             }
             let diffHtml = ''
             if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
-              diffHtml = '<div class="inline-block px-2 py-0.5 rounded border ' + d1D2DiffClass + ' font-semibold border-current">' + Math.abs(d1D2Diff).toFixed(1) + '</div>'
+              diffHtml = '<div class="inline-block px-2 py-0.5 rounded bg-gray-700 text-white font-semibold">' + Math.abs(d1D2Diff).toFixed(1) + '</div>'
             }
             // Combine D2 value with diff box (no separator between them)
             let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
@@ -4957,8 +4957,8 @@ app.get('/', (req, res) => {
             if (alert.isBigTrendDay) {
               bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Trend</div>'
             }
-            let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
-              (dualStochD1 !== null && !isNaN(dualStochD1) ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
+            let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1.D2' : 'Solo Stoch D2') + ': ' + 
+              (dualStochD1 !== null && !isNaN(dualStochD1) ? 'D1=' + dualStochD1.toFixed(2) + '.' : '') + 
               'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
               ', Dir=' + d2Direction + 
               (d2PatternDisplay ? ', Pattern=' + d2Pattern : '') + 
