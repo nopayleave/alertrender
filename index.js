@@ -2256,8 +2256,6 @@ app.get('/', (req, res) => {
           font-weight: 700;
           filter: brightness(1.3) saturate(1.2);
           opacity: 1 !important;
-          transform: scale(1.02);
-          border-width: 2px;
         }
         .filter-chip:active {
           transform: scale(0.95);
