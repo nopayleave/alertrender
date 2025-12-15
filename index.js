@@ -2892,10 +2892,22 @@ app.get('/', (req, res) => {
 
           <!-- Table area (right on xl, below filters on smaller screens) -->
           <div class="w-full xl:flex-1 xl:min-w-0">
+            <!-- Preset Filter Buttons -->
+            <div class="mb-4 flex gap-2 flex-wrap">
+              <button onclick="applyPresetFilter('bullish')" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+                🟢 Bullish
+              </button>
+              <button onclick="applyPresetFilter('bearish')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+                🔴 Bearish
+              </button>
+              <button onclick="clearAllFilters()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+                Clear All
+              </button>
+            </div>
             <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
-                  <table class="w-full table-fixed border-collapse">
+                  <table class="w-full table-auto border-collapse">
                     <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
@@ -3558,7 +3570,7 @@ app.get('/', (req, res) => {
               header.style.width = newWidth + 'px';
               header.style.minWidth = newWidth + 'px';
               header.style.maxWidth = newWidth + 'px';
-              header.setAttribute('draggable', 'true');
+                header.setAttribute('draggable', 'true');
             });
             
             // Update all cells
@@ -3865,6 +3877,153 @@ app.get('/', (req, res) => {
           stochFilterTrendMessage = [];
           stochFilterPercentChange = [];
           renderTable();
+        }
+        
+        function clearAllFilters() {
+          clearBjFilters();
+          clearStochFilters();
+          // Clear search
+          const searchInput = document.getElementById('searchInput');
+          if (searchInput) {
+            searchInput.value = '';
+            searchTerm = '';
+            toggleClearButton();
+          }
+        }
+        
+        function applyPresetFilter(preset) {
+          // Clear all filters first
+          clearAllFilters();
+          
+          if (preset === 'bullish') {
+            // Activate D1 Direction: up
+            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
+            if (d1UpChip) {
+              d1UpChip.classList.add('active');
+              const parentGroup = d1UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Direction: up
+            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
+            if (d2UpChip) {
+              d2UpChip.classList.add('active');
+              const parentGroup = d2UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ TSI V Dir: Up
+            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
+            if (vDirUpChip) {
+              vDirUpChip.classList.add('active');
+              const parentGroup = vDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ TSI S Dir: Up
+            const sDirUpChip = document.querySelector('[data-filter="sDir"][data-value="Up"]');
+            if (sDirUpChip) {
+              sDirUpChip.classList.add('active');
+              const parentGroup = sDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ Value slider: 15 to 100
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.removeAttribute('disabled');
+              sliders.bjValue.noUiSlider.set([15, 100]);
+              updateBjValueFilter();
+            }
+            
+            // Activate Trend Message: Try Long
+            const tryLongChip = document.querySelector('[data-filter="trendMessage"][data-value="Try Long"]');
+            if (tryLongChip) {
+              tryLongChip.classList.add('active');
+              const parentGroup = tryLongChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Price %: positive ranges
+            ['0-2', '2-5', '>5'].forEach(value => {
+              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
+              if (chip) {
+                chip.classList.add('active');
+                const parentGroup = chip.closest('.filter-group');
+                if (parentGroup) parentGroup.classList.add('has-active');
+              }
+            });
+            
+          } else if (preset === 'bearish') {
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Direction: down
+            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
+            if (d2DownChip) {
+              d2DownChip.classList.add('active');
+              const parentGroup = d2DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ TSI V Dir: Down
+            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
+            if (vDirDownChip) {
+              vDirDownChip.classList.add('active');
+              const parentGroup = vDirDownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ TSI S Dir: Down
+            const sDirDownChip = document.querySelector('[data-filter="sDir"][data-value="Down"]');
+            if (sDirDownChip) {
+              sDirDownChip.classList.add('active');
+              const parentGroup = sDirDownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ Value slider: -100 to -15
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.removeAttribute('disabled');
+              sliders.bjValue.noUiSlider.set([-100, -15]);
+              updateBjValueFilter();
+            }
+            
+            // Activate Trend Message: Try Short
+            const tryShortChip = document.querySelector('[data-filter="trendMessage"][data-value="Try Short"]');
+            if (tryShortChip) {
+              tryShortChip.classList.add('active');
+              const parentGroup = tryShortChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Price %: negative ranges
+            ['<-5', '-5--2', '-2-0'].forEach(value => {
+              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
+              if (chip) {
+                chip.classList.add('active');
+                const parentGroup = chip.closest('.filter-group');
+                if (parentGroup) parentGroup.classList.add('has-active');
+              }
+            });
+          }
+          
+          // Update filter arrays from chip states
+          updateFilterArrays();
+          
+          // Apply filters (updateBjValueFilter already calls filterAlerts, so we only need to call it if slider wasn't set)
+          const bjToggle = document.getElementById('bjValueToggle');
+          if (!bjToggle || !bjToggle.checked) {
+            filterAlerts();
+          }
         }
 
         function toggleClearButton() {
