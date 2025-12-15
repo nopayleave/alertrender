@@ -2428,7 +2428,7 @@ app.get('/', (req, res) => {
       <style>
         @media (min-width: 1370px) {
           .container {
-            max-width: 1360px;
+            max-width: 1700px;
           }
         }
         .mx-auto {
@@ -2451,10 +2451,32 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
+        /* iOS-style filter chips */
+        .filter-chip {
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .filter-chip.active {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%);
+          border-color: rgba(59, 130, 246, 0.5);
+          color: rgb(96, 165, 250);
+          font-weight: 600;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .filter-chip:active {
+          transform: scale(0.95);
+        }
+        .filter-chip.active:active {
+          transform: scale(0.92);
+        }
+        /* iOS-style search input focus */
+        input:focus {
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
-      <div class="container mx-auto" style="max-width:1360px;">
+      <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
@@ -2477,205 +2499,172 @@ app.get('/', (req, res) => {
           <!-- Filters sidebar (left on xl, top on smaller screens) -->
           <div class="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-4 xl:self-start">
             <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border xl:border-r xl:pr-6 py-4 xl:py-0">
-              <div class="container mx-auto xl:mx-0" style="max-width:1360px;padding-bottom:1rem;">
-                <!-- Search input -->
-                <div class="relative mb-3">
+            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:border-r xl:pr-6 py-4 xl:py-0">
+              <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
+                <!-- Search input - iOS style -->
+                <div class="relative mb-4">
+                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
                   <input 
                     type="text" 
                     id="searchInput" 
                     placeholder="Search tickers..." 
-                    class="w-full px-3 py-2 pr-10 bg-card border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    class="w-full pl-10 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-sm"
                     onkeyup="filterAlerts()"
                     oninput="toggleClearButton()"
                   />
                   <button 
                     id="clearButton" 
                     onclick="clearSearch()" 
-                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden"
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-muted-foreground/20 hover:bg-muted-foreground/30 text-muted-foreground hover:text-foreground transition-all hidden"
                     aria-label="Clear search"
                   >
-                    ✕
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                   </button>
                 </div>
                 
-                <!-- BJ TSI Filters -->
-                <div class="flex flex-wrap gap-2 items-center text-xs mb-3">
-                  <span class="text-muted-foreground font-medium">BJ Filters:</span>
-              
-              <!-- PM Range Filter -->
-              <select 
-                id="filterPmRange" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="Below">Below</option>
-                <option value="Lower">Lower</option>
-                <option value="Upper">Upper</option>
-                <option value="Above">Above</option>
-              </select>
-              
-              <!-- V Dir Filter -->
-              <select 
-                id="filterVDir" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="Up">Up</option>
-                <option value="Down">Down</option>
-              </select>
-              
-              <!-- S Dir Filter -->
-              <select 
-                id="filterSDir" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="Up">Up</option>
-                <option value="Down">Down</option>
-              </select>
-              
-              <!-- Area Filter -->
-              <select 
-                id="filterArea" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="strong_bullish">Strong Bullish</option>
-                <option value="bullish">Bullish</option>
-                <option value="light_bullish">Light Bullish</option>
-                <option value="light_bearish">Light Bearish</option>
-                <option value="bearish">Bearish</option>
-                <option value="strong_bearish">Strong Bearish</option>
-              </select>
-              
-                  <!-- Clear Filters Button -->
-                  <button 
-                    onclick="clearBjFilters()" 
-                    class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
-                  >
-                    Clear BJ Filters
-                  </button>
+                <!-- BJ TSI Filters - iOS chip style -->
+                <div class="mb-5">
+                  <div class="flex items-center justify-between mb-2.5">
+                    <h3 class="text-sm font-semibold text-foreground/90">BJ TSI</h3>
+                    <button 
+                      onclick="clearBjFilters()" 
+                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  <!-- PM Range -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">PM Range</label>
+                    <div class="flex flex-wrap gap-1.5" id="pmRangeChips">
+                      <button onclick="toggleFilterChip('pmRange', 'Below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Below">Below</button>
+                      <button onclick="toggleFilterChip('pmRange', 'Lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Lower">Lower</button>
+                      <button onclick="toggleFilterChip('pmRange', 'Upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Upper">Upper</button>
+                      <button onclick="toggleFilterChip('pmRange', 'Above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Above">Above</button>
+                    </div>
+                  </div>
+                  
+                  <!-- V Dir & S Dir -->
+                  <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
+                      <div class="flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="vDir" data-value="Up">Up</button>
+                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="vDir" data-value="Down">Down</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
+                      <div class="flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="sDir" data-value="Up">Up</button>
+                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="sDir" data-value="Down">Down</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Area -->
+                  <div>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
+                    <div class="flex flex-wrap gap-1.5" id="areaChips">
+                      <button onclick="toggleFilterChip('area', 'strong_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="strong_bullish">Strong Bull</button>
+                      <button onclick="toggleFilterChip('area', 'bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="bullish">Bullish</button>
+                      <button onclick="toggleFilterChip('area', 'light_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="light_bullish">Light Bull</button>
+                      <button onclick="toggleFilterChip('area', 'light_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="light_bearish">Light Bear</button>
+                      <button onclick="toggleFilterChip('area', 'bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="bearish">Bearish</button>
+                      <button onclick="toggleFilterChip('area', 'strong_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="strong_bearish">Strong Bear</button>
+                    </div>
+                  </div>
                 </div>
             
-                <!-- Stoch Filters -->
-                <div class="flex flex-wrap gap-2 items-center text-xs mb-3">
-                  <span class="text-muted-foreground font-medium">Stoch Filters:</span>
+                <!-- Stoch Filters - iOS chip style -->
+                <div class="mb-5">
+                  <div class="flex items-center justify-between mb-2.5">
+                    <h3 class="text-sm font-semibold text-foreground/90">Stochastic</h3>
+                    <button 
+                      onclick="clearStochFilters()" 
+                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                    >
+                      Clear
+                    </button>
+                  </div>
                   
-                  <!-- D1 Direction Filter -->
-                  <select 
-                    id="filterD1Direction" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="up">D1: Up</option>
-                    <option value="down">D1: Down</option>
-                    <option value="flat">D1: Flat</option>
-                  </select>
+                  <!-- D1 Direction -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="up">↑ Up</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="down">↓ Down</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="flat">→ Flat</button>
+                    </div>
+                  </div>
                   
-                  <!-- D1 Value Filter -->
-                  <select 
-                    id="filterD1Value" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="<10">&lt;10 (Extreme Oversold)</option>
-                    <option value="10-20">10-20 (Oversold)</option>
-                    <option value="20-50">20-50 (Lower Range)</option>
-                    <option value="50-80">50-80 (Upper Range)</option>
-                    <option value="80-90">80-90 (Overbought)</option>
-                    <option value=">90">&gt;90 (Extreme Overbought)</option>
-                  </select>
+                  <!-- D1 Value -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Value</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('d1Value', '<10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="<10">&lt;10</button>
+                      <button onclick="toggleFilterChip('d1Value', '10-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="10-20">10-20</button>
+                      <button onclick="toggleFilterChip('d1Value', '20-50', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="20-50">20-50</button>
+                      <button onclick="toggleFilterChip('d1Value', '50-80', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="50-80">50-80</button>
+                      <button onclick="toggleFilterChip('d1Value', '80-90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="80-90">80-90</button>
+                      <button onclick="toggleFilterChip('d1Value', '>90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value=">90">&gt;90</button>
+                    </div>
+                  </div>
                   
-                  <!-- D2 Direction Filter -->
-                  <select 
-                    id="filterD2Direction" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="up">D2: Up</option>
-                    <option value="down">D2: Down</option>
-                    <option value="flat">D2: Flat</option>
-                  </select>
+                  <!-- D2 Direction -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="up">↑ Up</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="down">↓ Down</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="flat">→ Flat</button>
+                    </div>
+                  </div>
                   
-                  <!-- D2 Value Filter -->
-                  <select 
-                    id="filterD2Value" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="<10">&lt;10 (Extreme Oversold)</option>
-                    <option value="10-20">10-20 (Oversold)</option>
-                    <option value="20-50">20-50 (Lower Range)</option>
-                    <option value="50-80">50-80 (Upper Range)</option>
-                    <option value="80-90">80-90 (Overbought)</option>
-                    <option value=">90">&gt;90 (Extreme Overbought)</option>
-                  </select>
+                  <!-- D2 Value -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Value</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('d2Value', '<10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="<10">&lt;10</button>
+                      <button onclick="toggleFilterChip('d2Value', '10-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="10-20">10-20</button>
+                      <button onclick="toggleFilterChip('d2Value', '20-50', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="20-50">20-50</button>
+                      <button onclick="toggleFilterChip('d2Value', '50-80', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="50-80">50-80</button>
+                      <button onclick="toggleFilterChip('d2Value', '80-90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="80-90">80-90</button>
+                      <button onclick="toggleFilterChip('d2Value', '>90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value=">90">&gt;90</button>
+                    </div>
+                  </div>
                   
-                  <!-- Trend Message Filter -->
-                  <select 
-                    id="filterTrendMessage" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="Do Not Long">Do Not Long</option>
-                    <option value="Do Not Short">Do Not Short</option>
-                    <option value="Try Long">Try Long</option>
-                    <option value="Try Short">Try Short</option>
-                    <option value="Big Trend Day">Big Trend Day</option>
-                  </select>
+                  <!-- Trend Message -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Do Not Long">No Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Do Not Short">No Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Try Long">Try Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Try Short">Try Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Big Trend Day">Big Trend</button>
+                    </div>
+                  </div>
                   
-                  <!-- % Change Filter -->
-                  <select 
-                    id="filterPercentChange" 
-                    multiple
-                    size="1"
-                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                    onchange="filterAlerts()"
-                    title="Hold Ctrl/Cmd to select multiple"
-                  >
-                    <option value="<-5">&lt;-5% (Large Down)</option>
-                    <option value="-5--2">-5% to -2% (Down)</option>
-                    <option value="-2-0">-2% to 0% (Slight Down)</option>
-                    <option value="0-2">0% to 2% (Slight Up)</option>
-                    <option value="2-5">2% to 5% (Up)</option>
-                    <option value=">5">&gt;5% (Large Up)</option>
-                  </select>
-                  
-                  <!-- Clear Stoch Filters Button -->
-                  <button 
-                    onclick="clearStochFilters()" 
-                    class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
-                  >
-                    Clear Stoch Filters
-                  </button>
+                  <!-- % Change -->
+                  <div>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">% Change</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
+                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="-5--2">-5~-2%</button>
+                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="-2-0">-2~0%</button>
+                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="0-2">0~2%</button>
+                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="2-5">2~5%</button>
+                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value=">5">&gt;5%</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2992,56 +2981,49 @@ app.get('/', (req, res) => {
           }
         }
 
+        // Chip-based filter toggle function
+        function toggleFilterChip(filterType, value, element) {
+          // Toggle active state
+          element.classList.toggle('active');
+          
+          // Update filter arrays based on active chips
+          updateFilterArrays();
+          
+          // Apply filters
+          filterAlerts();
+        }
+        
+        // Update filter arrays from chip states
+        function updateFilterArrays() {
+          // BJ TSI Filters
+          bjFilterPmRange = Array.from(document.querySelectorAll('[data-filter="pmRange"].active')).map(chip => chip.dataset.value);
+          bjFilterVDir = Array.from(document.querySelectorAll('[data-filter="vDir"].active')).map(chip => chip.dataset.value);
+          bjFilterSDir = Array.from(document.querySelectorAll('[data-filter="sDir"].active')).map(chip => chip.dataset.value);
+          bjFilterArea = Array.from(document.querySelectorAll('[data-filter="area"].active')).map(chip => chip.dataset.value);
+          
+          // Stoch Filters
+          stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
+          stochFilterD1Value = Array.from(document.querySelectorAll('[data-filter="d1Value"].active')).map(chip => chip.dataset.value);
+          stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
+          stochFilterD2Value = Array.from(document.querySelectorAll('[data-filter="d2Value"].active')).map(chip => chip.dataset.value);
+          stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
+          stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
+        }
+        
         function filterAlerts() {
           searchTerm = document.getElementById('searchInput').value.toLowerCase();
           
-          // BJ TSI Filters (get selected options as arrays)
-          const pmRangeSelect = document.getElementById('filterPmRange');
-          bjFilterPmRange = Array.from(pmRangeSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const vDirSelect = document.getElementById('filterVDir');
-          bjFilterVDir = Array.from(vDirSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const sDirSelect = document.getElementById('filterSDir');
-          bjFilterSDir = Array.from(sDirSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const areaSelect = document.getElementById('filterArea');
-          bjFilterArea = Array.from(areaSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          // Stoch Filters (get selected options as arrays)
-          const d1DirectionSelect = document.getElementById('filterD1Direction');
-          stochFilterD1Direction = Array.from(d1DirectionSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const d1ValueSelect = document.getElementById('filterD1Value');
-          stochFilterD1Value = Array.from(d1ValueSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const d2DirectionSelect = document.getElementById('filterD2Direction');
-          stochFilterD2Direction = Array.from(d2DirectionSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const d2ValueSelect = document.getElementById('filterD2Value');
-          stochFilterD2Value = Array.from(d2ValueSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const trendMessageSelect = document.getElementById('filterTrendMessage');
-          stochFilterTrendMessage = Array.from(trendMessageSelect?.selectedOptions || []).map(opt => opt.value);
-          
-          const percentChangeSelect = document.getElementById('filterPercentChange');
-          stochFilterPercentChange = Array.from(percentChangeSelect?.selectedOptions || []).map(opt => opt.value);
+          // Update filter arrays from chip states
+          updateFilterArrays();
           
           renderTable();
         }
         
         function clearBjFilters() {
-          const pmRangeSelect = document.getElementById('filterPmRange');
-          if (pmRangeSelect) Array.from(pmRangeSelect.options).forEach(opt => opt.selected = false);
-          
-          const vDirSelect = document.getElementById('filterVDir');
-          if (vDirSelect) Array.from(vDirSelect.options).forEach(opt => opt.selected = false);
-          
-          const sDirSelect = document.getElementById('filterSDir');
-          if (sDirSelect) Array.from(sDirSelect.options).forEach(opt => opt.selected = false);
-          
-          const areaSelect = document.getElementById('filterArea');
-          if (areaSelect) Array.from(areaSelect.options).forEach(opt => opt.selected = false);
+          // Remove active class from all BJ filter chips
+          document.querySelectorAll('[data-filter="pmRange"], [data-filter="vDir"], [data-filter="sDir"], [data-filter="area"]').forEach(chip => {
+            chip.classList.remove('active');
+          });
           
           bjFilterPmRange = [];
           bjFilterVDir = [];
@@ -3051,23 +3033,10 @@ app.get('/', (req, res) => {
         }
         
         function clearStochFilters() {
-          const d1DirectionSelect = document.getElementById('filterD1Direction');
-          if (d1DirectionSelect) Array.from(d1DirectionSelect.options).forEach(opt => opt.selected = false);
-          
-          const d1ValueSelect = document.getElementById('filterD1Value');
-          if (d1ValueSelect) Array.from(d1ValueSelect.options).forEach(opt => opt.selected = false);
-          
-          const d2DirectionSelect = document.getElementById('filterD2Direction');
-          if (d2DirectionSelect) Array.from(d2DirectionSelect.options).forEach(opt => opt.selected = false);
-          
-          const d2ValueSelect = document.getElementById('filterD2Value');
-          if (d2ValueSelect) Array.from(d2ValueSelect.options).forEach(opt => opt.selected = false);
-          
-          const trendMessageSelect = document.getElementById('filterTrendMessage');
-          if (trendMessageSelect) Array.from(trendMessageSelect.options).forEach(opt => opt.selected = false);
-          
-          const percentChangeSelect = document.getElementById('filterPercentChange');
-          if (percentChangeSelect) Array.from(percentChangeSelect.options).forEach(opt => opt.selected = false);
+          // Remove active class from all Stoch filter chips
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d1Value"], [data-filter="d2Direction"], [data-filter="d2Value"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
+            chip.classList.remove('active');
+          });
           
           stochFilterD1Direction = [];
           stochFilterD1Value = [];
