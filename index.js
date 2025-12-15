@@ -4937,26 +4937,20 @@ app.get('/', (req, res) => {
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
               d1Html = '<div class="flex flex-row items-center gap-1"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
             }
-            let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
-              '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
-              '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
-              (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
-              '</div>'
             let diffHtml = ''
             if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
               diffHtml = '<div class="inline-block px-2 py-0.5 rounded border ' + d1D2DiffClass + ' font-semibold border-current">' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + '</div>'
             }
+            // Combine D2 value with diff box (no separator between them)
+            let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
+              '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
+              '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
+              (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
+              (diffHtml ? '<div class="flex items-center">' + diffHtml + '</div>' : '') +
+              '</div>'
             let trendHtml = ''
             if (trendMessage) {
-              // Combine trend message with diff if available
-              trendHtml = '<div class="flex items-center gap-1"><div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
-              if (diffHtml) {
-                trendHtml += diffHtml
-              }
-              trendHtml += '</div>'
-            } else if (diffHtml) {
-              // If no trend message but diff exists, show diff alone
-              trendHtml = diffHtml
+              trendHtml = '<div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
             }
             // Add Big Trend Day indicator
             let bigTrendDayHtml = ''
@@ -4971,7 +4965,7 @@ app.get('/', (req, res) => {
               (d1D2Diff !== null && !isNaN(d1D2Diff) ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-            // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH | Try Short | Diff: (X) | 🔥 Big Trend Day
+            // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH [diff box] | Trend | 🔥 Trend
             let parts = []
             if (chartHtml) parts.push(chartHtml)
             if (d1Html) {
