@@ -2255,7 +2255,6 @@ app.get('/', (req, res) => {
         .filter-chip.active {
           font-weight: 700;
           filter: brightness(1.3) saturate(1.2);
-          box-shadow: 0 0 12px currentColor, inset 0 1px 0 rgba(255, 255, 255, 0.15);
           opacity: 1 !important;
           transform: scale(1.02);
           border-width: 2px;
