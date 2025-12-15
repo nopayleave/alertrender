@@ -4131,29 +4131,29 @@ app.get('/', (req, res) => {
             if (!d2CellHtml) {
             let chartHtml = miniChartSvg || ''
             if (chartHtml) {
-              chartHtml = '<div class="mb-1">' + chartHtml + '</div>'
+              chartHtml = '<div class="flex-shrink-0">' + chartHtml + '</div>'
             }
             let d1Html = ''
             if (dualStochD1 !== null) {
-              d1Html = '<div class="flex flex-row items-center justify-start gap-2"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
+              d1Html = '<div class="flex flex-row items-center gap-1"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
             }
-            let d2HtmlContent = '<div class="flex flex-row items-center justify-start gap-2">' +
+            let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
               '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
               '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
               (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
               '</div>'
             let diffHtml = ''
             if (d1D2Diff !== null) {
-              diffHtml = '<div class="text-xs ' + d1D2DiffClass + ' font-semibold mt-1">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>'
+              diffHtml = '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>'
             }
             let trendHtml = ''
             if (trendMessage) {
-              trendHtml = '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>'
+              trendHtml = '<div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
             }
             // Add Big Trend Day indicator
             let bigTrendDayHtml = ''
             if (alert.isBigTrendDay) {
-              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold mt-1 animate-pulse">🔥 Big Trend Day</div>'
+              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Big Trend Day</div>'
             }
             let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
               (dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
@@ -4163,9 +4163,29 @@ app.get('/', (req, res) => {
               (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+            // Build horizontal layout: Chart | D1: X↓ | Diff: (X) | D2: X↓ LH | Try Short | 🔥 Big Trend Day
+            let parts = []
+            if (chartHtml) parts.push(chartHtml)
+            if (d1Html) {
+              let d1Part = d1Html
+              if (diffHtml) {
+                d1Part += ' | ' + diffHtml
+              }
+              parts.push(d1Part)
+            }
+            if (d2HtmlContent) {
+              parts.push(d2HtmlContent)
+            }
+            if (trendHtml) {
+              parts.push(trendHtml)
+            }
+            if (bigTrendDayHtml) {
+              parts.push(bigTrendDayHtml)
+            }
+            
             d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
-              '<div class="flex flex-col items-start gap-1">' +
-              chartHtml + d1Html + d2HtmlContent + diffHtml + trendHtml + bigTrendDayHtml +
+              '<div class="flex flex-row items-center gap-2 flex-wrap">' +
+              parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
             }
             
