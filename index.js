@@ -2061,17 +2061,19 @@ app.get('/calculator', (req, res) => {
             const displayCost = currency === 'HKD' ? actualCost * HKD_TO_USD : actualCost;
             const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
 
-            return '<div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">' +
-              '<div class="flex items-baseline gap-2">' +
-              '<span class="text-2xl font-bold text-blue-400">' + numShares.toLocaleString() + '</span>' +
-              '<span class="text-sm text-muted-foreground">shares</span>' +
-              '<span class="text-lg font-semibold text-foreground">= ' + percent + '%</span>' +
-              '</div>' +
-              '<div class="text-right">' +
-              '<div class="text-base font-semibold text-green-400">' + currencySymbol + displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div>' +
-              '<div class="text-xs text-muted-foreground">(' + actualPercent.toFixed(2) + '%)</div>' +
-              '</div>' +
-              '</div>';
+            return \`
+              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
+                <div class="flex items-baseline gap-2">
+                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-sm text-muted-foreground">shares</span>
+                  <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
+                </div>
+                <div class="text-right">
+                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
+                </div>
+              </div>
+            \`;
           }).join('');
           
           // % Cheatsheet - calculate required shares for different profit targets and % moves
@@ -2083,8 +2085,8 @@ app.get('/calculator', (req, res) => {
           const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
           
           // Update currency label in table header
-          document.getElementById('profitCurrency').textContent = '(' + currency + ')';
-          document.getElementById('customProfitCurrency').textContent = '(' + currency + ')';
+          document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
+          document.getElementById('customProfitCurrency').textContent = \`(\${currency})\`;
           
           const percentMoves = [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200];
           
@@ -2104,15 +2106,17 @@ app.get('/calculator', (req, res) => {
               
               // Dim if exceeds capital
               const cellClass = exceedsCapital ? 'text-muted-foreground/50' : 'text-foreground font-semibold';
-              const titleText = exceedsCapital ? 'Cost: $' + totalCost.toLocaleString() + ' (exceeds capital)' : '';
+              const titleText = exceedsCapital ? \`Cost: $\${totalCost.toLocaleString()} (exceeds capital)\` : '';
               
-              return '<td class="text-center py-2 px-2 ' + cellClass + '" title="' + titleText + '">' + roundedShares.toLocaleString() + '</td>';
+              return \`<td class="text-center py-2 px-2 \${cellClass}" title="\${titleText}">\${roundedShares.toLocaleString()}</td>\`;
             }).join('');
             
-            return '<tr class="border-b border-border/50 hover:bg-secondary/30">' +
-              '<td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">' + currencySymbol + profit.toLocaleString() + '</td>' +
-              cells +
-              '</tr>';
+            return \`
+              <tr class="border-b border-border/50 hover:bg-secondary/30">
+                <td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
+                \${cells}
+              </tr>
+            \`;
           }).join('');
           
           // Update custom calculator too
@@ -2253,26 +2257,6 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
-        /* Resizable column handle */
-        .resize-handle {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 5px;
-          height: 100%;
-          cursor: col-resize;
-          user-select: none;
-          z-index: 10;
-        }
-        .resize-handle:hover {
-          background-color: rgba(59, 130, 246, 0.5);
-        }
-        .resize-handle.resizing {
-          background-color: rgba(59, 130, 246, 0.8);
-        }
-        th {
-          position: relative;
-        }
         /* iOS-style filter chips */
         .filter-chip {
           user-select: none;
@@ -2329,6 +2313,14 @@ app.get('/', (req, res) => {
         }
         .hide-scrollbar::-webkit-scrollbar {
           display: none;  /* Chrome, Safari and Opera */
+        }
+        /* Search icon accessibility - white by default, black when active */
+        .search-container .search-icon {
+          color: white;
+          transition: color 0.2s ease;
+        }
+        .search-container:focus-within .search-icon {
+          color: black;
         }
         /* Override xl:gap-6 to reduce space between filter and table */
         @media (min-width: 1280px) {
@@ -2513,20 +2505,8 @@ app.get('/', (req, res) => {
       <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div class="flex-1">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
-                <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground">Trading Alert Dashboard</h1>
-                <div class="flex flex-wrap items-center gap-3 text-sm">
-                  <p class="text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
-                  <div id="connectionStatus" class="flex items-center gap-1">
-                    <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-                    <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-                  </div>
-                  <div id="realtimeIndicator" class="text-green-400 hidden">
-                    <span class="animate-pulse">🔄 Real-time updates active</span>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
             </div>
             <div class="flex gap-3 items-center">
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
@@ -2548,8 +2528,8 @@ app.get('/', (req, res) => {
             <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-3 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
-                <div class="relative mb-4">
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                <div class="relative mb-4 search-container">
+                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 search-icon">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
@@ -2814,7 +2794,7 @@ app.get('/', (req, res) => {
             <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
-                  <table class="w-full border-collapse" style="table-layout: fixed;">
+                  <table class="w-full table-auto border-collapse">
                     <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
@@ -2828,6 +2808,19 @@ app.get('/', (req, res) => {
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 text-center">
+          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
+          <div class="mt-2 flex items-center justify-center gap-2">
+            <div id="connectionStatus" class="flex items-center gap-1 text-xs">
+              <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="connectionText" class="text-muted-foreground">Connecting...</span>
+            </div>
+            <div id="realtimeIndicator" class="text-xs text-green-400 hidden">
+              <span class="animate-pulse">🔄 Real-time updates active</span>
             </div>
           </div>
         </div>
@@ -2894,11 +2887,11 @@ app.get('/', (req, res) => {
         // Column definitions
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-36' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[190px]' },
-          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[200px]' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[230px]' },
+          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[174px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[180px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
@@ -3226,115 +3219,10 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
-              (colId !== 'star' ? '<div class="resize-handle" data-column-id="' + colId + '"></div>' : '') +
               '</th>';
           }).join('');
           
           updateSortIndicators();
-          setupColumnResize();
-        }
-
-        // Column resize functionality
-        let columnWidths = {};
-        let resizingColumn = null;
-        let resizeStartX = 0;
-        let resizeStartWidth = 0;
-
-        function setupColumnResize() {
-          // Load saved column widths from localStorage
-          const savedWidths = localStorage.getItem('columnWidths');
-          if (savedWidths) {
-            try {
-              columnWidths = JSON.parse(savedWidths);
-              applyColumnWidths();
-            } catch (e) {
-              console.error('Error loading column widths:', e);
-            }
-          }
-          
-          // Attach event listeners to resize handles
-          document.querySelectorAll('.resize-handle').forEach(handle => {
-            const columnId = handle.getAttribute('data-column-id');
-            if (columnId) {
-              handle.addEventListener('mousedown', function(e) {
-                handleResizeStart(e, columnId);
-              });
-            }
-          });
-        }
-
-        function handleResizeStart(e, columnId) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Prevent drag and drop when resizing
-          if (e.target.closest('.draggable-header')) {
-            e.target.closest('.draggable-header').draggable = false;
-          }
-          
-          resizingColumn = columnId;
-          resizeStartX = e.clientX;
-          
-          const header = e.target.closest('th');
-          resizeStartWidth = header.offsetWidth;
-          
-          e.target.classList.add('resizing');
-          
-          document.addEventListener('mousemove', handleResize);
-          document.addEventListener('mouseup', handleResizeEnd);
-        }
-
-        function handleResize(e) {
-          if (!resizingColumn) return;
-          
-          const diff = e.clientX - resizeStartX;
-          const newWidth = Math.max(50, resizeStartWidth + diff); // Minimum width of 50px
-          
-          columnWidths[resizingColumn] = newWidth;
-          applyColumnWidths();
-        }
-
-        function handleResizeEnd(e) {
-          if (resizingColumn) {
-            // Save widths to localStorage
-            localStorage.setItem('columnWidths', JSON.stringify(columnWidths));
-            
-            document.querySelectorAll('.resize-handle').forEach(handle => {
-              handle.classList.remove('resizing');
-            });
-            
-            // Restore draggable
-            document.querySelectorAll('.draggable-header').forEach(header => {
-              if (header.getAttribute('data-column-id') !== 'star') {
-                header.draggable = true;
-              }
-            });
-            
-            resizingColumn = null;
-          }
-          
-          document.removeEventListener('mousemove', handleResize);
-          document.removeEventListener('mouseup', handleResizeEnd);
-        }
-
-        function applyColumnWidths() {
-          // Apply widths to headers
-          Object.keys(columnWidths).forEach(columnId => {
-            const header = document.querySelector(`th[data-column-id="${columnId}"]`);
-            if (header) {
-              header.style.width = columnWidths[columnId] + 'px';
-              header.style.minWidth = columnWidths[columnId] + 'px';
-              header.style.maxWidth = columnWidths[columnId] + 'px';
-            }
-            
-            // Apply widths to cells
-            const cells = document.querySelectorAll(`td[data-column-id="${columnId}"]`);
-            cells.forEach(cell => {
-              cell.style.width = columnWidths[columnId] + 'px';
-              cell.style.minWidth = columnWidths[columnId] + 'px';
-              cell.style.maxWidth = columnWidths[columnId] + 'px';
-            });
-          });
         }
 
         // Drag and drop handlers for column reordering
@@ -4850,7 +4738,7 @@ app.get('/', (req, res) => {
               parts.push(bigTrendDayHtml)
             }
             
-            d2CellHtml = '<td data-column-id="d2" class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -4859,7 +4747,7 @@ app.get('/', (req, res) => {
             // Generate cell content for each column
             const cellContent = {
               star: \`
-                <td data-column-id="star" class="py-3 pl-4 pr-1 text-center">
+                <td class="py-3 pl-4 pr-1 text-center">
                   <button 
                     onclick="toggleStar('\${alert.symbol}')" 
                     class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
@@ -4869,23 +4757,23 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
               \`,
-              symbol: \`<td data-column-id="symbol" class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
+              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
               price: \`
-                <td data-column-id="price" class="py-3 px-4 font-mono font-medium \${priceClass}">
+                <td class="py-3 px-4 font-mono font-medium \${priceClass}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
               d2: d2CellHtml || '',
               highLevelTrend: \`
-                <td data-column-id="highLevelTrend" class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
               bj: \`
-                <td data-column-id="bj" class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
@@ -4894,23 +4782,18 @@ app.get('/', (req, res) => {
                   </div>
                 </td>
               \`,
-              volume: \`<td data-column-id="volume" class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+              volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
             };
             
             // Render cells in column order
             const cells = columnOrder.map(colId => cellContent[colId] || '').join('');
             
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors" style="background-color: \${starred ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.02)'};">
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
                 \${cells}
               </tr>
             \`;
           }).join('');
-          
-          // Apply column widths after rendering
-          setTimeout(() => {
-            applyColumnWidths();
-          }, 0);
         }
 
         async function fetchAlerts() {
