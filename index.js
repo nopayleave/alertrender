@@ -2473,6 +2473,52 @@ app.get('/', (req, res) => {
         input:focus {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+        /* iOS-style range slider */
+        .diff-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+        }
+        .diff-slider::-webkit-slider-track {
+          background: hsl(217.2 32.6% 17.5%);
+          height: 4px;
+          border-radius: 2px;
+        }
+        .diff-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+        }
+        .diff-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .diff-slider::-moz-range-track {
+          background: hsl(217.2 32.6% 17.5%);
+          height: 4px;
+          border-radius: 2px;
+        }
+        .diff-slider::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+        }
+        .diff-slider::-moz-range-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
@@ -2590,14 +2636,14 @@ app.get('/', (req, res) => {
                 <div class="mb-5">
                   <div class="flex items-center justify-between mb-2.5">
                     <h3 class="text-sm font-semibold text-foreground/90">Stochastic</h3>
-                    <button 
+                  <button 
                       onclick="clearStochFilters()" 
                       class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                    >
+                  >
                       Clear
-                    </button>
-                  </div>
-                  
+                  </button>
+                </div>
+            
                   <!-- D1 Direction -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
@@ -2644,16 +2690,39 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- Diff (D1 - D2) -->
+                  <!-- Diff (D1 - D2) - Absolute difference slider -->
                   <div class="mb-3">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Diff (D1-D2)</label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('diff', '<-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value="<-20">&lt;-20</button>
-                      <button onclick="toggleFilterChip('diff', '-20--10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value="-20--10">-20~-10</button>
-                      <button onclick="toggleFilterChip('diff', '-10-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value="-10-0">-10~0</button>
-                      <button onclick="toggleFilterChip('diff', '0-10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value="0-10">0~10</button>
-                      <button onclick="toggleFilterChip('diff', '10-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value="10-20">10~20</button>
-                      <button onclick="toggleFilterChip('diff', '>20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="diff" data-value=">20">&gt;20</button>
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2|</label>
+                      <span id="diffRangeDisplay" class="text-xs font-semibold text-foreground">0 - 50</span>
+                    </div>
+                    <div class="px-2 space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-foreground/70 mb-1 block">Min: <span id="diffMinValue" class="text-foreground font-semibold">0</span></label>
+                        <input 
+                          type="range" 
+                          id="diffMinSlider" 
+                          min="0" 
+                          max="50" 
+                          value="0" 
+                          step="1"
+                          class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer diff-slider"
+                          oninput="updateDiffFilter()"
+                        />
+                      </div>
+                      <div>
+                        <label class="text-xs text-muted-foreground/70 mb-1 block">Max: <span id="diffMaxValue" class="text-foreground font-semibold">50</span></label>
+                        <input 
+                          type="range" 
+                          id="diffMaxSlider" 
+                          min="0" 
+                          max="50" 
+                          value="50" 
+                          step="1"
+                          class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer diff-slider"
+                          oninput="updateDiffFilter()"
+                        />
+                      </div>
                     </div>
                   </div>
                   
@@ -2743,7 +2812,7 @@ app.get('/', (req, res) => {
         let stochFilterD1Value = [];
         let stochFilterD2Direction = [];
         let stochFilterD2Value = [];
-        let stochFilterDiff = [];
+        let stochFilterDiff = { min: 0, max: 50, active: false }; // Slider range
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
 
@@ -3010,6 +3079,46 @@ app.get('/', (req, res) => {
           filterAlerts();
         }
         
+        // Update diff filter from slider values
+        function updateDiffFilter() {
+          const minSlider = document.getElementById('diffMinSlider');
+          const maxSlider = document.getElementById('diffMaxSlider');
+          const display = document.getElementById('diffRangeDisplay');
+          const minValueDisplay = document.getElementById('diffMinValue');
+          const maxValueDisplay = document.getElementById('diffMaxValue');
+          
+          if (minSlider && maxSlider) {
+            let minVal = parseInt(minSlider.value);
+            let maxVal = parseInt(maxSlider.value);
+            
+            // Ensure min doesn't exceed max
+            if (minVal > maxVal) {
+              const temp = minVal;
+              minVal = maxVal;
+              maxVal = temp;
+              minSlider.value = minVal;
+              maxSlider.value = maxVal;
+            }
+            
+            stochFilterDiff.min = minVal;
+            stochFilterDiff.max = maxVal;
+            stochFilterDiff.active = (minVal > 0 || maxVal < 50);
+            
+            if (display) {
+              display.textContent = minVal === maxVal ? minVal.toString() : minVal + ' - ' + maxVal;
+            }
+            if (minValueDisplay) {
+              minValueDisplay.textContent = minVal;
+            }
+            if (maxValueDisplay) {
+              maxValueDisplay.textContent = maxVal;
+            }
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
         // Update filter arrays from chip states
         function updateFilterArrays() {
           // BJ TSI Filters
@@ -3023,7 +3132,7 @@ app.get('/', (req, res) => {
           stochFilterD1Value = Array.from(document.querySelectorAll('[data-filter="d1Value"].active')).map(chip => chip.dataset.value);
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
           stochFilterD2Value = Array.from(document.querySelectorAll('[data-filter="d2Value"].active')).map(chip => chip.dataset.value);
-          stochFilterDiff = Array.from(document.querySelectorAll('[data-filter="diff"].active')).map(chip => chip.dataset.value);
+          // Diff filter is updated via updateDiffFilter() from slider
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
         }
@@ -3052,15 +3161,22 @@ app.get('/', (req, res) => {
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d1Value"], [data-filter="d2Direction"], [data-filter="d2Value"], [data-filter="diff"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d1Value"], [data-filter="d2Direction"], [data-filter="d2Value"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
             chip.classList.remove('active');
           });
+          
+          // Reset diff sliders
+          const minSlider = document.getElementById('diffMinSlider');
+          const maxSlider = document.getElementById('diffMaxSlider');
+          if (minSlider) minSlider.value = 0;
+          if (maxSlider) maxSlider.value = 50;
+          updateDiffFilter();
           
           stochFilterD1Direction = [];
           stochFilterD1Value = [];
           stochFilterD2Direction = [];
           stochFilterD2Value = [];
-          stochFilterDiff = [];
+          stochFilterDiff = { min: 0, max: 50, active: false };
           stochFilterTrendMessage = [];
           stochFilterPercentChange = [];
           renderTable();
@@ -3213,7 +3329,7 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.length > 0 || stochFilterD2Direction.length > 0 || stochFilterD2Value.length > 0 || stochFilterDiff.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.length > 0 || stochFilterD2Direction.length > 0 || stochFilterD2Value.length > 0 || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Get D1 and D2 values and directions
               const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
@@ -3279,20 +3395,11 @@ app.get('/', (req, res) => {
                 if (!matchesD2) return false;
               }
               
-              // Check Diff filter (D1 - D2) (multiple selections)
-              if (stochFilterDiff.length > 0) {
+              // Check Diff filter (|D1 - D2|) - Absolute difference using slider range
+              if (stochFilterDiff.active) {
                 if (d1Value === null || isNaN(d1Value) || d2Value === null || isNaN(d2Value)) return false;
-                const diff = d1Value - d2Value;
-                let matchesDiff = false;
-                for (const filter of stochFilterDiff) {
-                  if (filter === '<-20' && diff < -20) { matchesDiff = true; break; }
-                  if (filter === '-20--10' && diff >= -20 && diff < -10) { matchesDiff = true; break; }
-                  if (filter === '-10-0' && diff >= -10 && diff < 0) { matchesDiff = true; break; }
-                  if (filter === '0-10' && diff >= 0 && diff < 10) { matchesDiff = true; break; }
-                  if (filter === '10-20' && diff >= 10 && diff < 20) { matchesDiff = true; break; }
-                  if (filter === '>20' && diff >= 20) { matchesDiff = true; break; }
-                }
-                if (!matchesDiff) return false;
+                const absDiff = Math.abs(d1Value - d2Value);
+                if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
               }
               
               // Check trend message filter (multiple selections)
