@@ -2253,12 +2253,12 @@ app.get('/', (req, res) => {
           -webkit-tap-highlight-color: transparent;
         }
         .filter-chip.active {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
-          border-color: rgba(59, 130, 246, 0.6) !important;
-          color: rgb(96, 165, 250) !important;
-          font-weight: 600;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          font-weight: 700;
+          filter: brightness(1.3) saturate(1.2);
+          box-shadow: 0 0 12px currentColor, inset 0 1px 0 rgba(255, 255, 255, 0.15);
           opacity: 1 !important;
+          transform: scale(1.02);
+          border-width: 2px;
         }
         .filter-chip:active {
           transform: scale(0.95);
@@ -2395,7 +2395,7 @@ app.get('/', (req, res) => {
           box-shadow: none;
         }
         .noUi-connect {
-          background: rgb(59, 130, 246);
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0%, rgba(200, 200, 200, 0.8) 100%);
           border-radius: 4px;
         }
         .noUi-horizontal {
@@ -2408,7 +2408,7 @@ app.get('/', (req, res) => {
           top: -6px;
           border-radius: 50%;
           background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          border: 2px solid rgba(255, 255, 255, 0.8);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
           cursor: pointer;
         }
@@ -2418,11 +2418,11 @@ app.get('/', (req, res) => {
         }
         .noUi-handle:hover {
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
+          box-shadow: 0 4px 12px rgba(255, 255, 255, 0.4), 0 0 0 4px rgba(255, 255, 255, 0.1);
         }
         .noUi-handle:active {
           transform: scale(1.15);
-          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
+          box-shadow: 0 6px 16px rgba(255, 255, 255, 0.5), 0 0 0 6px rgba(255, 255, 255, 0.15);
         }
         .noUi-target[disabled] .noUi-connect {
           background: hsl(217.2 32.6% 25%);
@@ -2544,7 +2544,7 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="bjValueSliderContainer">
@@ -2610,7 +2610,7 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="d1ValueSliderContainer">
@@ -2649,7 +2649,7 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="d2ValueSliderContainer">
@@ -2678,7 +2678,7 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')" checked>
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                       </label>
                     </div>
                     <div class="px-2" id="diffSliderContainer">
