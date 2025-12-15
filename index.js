@@ -2314,6 +2314,14 @@ app.get('/', (req, res) => {
         .hide-scrollbar::-webkit-scrollbar {
           display: none;  /* Chrome, Safari and Opera */
         }
+        /* Search icon accessibility - white by default, black when active */
+        .search-container .search-icon {
+          color: white;
+          transition: color 0.2s ease;
+        }
+        .search-container:focus-within .search-icon {
+          color: black;
+        }
         /* Override xl:gap-6 to reduce space between filter and table */
         @media (min-width: 1280px) {
           .xl\:gap-6 {
@@ -2497,20 +2505,8 @@ app.get('/', (req, res) => {
       <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div class="flex-1">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
-                <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground">Trading Alert Dashboard</h1>
-                <div class="flex flex-wrap items-center gap-3 text-sm">
-                  <p class="text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
-                  <div id="connectionStatus" class="flex items-center gap-1">
-                    <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-                    <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-                  </div>
-                  <div id="realtimeIndicator" class="text-green-400 hidden">
-                    <span class="animate-pulse">🔄 Real-time updates active</span>
-                  </div>
-                </div>
-              </div>
+            <div>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
             </div>
             <div class="flex gap-3 items-center">
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
@@ -2532,8 +2528,8 @@ app.get('/', (req, res) => {
             <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-3 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
-                <div class="relative mb-4">
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                <div class="relative mb-4 search-container">
+                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 search-icon">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
@@ -2815,6 +2811,19 @@ app.get('/', (req, res) => {
             </div>
           </div>
         </div>
+        
+        <div class="mt-6 text-center">
+          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
+          <div class="mt-2 flex items-center justify-center gap-2">
+            <div id="connectionStatus" class="flex items-center gap-1 text-xs">
+              <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+              <span id="connectionText" class="text-muted-foreground">Connecting...</span>
+            </div>
+            <div id="realtimeIndicator" class="text-xs text-green-400 hidden">
+              <span class="animate-pulse">🔄 Real-time updates active</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <script>
@@ -2878,11 +2887,11 @@ app.get('/', (req, res) => {
         // Column definitions
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-36' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[190px]' },
-          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[200px]' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[230px]' },
+          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[174px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[180px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
