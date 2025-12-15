@@ -2257,27 +2257,6 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
-        /* Column resize handle */
-        .column-resize-handle {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 4px;
-          height: 100%;
-          cursor: col-resize;
-          background: transparent;
-          z-index: 10;
-          user-select: none;
-        }
-        .column-resize-handle:hover {
-          background: rgba(59, 130, 246, 0.5);
-        }
-        .column-resize-handle.resizing {
-          background: rgba(59, 130, 246, 0.8);
-        }
-        th {
-          position: relative;
-        }
         /* iOS-style filter chips */
         .filter-chip {
           user-select: none;
@@ -3266,11 +3245,8 @@ app.get('/', (req, res) => {
             // Add ticker count badge for symbol column
             const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
             
-            // Add resize handle (except for star column)
-            const resizeHandle = colId !== 'star' ? '<div class="column-resize-handle" onmousedown="handleColumnResizeStart(event, \\'' + colId + '\\')"></div>' : '';
-            
             return '<th ' +
-              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + sortableClass + ' draggable-header" ' +
+              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
               'style="' + widthStyle + '" ' +
               'data-column-id="' + colId + '" ' +
               onclickAttr + ' ' +
@@ -3282,7 +3258,6 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
-              resizeHandle +
               '</th>';
           }).join('');
           
@@ -3369,118 +3344,6 @@ app.get('/', (req, res) => {
         function setupColumnDragAndDrop() {
           // Additional setup if needed
           // The drag handlers are already attached via inline event handlers
-        }
-
-        // Column resize handlers
-        let resizeState = {
-          isResizing: false,
-          columnId: null,
-          startX: 0,
-          startWidth: 0,
-          header: null
-        };
-
-        function handleColumnResizeStart(e, columnId) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const header = e.target.closest('th');
-          if (!header) return;
-          
-          resizeState.isResizing = true;
-          resizeState.columnId = columnId;
-          resizeState.startX = e.clientX;
-          resizeState.startWidth = getColumnWidth(columnId);
-          resizeState.header = header;
-          
-          // Add resizing class
-          e.target.classList.add('resizing');
-          document.body.style.cursor = 'col-resize';
-          document.body.style.userSelect = 'none';
-          
-          // Add global mouse move and mouse up listeners
-          document.addEventListener('mousemove', handleColumnResize);
-          document.addEventListener('mouseup', handleColumnResizeEnd);
-        }
-
-        function handleColumnResize(e) {
-          if (!resizeState.isResizing) return;
-          
-          const diff = e.clientX - resizeState.startX;
-          const newWidth = resizeState.startWidth + diff;
-          
-          // Update width in real-time
-          if (resizeState.header) {
-            resizeState.header.style.width = newWidth + 'px';
-            resizeState.header.style.minWidth = newWidth + 'px';
-            resizeState.header.style.maxWidth = newWidth + 'px';
-          }
-          
-          // Update all cells in this column
-          const columnIndex = columnOrder.indexOf(resizeState.columnId);
-          if (columnIndex !== -1) {
-            const rows = document.querySelectorAll('#alertTable tr');
-            rows.forEach(row => {
-              const cell = row.children[columnIndex];
-              if (cell) {
-                cell.style.width = newWidth + 'px';
-                cell.style.minWidth = newWidth + 'px';
-                cell.style.maxWidth = newWidth + 'px';
-              }
-            });
-          }
-        }
-
-        function handleColumnResizeEnd(e) {
-          if (!resizeState.isResizing) return;
-          
-          const diff = e.clientX - resizeState.startX;
-          const newWidth = Math.max(30, Math.min(1000, resizeState.startWidth + diff));
-          
-          // Save the new width
-          setColumnWidth(resizeState.columnId, newWidth);
-          
-          // Update all headers and cells
-          const columnIndex = columnOrder.indexOf(resizeState.columnId);
-          if (columnIndex !== -1) {
-            // Update all headers
-            const headers = document.querySelectorAll('th[data-column-id="' + resizeState.columnId + '"]');
-            headers.forEach(header => {
-              header.style.width = newWidth + 'px';
-              header.style.minWidth = newWidth + 'px';
-              header.style.maxWidth = newWidth + 'px';
-            });
-            
-            // Update all cells
-            const rows = document.querySelectorAll('#alertTable tr');
-            rows.forEach(row => {
-              const cell = row.children[columnIndex];
-              if (cell) {
-                cell.style.width = newWidth + 'px';
-                cell.style.minWidth = newWidth + 'px';
-                cell.style.maxWidth = newWidth + 'px';
-              }
-            });
-          }
-          
-          // Clean up
-          const resizeHandle = document.querySelector('.column-resize-handle.resizing');
-          if (resizeHandle) {
-            resizeHandle.classList.remove('resizing');
-          }
-          document.body.style.cursor = '';
-          document.body.style.userSelect = '';
-          
-          // Remove event listeners
-          document.removeEventListener('mousemove', handleColumnResize);
-          document.removeEventListener('mouseup', handleColumnResizeEnd);
-          
-          // Reset state
-          resizeState.isResizing = false;
-          resizeState.columnId = null;
-          resizeState.startX = 0;
-          resizeState.startWidth = 0;
-          resizeState.header = null;
         }
 
         function getSortValue(alert, field) {
