@@ -3648,12 +3648,11 @@ app.get('/', (req, res) => {
               }
             }
             
-            // Generate mini chart SVG for D1/D2
-            let miniChartSvg = ''
+            // Generate mini chart SVG for D1/D2 (use pre-generated SVG from server)
+            let miniChartSvg = alert.dualStochMiniChart || ''
             let d2CellHtml = ''
             if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
-              const history = dualStochHistory[alert.symbol] || []
-              if (history.length > 1) {
+              if (miniChartSvg) {
                 const chartWidth = 120
                 const chartHeight = 40
                 const padding = 2
