@@ -2257,6 +2257,27 @@ app.get('/', (req, res) => {
         .draggable-header.drag-over {
           border-left: 2px solid #3b82f6;
         }
+        /* Column resize handle */
+        .column-resize-handle {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 4px;
+          height: 100%;
+          cursor: col-resize;
+          background: transparent;
+          z-index: 10;
+          user-select: none;
+        }
+        .column-resize-handle:hover {
+          background: rgba(59, 130, 246, 0.5);
+        }
+        .column-resize-handle.resizing {
+          background: rgba(59, 130, 246, 0.8);
+        }
+        th {
+          position: relative;
+        }
         /* iOS-style filter chips */
         .filter-chip {
           user-select: none;
@@ -2868,6 +2889,29 @@ app.get('/', (req, res) => {
         // Column order - stored in localStorage
         const defaultColumnOrder = ['star', 'symbol', 'price', 'd2', 'bj', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
+        
+        // Column widths - stored in localStorage (in pixels)
+        const defaultColumnWidths = {
+          star: 40,
+          symbol: 54,
+          price: 100,
+          d2: 220,
+          highLevelTrend: 64,
+          bj: 114,
+          volume: 80
+        };
+        let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
+        
+        // Helper function to get column width
+        function getColumnWidth(colId) {
+          return columnWidths[colId] || defaultColumnWidths[colId] || 100;
+        }
+        
+        // Helper function to set column width
+        function setColumnWidth(colId, width) {
+          columnWidths[colId] = Math.max(30, Math.min(1000, width)); // Min 30px, max 1000px
+          localStorage.setItem('columnWidths', JSON.stringify(columnWidths));
+        }
         // Check if stored order has old columns - if so, reset to default
         const oldColumns = ['macdCrossing', 'vwap', 'ema1', 'ema2', 'macd', 'rsi', 'trend', 'pattern', 'qsArrow', 'd3value', 'd4value'];
         const hasOldColumns = columnOrder.some(colId => oldColumns.includes(colId));
@@ -3215,11 +3259,19 @@ app.get('/', (req, res) => {
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
             const draggableAttr = colId !== 'star' ? 'true' : 'false';
             
+            // Get dynamic width
+            const width = getColumnWidth(colId);
+            const widthStyle = 'width: ' + width + 'px; min-width: ' + width + 'px; max-width: ' + width + 'px;';
+            
             // Add ticker count badge for symbol column
             const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
             
+            // Add resize handle (except for star column)
+            const resizeHandle = colId !== 'star' ? '<div class="column-resize-handle" onmousedown="handleColumnResizeStart(event, \\'' + colId + '\\')"></div>' : '';
+            
             return '<th ' +
-              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
+              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + sortableClass + ' draggable-header" ' +
+              'style="' + widthStyle + '" ' +
               'data-column-id="' + colId + '" ' +
               onclickAttr + ' ' +
               tooltipAttr + ' ' +
@@ -3230,6 +3282,7 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
+              resizeHandle +
               '</th>';
           }).join('');
           
@@ -3316,6 +3369,118 @@ app.get('/', (req, res) => {
         function setupColumnDragAndDrop() {
           // Additional setup if needed
           // The drag handlers are already attached via inline event handlers
+        }
+
+        // Column resize handlers
+        let resizeState = {
+          isResizing: false,
+          columnId: null,
+          startX: 0,
+          startWidth: 0,
+          header: null
+        };
+
+        function handleColumnResizeStart(e, columnId) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const header = e.target.closest('th');
+          if (!header) return;
+          
+          resizeState.isResizing = true;
+          resizeState.columnId = columnId;
+          resizeState.startX = e.clientX;
+          resizeState.startWidth = getColumnWidth(columnId);
+          resizeState.header = header;
+          
+          // Add resizing class
+          e.target.classList.add('resizing');
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          
+          // Add global mouse move and mouse up listeners
+          document.addEventListener('mousemove', handleColumnResize);
+          document.addEventListener('mouseup', handleColumnResizeEnd);
+        }
+
+        function handleColumnResize(e) {
+          if (!resizeState.isResizing) return;
+          
+          const diff = e.clientX - resizeState.startX;
+          const newWidth = resizeState.startWidth + diff;
+          
+          // Update width in real-time
+          if (resizeState.header) {
+            resizeState.header.style.width = newWidth + 'px';
+            resizeState.header.style.minWidth = newWidth + 'px';
+            resizeState.header.style.maxWidth = newWidth + 'px';
+          }
+          
+          // Update all cells in this column
+          const columnIndex = columnOrder.indexOf(resizeState.columnId);
+          if (columnIndex !== -1) {
+            const rows = document.querySelectorAll('#alertTable tr');
+            rows.forEach(row => {
+              const cell = row.children[columnIndex];
+              if (cell) {
+                cell.style.width = newWidth + 'px';
+                cell.style.minWidth = newWidth + 'px';
+                cell.style.maxWidth = newWidth + 'px';
+              }
+            });
+          }
+        }
+
+        function handleColumnResizeEnd(e) {
+          if (!resizeState.isResizing) return;
+          
+          const diff = e.clientX - resizeState.startX;
+          const newWidth = Math.max(30, Math.min(1000, resizeState.startWidth + diff));
+          
+          // Save the new width
+          setColumnWidth(resizeState.columnId, newWidth);
+          
+          // Update all headers and cells
+          const columnIndex = columnOrder.indexOf(resizeState.columnId);
+          if (columnIndex !== -1) {
+            // Update all headers
+            const headers = document.querySelectorAll('th[data-column-id="' + resizeState.columnId + '"]');
+            headers.forEach(header => {
+              header.style.width = newWidth + 'px';
+              header.style.minWidth = newWidth + 'px';
+              header.style.maxWidth = newWidth + 'px';
+            });
+            
+            // Update all cells
+            const rows = document.querySelectorAll('#alertTable tr');
+            rows.forEach(row => {
+              const cell = row.children[columnIndex];
+              if (cell) {
+                cell.style.width = newWidth + 'px';
+                cell.style.minWidth = newWidth + 'px';
+                cell.style.maxWidth = newWidth + 'px';
+              }
+            });
+          }
+          
+          // Clean up
+          const resizeHandle = document.querySelector('.column-resize-handle.resizing');
+          if (resizeHandle) {
+            resizeHandle.classList.remove('resizing');
+          }
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          
+          // Remove event listeners
+          document.removeEventListener('mousemove', handleColumnResize);
+          document.removeEventListener('mouseup', handleColumnResizeEnd);
+          
+          // Reset state
+          resizeState.isResizing = false;
+          resizeState.columnId = null;
+          resizeState.startX = 0;
+          resizeState.startWidth = 0;
+          resizeState.header = null;
         }
 
         function getSortValue(alert, field) {
@@ -3910,6 +4075,12 @@ app.get('/', (req, res) => {
           updateCountdown();
 
           alertTable.innerHTML = filteredData.map((alert, index) => {
+            // Helper function to get width style for a column
+            const getCellWidthStyle = (colId) => {
+              const width = getColumnWidth(colId);
+              return 'width: ' + width + 'px; min-width: ' + width + 'px; max-width: ' + width + 'px;';
+            };
+            
             const starred = isStarred(alert.symbol);
             const starIcon = starred ? '⭐' : '☆';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
@@ -4749,7 +4920,7 @@ app.get('/', (req, res) => {
               parts.push(bigTrendDayHtml)
             }
             
-            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            d2CellHtml = '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -4758,7 +4929,7 @@ app.get('/', (req, res) => {
             // Generate cell content for each column
             const cellContent = {
               star: \`
-                <td class="py-3 pl-4 pr-1 text-center">
+                <td class="py-3 pl-4 pr-1 text-center" style="\${getCellWidthStyle('star')}">
                   <button 
                     onclick="toggleStar('\${alert.symbol}')" 
                     class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
@@ -4768,23 +4939,23 @@ app.get('/', (req, res) => {
                   </button>
                 </td>
               \`,
-              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap">\${alert.symbol || 'N/A'}</td>\`,
+              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap" style="\${getCellWidthStyle('symbol')}">\${alert.symbol || 'N/A'}</td>\`,
               price: \`
-                <td class="py-3 px-4 font-mono font-medium \${priceClass}">
+                <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
               d2: d2CellHtml || '',
               highLevelTrend: \`
-                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td class="py-3 px-4 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
               bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('bj')}" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
@@ -4793,7 +4964,7 @@ app.get('/', (req, res) => {
                   </div>
                 </td>
               \`,
-              volume: \`<td class="py-3 px-4 text-muted-foreground" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+              volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
             };
             
             // Render cells in column order
