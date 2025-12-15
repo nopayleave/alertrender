@@ -2563,6 +2563,15 @@ app.get('/', (req, res) => {
         .noUi-active .noUi-tooltip {
           display: block;
         }
+        /* Flash animation for direction changes */
+        @keyframes flash {
+          0% { background-color: rgba(59, 130, 246, 0.3); }
+          50% { background-color: rgba(59, 130, 246, 0.6); }
+          100% { background-color: transparent; }
+        }
+        .stoch-flash {
+          animation: flash 0.8s ease-out;
+        }
         /* Calculator slide-in panel */
         .calculator-overlay {
           position: fixed;
@@ -2932,6 +2941,9 @@ app.get('/', (req, res) => {
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
+        
+        // Track previous stochastic directions for flash detection
+        let previousStochDirections = {};
 
         // Column order - stored in localStorage
         const defaultColumnOrder = ['symbol', 'price', 'd2', 'bj', 'volume'];
@@ -4742,8 +4754,9 @@ app.get('/', (req, res) => {
             let d1ValueClass = 'text-foreground';
             let d1DirClass = 'text-gray-400';
             let d1Arrow = '→';
+            let d1Direction = 'flat';
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
-              const d1Direction = alert.dualStochD1Direction || 'flat';
+              d1Direction = alert.dualStochD1Direction || 'flat';
               d1DirClass = d1Direction === 'up' ? 'text-green-400' : d1Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
               d1Arrow = d1Direction === 'up' ? '↑' : d1Direction === 'down' ? '↓' : '→';
               if (dualStochD1 > 80) {
@@ -4996,6 +5009,22 @@ app.get('/', (req, res) => {
               (d1D2Diff !== null && !isNaN(d1D2Diff) ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+            
+            // Check if direction changed for flash animation
+            const symbolKey = alert.symbol;
+            const prevDirections = previousStochDirections[symbolKey] || { d1: null, d2: null };
+            const currentD1Dir = dualStochD1 !== null ? d1Direction : null;
+            const currentD2Dir = d2Direction;
+            const d1Changed = prevDirections.d1 !== null && prevDirections.d1 !== currentD1Dir && currentD1Dir !== null;
+            const d2Changed = prevDirections.d2 !== null && prevDirections.d2 !== currentD2Dir && currentD2Dir !== null;
+            const shouldFlash = d1Changed || d2Changed;
+            
+            // Update previous directions
+            previousStochDirections[symbolKey] = {
+              d1: currentD1Dir,
+              d2: currentD2Dir
+            };
+            
             // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH [diff box] | Trend | 🔥 Trend
             let parts = []
             if (chartHtml) parts.push(chartHtml)
@@ -5012,7 +5041,8 @@ app.get('/', (req, res) => {
               parts.push(bigTrendDayHtml)
             }
             
-            d2CellHtml = '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            const flashClass = shouldFlash ? ' stoch-flash' : '';
+            d2CellHtml = '<td class="py-3 px-4 text-left' + flashClass + '" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
