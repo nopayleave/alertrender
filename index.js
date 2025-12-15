@@ -2781,7 +2781,7 @@ app.get('/', (req, res) => {
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
-                    <thead id="tableHeader" class="sticky top-0 bg-card z-20">
+                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
