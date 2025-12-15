@@ -2503,7 +2503,7 @@ app.get('/', (req, res) => {
           <!-- Filters sidebar (left on xl, top on smaller screens) -->
           <div class="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-4 xl:self-start">
             <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:border-r xl:pr-6 py-4 xl:py-0">
+            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-6 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
                 <div class="relative mb-4">
@@ -2769,12 +2769,12 @@ app.get('/', (req, res) => {
 
           <!-- Table area (right on xl, below filters on smaller screens) -->
           <div class="w-full xl:flex-1 xl:min-w-0">
-            <div class="bg-card rounded-lg shadow-sm">
+            <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] pt-2.5">
-                  <table class="w-full table-auto">
+                  <table class="w-full table-auto border-collapse">
                     <thead id="tableHeader" class="sticky top-0 bg-card z-20">
-                      <tr class="border-b border-border">
+                      <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
                     </thead>
