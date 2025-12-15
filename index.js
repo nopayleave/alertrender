@@ -60,6 +60,12 @@ let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
 
+// Helper function to get current date string in YYYY-MM-DD format
+function getCurrentDateString() {
+  const now = new Date()
+  return now.toISOString().split('T')[0]
+}
+
 // Helper function to calculate trend based on alert data
 function calculateTrend(alert) {
   // Use calculatedTrend from Pine Script if available (prioritize)
