@@ -3230,7 +3230,7 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
-              (colId !== 'star' ? '<div class="resize-handle" onmousedown="handleResizeStart(event, \'' + colId + '\')"></div>' : '') +
+              (colId !== 'star' ? '<div class="resize-handle" onmousedown="handleResizeStart(event, ' + JSON.stringify(colId) + ')"></div>' : '') +
               '</th>';
           }).join('');
           
