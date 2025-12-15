@@ -2554,7 +2554,79 @@ app.get('/', (req, res) => {
                 onclick="clearBjFilters()" 
                 class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
               >
-                Clear Filters
+                Clear BJ Filters
+              </button>
+            </div>
+            
+            <!-- Stoch Filters -->
+            <div class="flex flex-wrap gap-2 items-center text-xs">
+              <span class="text-muted-foreground font-medium">Stoch Filters:</span>
+              
+              <!-- D1 Value Filter -->
+              <select 
+                id="filterD1Value" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">D1 Value: All</option>
+                <option value="<10">&lt;10 (Extreme Oversold)</option>
+                <option value="10-20">10-20 (Oversold)</option>
+                <option value="20-50">20-50 (Lower Range)</option>
+                <option value="50-80">50-80 (Upper Range)</option>
+                <option value="80-90">80-90 (Overbought)</option>
+                <option value=">90">&gt;90 (Extreme Overbought)</option>
+              </select>
+              
+              <!-- D2 Value Filter -->
+              <select 
+                id="filterD2Value" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">D2 Value: All</option>
+                <option value="<10">&lt;10 (Extreme Oversold)</option>
+                <option value="10-20">10-20 (Oversold)</option>
+                <option value="20-50">20-50 (Lower Range)</option>
+                <option value="50-80">50-80 (Upper Range)</option>
+                <option value="80-90">80-90 (Overbought)</option>
+                <option value=">90">&gt;90 (Extreme Overbought)</option>
+              </select>
+              
+              <!-- Trend Message Filter -->
+              <select 
+                id="filterTrendMessage" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">Trend Message: All</option>
+                <option value="Do Not Long">Do Not Long</option>
+                <option value="Do Not Short">Do Not Short</option>
+                <option value="Try Long">Try Long</option>
+                <option value="Try Short">Try Short</option>
+                <option value="Big Trend Day">Big Trend Day</option>
+              </select>
+              
+              <!-- % Change Filter -->
+              <select 
+                id="filterPercentChange" 
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+              >
+                <option value="">% Change: All</option>
+                <option value="<-5">&lt;-5% (Large Down)</option>
+                <option value="-5--2">-5% to -2% (Down)</option>
+                <option value="-2-0">-2% to 0% (Slight Down)</option>
+                <option value="0-2">0% to 2% (Slight Up)</option>
+                <option value="2-5">2% to 5% (Up)</option>
+                <option value=">5">&gt;5% (Large Up)</option>
+              </select>
+              
+              <!-- Clear Stoch Filters Button -->
+              <button 
+                onclick="clearStochFilters()" 
+                class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
+              >
+                Clear Stoch Filters
               </button>
             </div>
           </div>
@@ -2607,6 +2679,12 @@ app.get('/', (req, res) => {
         let bjFilterVDir = '';
         let bjFilterSDir = '';
         let bjFilterArea = '';
+        
+        // Stoch Filter state
+        let stochFilterD1Value = '';
+        let stochFilterD2Value = '';
+        let stochFilterTrendMessage = '';
+        let stochFilterPercentChange = '';
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
@@ -2868,6 +2946,12 @@ app.get('/', (req, res) => {
           bjFilterSDir = document.getElementById('filterSDir')?.value || '';
           bjFilterArea = document.getElementById('filterArea')?.value || '';
           
+          // Stoch Filters
+          stochFilterD1Value = document.getElementById('filterD1Value')?.value || '';
+          stochFilterD2Value = document.getElementById('filterD2Value')?.value || '';
+          stochFilterTrendMessage = document.getElementById('filterTrendMessage')?.value || '';
+          stochFilterPercentChange = document.getElementById('filterPercentChange')?.value || '';
+          
           renderTable();
         }
         
@@ -2880,6 +2964,18 @@ app.get('/', (req, res) => {
           bjFilterVDir = '';
           bjFilterSDir = '';
           bjFilterArea = '';
+          renderTable();
+        }
+        
+        function clearStochFilters() {
+          document.getElementById('filterD1Value').value = '';
+          document.getElementById('filterD2Value').value = '';
+          document.getElementById('filterTrendMessage').value = '';
+          document.getElementById('filterPercentChange').value = '';
+          stochFilterD1Value = '';
+          stochFilterD2Value = '';
+          stochFilterTrendMessage = '';
+          stochFilterPercentChange = '';
           renderTable();
         }
 
@@ -3027,6 +3123,78 @@ app.get('/', (req, res) => {
             filteredData = alertsData.filter(alert => 
               (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
+          }
+          
+          // Apply Stoch Filters
+          if (stochFilterD1Value || stochFilterD2Value || stochFilterTrendMessage || stochFilterPercentChange) {
+            filteredData = filteredData.filter(alert => {
+              // Get D1 and D2 values
+              const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
+              const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+              
+              // Get % change value
+              const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+              
+              // Determine trend message from alert data
+              let trendMessage = '';
+              if (alert.isBigTrendDay) {
+                trendMessage = 'Big Trend Day';
+              } else if (d1Value !== null && d2Value !== null) {
+                const d1Direction = alert.dualStochD1Direction || 'flat';
+                const d2Direction = alert.dualStochD2Direction || 'flat';
+                
+                if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
+                  trendMessage = 'Do Not Long';
+                } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
+                  trendMessage = 'Do Not Short';
+                } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+                  trendMessage = 'Try Long';
+                } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+                  trendMessage = 'Try Short';
+                }
+              }
+              
+              // Check D1 value filter (only filter if value exists)
+              if (stochFilterD1Value) {
+                if (d1Value === null || isNaN(d1Value)) return false;
+                const d1Val = d1Value;
+                if (stochFilterD1Value === '<10' && d1Val >= 10) return false;
+                if (stochFilterD1Value === '10-20' && (d1Val < 10 || d1Val >= 20)) return false;
+                if (stochFilterD1Value === '20-50' && (d1Val < 20 || d1Val >= 50)) return false;
+                if (stochFilterD1Value === '50-80' && (d1Val < 50 || d1Val >= 80)) return false;
+                if (stochFilterD1Value === '80-90' && (d1Val < 80 || d1Val >= 90)) return false;
+                if (stochFilterD1Value === '>90' && d1Val <= 90) return false;
+              }
+              
+              // Check D2 value filter (only filter if value exists)
+              if (stochFilterD2Value) {
+                if (d2Value === null || isNaN(d2Value)) return false;
+                const d2Val = d2Value;
+                if (stochFilterD2Value === '<10' && d2Val >= 10) return false;
+                if (stochFilterD2Value === '10-20' && (d2Val < 10 || d2Val >= 20)) return false;
+                if (stochFilterD2Value === '20-50' && (d2Val < 20 || d2Val >= 50)) return false;
+                if (stochFilterD2Value === '50-80' && (d2Val < 50 || d2Val >= 80)) return false;
+                if (stochFilterD2Value === '80-90' && (d2Val < 80 || d2Val >= 90)) return false;
+                if (stochFilterD2Value === '>90' && d2Val <= 90) return false;
+              }
+              
+              // Check trend message filter
+              if (stochFilterTrendMessage && trendMessage !== stochFilterTrendMessage) return false;
+              
+              // Check % change filter
+              if (stochFilterPercentChange) {
+                if (percentChange === null || isNaN(percentChange)) return false;
+                const pctVal = percentChange;
+                if (stochFilterPercentChange === '<-5' && pctVal >= -5) return false;
+                if (stochFilterPercentChange === '-5--2' && (pctVal < -5 || pctVal >= -2)) return false;
+                if (stochFilterPercentChange === '-2-0' && (pctVal < -2 || pctVal >= 0)) return false;
+                if (stochFilterPercentChange === '0-2' && (pctVal < 0 || pctVal >= 2)) return false;
+                if (stochFilterPercentChange === '2-5' && (pctVal < 2 || pctVal >= 5)) return false;
+                if (stochFilterPercentChange === '>5' && pctVal <= 5) return false;
+              }
+              
+              return true;
+            });
           }
           
           // Apply BJ TSI Filters
