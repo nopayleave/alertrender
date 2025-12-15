@@ -2934,13 +2934,14 @@ app.get('/', (req, res) => {
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['star', 'symbol', 'price', 'd2', 'bj', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'd2', 'bj', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
+        // Remove 'star' from columnOrder if it exists (legacy support)
+        columnOrder = columnOrder.filter(colId => colId !== 'star');
         
         // Column widths - stored in localStorage (in pixels)
         const defaultColumnWidths = {
-          star: 40,
-          symbol: 54,
+          symbol: 80,
           price: 100,
           d2: 220,
           highLevelTrend: 64,
@@ -2988,8 +2989,7 @@ app.get('/', (req, res) => {
         
         // Column definitions
         const columnDefs = {
-          star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
-          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[54px]' },
+          symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
@@ -3302,9 +3302,9 @@ app.get('/', (req, res) => {
             const sortField = col.sortField || col.id;
             const sortIndicator = col.sortable ? '<span id="sort-' + sortField + '" class="ml-1 text-xs">⇅</span>' : '';
             const tooltipAttr = col.tooltip ? 'title="' + col.tooltip + '"' : '';
-            const paddingClass = colId === 'star' ? 'pl-4 pr-1' : colId === 'symbol' ? 'pl-1 pr-4' : 'px-4';
+            const paddingClass = colId === 'symbol' ? 'pl-4 pr-4' : 'px-4';
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
-            const draggableAttr = colId !== 'star' ? 'true' : 'false';
+            const draggableAttr = 'true';
             
             // Get dynamic width
             const width = getColumnWidth(colId);
@@ -3546,10 +3546,7 @@ app.get('/', (req, res) => {
               header.style.width = newWidth + 'px';
               header.style.minWidth = newWidth + 'px';
               header.style.maxWidth = newWidth + 'px';
-              // Re-enable dragging if it's not the star column
-              if (resizeState.columnId !== 'star') {
-                header.setAttribute('draggable', 'true');
-              }
+              header.setAttribute('draggable', 'true');
             });
             
             // Update all cells
@@ -5023,18 +5020,18 @@ app.get('/', (req, res) => {
             
             // Generate cell content for each column
             const cellContent = {
-              star: \`
-                <td class="py-3 pl-4 pr-1 text-center" style="\${getCellWidthStyle('star')}">
+              symbol: \`<td class="py-3 pl-4 pr-4 font-medium text-foreground w-auto whitespace-nowrap" style="\${getCellWidthStyle('symbol')}">
+                <div class="flex items-center gap-2">
                   <button 
-                    onclick="toggleStar('\${alert.symbol}')" 
-                    class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform"
+                    onclick="event.stopPropagation(); toggleStar('\${alert.symbol}')" 
+                    class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform flex-shrink-0"
                     title="\${starred ? 'Remove from favorites' : 'Add to favorites'}"
                   >
                     \${starIcon}
                   </button>
-                </td>
-              \`,
-              symbol: \`<td class="py-3 pl-1 pr-4 font-medium text-foreground w-auto whitespace-nowrap" style="\${getCellWidthStyle('symbol')}">\${alert.symbol || 'N/A'}</td>\`,
+                  <span>\${alert.symbol || 'N/A'}</span>
+                </div>
+              </td>\`,
               price: \`
                 <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
