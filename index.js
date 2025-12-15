@@ -1658,11 +1658,69 @@ app.post('/webhook', (req, res) => {
         alertData.dualStochD2 = dualStochInfo.d2
         alertData.dualStochD2Direction = dualStochInfo.d2Direction
         alertData.dualStochHighLevelTrend = dualStochInfo.highLevelTrend
+        alertData.dualStochHighLevelTrendType = dualStochInfo.highLevelTrendType
+        alertData.dualStochHighLevelTrendDiff = dualStochInfo.highLevelTrendDiff
         // Add Big Trend Day status
         const today = getCurrentDateString()
         alertData.isBigTrendDay = (bigTrendDay[alert.symbol] && bigTrendDay[alert.symbol][today] && bigTrendDay[alert.symbol][today].isBigTrendDay) || false
-        alertData.dualStochHighLevelTrendType = dualStochInfo.highLevelTrendType
-        alertData.dualStochHighLevelTrendDiff = dualStochInfo.highLevelTrendDiff
+        
+        // Generate mini chart SVG on server side
+        let miniChartSvg = ''
+        const history = dualStochHistory[alert.symbol] || []
+        if (history.length > 1 && dualStochInfo.d1 !== null && dualStochInfo.d2 !== null) {
+          const chartWidth = 120
+          const chartHeight = 40
+          const padding = 2
+          const plotWidth = chartWidth - padding * 2
+          const plotHeight = chartHeight - padding * 2
+          
+          // Find min/max values for scaling
+          let minVal = 100
+          let maxVal = 0
+          history.forEach(point => {
+            minVal = Math.min(minVal, point.d1, point.d2)
+            maxVal = Math.max(maxVal, point.d1, point.d2)
+          })
+          // Add some padding to the range
+          const range = maxVal - minVal || 1
+          minVal = Math.max(0, minVal - range * 0.1)
+          maxVal = Math.min(100, maxVal + range * 0.1)
+          const scale = (maxVal - minVal) || 1
+          
+          // Generate path for D1 (green) and D2 (blue)
+          let d1Path = ''
+          let d2Path = ''
+          history.forEach((point, index) => {
+            const x = padding + (index / (history.length - 1)) * plotWidth
+            const y1 = padding + plotHeight - ((point.d1 - minVal) / scale) * plotHeight
+            const y2 = padding + plotHeight - ((point.d2 - minVal) / scale) * plotHeight
+            
+            if (index === 0) {
+              d1Path += 'M ' + x + ' ' + y1
+              d2Path += 'M ' + x + ' ' + y2
+            } else {
+              d1Path += ' L ' + x + ' ' + y1
+              d2Path += ' L ' + x + ' ' + y2
+            }
+          })
+          
+          // Add reference lines at 20, 50, 80
+          const y20 = padding + plotHeight - ((20 - minVal) / scale) * plotHeight
+          const y50 = padding + plotHeight - ((50 - minVal) / scale) * plotHeight
+          const y80 = padding + plotHeight - ((80 - minVal) / scale) * plotHeight
+          
+          miniChartSvg = '<svg width="' + chartWidth + '" height="' + chartHeight + '" style="display: block;">' +
+            '<!-- Reference lines -->' +
+            '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+            '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#666" stroke-width="0.5" opacity="0.2"/>' +
+            '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+            '<!-- D2 line (blue) -->' +
+            '<path d="' + d2Path + '" stroke="#0088ff" stroke-width="1.5" fill="none"/>' +
+            '<!-- D1 line (green) -->' +
+            '<path d="' + d1Path + '" stroke="#00ff00" stroke-width="1.5" fill="none"/>' +
+            '</svg>'
+        }
+        alertData.dualStochMiniChart = miniChartSvg
         // Also merge day data from Dual Stoch if not already set
         if (dualStochInfo.previousClose !== undefined && dualStochInfo.previousClose !== null && alertData.previousClose === undefined) {
           alertData.previousClose = dualStochInfo.previousClose
