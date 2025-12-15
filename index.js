@@ -2537,16 +2537,11 @@ app.get('/', (req, res) => {
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
                 <div class="relative mb-4">
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                  </div>
                   <input 
                     type="text" 
                     id="searchInput" 
                     placeholder="Search tickers..." 
-                    class="w-full pl-10 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-sm"
+                    class="w-full pl-3 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-sm"
                     onkeyup="filterAlerts()"
                     oninput="toggleClearButton()"
                   />
@@ -4784,7 +4779,7 @@ app.get('/', (req, res) => {
             const cells = columnOrder.map(colId => cellContent[colId] || '').join('');
             
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}">
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}" style="background-color: rgba(255, 255, 255, 0.02);">
                 \${cells}
               </tr>
             \`;
