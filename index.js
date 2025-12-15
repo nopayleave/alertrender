@@ -2555,15 +2555,15 @@ app.get('/', (req, res) => {
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑ Up</button>
-                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓ Down</button>
+                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑</button>
+                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓</button>
                       </div>
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑ Up</button>
-                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓ Down</button>
+                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑</button>
+                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓</button>
                       </div>
                     </div>
                   </div>
@@ -2642,9 +2642,8 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑ Up</button>
-                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓ Down</button>
-                      <button onclick="toggleFilterChip('d1Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d1Direction" data-value="flat">→ Flat</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
@@ -2681,9 +2680,8 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑ Up</button>
-                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓ Down</button>
-                      <button onclick="toggleFilterChip('d2Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d2Direction" data-value="flat">→ Flat</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
@@ -2743,11 +2741,11 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">⛔ No Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="Do Not Short">⛔ No Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">📈 Try Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">📉 Try Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="trendMessage" data-value="Big Trend Day">🔥 Big Trend</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">No Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="Do Not Short">No Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">Try Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">Try Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="trendMessage" data-value="Big Trend Day">Big Trend</button>
                     </div>
                   </div>
                   
@@ -2773,7 +2771,7 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <div class="bg-card rounded-lg shadow-sm">
               <div>
-                <div class="overflow-x-auto max-h-[calc(100vh-200px)]">
+                <div class="overflow-x-auto max-h-[calc(100vh-200px)] pt-2.5">
                   <table class="w-full table-auto">
                     <thead id="tableHeader" class="sticky top-0 bg-card z-20">
                       <tr class="border-b border-border">
