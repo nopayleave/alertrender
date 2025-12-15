@@ -1155,6 +1155,10 @@ app.post('/webhook', (req, res) => {
       const newAlert = {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
+        price: alert.price || null,
+        previousClose: alert.previousClose || null,
+        changeFromPrevDay: alert.changeFromPrevDay || null,
+        volume: alert.volume || null,
         dualStochD1: alert.d1,
         dualStochD1Direction: alert.d1Direction,
         dualStochD1Pattern: alert.d1Pattern || '',
