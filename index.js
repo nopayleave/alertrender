@@ -2942,6 +2942,11 @@ app.get('/', (req, res) => {
             });
             bjValueSlider.setAttribute('disabled', true);
             sliders.bjValue = bjValueSlider;
+            // Initialize gradient
+            const bjConnect = bjValueSlider.querySelector('.noUi-connect');
+            if (bjConnect) {
+              bjConnect.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 42.5%, #eab308 42.5%, #eab308 57.5%, #22c55e 57.5%, #22c55e 100%)';
+            }
             bjValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
               const maxVal = Math.round(values[1]);
@@ -2949,9 +2954,37 @@ app.get('/', (req, res) => {
               const maxEl = document.getElementById('bjValueMaxValue');
               minEl.textContent = minVal;
               maxEl.textContent = maxVal;
-              // Apply color: red for negative, yellow for neutral (-15 to 15), green for positive
+              
+              // Get colors for min and max values
+              const getColor = (val) => {
+                if (val < -15) return '#ef4444'; // red-400
+                if (val > 15) return '#22c55e'; // green-400
+                return '#eab308'; // yellow-400
+              };
+              
+              const minColor = getColor(minVal);
+              const maxColor = getColor(maxVal);
+              
+              // Apply color to text
               minEl.className = 'font-semibold ' + (minVal < -15 ? 'text-red-400' : minVal > 15 ? 'text-green-400' : 'text-yellow-400');
               maxEl.className = 'font-semibold ' + (maxVal < -15 ? 'text-red-400' : maxVal > 15 ? 'text-green-400' : 'text-yellow-400');
+              
+              // Update slider gradient to match value colors
+              const connect = bjValueSlider.querySelector('.noUi-connect');
+              if (connect) {
+                // If both values are in the same color zone, use solid color
+                if (minColor === maxColor) {
+                  connect.style.background = minColor;
+                } else {
+                  // Create gradient transitioning between min and max colors
+                  // Add midpoint color if crossing the neutral zone
+                  if ((minVal < -15 && maxVal > 15) || (minVal > 15 && maxVal < -15)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
+                  } else {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  }
+                }
+              }
             });
             bjValueSlider.noUiSlider.on('change', function() {
               updateBjValueFilter();
@@ -2970,6 +3003,11 @@ app.get('/', (req, res) => {
             });
             d1ValueSlider.setAttribute('disabled', true);
             sliders.d1Value = d1ValueSlider;
+            // Initialize gradient
+            const d1Connect = d1ValueSlider.querySelector('.noUi-connect');
+            if (d1Connect) {
+              d1Connect.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 40%, #eab308 40%, #eab308 60%, #22c55e 60%, #22c55e 100%)';
+            }
             d1ValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
               const maxVal = Math.round(values[1]);
@@ -2977,9 +3015,35 @@ app.get('/', (req, res) => {
               const maxEl = document.getElementById('d1ValueMaxValue');
               minEl.textContent = minVal;
               maxEl.textContent = maxVal;
-              // Apply color: red (<40), yellow (40-60), green (>60)
+              
+              // Get colors for min and max values
+              const getColor = (val) => {
+                if (val < 40) return '#ef4444'; // red-400
+                if (val > 60) return '#22c55e'; // green-400
+                return '#eab308'; // yellow-400
+              };
+              
+              const minColor = getColor(minVal);
+              const maxColor = getColor(maxVal);
+              
+              // Apply color to text
               minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
               maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              
+              // Update slider gradient to match value colors
+              const connect = d1ValueSlider.querySelector('.noUi-connect');
+              if (connect) {
+                if (minColor === maxColor) {
+                  connect.style.background = minColor;
+                } else {
+                  // Add midpoint color if crossing the yellow zone
+                  if ((minVal < 40 && maxVal > 60) || (minVal > 60 && maxVal < 40)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
+                  } else {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  }
+                }
+              }
             });
             d1ValueSlider.noUiSlider.on('change', function() {
               updateD1ValueFilter();
@@ -2998,6 +3062,11 @@ app.get('/', (req, res) => {
             });
             d2ValueSlider.setAttribute('disabled', true);
             sliders.d2Value = d2ValueSlider;
+            // Initialize gradient
+            const d2Connect = d2ValueSlider.querySelector('.noUi-connect');
+            if (d2Connect) {
+              d2Connect.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 40%, #eab308 40%, #eab308 60%, #22c55e 60%, #22c55e 100%)';
+            }
             d2ValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
               const maxVal = Math.round(values[1]);
@@ -3005,9 +3074,35 @@ app.get('/', (req, res) => {
               const maxEl = document.getElementById('d2ValueMaxValue');
               minEl.textContent = minVal;
               maxEl.textContent = maxVal;
-              // Apply color: red (<40), yellow (40-60), green (>60)
+              
+              // Get colors for min and max values
+              const getColor = (val) => {
+                if (val < 40) return '#ef4444'; // red-400
+                if (val > 60) return '#22c55e'; // green-400
+                return '#eab308'; // yellow-400
+              };
+              
+              const minColor = getColor(minVal);
+              const maxColor = getColor(maxVal);
+              
+              // Apply color to text
               minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
               maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              
+              // Update slider gradient to match value colors
+              const connect = d2ValueSlider.querySelector('.noUi-connect');
+              if (connect) {
+                if (minColor === maxColor) {
+                  connect.style.background = minColor;
+                } else {
+                  // Add midpoint color if crossing the yellow zone
+                  if ((minVal < 40 && maxVal > 60) || (minVal > 60 && maxVal < 40)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
+                  } else {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  }
+                }
+              }
             });
             d2ValueSlider.noUiSlider.on('change', function() {
               updateD2ValueFilter();
@@ -3026,6 +3121,11 @@ app.get('/', (req, res) => {
             });
             diffSlider.setAttribute('disabled', true);
             sliders.diff = diffSlider;
+            // Initialize gradient
+            const diffConnect = diffSlider.querySelector('.noUi-connect');
+            if (diffConnect) {
+              diffConnect.style.background = 'linear-gradient(to right, #60a5fa 0%, #60a5fa 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
+            }
             diffSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
               const maxVal = Math.round(values[1]);
@@ -3033,9 +3133,37 @@ app.get('/', (req, res) => {
               const maxEl = document.getElementById('diffMaxValue');
               minEl.textContent = minVal;
               maxEl.textContent = maxVal;
-              // Apply color: blue for small diff (<10), yellow for medium (10-25), orange for large (>25)
+              
+              // Get colors for min and max values
+              const getColor = (val) => {
+                if (val < 10) return '#60a5fa'; // blue-400
+                if (val < 25) return '#eab308'; // yellow-400
+                return '#fb923c'; // orange-400
+              };
+              
+              const minColor = getColor(minVal);
+              const maxColor = getColor(maxVal);
+              
+              // Apply color to text
               minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
               maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              
+              // Update slider gradient to match value colors
+              const connect = diffSlider.querySelector('.noUi-connect');
+              if (connect) {
+                if (minColor === maxColor) {
+                  connect.style.background = minColor;
+                } else {
+                  // Add midpoint color if crossing zones
+                  if ((minVal < 10 && maxVal > 25) || (minVal > 25 && maxVal < 10)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
+                  } else if ((minVal < 10 && maxVal > 10 && maxVal <= 25) || (minVal > 10 && minVal <= 25 && maxVal > 25)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  } else {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  }
+                }
+              }
             });
             diffSlider.noUiSlider.on('change', function() {
               updateDiffFilter();
