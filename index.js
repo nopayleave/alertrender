@@ -2314,6 +2314,12 @@ app.get('/', (req, res) => {
         .hide-scrollbar::-webkit-scrollbar {
           display: none;  /* Chrome, Safari and Opera */
         }
+        /* Override xl:gap-6 to reduce space between filter and table */
+        @media (min-width: 1280px) {
+          .xl\:gap-6 {
+            gap: 0.5rem;
+          }
+        }
         /* iOS-style search input focus */
         input:focus {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
