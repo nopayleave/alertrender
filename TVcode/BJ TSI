@@ -261,15 +261,19 @@ var float premarketTsiHigh = na
 var float premarketTsiLow = na
 var bool premarketDataCaptured = false // Track if we captured any premarket data today
 
-// Reset at start of new day (using specified timezone)
-currentDay = dayofweek(time, premarketTimezone)
-currentDayOfMonth = dayofmonth(time, premarketTimezone)
-isNewDay = ta.change(currentDay) != 0 or ta.change(currentDayOfMonth) != 0
-
 // Create persistent snapshot variables for webhook (regular variables that hold the last valid values)
 // This ensures the webhook always has access to the premarket range even in alert context
 var float webhookPmHigh = na
 var float webhookPmLow = na
+
+// Track previous day to detect day change (more reliable in alert context than ta.change)
+var int prevDayOfMonth = na
+currentDay = dayofweek(time, premarketTimezone)
+currentDayOfMonth = dayofmonth(time, premarketTimezone)
+
+// Detect new day by comparing current day with stored previous day
+// This is more reliable in alert context than ta.change()
+isNewDay = na(prevDayOfMonth) ? false : (currentDayOfMonth != prevDayOfMonth)
 
 // Reset premarket values only on new day
 if isNewDay
@@ -280,6 +284,9 @@ if isNewDay
     webhookPmHigh := na
     webhookPmLow := na
 
+// Update previous day tracker at end of logic (after reset check)
+prevDayOfMonth := currentDayOfMonth
+
 // Update premarket high/low during premarket session
 if inPremarket
     premarketDataCaptured := true
@@ -287,13 +294,18 @@ if inPremarket
     if na(premarketTsiHigh) and na(premarketTsiLow)
         premarketTsiHigh := tsi
         premarketTsiLow := tsi
+        // Also update webhook snapshots
+        webhookPmHigh := tsi
+        webhookPmLow := tsi
     else
         // Update high if current value is higher
         if tsi > premarketTsiHigh
             premarketTsiHigh := tsi
+            webhookPmHigh := tsi
         // Update low if current value is lower
         if tsi < premarketTsiLow
             premarketTsiLow := tsi
+            webhookPmLow := tsi
 
 // FALLBACK: If no premarket data was captured and we're in early market hours,
 // use the first bar(s) after market open as proxy for premarket range
@@ -303,12 +315,16 @@ if not premarketDataCaptured and inEarlyMarket
         // First bar after market open - initialize both
         premarketTsiHigh := tsi
         premarketTsiLow := tsi
+        webhookPmHigh := tsi
+        webhookPmLow := tsi
     else
         // Continue tracking during early market to build a range
         if tsi > premarketTsiHigh
             premarketTsiHigh := tsi
+            webhookPmHigh := tsi
         if tsi < premarketTsiLow
             premarketTsiLow := tsi
+            webhookPmLow := tsi
 
 // Use the tracked values for the background range
 // Values persist after premarket ends until next day
@@ -459,20 +475,8 @@ alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_c
            webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : 
            alert.freq_all
 
-// Webhook JSON payload
+// Webhook JSON payload (premarket range removed - never displayed correctly)
 if enableWebhook and barstate.isconfirmed
-    // Update webhook snapshot variables right before sending to ensure they match chart display
-    // Use the current premarket range values (same as what's displayed on chart)
-    if not na(premarketTsiHigh)
-        webhookPmHigh := premarketTsiHigh
-    if not na(premarketTsiLow)
-        webhookPmLow := premarketTsiLow
-    
-    // Use the current premarket range values directly (same as chart display)
-    // This ensures webhook values always match what's shown on the chart
-    string pmHighStr = na(premarketRangeUpper) ? "null" : str.tostring(premarketRangeUpper, "#.###")
-    string pmLowStr = na(premarketRangeLower) ? "null" : str.tostring(premarketRangeLower, "#.###")
-    
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
       '"timeframe": "' + timeframe.period + '",' +
@@ -481,9 +485,7 @@ if enableWebhook and barstate.isconfirmed
       '"bjTsi": ' + str.tostring(tsi, "#.###") + ',' +
       '"bjTsl": ' + str.tostring(tsl, "#.###") + ',' +
       '"bjTsiIsBull": ' + str.tostring(tsiIsBull) + ',' +
-      '"bjTslIsBull": ' + str.tostring(tslIsBull) + ',' +
-      '"bjPremarketTsiHigh": ' + pmHighStr + ',' +
-      '"bjPremarketTsiLow": ' + pmLowStr + '}'
+      '"bjTslIsBull": ' + str.tostring(tslIsBull) + '}'
     alert(jsonMsg, freq = alertFreq)
 
 // Simple alerts (for backward compatibility)

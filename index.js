@@ -52,7 +52,6 @@ let previousDirections = {} // Store previous D1-D8 directions to detect switche
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 let bjTsiDataStorage = {} // Store BJ TSI data by symbol with timestamp
-let bjPremarketRange = {} // Store premarket high/low TSI values per symbol per day: { symbol: { date: 'YYYY-MM-DD', high: number, low: number } }
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
@@ -60,78 +59,6 @@ let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: {
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
-
-// Helper function to check if current time is in premarket hours (4:00 AM - 9:30 AM Eastern Time)
-function isInPremarketHours() {
-  // Use Eastern Time (America/New_York) for US stock premarket
-  const now = new Date();
-  const easternTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const hour = easternTime.getHours();
-  const minute = easternTime.getMinutes();
-  const currentTime = hour * 100 + minute;
-  const premarketStart = 4 * 100 + 0; // 4:00 AM ET
-  const premarketEnd = 9 * 100 + 30; // 9:30 AM ET
-  return currentTime >= premarketStart && currentTime < premarketEnd;
-}
-
-// Helper function to get current date string (YYYY-MM-DD) in Eastern Time
-function getCurrentDateString() {
-  const now = new Date();
-  // Use Eastern Time for date consistency with US stock market
-  const easternDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const year = easternDate.getFullYear();
-  const month = String(easternDate.getMonth() + 1).padStart(2, '0');
-  const day = String(easternDate.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-// Helper function to track and calculate premarket range for BJ TSI
-function updateBjPremarketRange(symbol, tsiValue) {
-  if (!symbol || tsiValue === null || isNaN(tsiValue)) return;
-  
-  const today = getCurrentDateString();
-  const symbolKey = symbol;
-  
-  // Initialize if doesn't exist or if it's a new day
-  if (!bjPremarketRange[symbolKey] || bjPremarketRange[symbolKey].date !== today) {
-    bjPremarketRange[symbolKey] = {
-      date: today,
-      high: tsiValue,
-      low: tsiValue
-    };
-  } else {
-    // Update high/low if we're still in premarket or if we haven't finalized yet
-    if (isInPremarketHours() || !bjPremarketRange[symbolKey].finalized) {
-      if (tsiValue > bjPremarketRange[symbolKey].high) {
-        bjPremarketRange[symbolKey].high = tsiValue;
-      }
-      if (tsiValue < bjPremarketRange[symbolKey].low) {
-        bjPremarketRange[symbolKey].low = tsiValue;
-      }
-    }
-    
-    // Mark as finalized when premarket ends
-    if (!isInPremarketHours() && !bjPremarketRange[symbolKey].finalized) {
-      bjPremarketRange[symbolKey].finalized = true;
-      console.log(`📊 Premarket range finalized for ${symbol}: High=${bjPremarketRange[symbolKey].high.toFixed(3)}, Low=${bjPremarketRange[symbolKey].low.toFixed(3)}`);
-    }
-  }
-}
-
-// Helper function to get premarket range for a symbol
-function getBjPremarketRange(symbol) {
-  const symbolKey = symbol;
-  if (!bjPremarketRange[symbolKey]) return { upper: null, lower: null };
-  
-  const today = getCurrentDateString();
-  // Only return if it's for today
-  if (bjPremarketRange[symbolKey].date !== today) return { upper: null, lower: null };
-  
-  return {
-    upper: bjPremarketRange[symbolKey].high,
-    lower: bjPremarketRange[symbolKey].low
-  };
-}
 
 // Helper function to calculate trend based on alert data
 function calculateTrend(alert) {
@@ -454,17 +381,14 @@ app.post('/webhook', (req, res) => {
   // Log incoming webhook for debugging
   console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
   
-  // Debug BJ TSI premarket range values
+  // Debug BJ TSI values
   if (alert.bjTsi !== undefined) {
     console.log('🔍 BJ TSI Debug:', {
       symbol: alert.symbol,
       bjTsi: alert.bjTsi,
-      bjPremarketTsiHigh: alert.bjPremarketTsiHigh,
-      bjPremarketTsiLow: alert.bjPremarketTsiLow,
-      bjPremarketRangeUpper: alert.bjPremarketRangeUpper, // Legacy support
-      bjPremarketRangeLower: alert.bjPremarketRangeLower, // Legacy support
-      highType: typeof alert.bjPremarketTsiHigh,
-      lowType: typeof alert.bjPremarketTsiLow
+      bjTsl: alert.bjTsl,
+      bjTsiIsBull: alert.bjTsiIsBull,
+      bjTslIsBull: alert.bjTslIsBull
     })
   }
   
@@ -1075,83 +999,14 @@ app.post('/webhook', (req, res) => {
     }
   } else if (isBjTsiAlert && !alert.price) {
     // BJ TSI alert - store BJ TSI data with timestamp
-    const bjTsiValue = parseFloat(alert.bjTsi);
-    
-    // Track premarket range in backend (if TSI value is valid) - as backup
-    if (!isNaN(bjTsiValue)) {
-      updateBjPremarketRange(alert.symbol, bjTsiValue);
-    }
-    
-    // Prioritize Pine script values if available, otherwise use backend calculated
-    let pmUpper = null;
-    let pmLower = null;
-    
-    // Check if Pine script sent premarket TSI high/low values (new field names)
-    // Handle both string "null" and actual null values
-    if (alert.bjPremarketTsiHigh !== null && 
-        alert.bjPremarketTsiHigh !== undefined && 
-        alert.bjPremarketTsiHigh !== '' && 
-        alert.bjPremarketTsiHigh !== 'null' &&
-        String(alert.bjPremarketTsiHigh).toLowerCase() !== 'null') {
-      const highVal = parseFloat(alert.bjPremarketTsiHigh);
-      if (!isNaN(highVal)) {
-        pmUpper = highVal;
-        console.log(`📊 Using Pine script PM High (premarketTsiHigh) for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
-      }
-    }
-    if (alert.bjPremarketTsiLow !== null && 
-        alert.bjPremarketTsiLow !== undefined && 
-        alert.bjPremarketTsiLow !== '' && 
-        alert.bjPremarketTsiLow !== 'null' &&
-        String(alert.bjPremarketTsiLow).toLowerCase() !== 'null') {
-      const lowVal = parseFloat(alert.bjPremarketTsiLow);
-      if (!isNaN(lowVal)) {
-        pmLower = lowVal;
-        console.log(`📊 Using Pine script PM Low (premarketTsiLow) for ${alert.symbol}: ${pmLower.toFixed(3)}`);
-      }
-    }
-    
-    // Legacy support: fallback to old field names if new ones not available
-    if (pmUpper === null && alert.bjPremarketRangeUpper !== null && 
-        alert.bjPremarketRangeUpper !== undefined && 
-        alert.bjPremarketRangeUpper !== '' && 
-        alert.bjPremarketRangeUpper !== 'null' &&
-        String(alert.bjPremarketRangeUpper).toLowerCase() !== 'null') {
-      const upperVal = parseFloat(alert.bjPremarketRangeUpper);
-      if (!isNaN(upperVal)) {
-        pmUpper = upperVal;
-        console.log(`📊 Using Pine script PM Upper (legacy) for ${alert.symbol}: ${pmUpper.toFixed(3)}`);
-      }
-    }
-    if (pmLower === null && alert.bjPremarketRangeLower !== null && 
-        alert.bjPremarketRangeLower !== undefined && 
-        alert.bjPremarketRangeLower !== '' && 
-        alert.bjPremarketRangeLower !== 'null' &&
-        String(alert.bjPremarketRangeLower).toLowerCase() !== 'null') {
-      const lowerVal = parseFloat(alert.bjPremarketRangeLower);
-      if (!isNaN(lowerVal)) {
-        pmLower = lowerVal;
-        console.log(`📊 Using Pine script PM Lower (legacy) for ${alert.symbol}: ${pmLower.toFixed(3)}`);
-      }
-    }
-    
-    // Fallback to backend calculated range if Pine script values not available
-    if (pmUpper === null || pmLower === null) {
-      const pmRange = getBjPremarketRange(alert.symbol);
-      if (pmUpper === null) pmUpper = pmRange.upper;
-      if (pmLower === null) pmLower = pmRange.lower;
-    }
-    
     bjTsiDataStorage[alert.symbol] = {
       bjTsi: alert.bjTsi,
       bjTsl: alert.bjTsl,
       bjTsiIsBull: alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true',
       bjTslIsBull: alert.bjTslIsBull === true || alert.bjTslIsBull === 'true',
-      bjPremarketRangeUpper: pmUpper,
-      bjPremarketRangeLower: pmLower,
       timestamp: Date.now()
     }
-    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}, PM Upper=${pmUpper !== null ? pmUpper.toFixed(3) : 'null'}, PM Lower=${pmLower !== null ? pmLower.toFixed(3) : 'null'}`)
+    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -1160,8 +1015,6 @@ app.post('/webhook', (req, res) => {
       alerts[existingIndex].bjTsl = bjTsiDataStorage[alert.symbol].bjTsl
       alerts[existingIndex].bjTsiIsBull = bjTsiDataStorage[alert.symbol].bjTsiIsBull
       alerts[existingIndex].bjTslIsBull = bjTsiDataStorage[alert.symbol].bjTslIsBull
-      alerts[existingIndex].bjPremarketRangeUpper = bjTsiDataStorage[alert.symbol].bjPremarketRangeUpper
-      alerts[existingIndex].bjPremarketRangeLower = bjTsiDataStorage[alert.symbol].bjPremarketRangeLower
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with BJ TSI data`)
     } else {
@@ -1173,8 +1026,6 @@ app.post('/webhook', (req, res) => {
         bjTsl: bjTsiDataStorage[alert.symbol].bjTsl,
         bjTsiIsBull: bjTsiDataStorage[alert.symbol].bjTsiIsBull,
         bjTslIsBull: bjTsiDataStorage[alert.symbol].bjTslIsBull,
-        bjPremarketRangeUpper: bjTsiDataStorage[alert.symbol].bjPremarketRangeUpper,
-        bjPremarketRangeLower: bjTsiDataStorage[alert.symbol].bjPremarketRangeLower,
         receivedAt: Date.now()
       }
       alerts.unshift(newAlert)
@@ -1539,14 +1390,11 @@ app.post('/webhook', (req, res) => {
       const ageInMinutes = (Date.now() - bjTsiInfo.timestamp) / 60000
       if (ageInMinutes <= 60) {
         // BJ TSI data is recent (within 60 minutes), merge it
-        // Use stored values (which already prioritize Pine script values)
         alertData.bjTsi = bjTsiInfo.bjTsi
         alertData.bjTsl = bjTsiInfo.bjTsl
         alertData.bjTsiIsBull = bjTsiInfo.bjTsiIsBull
         alertData.bjTslIsBull = bjTsiInfo.bjTslIsBull
-        alertData.bjPremarketRangeUpper = bjTsiInfo.bjPremarketRangeUpper
-        alertData.bjPremarketRangeLower = bjTsiInfo.bjPremarketRangeLower
-        console.log(`✅ Merged BJ TSI data for ${alert.symbol}: TSI=${bjTsiInfo.bjTsi}, TSL=${bjTsiInfo.bjTsl}, PM Range=[${bjTsiInfo.bjPremarketRangeLower !== null ? bjTsiInfo.bjPremarketRangeLower.toFixed(3) : 'null'}, ${bjTsiInfo.bjPremarketRangeUpper !== null ? bjTsiInfo.bjPremarketRangeUpper.toFixed(3) : 'null'}] (age: ${ageInMinutes.toFixed(1)} min)`)
+        console.log(`✅ Merged BJ TSI data for ${alert.symbol}: TSI=${bjTsiInfo.bjTsi}, TSL=${bjTsiInfo.bjTsl} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete bjTsiDataStorage[alert.symbol]
@@ -1555,65 +1403,11 @@ app.post('/webhook', (req, res) => {
     } else {
       // If no stored BJ TSI data, check if this alert has BJ TSI data
       if (alert.bjTsi !== undefined) {
-        const bjTsiValue = parseFloat(alert.bjTsi);
-        
-        // Track premarket range if TSI value is valid (as backup)
-        if (!isNaN(bjTsiValue)) {
-          updateBjPremarketRange(alert.symbol, bjTsiValue);
-        }
-        
-        // Prioritize Pine script values if available (new field names: bjPremarketTsiHigh/Low)
-        let pmUpper = null;
-        let pmLower = null;
-        
-        // Check new field names first
-        if (alert.bjPremarketTsiHigh !== null && 
-            alert.bjPremarketTsiHigh !== undefined && 
-            alert.bjPremarketTsiHigh !== '' && 
-            alert.bjPremarketTsiHigh !== 'null' &&
-            String(alert.bjPremarketTsiHigh).toLowerCase() !== 'null') {
-          const highVal = parseFloat(alert.bjPremarketTsiHigh);
-          if (!isNaN(highVal)) pmUpper = highVal;
-        }
-        if (alert.bjPremarketTsiLow !== null && 
-            alert.bjPremarketTsiLow !== undefined && 
-            alert.bjPremarketTsiLow !== '' && 
-            alert.bjPremarketTsiLow !== 'null' &&
-            String(alert.bjPremarketTsiLow).toLowerCase() !== 'null') {
-          const lowVal = parseFloat(alert.bjPremarketTsiLow);
-          if (!isNaN(lowVal)) pmLower = lowVal;
-        }
-        
-        // Legacy support: fallback to old field names
-        if (pmUpper === null && alert.bjPremarketRangeUpper !== null && 
-            alert.bjPremarketRangeUpper !== undefined && 
-            alert.bjPremarketRangeUpper !== '' && 
-            alert.bjPremarketRangeUpper !== 'null') {
-          const upperVal = parseFloat(alert.bjPremarketRangeUpper);
-          if (!isNaN(upperVal)) pmUpper = upperVal;
-        }
-        if (pmLower === null && alert.bjPremarketRangeLower !== null && 
-            alert.bjPremarketRangeLower !== undefined && 
-            alert.bjPremarketRangeLower !== '' && 
-            alert.bjPremarketRangeLower !== 'null') {
-          const lowerVal = parseFloat(alert.bjPremarketRangeLower);
-          if (!isNaN(lowerVal)) pmLower = lowerVal;
-        }
-        
-        // Fallback to backend calculated range if Pine script values not available
-        if (pmUpper === null || pmLower === null) {
-          const pmRange = getBjPremarketRange(alert.symbol);
-          if (pmUpper === null) pmUpper = pmRange.upper;
-          if (pmLower === null) pmLower = pmRange.lower;
-        }
-        
         alertData.bjTsi = alert.bjTsi
         alertData.bjTsl = alert.bjTsl
         alertData.bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true'
         alertData.bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true'
-        alertData.bjPremarketRangeUpper = pmUpper
-        alertData.bjPremarketRangeLower = pmLower
-        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}, PM Range=[${pmLower !== null ? pmLower.toFixed(3) : 'null'}, ${pmUpper !== null ? pmUpper.toFixed(3) : 'null'}]`)
+        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}`)
       }
     }
     
@@ -1839,7 +1633,6 @@ app.post('/reset-alerts', (req, res) => {
   previousDirections = {}
   previousPrices = {}
   macdCrossingData = {}
-  bjPremarketRange = {}
   bjTsiDataStorage = {}
   soloStochDataStorage = {}
   dualStochDataStorage = {}
@@ -2390,6 +2183,9 @@ app.get('/', (req, res) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
+      <!-- noUiSlider for range sliders -->
+      <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
+      <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
       <script>
         tailwind.config = {
           theme: {
@@ -2583,6 +2379,63 @@ app.get('/', (req, res) => {
           opacity: 0.5;
           cursor: not-allowed;
         }
+        /* noUiSlider custom dark theme */
+        .noUi-target {
+          background: hsl(217.2 32.6% 17.5%);
+          border-radius: 4px;
+          border: none;
+          box-shadow: none;
+        }
+        .noUi-connect {
+          background: rgb(59, 130, 246);
+          border-radius: 4px;
+        }
+        .noUi-horizontal {
+          height: 8px;
+        }
+        .noUi-horizontal .noUi-handle {
+          width: 20px;
+          height: 20px;
+          right: -10px;
+          top: -6px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+          cursor: pointer;
+        }
+        .noUi-horizontal .noUi-handle::before,
+        .noUi-horizontal .noUi-handle::after {
+          display: none;
+        }
+        .noUi-handle:hover {
+          transform: scale(1.1);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        .noUi-handle:active {
+          transform: scale(1.15);
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
+        }
+        .noUi-target[disabled] .noUi-connect {
+          background: hsl(217.2 32.6% 25%);
+        }
+        .noUi-target[disabled] .noUi-handle {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+        .noUi-tooltip {
+          display: none;
+          background: hsl(222.2 84% 4.9%);
+          border: 1px solid hsl(217.2 32.6% 17.5%);
+          border-radius: 4px;
+          color: hsl(210 40% 98%);
+          font-size: 11px;
+          padding: 2px 6px;
+        }
+        .noUi-active .noUi-tooltip {
+          display: block;
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
@@ -2650,17 +2503,6 @@ app.get('/', (req, res) => {
                     </button>
                   </div>
                   
-                  <!-- PM Range -->
-                  <div class="mb-3">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">PM Range</label>
-                    <div class="flex flex-wrap gap-1.5" id="pmRangeChips">
-                      <button onclick="toggleFilterChip('pmRange', 'Below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Below">Below</button>
-                      <button onclick="toggleFilterChip('pmRange', 'Lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Lower">Lower</button>
-                      <button onclick="toggleFilterChip('pmRange', 'Upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Upper">Upper</button>
-                      <button onclick="toggleFilterChip('pmRange', 'Above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="pmRange" data-value="Above">Above</button>
-                    </div>
-                  </div>
-                  
                   <!-- V Dir & S Dir -->
                   <div class="grid grid-cols-2 gap-3 mb-3">
                     <div>
@@ -2679,10 +2521,19 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
+                  <!-- Value vs Signal Toggle -->
+                  <div class="mb-3">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
+                    <div class="flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
+                      <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
+                    </div>
+                  </div>
+                  
                   <!-- BJ Value Slider -->
                   <div class="mb-3">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">BJ Value</label>
+                      <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -2690,47 +2541,13 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="px-2" id="bjValueSliderContainer">
                       <div class="mb-2">
-                        <div class="text-xs text-center text-foreground font-semibold mb-2">
-                          <span id="bjValueMinValue" class="text-blue-400">-50</span> - <span id="bjValueMaxValue" class="text-blue-400">50</span>
+                        <div class="py-2">
+                          <div id="bjValueSlider"></div>
                         </div>
-                        <div class="relative h-10 flex items-center">
-                          <div class="relative w-full h-2">
-                            <!-- Track background -->
-                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
-                            <!-- Active range track -->
-                            <div id="bjValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
-                            <!-- Min slider -->
-                            <input 
-                              type="range" 
-                              id="bjValueMinSlider" 
-                              min="-50" 
-                              max="50" 
-                              value="-50" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
-                              oninput="updateRangeSlider('bjValue', 'min', this.value)"
-                              onmousedown="setActiveThumb('bjValue', 'min')"
-                              disabled
-                            />
-                            <!-- Max slider -->
-                            <input 
-                              type="range" 
-                              id="bjValueMaxSlider" 
-                              min="-50" 
-                              max="50" 
-                              value="50" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
-                              oninput="updateRangeSlider('bjValue', 'max', this.value)"
-                              onmousedown="setActiveThumb('bjValue', 'max')"
-                              disabled
-                            />
-                          </div>
-                        </div>
-                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
-                          <span>-50</span>
+                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
+                          <span>-100</span>
                           <span>0</span>
-                          <span>50</span>
+                          <span>100</span>
                         </div>
                       </div>
                     </div>
@@ -2778,7 +2595,7 @@ app.get('/', (req, res) => {
                   <!-- D1 Value Slider -->
                   <div class="mb-3">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D1 Value</label>
+                      <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -2786,40 +2603,10 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="px-2" id="d1ValueSliderContainer">
                       <div class="mb-2">
-                        <div class="text-xs text-center text-foreground font-semibold mb-2">
-                          <span id="d1ValueMinValue" class="text-blue-400">0</span> - <span id="d1ValueMaxValue" class="text-blue-400">100</span>
+                        <div class="py-2">
+                          <div id="d1ValueSlider"></div>
                         </div>
-                        <div class="relative h-10 flex items-center">
-                          <div class="relative w-full h-2">
-                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
-                            <div id="d1ValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
-                            <input 
-                              type="range" 
-                              id="d1ValueMinSlider" 
-                              min="0" 
-                              max="100" 
-                              value="0" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
-                              oninput="updateRangeSlider('d1Value', 'min', this.value)"
-                              onmousedown="setActiveThumb('d1Value', 'min')"
-                              disabled
-                            />
-                            <input 
-                              type="range" 
-                              id="d1ValueMaxSlider" 
-                              min="0" 
-                              max="100" 
-                              value="100" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
-                              oninput="updateRangeSlider('d1Value', 'max', this.value)"
-                              onmousedown="setActiveThumb('d1Value', 'max')"
-                              disabled
-                            />
-                          </div>
-                        </div>
-                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
                           <span>0</span>
                           <span>50</span>
                           <span>100</span>
@@ -2841,7 +2628,7 @@ app.get('/', (req, res) => {
                   <!-- D2 Value Slider -->
                   <div class="mb-3">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D2 Value</label>
+                      <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -2849,40 +2636,10 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="px-2" id="d2ValueSliderContainer">
                       <div class="mb-2">
-                        <div class="text-xs text-center text-foreground font-semibold mb-2">
-                          <span id="d2ValueMinValue" class="text-blue-400">0</span> - <span id="d2ValueMaxValue" class="text-blue-400">100</span>
+                        <div class="py-2">
+                          <div id="d2ValueSlider"></div>
                         </div>
-                        <div class="relative h-10 flex items-center">
-                          <div class="relative w-full h-2">
-                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
-                            <div id="d2ValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
-                            <input 
-                              type="range" 
-                              id="d2ValueMinSlider" 
-                              min="0" 
-                              max="100" 
-                              value="0" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
-                              oninput="updateRangeSlider('d2Value', 'min', this.value)"
-                              onmousedown="setActiveThumb('d2Value', 'min')"
-                              disabled
-                            />
-                            <input 
-                              type="range" 
-                              id="d2ValueMaxSlider" 
-                              min="0" 
-                              max="100" 
-                              value="100" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
-                              oninput="updateRangeSlider('d2Value', 'max', this.value)"
-                              onmousedown="setActiveThumb('d2Value', 'max')"
-                              disabled
-                            />
-                          </div>
-                        </div>
-                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
                           <span>0</span>
                           <span>50</span>
                           <span>100</span>
@@ -2894,7 +2651,7 @@ app.get('/', (req, res) => {
                   <!-- Diff (D1 - D2) - Absolute difference slider -->
                   <div class="mb-3">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2|</label>
+                      <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -2902,40 +2659,10 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="px-2" id="diffSliderContainer">
                       <div class="mb-2">
-                        <div class="text-xs text-center text-foreground font-semibold mb-2">
-                          <span id="diffMinValue" class="text-blue-400">0</span> - <span id="diffMaxValue" class="text-blue-400">50</span>
+                        <div class="py-2">
+                          <div id="diffSlider"></div>
                         </div>
-                        <div class="relative h-10 flex items-center">
-                          <div class="relative w-full h-2">
-                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
-                            <div id="diffRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
-                            <input 
-                              type="range" 
-                              id="diffMinSlider" 
-                              min="0" 
-                              max="50" 
-                              value="0" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
-                              oninput="updateRangeSlider('diff', 'min', this.value)"
-                              onmousedown="setActiveThumb('diff', 'min')"
-                              disabled
-                            />
-                            <input 
-                              type="range" 
-                              id="diffMaxSlider" 
-                              min="0" 
-                              max="50" 
-                              value="50" 
-                              step="1"
-                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
-                              oninput="updateRangeSlider('diff', 'max', this.value)"
-                              onmousedown="setActiveThumb('diff', 'max')"
-                              disabled
-                            />
-                          </div>
-                        </div>
-                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
                           <span>0</span>
                           <span>25</span>
                           <span>50</span>
@@ -3020,11 +2747,11 @@ app.get('/', (req, res) => {
         let searchTerm = '';
         
         // BJ TSI Filter state (arrays for multiple selections)
-        let bjFilterPmRange = [];
         let bjFilterVDir = [];
         let bjFilterSDir = [];
         let bjFilterArea = [];
-        let bjFilterValue = { min: -50, max: 50, active: false }; // BJ Value slider range
+        let bjFilterValueVsSignal = []; // Value vs Signal filter (above/below)
+        let bjFilterValue = { min: -100, max: 100, active: false }; // BJ Value slider range
         
         // Stoch Filter state (arrays for multiple selections)
         let stochFilterD1Direction = [];
@@ -3075,7 +2802,7 @@ app.get('/', (req, res) => {
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: '' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: '', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: '', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, PM Range, V Dir, S Dir, Area' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: '', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: '', tooltip: 'Volume since 9:30 AM' }
         };
 
@@ -3117,11 +2844,102 @@ app.get('/', (req, res) => {
           }
         }
 
+        // noUiSlider instances storage
+        const sliders = {};
+        
+        // Initialize noUiSlider for all range filters
+        function initializeSliders() {
+          // BJ Value Slider (-100 to 100)
+          const bjValueSlider = document.getElementById('bjValueSlider');
+          if (bjValueSlider && !sliders.bjValue) {
+            noUiSlider.create(bjValueSlider, {
+              start: [-100, 100],
+              connect: true,
+              range: { 'min': -100, 'max': 100 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
+            });
+            bjValueSlider.setAttribute('disabled', true);
+            sliders.bjValue = bjValueSlider;
+            bjValueSlider.noUiSlider.on('update', function(values) {
+              document.getElementById('bjValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('bjValueMaxValue').textContent = Math.round(values[1]);
+            });
+            bjValueSlider.noUiSlider.on('change', function() {
+              updateBjValueFilter();
+            });
+          }
+          
+          // D1 Value Slider (0 to 100)
+          const d1ValueSlider = document.getElementById('d1ValueSlider');
+          if (d1ValueSlider && !sliders.d1Value) {
+            noUiSlider.create(d1ValueSlider, {
+              start: [0, 100],
+              connect: true,
+              range: { 'min': 0, 'max': 100 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
+            });
+            d1ValueSlider.setAttribute('disabled', true);
+            sliders.d1Value = d1ValueSlider;
+            d1ValueSlider.noUiSlider.on('update', function(values) {
+              document.getElementById('d1ValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('d1ValueMaxValue').textContent = Math.round(values[1]);
+            });
+            d1ValueSlider.noUiSlider.on('change', function() {
+              updateD1ValueFilter();
+            });
+          }
+          
+          // D2 Value Slider (0 to 100)
+          const d2ValueSlider = document.getElementById('d2ValueSlider');
+          if (d2ValueSlider && !sliders.d2Value) {
+            noUiSlider.create(d2ValueSlider, {
+              start: [0, 100],
+              connect: true,
+              range: { 'min': 0, 'max': 100 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
+            });
+            d2ValueSlider.setAttribute('disabled', true);
+            sliders.d2Value = d2ValueSlider;
+            d2ValueSlider.noUiSlider.on('update', function(values) {
+              document.getElementById('d2ValueMinValue').textContent = Math.round(values[0]);
+              document.getElementById('d2ValueMaxValue').textContent = Math.round(values[1]);
+            });
+            d2ValueSlider.noUiSlider.on('change', function() {
+              updateD2ValueFilter();
+            });
+          }
+          
+          // Diff Slider (0 to 50)
+          const diffSlider = document.getElementById('diffSlider');
+          if (diffSlider && !sliders.diff) {
+            noUiSlider.create(diffSlider, {
+              start: [0, 50],
+              connect: true,
+              range: { 'min': 0, 'max': 50 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
+            });
+            diffSlider.setAttribute('disabled', true);
+            sliders.diff = diffSlider;
+            diffSlider.noUiSlider.on('update', function(values) {
+              document.getElementById('diffMinValue').textContent = Math.round(values[0]);
+              document.getElementById('diffMaxValue').textContent = Math.round(values[1]);
+            });
+            diffSlider.noUiSlider.on('change', function() {
+              updateDiffFilter();
+            });
+          }
+        }
+
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
+          initializeSliders();
         });
 
         // Render table headers dynamically based on column order
@@ -3298,95 +3116,18 @@ app.get('/', (req, res) => {
           filterAlerts();
         }
         
-        // Track active thumb for range slider (Material UI style)
-        let activeThumb = null;
-        
-        function setActiveThumb(sliderType, thumb) {
-          activeThumb = { sliderType, thumb };
-        }
-        
-        // Unified range slider update function (Material UI inspired)
-        function updateRangeSlider(sliderType, thumb, value) {
-          const minSlider = document.getElementById(sliderType + 'MinSlider');
-          const maxSlider = document.getElementById(sliderType + 'MaxSlider');
-          
-          if (!minSlider || !maxSlider) return;
-          
-          let minVal = parseInt(minSlider.value);
-          let maxVal = parseInt(maxSlider.value);
-          
-          // Update the value based on which thumb is being moved
-          if (thumb === 'min') {
-            minVal = parseInt(value);
-            // Prevent min from exceeding max
-            if (minVal > maxVal) {
-              minVal = maxVal;
-              minSlider.value = minVal;
-            }
-          } else if (thumb === 'max') {
-            maxVal = parseInt(value);
-            // Prevent max from going below min
-            if (maxVal < minVal) {
-              maxVal = minVal;
-              maxSlider.value = maxVal;
-            }
-          }
-          
-          // Update displays and call appropriate filter function
-          const minValueDisplay = document.getElementById(sliderType + 'MinValue');
-          const maxValueDisplay = document.getElementById(sliderType + 'MaxValue');
-          
-          if (minValueDisplay) minValueDisplay.textContent = minVal;
-          if (maxValueDisplay) maxValueDisplay.textContent = maxVal;
-          
-          // Update range indicator
-          const sliderConfig = {
-            'bjValue': { min: -50, max: 50 },
-            'd1Value': { min: 0, max: 100 },
-            'd2Value': { min: 0, max: 100 },
-            'diff': { min: 0, max: 50 }
-          };
-          
-          const config = sliderConfig[sliderType];
-          if (config) {
-            updateRangeIndicator(sliderType, minVal, maxVal, config.min, config.max);
-          }
-          
-          // Call the specific filter update function
-          if (sliderType === 'bjValue') {
-            updateBjValueFilter();
-          } else if (sliderType === 'd1Value') {
-            updateD1ValueFilter();
-          } else if (sliderType === 'd2Value') {
-            updateD2ValueFilter();
-          } else if (sliderType === 'diff') {
-            updateDiffFilter();
-          }
-        }
-        
-        // Update visual range indicator for dual-handle slider
-        function updateRangeIndicator(sliderType, minVal, maxVal, minRange, maxRange) {
-          const indicator = document.getElementById(sliderType + 'RangeIndicator');
-          if (indicator) {
-            const range = maxRange - minRange;
-            const leftPercent = ((minVal - minRange) / range) * 100;
-            const widthPercent = ((maxVal - minVal) / range) * 100;
-            indicator.style.left = leftPercent + '%';
-            indicator.style.width = widthPercent + '%';
-          }
-        }
-        
-        // Toggle slider filter on/off
+        // Toggle slider filter on/off (noUiSlider)
         function toggleSliderFilter(sliderType) {
           const toggle = document.getElementById(sliderType + 'Toggle');
-          const container = document.getElementById(sliderType + 'SliderContainer');
-          const minSlider = document.getElementById(sliderType + 'MinSlider');
-          const maxSlider = document.getElementById(sliderType + 'MaxSlider');
+          const slider = sliders[sliderType];
           
-          if (toggle && container && minSlider && maxSlider) {
+          if (toggle && slider) {
             const isEnabled = toggle.checked;
-            minSlider.disabled = !isEnabled;
-            maxSlider.disabled = !isEnabled;
+            if (isEnabled) {
+              slider.removeAttribute('disabled');
+            } else {
+              slider.setAttribute('disabled', true);
+            }
             
             // Call the appropriate update function to set active state correctly
             if (sliderType === 'bjValue') {
@@ -3401,35 +3142,35 @@ app.get('/', (req, res) => {
           }
         }
         
-        // Update BJ Value filter from slider values
+        // Update BJ Value filter from noUiSlider values
         function updateBjValueFilter() {
           const toggle = document.getElementById('bjValueToggle');
-          const minSlider = document.getElementById('bjValueMinSlider');
-          const maxSlider = document.getElementById('bjValueMaxSlider');
+          const slider = sliders.bjValue;
           
-          if (minSlider && maxSlider) {
-            const minVal = parseInt(minSlider.value);
-            const maxVal = parseInt(maxSlider.value);
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]));
+            const maxVal = Math.round(parseFloat(values[1]));
             
             bjFilterValue.min = minVal;
             bjFilterValue.max = maxVal;
             // Only active if toggle is checked AND range is not default
-            bjFilterValue.active = toggle && toggle.checked && (minVal > -50 || maxVal < 50);
+            bjFilterValue.active = toggle && toggle.checked && (minVal > -100 || maxVal < 100);
             
             // Apply filters
             filterAlerts();
           }
         }
         
-        // Update D1 Value filter from slider values
+        // Update D1 Value filter from noUiSlider values
         function updateD1ValueFilter() {
           const toggle = document.getElementById('d1ValueToggle');
-          const minSlider = document.getElementById('d1ValueMinSlider');
-          const maxSlider = document.getElementById('d1ValueMaxSlider');
+          const slider = sliders.d1Value;
           
-          if (minSlider && maxSlider) {
-            const minVal = parseInt(minSlider.value);
-            const maxVal = parseInt(maxSlider.value);
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]));
+            const maxVal = Math.round(parseFloat(values[1]));
             
             stochFilterD1Value.min = minVal;
             stochFilterD1Value.max = maxVal;
@@ -3441,15 +3182,15 @@ app.get('/', (req, res) => {
           }
         }
         
-        // Update D2 Value filter from slider values
+        // Update D2 Value filter from noUiSlider values
         function updateD2ValueFilter() {
           const toggle = document.getElementById('d2ValueToggle');
-          const minSlider = document.getElementById('d2ValueMinSlider');
-          const maxSlider = document.getElementById('d2ValueMaxSlider');
+          const slider = sliders.d2Value;
           
-          if (minSlider && maxSlider) {
-            const minVal = parseInt(minSlider.value);
-            const maxVal = parseInt(maxSlider.value);
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]));
+            const maxVal = Math.round(parseFloat(values[1]));
             
             stochFilterD2Value.min = minVal;
             stochFilterD2Value.max = maxVal;
@@ -3461,15 +3202,15 @@ app.get('/', (req, res) => {
           }
         }
         
-        // Update diff filter from slider values
+        // Update diff filter from noUiSlider values
         function updateDiffFilter() {
           const toggle = document.getElementById('diffToggle');
-          const minSlider = document.getElementById('diffMinSlider');
-          const maxSlider = document.getElementById('diffMaxSlider');
+          const slider = sliders.diff;
           
-          if (minSlider && maxSlider) {
-            const minVal = parseInt(minSlider.value);
-            const maxVal = parseInt(maxSlider.value);
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]));
+            const maxVal = Math.round(parseFloat(values[1]));
             
             stochFilterDiff.min = minVal;
             stochFilterDiff.max = maxVal;
@@ -3484,10 +3225,10 @@ app.get('/', (req, res) => {
         // Update filter arrays from chip states
         function updateFilterArrays() {
           // BJ TSI Filters
-          bjFilterPmRange = Array.from(document.querySelectorAll('[data-filter="pmRange"].active')).map(chip => chip.dataset.value);
           bjFilterVDir = Array.from(document.querySelectorAll('[data-filter="vDir"].active')).map(chip => chip.dataset.value);
           bjFilterSDir = Array.from(document.querySelectorAll('[data-filter="sDir"].active')).map(chip => chip.dataset.value);
           bjFilterArea = Array.from(document.querySelectorAll('[data-filter="area"].active')).map(chip => chip.dataset.value);
+          bjFilterValueVsSignal = Array.from(document.querySelectorAll('[data-filter="valueVsSignal"].active')).map(chip => chip.dataset.value);
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
@@ -3508,24 +3249,23 @@ app.get('/', (req, res) => {
         
         function clearBjFilters() {
           // Remove active class from all BJ filter chips
-          document.querySelectorAll('[data-filter="pmRange"], [data-filter="vDir"], [data-filter="sDir"], [data-filter="area"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="vDir"], [data-filter="sDir"], [data-filter="area"], [data-filter="valueVsSignal"]').forEach(chip => {
             chip.classList.remove('active');
           });
           
-          // Reset BJ Value slider
+          // Reset BJ Value slider (noUiSlider)
           const bjToggle = document.getElementById('bjValueToggle');
-          const bjMinSlider = document.getElementById('bjValueMinSlider');
-          const bjMaxSlider = document.getElementById('bjValueMaxSlider');
           if (bjToggle) bjToggle.checked = false;
-          if (bjMinSlider) bjMinSlider.value = -50;
-          if (bjMaxSlider) bjMaxSlider.value = 50;
-          toggleSliderFilter('bjValue');
+          if (sliders.bjValue && sliders.bjValue.noUiSlider) {
+            sliders.bjValue.noUiSlider.set([-100, 100]);
+            sliders.bjValue.setAttribute('disabled', true);
+          }
           
-          bjFilterPmRange = [];
           bjFilterVDir = [];
           bjFilterSDir = [];
           bjFilterArea = [];
-          bjFilterValue = { min: -50, max: 50, active: false };
+          bjFilterValueVsSignal = [];
+          bjFilterValue = { min: -100, max: 100, active: false };
           renderTable();
         }
         
@@ -3535,32 +3275,29 @@ app.get('/', (req, res) => {
             chip.classList.remove('active');
           });
           
-          // Reset D1 Value slider
+          // Reset D1 Value slider (noUiSlider)
           const d1Toggle = document.getElementById('d1ValueToggle');
-          const d1MinSlider = document.getElementById('d1ValueMinSlider');
-          const d1MaxSlider = document.getElementById('d1ValueMaxSlider');
           if (d1Toggle) d1Toggle.checked = false;
-          if (d1MinSlider) d1MinSlider.value = 0;
-          if (d1MaxSlider) d1MaxSlider.value = 100;
-          toggleSliderFilter('d1Value');
+          if (sliders.d1Value && sliders.d1Value.noUiSlider) {
+            sliders.d1Value.noUiSlider.set([0, 100]);
+            sliders.d1Value.setAttribute('disabled', true);
+          }
           
-          // Reset D2 Value slider
+          // Reset D2 Value slider (noUiSlider)
           const d2Toggle = document.getElementById('d2ValueToggle');
-          const d2MinSlider = document.getElementById('d2ValueMinSlider');
-          const d2MaxSlider = document.getElementById('d2ValueMaxSlider');
           if (d2Toggle) d2Toggle.checked = false;
-          if (d2MinSlider) d2MinSlider.value = 0;
-          if (d2MaxSlider) d2MaxSlider.value = 100;
-          toggleSliderFilter('d2Value');
+          if (sliders.d2Value && sliders.d2Value.noUiSlider) {
+            sliders.d2Value.noUiSlider.set([0, 100]);
+            sliders.d2Value.setAttribute('disabled', true);
+          }
           
-          // Reset diff sliders
+          // Reset diff slider (noUiSlider)
           const diffToggle = document.getElementById('diffToggle');
-          const diffMinSlider = document.getElementById('diffMinSlider');
-          const diffMaxSlider = document.getElementById('diffMaxSlider');
           if (diffToggle) diffToggle.checked = false;
-          if (diffMinSlider) diffMinSlider.value = 0;
-          if (diffMaxSlider) diffMaxSlider.value = 50;
-          toggleSliderFilter('diff');
+          if (sliders.diff && sliders.diff.noUiSlider) {
+            sliders.diff.noUiSlider.set([0, 50]);
+            sliders.diff.setAttribute('disabled', true);
+          }
           
           stochFilterD1Direction = [];
           stochFilterD1Value = { min: 0, max: 100, active: false };
@@ -3796,10 +3533,11 @@ app.get('/', (req, res) => {
           }
           
           // Apply BJ TSI Filters (multiple selections)
-          if (bjFilterPmRange.length > 0 || bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValue.active) {
+          if (bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValueVsSignal.length > 0 || bjFilterValue.active) {
             filteredData = filteredData.filter(alert => {
               // Calculate BJ TSI values for filtering
               const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+              const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
               const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
               const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
               
@@ -3809,28 +3547,11 @@ app.get('/', (req, res) => {
                 if (bjTsi < bjFilterValue.min || bjTsi > bjFilterValue.max) return false;
               }
               
-              // Get premarket range values
-              let premarketRangeUpper = null;
-              let premarketRangeLower = null;
-              if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
-                const upperVal = parseFloat(alert.bjPremarketRangeUpper);
-                if (!isNaN(upperVal)) premarketRangeUpper = upperVal;
-              }
-              if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
-                const lowerVal = parseFloat(alert.bjPremarketRangeLower);
-                if (!isNaN(lowerVal)) premarketRangeLower = lowerVal;
-              }
-              
-              // Calculate PM Range status
-              let pmRangeStatus = '';
-              if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && premarketRangeLower !== null) {
-                const x = premarketRangeLower;
-                const y = premarketRangeUpper;
-                const rangeMid = (y + x) / 2;
-                if (bjTsi < x) pmRangeStatus = 'Below';
-                else if (bjTsi > y) pmRangeStatus = 'Above';
-                else if (bjTsi < rangeMid) pmRangeStatus = 'Lower';
-                else pmRangeStatus = 'Upper';
+              // Check Value vs Signal filter
+              if (bjFilterValueVsSignal.length > 0) {
+                if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) return false;
+                const valueVsSignal = bjTsi > bjTsl ? 'above' : 'below';
+                if (!bjFilterValueVsSignal.includes(valueVsSignal)) return false;
               }
               
               // Calculate V Dir and S Dir
@@ -3849,7 +3570,6 @@ app.get('/', (req, res) => {
               }
               
               // Apply filters (check if value is in selected array)
-              if (bjFilterPmRange.length > 0 && !bjFilterPmRange.includes(pmRangeStatus)) return false;
               if (bjFilterVDir.length > 0 && !bjFilterVDir.includes(vDir)) return false;
               if (bjFilterSDir.length > 0 && !bjFilterSDir.includes(sDir)) return false;
               if (bjFilterArea.length > 0 && !bjFilterArea.includes(areaValue)) return false;
@@ -4549,55 +4269,6 @@ app.get('/', (req, res) => {
             const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
             const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
             
-            // Handle premarket range values - they might be null, "null" string, or actual numbers
-            let premarketRangeUpper = null;
-            let premarketRangeLower = null;
-            if (alert.bjPremarketRangeUpper !== null && alert.bjPremarketRangeUpper !== undefined && alert.bjPremarketRangeUpper !== '' && alert.bjPremarketRangeUpper !== 'null') {
-              const upperVal = parseFloat(alert.bjPremarketRangeUpper);
-              if (!isNaN(upperVal)) premarketRangeUpper = upperVal;
-            }
-            if (alert.bjPremarketRangeLower !== null && alert.bjPremarketRangeLower !== undefined && alert.bjPremarketRangeLower !== '' && alert.bjPremarketRangeLower !== 'null') {
-              const lowerVal = parseFloat(alert.bjPremarketRangeLower);
-              if (!isNaN(lowerVal)) premarketRangeLower = lowerVal;
-            }
-            
-            // Calculate PM Range status
-            // Logic:
-            // - Below: if current value (a) < lowest value (x) of premarket range
-            // - Above: if current value (a) > highest value (y) of premarket range
-            // - Lower: if current value (a) < 50% of premarket range = (y+x)/2
-            // - Upper: if current value (a) > 50% of premarket range = (y+x)/2
-            let pmRangeDisplay = '-';
-            let pmRangeClass = 'text-muted-foreground';
-            let pmRangeValues = ''; // Store the range values for display
-            if (bjTsi !== null && !isNaN(bjTsi) && premarketRangeUpper !== null && !isNaN(premarketRangeUpper) && premarketRangeLower !== null && !isNaN(premarketRangeLower)) {
-              const x = premarketRangeLower; // lowest value
-              const y = premarketRangeUpper; // highest value
-              const a = bjTsi; // current value
-              const rangeMid = (y + x) / 2; // 50% of premarket range
-              
-              // Format range values for display
-              pmRangeValues = ' (' + x.toFixed(2) + ' to ' + y.toFixed(2) + ')';
-              
-              if (a < x) {
-                // Below: current value < lowest value
-                pmRangeDisplay = 'Below';
-                pmRangeClass = 'text-red-400 font-semibold';
-              } else if (a > y) {
-                // Above: current value > highest value
-                pmRangeDisplay = 'Above';
-                pmRangeClass = 'text-green-400 font-semibold';
-              } else if (a < rangeMid) {
-                // Lower: current value < 50% of range (below midpoint)
-                pmRangeDisplay = 'Lower';
-                pmRangeClass = 'text-yellow-400 font-semibold';
-              } else {
-                // Upper: current value >= 50% of range (above or equal to midpoint)
-                pmRangeDisplay = 'Upper';
-                pmRangeClass = 'text-lime-400 font-semibold';
-              }
-            }
-            
             // Calculate Area with text labels
             let areaDisplay = '-';
             let areaClass = 'text-muted-foreground';
@@ -4637,7 +4308,7 @@ app.get('/', (req, res) => {
             const sDirClass = bjTslIsBull ? 'text-green-400' : 'text-red-400';
             
             // ===== BJ TSI OVERVIEW LOGIC =====
-            // Combines all signals into a single actionable overview
+            // Combines all signals into a single actionable overview (based on TSI value and direction)
             let bjOverviewDisplay = '-';
             let bjOverviewClass = 'text-muted-foreground';
             
@@ -4649,15 +4320,6 @@ app.get('/', (req, res) => {
               const vUpSDown = vUp && !sUp;  // V turning up while S still down (early bullish)
               const vDownSUp = !vUp && sUp;  // V turning down while S still up (early bearish)
               
-              // PM Range status checks
-              const isBelow = pmRangeDisplay === 'Below';
-              const isAbove = pmRangeDisplay === 'Above';
-              const isLower = pmRangeDisplay === 'Lower';
-              const isUpper = pmRangeDisplay === 'Upper';
-              const inLowerHalf = isBelow || isLower;
-              const inUpperHalf = isAbove || isUpper;
-              const hasPmRange = pmRangeDisplay !== '-';
-              
               // Area checks based on TSI value
               const isStrongBull = bjTsi > 40;
               const isBullish = bjTsi >= 15;
@@ -4665,43 +4327,34 @@ app.get('/', (req, res) => {
               const isBearish = bjTsi <= -15;
               const isNeutralArea = bjTsi > -15 && bjTsi < 15;
               
-              // Priority 1: Extreme breakout/breakdown
-              if (isAbove && bothUp && isBullish) {
-                bjOverviewDisplay = '🚀 Breakout';
+              // Priority 1: Strong area signals
+              if (isStrongBull && bothUp) {
+                bjOverviewDisplay = '🚀 Strong Bull';
                 bjOverviewClass = 'text-green-400 font-bold';
               }
-              else if (isBelow && bothDown && isBearish) {
-                bjOverviewDisplay = '💥 Breakdown';
+              else if (isStrongBear && bothDown) {
+                bjOverviewDisplay = '💥 Strong Bear';
                 bjOverviewClass = 'text-red-400 font-bold';
               }
               // Priority 2: Reveal signals (early reversal - KEY SIGNALS)
-              else if (inLowerHalf && vUpSDown) {
+              else if (isBearish && vUpSDown) {
                 bjOverviewDisplay = '⚡ Reveal Long';
                 bjOverviewClass = 'text-lime-400 font-bold animate-pulse';
               }
-              else if (inUpperHalf && vDownSUp) {
+              else if (isBullish && vDownSUp) {
                 bjOverviewDisplay = '⚡ Reveal Short';
                 bjOverviewClass = 'text-orange-400 font-bold animate-pulse';
               }
-              // Priority 3: Strong momentum
-              else if (bothUp && (isUpper || isAbove)) {
-                bjOverviewDisplay = '📈 Go Up Heavy';
+              // Priority 3: Trending with momentum
+              else if (bothUp && isBullish) {
+                bjOverviewDisplay = '📈 Bullish';
                 bjOverviewClass = 'text-green-500 font-semibold';
               }
-              else if (bothDown && (isLower || isBelow)) {
-                bjOverviewDisplay = '📉 Go Down Heavy';
+              else if (bothDown && isBearish) {
+                bjOverviewDisplay = '📉 Bearish';
                 bjOverviewClass = 'text-red-500 font-semibold';
               }
-              // Priority 4: Strong area signals
-              else if (isStrongBull && vUp) {
-                bjOverviewDisplay = '🔥 Strong Bull';
-                bjOverviewClass = 'text-green-400 font-semibold';
-              }
-              else if (isStrongBear && !vUp) {
-                bjOverviewDisplay = '❄️ Strong Bear';
-                bjOverviewClass = 'text-red-400 font-semibold';
-              }
-              // Priority 5: Building/Recovering (V up, S down - early reversal signs)
+              // Priority 4: Building/Recovering (V up, S down - early reversal signs)
               else if (vUpSDown && isBearish) {
                 bjOverviewDisplay = '💪 Recovering';
                 bjOverviewClass = 'text-cyan-400 font-semibold';
@@ -4710,7 +4363,7 @@ app.get('/', (req, res) => {
                 bjOverviewDisplay = '🌱 Building Long';
                 bjOverviewClass = 'text-lime-500';
               }
-              // Priority 6: Weakening/Fading (V down, S up - losing momentum)
+              // Priority 5: Weakening/Fading (V down, S up - losing momentum)
               else if (vDownSUp && isBullish) {
                 bjOverviewDisplay = '⚠️ Weakening';
                 bjOverviewClass = 'text-yellow-400 font-semibold';
@@ -4830,11 +4483,10 @@ app.get('/', (req, res) => {
                 </td>
               \`,
               bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, PM Range=\${pmRangeDisplay}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+                <td class="py-3 px-4 text-xs text-foreground" title="BJ TSI: Value=\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${!isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
-                    <div class="text-foreground">PM Range: <span class="\${pmRangeClass}">\${pmRangeDisplay}\${pmRangeValues}</span></div>
                     <div class="text-foreground">V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>
                     <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
                   </div>
