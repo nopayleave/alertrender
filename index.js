@@ -2314,14 +2314,6 @@ app.get('/', (req, res) => {
         .hide-scrollbar::-webkit-scrollbar {
           display: none;  /* Chrome, Safari and Opera */
         }
-        /* Search icon accessibility - white by default, black when active */
-        .search-container .search-icon {
-          color: white;
-          transition: color 0.2s ease;
-        }
-        .search-container:focus-within .search-icon {
-          color: black;
-        }
         /* Override xl:gap-6 to reduce space between filter and table */
         @media (min-width: 1280px) {
           .xl\:gap-6 {
@@ -2540,8 +2532,8 @@ app.get('/', (req, res) => {
             <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-3 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
                 <!-- Search input - iOS style -->
-                <div class="relative mb-4 search-container">
-                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 search-icon">
+                <div class="relative mb-4">
+                  <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
