@@ -2543,7 +2543,7 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
+                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')" checked>
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
@@ -2609,7 +2609,7 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
+                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')" checked>
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
@@ -2648,7 +2648,7 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
+                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')" checked>
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
@@ -2677,7 +2677,7 @@ app.get('/', (req, res) => {
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
+                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')" checked>
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                       </label>
                     </div>
@@ -2883,7 +2883,7 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            bjValueSlider.setAttribute('disabled', true);
+            // Slider enabled by default
             sliders.bjValue = bjValueSlider;
             bjValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
@@ -2911,7 +2911,7 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            d1ValueSlider.setAttribute('disabled', true);
+            // Slider enabled by default
             sliders.d1Value = d1ValueSlider;
             d1ValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
@@ -2939,7 +2939,7 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            d2ValueSlider.setAttribute('disabled', true);
+            // Slider enabled by default
             sliders.d2Value = d2ValueSlider;
             d2ValueSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
@@ -2967,7 +2967,7 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            diffSlider.setAttribute('disabled', true);
+            // Slider enabled by default
             sliders.diff = diffSlider;
             diffSlider.noUiSlider.on('update', function(values) {
               const minVal = Math.round(values[0]);
@@ -3011,6 +3011,9 @@ app.get('/', (req, res) => {
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
             const draggableAttr = colId !== 'star' ? 'true' : 'false';
             
+            // Add ticker count badge for symbol column
+            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
+            
             return '<th ' +
               'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
               'data-column-id="' + colId + '" ' +
@@ -3022,7 +3025,7 @@ app.get('/', (req, res) => {
               'ondrop="handleHeaderDrop(event)" ' +
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
-              col.title + ' ' + sortIndicator +
+              col.title + tickerCountBadge + ' ' + sortIndicator +
               '</th>';
           }).join('');
           
@@ -3509,6 +3512,9 @@ app.get('/', (req, res) => {
           if (alertsData.length === 0) {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
+            // Update ticker count badge
+            const tickerCountEl = document.getElementById('tickerCount');
+            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
 
@@ -3672,8 +3678,15 @@ app.get('/', (req, res) => {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
+            // Update ticker count badge
+            const tickerCountEl = document.getElementById('tickerCount');
+            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
+
+          // Update ticker count badge
+          const tickerCountEl = document.getElementById('tickerCount');
+          if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
