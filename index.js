@@ -1155,10 +1155,6 @@ app.post('/webhook', (req, res) => {
       const newAlert = {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
-        price: alert.price || null,
-        previousClose: alert.previousClose || null,
-        changeFromPrevDay: alert.changeFromPrevDay || null,
-        volume: alert.volume || null,
         dualStochD1: alert.d1,
         dualStochD1Direction: alert.d1Direction,
         dualStochD1Pattern: alert.d1Pattern || '',
@@ -1795,7 +1791,6 @@ app.get('/calculator', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" href="data:,">
       <title>Share Calculator</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <script>
@@ -2186,7 +2181,6 @@ app.get('/', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" href="data:,">
       <title>Alert Dashboard</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <!-- noUiSlider for range sliders -->
@@ -2262,6 +2256,8 @@ app.get('/', (req, res) => {
           font-weight: 700;
           filter: brightness(1.3) saturate(1.2);
           opacity: 1 !important;
+          transform: scale(1.02);
+          border-width: 2px;
         }
         .filter-chip:active {
           transform: scale(0.95);
