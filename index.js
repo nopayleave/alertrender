@@ -2508,15 +2508,15 @@ app.get('/', (req, res) => {
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
                       <div class="flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="vDir" data-value="Up">Up</button>
-                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="vDir" data-value="Down">Down</button>
+                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑ Up</button>
+                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓ Down</button>
                       </div>
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
                       <div class="flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="sDir" data-value="Up">Up</button>
-                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="sDir" data-value="Down">Down</button>
+                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑ Up</button>
+                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓ Down</button>
                       </div>
                     </div>
                   </div>
@@ -2525,8 +2525,8 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
                     <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
-                      <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
+                      <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
+                      <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
                     </div>
                   </div>
                   
@@ -2544,10 +2544,14 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="bjValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
-                          <span>-100</span>
-                          <span>0</span>
-                          <span>100</span>
+                        <div class="flex justify-between mt-2 text-xs font-medium">
+                          <span class="text-red-400">-100</span>
+                          <span class="text-red-400">-60</span>
+                          <span class="text-red-400">-15</span>
+                          <span class="text-muted-foreground">0</span>
+                          <span class="text-green-400">15</span>
+                          <span class="text-green-400">60</span>
+                          <span class="text-green-400">100</span>
                         </div>
                       </div>
                     </div>
@@ -2557,12 +2561,12 @@ app.get('/', (req, res) => {
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
                     <div class="flex flex-wrap gap-1.5" id="areaChips">
-                      <button onclick="toggleFilterChip('area', 'strong_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="strong_bullish">Strong Bull</button>
-                      <button onclick="toggleFilterChip('area', 'bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="bullish">Bullish</button>
-                      <button onclick="toggleFilterChip('area', 'light_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="light_bullish">Light Bull</button>
-                      <button onclick="toggleFilterChip('area', 'light_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="light_bearish">Light Bear</button>
-                      <button onclick="toggleFilterChip('area', 'bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="bearish">Bearish</button>
-                      <button onclick="toggleFilterChip('area', 'strong_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="area" data-value="strong_bearish">Strong Bear</button>
+                      <button onclick="toggleFilterChip('area', 'strong_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="area" data-value="strong_bullish">Strong Bull</button>
+                      <button onclick="toggleFilterChip('area', 'bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="area" data-value="bullish">Bullish</button>
+                      <button onclick="toggleFilterChip('area', 'light_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="area" data-value="light_bullish">Light Bull</button>
+                      <button onclick="toggleFilterChip('area', 'light_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="area" data-value="light_bearish">Light Bear</button>
+                      <button onclick="toggleFilterChip('area', 'bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="area" data-value="bearish">Bearish</button>
+                      <button onclick="toggleFilterChip('area', 'strong_bearish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="area" data-value="strong_bearish">Strong Bear</button>
                     </div>
                   </div>
                 </div>
@@ -2586,9 +2590,9 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
                     <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="up">↑ Up</button>
-                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="down">↓ Down</button>
-                      <button onclick="toggleFilterChip('d1Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Direction" data-value="flat">→ Flat</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑ Up</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓ Down</button>
+                      <button onclick="toggleFilterChip('d1Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d1Direction" data-value="flat">→ Flat</button>
                     </div>
                   </div>
                   
@@ -2606,10 +2610,16 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="d1ValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
-                          <span>0</span>
-                          <span>50</span>
-                          <span>100</span>
+                        <div class="flex justify-between mt-2 text-xs font-medium">
+                          <span class="text-red-400">0</span>
+                          <span class="text-red-400">10</span>
+                          <span class="text-red-400">20</span>
+                          <span class="text-red-400">40</span>
+                          <span class="text-muted-foreground">50</span>
+                          <span class="text-green-400">60</span>
+                          <span class="text-green-400">80</span>
+                          <span class="text-green-400">90</span>
+                          <span class="text-green-400">100</span>
                         </div>
                       </div>
                     </div>
@@ -2619,9 +2629,9 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
                     <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="up">↑ Up</button>
-                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="down">↓ Down</button>
-                      <button onclick="toggleFilterChip('d2Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Direction" data-value="flat">→ Flat</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑ Up</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓ Down</button>
+                      <button onclick="toggleFilterChip('d2Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d2Direction" data-value="flat">→ Flat</button>
                     </div>
                   </div>
                   
@@ -2639,10 +2649,16 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="d2ValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
-                          <span>0</span>
-                          <span>50</span>
-                          <span>100</span>
+                        <div class="flex justify-between mt-2 text-xs font-medium">
+                          <span class="text-red-400">0</span>
+                          <span class="text-red-400">10</span>
+                          <span class="text-red-400">20</span>
+                          <span class="text-red-400">40</span>
+                          <span class="text-muted-foreground">50</span>
+                          <span class="text-green-400">60</span>
+                          <span class="text-green-400">80</span>
+                          <span class="text-green-400">90</span>
+                          <span class="text-green-400">100</span>
                         </div>
                       </div>
                     </div>
@@ -2675,11 +2691,11 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
                     <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Do Not Long">No Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Do Not Short">No Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Try Long">Try Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Try Short">Try Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="trendMessage" data-value="Big Trend Day">Big Trend</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">⛔ No Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="Do Not Short">⛔ No Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">📈 Try Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">📉 Try Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="trendMessage" data-value="Big Trend Day">🔥 Big Trend</button>
                     </div>
                   </div>
                   
@@ -2687,12 +2703,12 @@ app.get('/', (req, res) => {
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">% Change</label>
                     <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
-                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="-5--2">-5~-2%</button>
-                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="-2-0">-2~0%</button>
-                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="0-2">0~2%</button>
-                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value="2-5">2~5%</button>
-                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="percentChange" data-value=">5">&gt;5%</button>
+                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
+                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2">-5~-2%</button>
+                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0">-2~0%</button>
+                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2">0~2%</button>
+                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5">2~5%</button>
+                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5">&gt;5%</button>
                     </div>
                   </div>
                 </div>
