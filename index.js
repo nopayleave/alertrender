@@ -2519,90 +2519,67 @@ app.get('/', (req, res) => {
           transform: scale(1.1);
           box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
         }
-        /* Dual-handle range slider styles */
+        /* Material UI-inspired range slider styles */
         .range-track {
           pointer-events: none;
         }
-        .range-slider-min::-webkit-slider-thumb {
+        .range-indicator {
+          pointer-events: none;
+          transition: left 0.1s, width 0.1s;
+        }
+        .range-slider-handle::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: hsl(210 40% 98%);
           border: 2px solid rgb(59, 130, 246);
           cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          transition: all 0.2s;
-          z-index: 10;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(59, 130, 246, 0);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
         }
-        .range-slider-min::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        .range-slider-handle::-webkit-slider-thumb:hover {
+          transform: scale(1.15);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
-        .range-slider-min::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
+        .range-slider-handle::-webkit-slider-thumb:active {
+          transform: scale(1.2);
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
+        }
+        .range-slider-handle::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: hsl(210 40% 98%);
           border: 2px solid rgb(59, 130, 246);
           cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          transition: all 0.2s;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .range-slider-min::-moz-range-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        .range-slider-handle::-moz-range-thumb:hover {
+          transform: scale(1.15);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
         }
-        .range-slider-max::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          transition: all 0.2s;
-          z-index: 20;
+        .range-slider-handle::-moz-range-thumb:active {
+          transform: scale(1.2);
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
         }
-        .range-slider-max::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-        }
-        .range-slider-max::-moz-range-thumb {
-          width: 18px;
-          height: 18px;
-          border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
-          cursor: pointer;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-          transition: all 0.2s;
-        }
-        .range-slider-max::-moz-range-thumb:hover {
-          transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
-        }
-        .range-slider-min::-webkit-slider-runnable-track,
-        .range-slider-max::-webkit-slider-runnable-track {
-          height: 4px;
+        .range-slider-handle::-webkit-slider-runnable-track {
+          height: 2px;
           background: transparent;
         }
-        .range-slider-min::-moz-range-track,
-        .range-slider-max::-moz-range-track {
-          height: 4px;
+        .range-slider-handle::-moz-range-track {
+          height: 2px;
           background: transparent;
         }
-        /* Highlight the selected range */
-        .range-slider-min:disabled::-webkit-slider-thumb,
-        .range-slider-max:disabled::-webkit-slider-thumb {
+        .range-slider-handle:disabled::-webkit-slider-thumb {
           opacity: 0.5;
           cursor: not-allowed;
+          transform: none;
         }
-        .range-slider-min:disabled::-moz-range-thumb,
-        .range-slider-max:disabled::-moz-range-thumb {
+        .range-slider-handle:disabled::-moz-range-thumb {
           opacity: 0.5;
           cursor: not-allowed;
         }
@@ -2716,31 +2693,39 @@ app.get('/', (req, res) => {
                         <div class="text-xs text-center text-foreground font-semibold mb-2">
                           <span id="bjValueMinValue" class="text-blue-400">-50</span> - <span id="bjValueMaxValue" class="text-blue-400">50</span>
                         </div>
-                        <div class="relative h-8">
-                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
-                          <div id="bjValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
-                          <input 
-                            type="range" 
-                            id="bjValueMinSlider" 
-                            min="-50" 
-                            max="50" 
-                            value="-50" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
-                            oninput="updateBjValueFilter()"
-                            disabled
-                          />
-                          <input 
-                            type="range" 
-                            id="bjValueMaxSlider" 
-                            min="-50" 
-                            max="50" 
-                            value="50" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
-                            oninput="updateBjValueFilter()"
-                            disabled
-                          />
+                        <div class="relative h-10 flex items-center">
+                          <div class="relative w-full h-2">
+                            <!-- Track background -->
+                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
+                            <!-- Active range track -->
+                            <div id="bjValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
+                            <!-- Min slider -->
+                            <input 
+                              type="range" 
+                              id="bjValueMinSlider" 
+                              min="-50" 
+                              max="50" 
+                              value="-50" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
+                              oninput="updateRangeSlider('bjValue', 'min', this.value)"
+                              onmousedown="setActiveThumb('bjValue', 'min')"
+                              disabled
+                            />
+                            <!-- Max slider -->
+                            <input 
+                              type="range" 
+                              id="bjValueMaxSlider" 
+                              min="-50" 
+                              max="50" 
+                              value="50" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
+                              oninput="updateRangeSlider('bjValue', 'max', this.value)"
+                              onmousedown="setActiveThumb('bjValue', 'max')"
+                              disabled
+                            />
+                          </div>
                         </div>
                         <div class="flex justify-between mt-1 text-xs text-muted-foreground">
                           <span>-50</span>
@@ -2804,31 +2789,35 @@ app.get('/', (req, res) => {
                         <div class="text-xs text-center text-foreground font-semibold mb-2">
                           <span id="d1ValueMinValue" class="text-blue-400">0</span> - <span id="d1ValueMaxValue" class="text-blue-400">100</span>
                         </div>
-                        <div class="relative h-8">
-                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
-                          <div id="d1ValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
-                          <input 
-                            type="range" 
-                            id="d1ValueMinSlider" 
-                            min="0" 
-                            max="100" 
-                            value="0" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
-                            oninput="updateD1ValueFilter()"
-                            disabled
-                          />
-                          <input 
-                            type="range" 
-                            id="d1ValueMaxSlider" 
-                            min="0" 
-                            max="100" 
-                            value="100" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
-                            oninput="updateD1ValueFilter()"
-                            disabled
-                          />
+                        <div class="relative h-10 flex items-center">
+                          <div class="relative w-full h-2">
+                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
+                            <div id="d1ValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
+                            <input 
+                              type="range" 
+                              id="d1ValueMinSlider" 
+                              min="0" 
+                              max="100" 
+                              value="0" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
+                              oninput="updateRangeSlider('d1Value', 'min', this.value)"
+                              onmousedown="setActiveThumb('d1Value', 'min')"
+                              disabled
+                            />
+                            <input 
+                              type="range" 
+                              id="d1ValueMaxSlider" 
+                              min="0" 
+                              max="100" 
+                              value="100" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
+                              oninput="updateRangeSlider('d1Value', 'max', this.value)"
+                              onmousedown="setActiveThumb('d1Value', 'max')"
+                              disabled
+                            />
+                          </div>
                         </div>
                         <div class="flex justify-between mt-1 text-xs text-muted-foreground">
                           <span>0</span>
@@ -2863,31 +2852,35 @@ app.get('/', (req, res) => {
                         <div class="text-xs text-center text-foreground font-semibold mb-2">
                           <span id="d2ValueMinValue" class="text-blue-400">0</span> - <span id="d2ValueMaxValue" class="text-blue-400">100</span>
                         </div>
-                        <div class="relative h-8">
-                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
-                          <div id="d2ValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
-                          <input 
-                            type="range" 
-                            id="d2ValueMinSlider" 
-                            min="0" 
-                            max="100" 
-                            value="0" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
-                            oninput="updateD2ValueFilter()"
-                            disabled
-                          />
-                          <input 
-                            type="range" 
-                            id="d2ValueMaxSlider" 
-                            min="0" 
-                            max="100" 
-                            value="100" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
-                            oninput="updateD2ValueFilter()"
-                            disabled
-                          />
+                        <div class="relative h-10 flex items-center">
+                          <div class="relative w-full h-2">
+                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
+                            <div id="d2ValueRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
+                            <input 
+                              type="range" 
+                              id="d2ValueMinSlider" 
+                              min="0" 
+                              max="100" 
+                              value="0" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
+                              oninput="updateRangeSlider('d2Value', 'min', this.value)"
+                              onmousedown="setActiveThumb('d2Value', 'min')"
+                              disabled
+                            />
+                            <input 
+                              type="range" 
+                              id="d2ValueMaxSlider" 
+                              min="0" 
+                              max="100" 
+                              value="100" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
+                              oninput="updateRangeSlider('d2Value', 'max', this.value)"
+                              onmousedown="setActiveThumb('d2Value', 'max')"
+                              disabled
+                            />
+                          </div>
                         </div>
                         <div class="flex justify-between mt-1 text-xs text-muted-foreground">
                           <span>0</span>
@@ -2912,31 +2905,35 @@ app.get('/', (req, res) => {
                         <div class="text-xs text-center text-foreground font-semibold mb-2">
                           <span id="diffMinValue" class="text-blue-400">0</span> - <span id="diffMaxValue" class="text-blue-400">50</span>
                         </div>
-                        <div class="relative h-8">
-                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
-                          <div id="diffRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
-                          <input 
-                            type="range" 
-                            id="diffMinSlider" 
-                            min="0" 
-                            max="50" 
-                            value="0" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
-                            oninput="updateDiffFilter()"
-                            disabled
-                          />
-                          <input 
-                            type="range" 
-                            id="diffMaxSlider" 
-                            min="0" 
-                            max="50" 
-                            value="50" 
-                            step="1"
-                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
-                            oninput="updateDiffFilter()"
-                            disabled
-                          />
+                        <div class="relative h-10 flex items-center">
+                          <div class="relative w-full h-2">
+                            <div class="absolute top-0 left-0 right-0 h-2 bg-secondary rounded-full"></div>
+                            <div id="diffRangeIndicator" class="absolute top-0 h-2 bg-blue-500 rounded-full range-indicator" style="left: 0%; width: 100%;"></div>
+                            <input 
+                              type="range" 
+                              id="diffMinSlider" 
+                              min="0" 
+                              max="50" 
+                              value="0" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-10"
+                              oninput="updateRangeSlider('diff', 'min', this.value)"
+                              onmousedown="setActiveThumb('diff', 'min')"
+                              disabled
+                            />
+                            <input 
+                              type="range" 
+                              id="diffMaxSlider" 
+                              min="0" 
+                              max="50" 
+                              value="50" 
+                              step="1"
+                              class="absolute w-full h-2 top-0 bg-transparent appearance-none cursor-pointer range-slider-handle z-20"
+                              oninput="updateRangeSlider('diff', 'max', this.value)"
+                              onmousedown="setActiveThumb('diff', 'max')"
+                              disabled
+                            />
+                          </div>
                         </div>
                         <div class="flex justify-between mt-1 text-xs text-muted-foreground">
                           <span>0</span>
@@ -3301,6 +3298,72 @@ app.get('/', (req, res) => {
           filterAlerts();
         }
         
+        // Track active thumb for range slider (Material UI style)
+        let activeThumb = null;
+        
+        function setActiveThumb(sliderType, thumb) {
+          activeThumb = { sliderType, thumb };
+        }
+        
+        // Unified range slider update function (Material UI inspired)
+        function updateRangeSlider(sliderType, thumb, value) {
+          const minSlider = document.getElementById(sliderType + 'MinSlider');
+          const maxSlider = document.getElementById(sliderType + 'MaxSlider');
+          
+          if (!minSlider || !maxSlider) return;
+          
+          let minVal = parseInt(minSlider.value);
+          let maxVal = parseInt(maxSlider.value);
+          
+          // Update the value based on which thumb is being moved
+          if (thumb === 'min') {
+            minVal = parseInt(value);
+            // Prevent min from exceeding max
+            if (minVal > maxVal) {
+              minVal = maxVal;
+              minSlider.value = minVal;
+            }
+          } else if (thumb === 'max') {
+            maxVal = parseInt(value);
+            // Prevent max from going below min
+            if (maxVal < minVal) {
+              maxVal = minVal;
+              maxSlider.value = maxVal;
+            }
+          }
+          
+          // Update displays and call appropriate filter function
+          const minValueDisplay = document.getElementById(sliderType + 'MinValue');
+          const maxValueDisplay = document.getElementById(sliderType + 'MaxValue');
+          
+          if (minValueDisplay) minValueDisplay.textContent = minVal;
+          if (maxValueDisplay) maxValueDisplay.textContent = maxVal;
+          
+          // Update range indicator
+          const sliderConfig = {
+            'bjValue': { min: -50, max: 50 },
+            'd1Value': { min: 0, max: 100 },
+            'd2Value': { min: 0, max: 100 },
+            'diff': { min: 0, max: 50 }
+          };
+          
+          const config = sliderConfig[sliderType];
+          if (config) {
+            updateRangeIndicator(sliderType, minVal, maxVal, config.min, config.max);
+          }
+          
+          // Call the specific filter update function
+          if (sliderType === 'bjValue') {
+            updateBjValueFilter();
+          } else if (sliderType === 'd1Value') {
+            updateD1ValueFilter();
+          } else if (sliderType === 'd2Value') {
+            updateD2ValueFilter();
+          } else if (sliderType === 'diff') {
+            updateDiffFilter();
+          }
+        }
+        
         // Update visual range indicator for dual-handle slider
         function updateRangeIndicator(sliderType, minVal, maxVal, minRange, maxRange) {
           const indicator = document.getElementById(sliderType + 'RangeIndicator');
@@ -3343,36 +3406,15 @@ app.get('/', (req, res) => {
           const toggle = document.getElementById('bjValueToggle');
           const minSlider = document.getElementById('bjValueMinSlider');
           const maxSlider = document.getElementById('bjValueMaxSlider');
-          const minValueDisplay = document.getElementById('bjValueMinValue');
-          const maxValueDisplay = document.getElementById('bjValueMaxValue');
           
           if (minSlider && maxSlider) {
-            let minVal = parseInt(minSlider.value);
-            let maxVal = parseInt(maxSlider.value);
-            
-            // Ensure min doesn't exceed max
-            if (minVal > maxVal) {
-              const temp = minVal;
-              minVal = maxVal;
-              maxVal = temp;
-              minSlider.value = minVal;
-              maxSlider.value = maxVal;
-            }
+            const minVal = parseInt(minSlider.value);
+            const maxVal = parseInt(maxSlider.value);
             
             bjFilterValue.min = minVal;
             bjFilterValue.max = maxVal;
             // Only active if toggle is checked AND range is not default
             bjFilterValue.active = toggle && toggle.checked && (minVal > -50 || maxVal < 50);
-            
-            if (minValueDisplay) {
-              minValueDisplay.textContent = minVal;
-            }
-            if (maxValueDisplay) {
-              maxValueDisplay.textContent = maxVal;
-            }
-            
-            // Update visual range indicator
-            updateRangeIndicator('bjValue', minVal, maxVal, -50, 50);
             
             // Apply filters
             filterAlerts();
@@ -3384,36 +3426,15 @@ app.get('/', (req, res) => {
           const toggle = document.getElementById('d1ValueToggle');
           const minSlider = document.getElementById('d1ValueMinSlider');
           const maxSlider = document.getElementById('d1ValueMaxSlider');
-          const minValueDisplay = document.getElementById('d1ValueMinValue');
-          const maxValueDisplay = document.getElementById('d1ValueMaxValue');
           
           if (minSlider && maxSlider) {
-            let minVal = parseInt(minSlider.value);
-            let maxVal = parseInt(maxSlider.value);
-            
-            // Ensure min doesn't exceed max
-            if (minVal > maxVal) {
-              const temp = minVal;
-              minVal = maxVal;
-              maxVal = temp;
-              minSlider.value = minVal;
-              maxSlider.value = maxVal;
-            }
+            const minVal = parseInt(minSlider.value);
+            const maxVal = parseInt(maxSlider.value);
             
             stochFilterD1Value.min = minVal;
             stochFilterD1Value.max = maxVal;
             // Only active if toggle is checked AND range is not default
             stochFilterD1Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
-            
-            if (minValueDisplay) {
-              minValueDisplay.textContent = minVal;
-            }
-            if (maxValueDisplay) {
-              maxValueDisplay.textContent = maxVal;
-            }
-            
-            // Update visual range indicator
-            updateRangeIndicator('d1Value', minVal, maxVal, 0, 100);
             
             // Apply filters
             filterAlerts();
@@ -3425,36 +3446,15 @@ app.get('/', (req, res) => {
           const toggle = document.getElementById('d2ValueToggle');
           const minSlider = document.getElementById('d2ValueMinSlider');
           const maxSlider = document.getElementById('d2ValueMaxSlider');
-          const minValueDisplay = document.getElementById('d2ValueMinValue');
-          const maxValueDisplay = document.getElementById('d2ValueMaxValue');
           
           if (minSlider && maxSlider) {
-            let minVal = parseInt(minSlider.value);
-            let maxVal = parseInt(maxSlider.value);
-            
-            // Ensure min doesn't exceed max
-            if (minVal > maxVal) {
-              const temp = minVal;
-              minVal = maxVal;
-              maxVal = temp;
-              minSlider.value = minVal;
-              maxSlider.value = maxVal;
-            }
+            const minVal = parseInt(minSlider.value);
+            const maxVal = parseInt(maxSlider.value);
             
             stochFilterD2Value.min = minVal;
             stochFilterD2Value.max = maxVal;
             // Only active if toggle is checked AND range is not default
             stochFilterD2Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
-            
-            if (minValueDisplay) {
-              minValueDisplay.textContent = minVal;
-            }
-            if (maxValueDisplay) {
-              maxValueDisplay.textContent = maxVal;
-            }
-            
-            // Update visual range indicator
-            updateRangeIndicator('d2Value', minVal, maxVal, 0, 100);
             
             // Apply filters
             filterAlerts();
@@ -3466,36 +3466,15 @@ app.get('/', (req, res) => {
           const toggle = document.getElementById('diffToggle');
           const minSlider = document.getElementById('diffMinSlider');
           const maxSlider = document.getElementById('diffMaxSlider');
-          const minValueDisplay = document.getElementById('diffMinValue');
-          const maxValueDisplay = document.getElementById('diffMaxValue');
           
           if (minSlider && maxSlider) {
-            let minVal = parseInt(minSlider.value);
-            let maxVal = parseInt(maxSlider.value);
-            
-            // Ensure min doesn't exceed max
-            if (minVal > maxVal) {
-              const temp = minVal;
-              minVal = maxVal;
-              maxVal = temp;
-              minSlider.value = minVal;
-              maxSlider.value = maxVal;
-            }
+            const minVal = parseInt(minSlider.value);
+            const maxVal = parseInt(maxSlider.value);
             
             stochFilterDiff.min = minVal;
             stochFilterDiff.max = maxVal;
             // Only active if toggle is checked AND range is not default
             stochFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 50);
-            
-            if (minValueDisplay) {
-              minValueDisplay.textContent = minVal;
-            }
-            if (maxValueDisplay) {
-              maxValueDisplay.textContent = maxVal;
-            }
-            
-            // Update visual range indicator
-            updateRangeIndicator('diff', minVal, maxVal, 0, 50);
             
             // Apply filters
             filterAlerts();

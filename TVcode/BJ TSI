@@ -317,13 +317,6 @@ premarketRangeUpper = na(premarketTsiHigh) ? na : premarketTsiHigh
 premarketRangeLower = na(premarketTsiLow) ? na : premarketTsiLow
 // Calculate 50% midpoint of premarket range
 premarketRangeMidpoint = (not na(premarketRangeUpper) and not na(premarketRangeLower)) ? (premarketRangeUpper + premarketRangeLower) / 2 : na
-
-// Update webhook snapshot whenever we have valid premarket values
-// Only update if we have actual new data (not na)
-if not na(premarketTsiHigh)
-    webhookPmHigh := premarketTsiHigh
-if not na(premarketTsiLow)
-    webhookPmLow := premarketTsiLow
 //#endregion
 
 
@@ -468,9 +461,17 @@ alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_c
 
 // Webhook JSON payload
 if enableWebhook and barstate.isconfirmed
-    // Use webhook snapshot variables (which persist the last valid premarket values)
-    string pmHighStr = na(webhookPmHigh) ? "null" : str.tostring(webhookPmHigh, "#.###")
-    string pmLowStr = na(webhookPmLow) ? "null" : str.tostring(webhookPmLow, "#.###")
+    // Update webhook snapshot variables right before sending to ensure they match chart display
+    // Use the current premarket range values (same as what's displayed on chart)
+    if not na(premarketTsiHigh)
+        webhookPmHigh := premarketTsiHigh
+    if not na(premarketTsiLow)
+        webhookPmLow := premarketTsiLow
+    
+    // Use the current premarket range values directly (same as chart display)
+    // This ensures webhook values always match what's shown on the chart
+    string pmHighStr = na(premarketRangeUpper) ? "null" : str.tostring(premarketRangeUpper, "#.###")
+    string pmLowStr = na(premarketRangeLower) ? "null" : str.tostring(premarketRangeLower, "#.###")
     
     jsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
