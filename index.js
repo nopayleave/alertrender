@@ -3230,7 +3230,7 @@ app.get('/', (req, res) => {
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
               col.title + tickerCountBadge + ' ' + sortIndicator +
-              (colId !== 'star' ? '<div class="resize-handle" onmousedown="handleResizeStart(event, ' + JSON.stringify(colId) + ')"></div>' : '') +
+              (colId !== 'star' ? '<div class="resize-handle" data-column-id="' + colId + '"></div>' : '') +
               '</th>';
           }).join('');
           
@@ -3255,6 +3255,16 @@ app.get('/', (req, res) => {
               console.error('Error loading column widths:', e);
             }
           }
+          
+          // Attach event listeners to resize handles
+          document.querySelectorAll('.resize-handle').forEach(handle => {
+            const columnId = handle.getAttribute('data-column-id');
+            if (columnId) {
+              handle.addEventListener('mousedown', function(e) {
+                handleResizeStart(e, columnId);
+              });
+            }
+          });
         }
 
         function handleResizeStart(e, columnId) {
