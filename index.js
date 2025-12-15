@@ -4939,14 +4939,14 @@ app.get('/', (req, res) => {
             }
             let diffHtml = ''
             if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
-              diffHtml = '<div class="inline-block px-2 py-0.5 rounded border ' + d1D2DiffClass + ' font-semibold border-current">' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + '</div>'
+              diffHtml = '<div class="inline-block px-2 py-0.5 rounded border ' + d1D2DiffClass + ' font-semibold border-current">' + Math.abs(d1D2Diff).toFixed(1) + '</div>'
             }
             // Combine D2 value with diff box (no separator between them)
             let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
               '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
               '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
               (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
-              (diffHtml ? '<div class="flex items-center">' + diffHtml + '</div>' : '') +
+              (diffHtml ? '<div class="flex items-center ml-1">' + diffHtml + '</div>' : '') +
               '</div>'
             let trendHtml = ''
             if (trendMessage) {
