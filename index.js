@@ -4449,10 +4449,14 @@ app.get('/', (req, res) => {
             
             // Solo Stoch D2 or Dual Stoch D1/D2 calculations
             // Check for Dual Stoch first, then Solo Stoch, then fallback to generic d2
-            const dualStochD1 = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined && alert.dualStochD1 !== '' ? parseFloat(alert.dualStochD1) : null;
-            const dualStochD2 = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined && alert.dualStochD2 !== '' ? parseFloat(alert.dualStochD2) : null;
-            const soloD2 = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
-            const genericD2 = alert.d2 !== null && alert.d2 !== undefined && alert.d2 !== '' ? parseFloat(alert.d2) : null;
+            const dualStochD1Raw = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined && alert.dualStochD1 !== '' ? parseFloat(alert.dualStochD1) : null;
+            const dualStochD1 = (dualStochD1Raw !== null && !isNaN(dualStochD1Raw)) ? dualStochD1Raw : null;
+            const dualStochD2Raw = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined && alert.dualStochD2 !== '' ? parseFloat(alert.dualStochD2) : null;
+            const dualStochD2 = (dualStochD2Raw !== null && !isNaN(dualStochD2Raw)) ? dualStochD2Raw : null;
+            const soloD2Raw = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
+            const soloD2 = (soloD2Raw !== null && !isNaN(soloD2Raw)) ? soloD2Raw : null;
+            const genericD2Raw = alert.d2 !== null && alert.d2 !== undefined && alert.d2 !== '' ? parseFloat(alert.d2) : null;
+            const genericD2 = (genericD2Raw !== null && !isNaN(genericD2Raw)) ? genericD2Raw : null;
             
             // Use Dual Stoch if available, otherwise Solo Stoch, otherwise generic d2
             const d2Value = dualStochD2 !== null ? dualStochD2 : (soloD2 !== null ? soloD2 : genericD2);
@@ -4759,7 +4763,7 @@ app.get('/', (req, res) => {
               chartHtml = '<div class="flex-shrink-0">' + chartHtml + '</div>'
             }
             let d1Html = ''
-            if (dualStochD1 !== null) {
+            if (dualStochD1 !== null && !isNaN(dualStochD1)) {
               d1Html = '<div class="flex flex-row items-center gap-1"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
             }
             let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
@@ -4768,7 +4772,7 @@ app.get('/', (req, res) => {
               (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
               '</div>'
             let diffHtml = ''
-            if (d1D2Diff !== null) {
+            if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
               diffHtml = '<div class="text-xs ' + d1D2DiffClass + ' font-semibold">Diff: (' + (d1D2Diff >= 0 ? '+' : '') + d1D2Diff.toFixed(1) + ')</div>'
             }
             let trendHtml = ''
@@ -4789,11 +4793,11 @@ app.get('/', (req, res) => {
               bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Big Trend Day</div>'
             }
             let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
-              (dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
+              (dualStochD1 !== null && !isNaN(dualStochD1) ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
               'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
               ', Dir=' + d2Direction + 
               (d2PatternDisplay ? ', Pattern=' + d2Pattern : '') + 
-              (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
+              (d1D2Diff !== null && !isNaN(d1D2Diff) ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
             // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH | Try Short | Diff: (X) | 🔥 Big Trend Day
@@ -4840,7 +4844,7 @@ app.get('/', (req, res) => {
               \`,
               d2: d2CellHtml || '',
               highLevelTrend: \`
-                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td class="py-3 px-4 text-left" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
