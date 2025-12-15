@@ -2581,7 +2581,7 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                   </div>
-                  
+              
                   <!-- Value vs Signal Toggle -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
@@ -2617,7 +2617,7 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                   </div>
-                  
+              
                   <!-- Area -->
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
@@ -2642,14 +2642,14 @@ app.get('/', (req, res) => {
                       </svg>
                       Stochastic
                     </h3>
-                    <button 
+                  <button 
                       onclick="event.stopPropagation(); clearStochFilters()" 
                       class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                    >
+                  >
                       Clear
-                    </button>
-                  </div>
-                  
+                  </button>
+                </div>
+            
                   <div id="stochFilters" class="filter-content">
             
                   <!-- D1 Direction -->
@@ -2880,7 +2880,7 @@ app.get('/', (req, res) => {
         const columnDefs = {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-36' },
-          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-40' },
+          price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[190px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-36', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
@@ -3808,9 +3808,9 @@ app.get('/', (req, res) => {
             if (alert.changeFromPrevDay !== undefined && alert.changeFromPrevDay !== null) {
               const changeFromPrevDay = parseFloat(alert.changeFromPrevDay);
               if (!isNaN(changeFromPrevDay)) {
-                priceChangeDisplay = changeFromPrevDay.toFixed(2);
-                // Change % color: green if >0%, red if <0%, gray if 0
-                priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              priceChangeDisplay = changeFromPrevDay.toFixed(2);
+              // Change % color: green if >0%, red if <0%, gray if 0
+              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
               }
             }
             // Priority 2: Calculate from price and previousClose
@@ -3818,10 +3818,10 @@ app.get('/', (req, res) => {
               const close = parseFloat(alert.price);
               const prevDayClose = parseFloat(alert.previousClose);
               if (!isNaN(close) && !isNaN(prevDayClose) && prevDayClose !== 0) {
-                const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
-                priceChangeDisplay = changeFromPrevDay.toFixed(2);
-                // Change % color: green if >0%, red if <0%, gray if 0
-                priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
+              const changeFromPrevDay = (close - prevDayClose) / prevDayClose * 100;
+              priceChangeDisplay = changeFromPrevDay.toFixed(2);
+              // Change % color: green if >0%, red if <0%, gray if 0
+              priceChangeClass = changeFromPrevDay > 0 ? 'text-green-400' : changeFromPrevDay < 0 ? 'text-red-400' : 'text-muted-foreground';
               }
             } 
             // Priority 3: Fallback to legacy priceChange field
@@ -3839,10 +3839,10 @@ app.get('/', (req, res) => {
               const price = parseFloat(alert.price);
               const vwap = parseFloat(alert.vwap);
               if (!isNaN(price) && !isNaN(vwap) && vwap !== 0) {
-                const vwapDiff = ((price - vwap) / vwap) * 100;
-                const sign = vwapDiff >= 0 ? '+' : '';
-                vwapDiffDisplay = \` (\${sign}\${vwapDiff.toFixed(2)}%)\`;
-                vwapDiffColor = vwapDiff >= 0 ? 'text-green-400' : 'text-red-400';
+              const vwapDiff = ((price - vwap) / vwap) * 100;
+              const sign = vwapDiff >= 0 ? '+' : '';
+              vwapDiffDisplay = \` (\${sign}\${vwapDiff.toFixed(2)}%)\`;
+              vwapDiffColor = vwapDiff >= 0 ? 'text-green-400' : 'text-red-400';
               }
             }
             
@@ -3872,21 +3872,21 @@ app.get('/', (req, res) => {
             if (d4Val !== undefined && d4Val !== null) {
               const d4Num = parseFloat(d4Val);
               if (!isNaN(d4Num)) {
-                quadStochDisplay = d4Num.toFixed(1);
-                
-                // Color coding based on D4 value
-                if (d4Num >= 80) {
-                  quadStochClass = 'text-red-400 font-bold'; // Overbought
-                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Overbought)\`;
-                } else if (d4Num >= 50) {
-                  quadStochClass = 'text-green-400 font-semibold'; // Bullish
-                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Bullish)\`;
-                } else if (d4Num >= 20) {
-                  quadStochClass = 'text-yellow-400'; // Neutral
-                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Neutral)\`;
-                } else {
-                  quadStochClass = 'text-lime-400 font-semibold'; // Oversold
-                  quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Oversold)\`;
+              quadStochDisplay = d4Num.toFixed(1);
+              
+              // Color coding based on D4 value
+              if (d4Num >= 80) {
+                quadStochClass = 'text-red-400 font-bold'; // Overbought
+                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Overbought)\`;
+              } else if (d4Num >= 50) {
+                quadStochClass = 'text-green-400 font-semibold'; // Bullish
+                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Bullish)\`;
+              } else if (d4Num >= 20) {
+                quadStochClass = 'text-yellow-400'; // Neutral
+                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Neutral)\`;
+              } else {
+                quadStochClass = 'text-lime-400 font-semibold'; // Oversold
+                quadStochTitle = \`D4: \${d4Num.toFixed(1)} (Oversold)\`;
                 }
               }
             }
