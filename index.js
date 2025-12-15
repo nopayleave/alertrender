@@ -2266,7 +2266,6 @@ app.get('/', (req, res) => {
           background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
           border-color: rgba(59, 130, 246, 0.6) !important;
           color: rgb(96, 165, 250) !important;
-          font-weight: 600;
           box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
           opacity: 1 !important;
         }
@@ -2282,6 +2281,13 @@ app.get('/', (req, res) => {
         }
         .filter-group.has-active .filter-chip:not(.active):hover {
           opacity: 0.7;
+        }
+        /* Filter group background */
+        .filter-section {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          padding: 16px;
         }
         /* iOS-style search input focus */
         input:focus {
@@ -2510,8 +2516,8 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <!-- BJ TSI Filters - iOS chip style -->
-                <div class="mb-5">
-                  <div class="flex items-center justify-between mb-2.5">
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-foreground/90">BJ TSI</h3>
                     <button 
                       onclick="clearBjFilters()" 
@@ -2589,12 +2595,9 @@ app.get('/', (req, res) => {
                   </div>
                 </div>
                 
-                <!-- Separator line -->
-                <div class="border-t border-border/50 my-5"></div>
-            
                 <!-- Stoch Filters - iOS chip style -->
-                <div class="mb-5">
-                  <div class="flex items-center justify-between mb-2.5">
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-foreground/90">Stochastic</h3>
                   <button 
                       onclick="clearStochFilters()" 
@@ -2738,9 +2741,9 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <div class="bg-card rounded-lg shadow-sm">
               <div>
-                <div class="overflow-x-auto">
+                <div class="overflow-x-auto max-h-[calc(100vh-200px)]">
                   <table class="w-full table-auto">
-                    <thead id="tableHeader">
+                    <thead id="tableHeader" class="sticky top-0 bg-card z-20">
                       <tr class="border-b border-border">
                         <!-- Headers will be dynamically generated -->
                       </tr>
@@ -3021,6 +3024,9 @@ app.get('/', (req, res) => {
             const onclickAttr = col.sortable ? 'onclick="sortTable(\\'' + sortField + '\\')"' : '';
             const draggableAttr = colId !== 'star' ? 'true' : 'false';
             
+            // Add ticker count badge for symbol column
+            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
+            
             return '<th ' +
               'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + col.width + ' ' + sortableClass + ' draggable-header" ' +
               'data-column-id="' + colId + '" ' +
@@ -3032,7 +3038,7 @@ app.get('/', (req, res) => {
               'ondrop="handleHeaderDrop(event)" ' +
               'ondragend="handleHeaderDragEnd(event)"' +
               '>' +
-              col.title + ' ' + sortIndicator +
+              col.title + tickerCountBadge + ' ' + sortIndicator +
               '</th>';
           }).join('');
           
@@ -3519,6 +3525,9 @@ app.get('/', (req, res) => {
           if (alertsData.length === 0) {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
+            // Update ticker count badge
+            const tickerCountEl = document.getElementById('tickerCount');
+            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
 
@@ -3682,8 +3691,15 @@ app.get('/', (req, res) => {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
+            // Update ticker count badge
+            const tickerCountEl = document.getElementById('tickerCount');
+            if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
           }
+
+          // Update ticker count badge
+          const tickerCountEl = document.getElementById('tickerCount');
+          if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
