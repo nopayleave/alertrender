@@ -2472,32 +2472,36 @@ app.get('/', (req, res) => {
           </div>
         </div>
         
-        <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-        <div class="fixed md:sticky top-auto md:top-0 bottom-0 md:bottom-auto left-0 right-0 z-50 bg-background border-t md:border-t-0 md:border-b border-border py-4">
-          <div class="container mx-auto" style="max-width:1360px;padding-bottom:1rem;">
-            <!-- Search input -->
-            <div class="relative mb-3">
-              <input 
-                type="text" 
-                id="searchInput" 
-                placeholder="Search tickers..." 
-                class="w-full px-3 py-2 pr-10 bg-card border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                onkeyup="filterAlerts()"
-                oninput="toggleClearButton()"
-              />
-              <button 
-                id="clearButton" 
-                onclick="clearSearch()" 
-                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden"
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <!-- BJ TSI Filters -->
-            <div class="flex flex-wrap gap-2 items-center text-xs">
-              <span class="text-muted-foreground font-medium">BJ Filters:</span>
+        <!-- Main content area: Filters on left, Table on right when width > 1280px -->
+        <div class="flex flex-col xl:flex-row xl:gap-6">
+          <!-- Filters sidebar (left on xl, top on smaller screens) -->
+          <div class="xl:w-80 xl:flex-shrink-0">
+            <!-- Search bar - sticky on top for desktop, bottom for mobile -->
+            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border xl:border-r xl:pr-6 py-4 xl:py-0">
+              <div class="container mx-auto xl:mx-0" style="max-width:1360px;padding-bottom:1rem;">
+                <!-- Search input -->
+                <div class="relative mb-3">
+                  <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Search tickers..." 
+                    class="w-full px-3 py-2 pr-10 bg-card border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    onkeyup="filterAlerts()"
+                    oninput="toggleClearButton()"
+                  />
+                  <button 
+                    id="clearButton" 
+                    onclick="clearSearch()" 
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden"
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <!-- BJ TSI Filters -->
+                <div class="flex flex-wrap gap-2 items-center text-xs mb-3">
+                  <span class="text-muted-foreground font-medium">BJ Filters:</span>
               
               <!-- PM Range Filter -->
               <select 
@@ -2557,140 +2561,148 @@ app.get('/', (req, res) => {
                 <option value="strong_bearish">Strong Bearish</option>
               </select>
               
-              <!-- Clear Filters Button -->
-              <button 
-                onclick="clearBjFilters()" 
-                class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
-              >
-                Clear BJ Filters
-              </button>
-            </div>
+                  <!-- Clear Filters Button -->
+                  <button 
+                    onclick="clearBjFilters()" 
+                    class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
+                  >
+                    Clear BJ Filters
+                  </button>
+                </div>
             
-            <!-- Stoch Filters -->
-            <div class="flex flex-wrap gap-2 items-center text-xs">
-              <span class="text-muted-foreground font-medium">Stoch Filters:</span>
-              
-              <!-- D1 Direction Filter -->
-              <select 
-                id="filterD1Direction" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="up">D1: Up</option>
-                <option value="down">D1: Down</option>
-                <option value="flat">D1: Flat</option>
-              </select>
-              
-              <!-- D1 Value Filter -->
-              <select 
-                id="filterD1Value" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="<10">&lt;10 (Extreme Oversold)</option>
-                <option value="10-20">10-20 (Oversold)</option>
-                <option value="20-50">20-50 (Lower Range)</option>
-                <option value="50-80">50-80 (Upper Range)</option>
-                <option value="80-90">80-90 (Overbought)</option>
-                <option value=">90">&gt;90 (Extreme Overbought)</option>
-              </select>
-              
-              <!-- D2 Direction Filter -->
-              <select 
-                id="filterD2Direction" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="up">D2: Up</option>
-                <option value="down">D2: Down</option>
-                <option value="flat">D2: Flat</option>
-              </select>
-              
-              <!-- D2 Value Filter -->
-              <select 
-                id="filterD2Value" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="<10">&lt;10 (Extreme Oversold)</option>
-                <option value="10-20">10-20 (Oversold)</option>
-                <option value="20-50">20-50 (Lower Range)</option>
-                <option value="50-80">50-80 (Upper Range)</option>
-                <option value="80-90">80-90 (Overbought)</option>
-                <option value=">90">&gt;90 (Extreme Overbought)</option>
-              </select>
-              
-              <!-- Trend Message Filter -->
-              <select 
-                id="filterTrendMessage" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="Do Not Long">Do Not Long</option>
-                <option value="Do Not Short">Do Not Short</option>
-                <option value="Try Long">Try Long</option>
-                <option value="Try Short">Try Short</option>
-                <option value="Big Trend Day">Big Trend Day</option>
-              </select>
-              
-              <!-- % Change Filter -->
-              <select 
-                id="filterPercentChange" 
-                multiple
-                size="1"
-                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                onchange="filterAlerts()"
-                title="Hold Ctrl/Cmd to select multiple"
-              >
-                <option value="<-5">&lt;-5% (Large Down)</option>
-                <option value="-5--2">-5% to -2% (Down)</option>
-                <option value="-2-0">-2% to 0% (Slight Down)</option>
-                <option value="0-2">0% to 2% (Slight Up)</option>
-                <option value="2-5">2% to 5% (Up)</option>
-                <option value=">5">&gt;5% (Large Up)</option>
-              </select>
-              
-              <!-- Clear Stoch Filters Button -->
-              <button 
-                onclick="clearStochFilters()" 
-                class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
-              >
-                Clear Stoch Filters
-              </button>
+                <!-- Stoch Filters -->
+                <div class="flex flex-wrap gap-2 items-center text-xs mb-3">
+                  <span class="text-muted-foreground font-medium">Stoch Filters:</span>
+                  
+                  <!-- D1 Direction Filter -->
+                  <select 
+                    id="filterD1Direction" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="up">D1: Up</option>
+                    <option value="down">D1: Down</option>
+                    <option value="flat">D1: Flat</option>
+                  </select>
+                  
+                  <!-- D1 Value Filter -->
+                  <select 
+                    id="filterD1Value" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="<10">&lt;10 (Extreme Oversold)</option>
+                    <option value="10-20">10-20 (Oversold)</option>
+                    <option value="20-50">20-50 (Lower Range)</option>
+                    <option value="50-80">50-80 (Upper Range)</option>
+                    <option value="80-90">80-90 (Overbought)</option>
+                    <option value=">90">&gt;90 (Extreme Overbought)</option>
+                  </select>
+                  
+                  <!-- D2 Direction Filter -->
+                  <select 
+                    id="filterD2Direction" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="up">D2: Up</option>
+                    <option value="down">D2: Down</option>
+                    <option value="flat">D2: Flat</option>
+                  </select>
+                  
+                  <!-- D2 Value Filter -->
+                  <select 
+                    id="filterD2Value" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="<10">&lt;10 (Extreme Oversold)</option>
+                    <option value="10-20">10-20 (Oversold)</option>
+                    <option value="20-50">20-50 (Lower Range)</option>
+                    <option value="50-80">50-80 (Upper Range)</option>
+                    <option value="80-90">80-90 (Overbought)</option>
+                    <option value=">90">&gt;90 (Extreme Overbought)</option>
+                  </select>
+                  
+                  <!-- Trend Message Filter -->
+                  <select 
+                    id="filterTrendMessage" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="Do Not Long">Do Not Long</option>
+                    <option value="Do Not Short">Do Not Short</option>
+                    <option value="Try Long">Try Long</option>
+                    <option value="Try Short">Try Short</option>
+                    <option value="Big Trend Day">Big Trend Day</option>
+                  </select>
+                  
+                  <!-- % Change Filter -->
+                  <select 
+                    id="filterPercentChange" 
+                    multiple
+                    size="1"
+                    class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    onchange="filterAlerts()"
+                    title="Hold Ctrl/Cmd to select multiple"
+                  >
+                    <option value="<-5">&lt;-5% (Large Down)</option>
+                    <option value="-5--2">-5% to -2% (Down)</option>
+                    <option value="-2-0">-2% to 0% (Slight Down)</option>
+                    <option value="0-2">0% to 2% (Slight Up)</option>
+                    <option value="2-5">2% to 5% (Up)</option>
+                    <option value=">5">&gt;5% (Large Up)</option>
+                  </select>
+                  
+                  <!-- Clear Stoch Filters Button -->
+                  <button 
+                    onclick="clearStochFilters()" 
+                    class="px-2 py-1 bg-secondary hover:bg-secondary/80 border border-border rounded text-muted-foreground hover:text-foreground text-xs transition-colors"
+                  >
+                    Clear Stoch Filters
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+              </div>
+            </div>
+          </div>
 
-        <div class="bg-card rounded-lg shadow-sm">
-          <div>
-            <div class="overflow-x-auto">
-              <table class="w-full table-auto">
-                <thead id="tableHeader">
-                  <tr class="border-b border-border">
-                    <!-- Headers will be dynamically generated -->
-                  </tr>
-                </thead>
-                <tbody id="alertTable">
-                  <tr>
-                    <td colspan="9" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Table area (right on xl, below filters on smaller screens) -->
+          <div class="flex-1 xl:min-w-0">
+            <div class="bg-card rounded-lg shadow-sm">
+              <div>
+                <div class="overflow-x-auto">
+                  <table class="w-full table-auto">
+                    <thead id="tableHeader">
+                      <tr class="border-b border-border">
+                        <!-- Headers will be dynamically generated -->
+                      </tr>
+                    </thead>
+                    <tbody id="alertTable">
+                      <tr>
+                        <td colspan="9" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
