@@ -2497,8 +2497,20 @@ app.get('/', (req, res) => {
       <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Trading Alert Dashboard</h1>
+            <div class="flex-1">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
+                <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground">Trading Alert Dashboard</h1>
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                  <p class="text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
+                  <div id="connectionStatus" class="flex items-center gap-1">
+                    <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                    <span id="connectionText" class="text-muted-foreground">Connecting...</span>
+                  </div>
+                  <div id="realtimeIndicator" class="text-green-400 hidden">
+                    <span class="animate-pulse">🔄 Real-time updates active</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="flex gap-3 items-center">
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
@@ -2800,19 +2812,6 @@ app.get('/', (req, res) => {
                   </table>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="mt-6 text-center">
-          <p class="text-sm text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
-          <div class="mt-2 flex items-center justify-center gap-2">
-            <div id="connectionStatus" class="flex items-center gap-1 text-xs">
-              <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-            </div>
-            <div id="realtimeIndicator" class="text-xs text-green-400 hidden">
-              <span class="animate-pulse">🔄 Real-time updates active</span>
             </div>
           </div>
         </div>
