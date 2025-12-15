@@ -56,6 +56,7 @@ let bjPremarketRange = {} // Store premarket high/low TSI values per symbol per 
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
+let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: { symbol: { date: 'YYYY-MM-DD', isBigTrendDay: true } }
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
@@ -1256,6 +1257,28 @@ app.post('/webhook', (req, res) => {
     if (dualStochHistory[alert.symbol].length > 50) {
       dualStochHistory[alert.symbol] = dualStochHistory[alert.symbol].slice(-50)
     }
+    
+    // Check for Big Trend Day: D1 or D2 hits below 10 or above 90
+    const today = getCurrentDateString()
+    const d1Value = parseFloat(alert.d1) || 0
+    const d2Value = parseFloat(alert.d2) || 0
+    const isBigTrendDay = d1Value < 10 || d1Value > 90 || d2Value < 10 || d2Value > 90
+    
+    if (isBigTrendDay) {
+      if (!bigTrendDay[alert.symbol]) {
+        bigTrendDay[alert.symbol] = {}
+      }
+      // Mark this trading day as Big Trend Day
+      if (!bigTrendDay[alert.symbol][today] || !bigTrendDay[alert.symbol][today].isBigTrendDay) {
+        bigTrendDay[alert.symbol][today] = {
+          isBigTrendDay: true,
+          timestamp: timestamp,
+          d1Value: d1Value,
+          d2Value: d2Value
+        }
+        console.log(`📊 Big Trend Day detected for ${alert.symbol} on ${today}: D1=${d1Value.toFixed(2)}, D2=${d2Value.toFixed(2)}`)
+      }
+    }
     console.log(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
@@ -1635,6 +1658,9 @@ app.post('/webhook', (req, res) => {
         alertData.dualStochD2 = dualStochInfo.d2
         alertData.dualStochD2Direction = dualStochInfo.d2Direction
         alertData.dualStochHighLevelTrend = dualStochInfo.highLevelTrend
+        // Add Big Trend Day status
+        const today = getCurrentDateString()
+        alertData.isBigTrendDay = (bigTrendDay[alert.symbol] && bigTrendDay[alert.symbol][today] && bigTrendDay[alert.symbol][today].isBigTrendDay) || false
         alertData.dualStochHighLevelTrendType = dualStochInfo.highLevelTrendType
         alertData.dualStochHighLevelTrendDiff = dualStochInfo.highLevelTrendDiff
         // Also merge day data from Dual Stoch if not already set
@@ -1759,6 +1785,7 @@ app.post('/reset-alerts', (req, res) => {
   bjTsiDataStorage = {}
   soloStochDataStorage = {}
   dualStochDataStorage = {}
+  bigTrendDay = {}
   patternData = {}
   res.json({ status: 'ok', message: 'All alerts cleared' })
 })
@@ -3953,6 +3980,11 @@ app.get('/', (req, res) => {
             if (trendMessage) {
               trendHtml = '<div class="text-xs ' + trendMessageClass + ' mt-1">' + trendMessage + '</div>'
             }
+            // Add Big Trend Day indicator
+            let bigTrendDayHtml = ''
+            if (alert.isBigTrendDay) {
+              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold mt-1 animate-pulse">🔥 Big Trend Day</div>'
+            }
             let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1/D2' : 'Solo Stoch D2') + ': ' + 
               (dualStochD1 !== null ? 'D1=' + dualStochD1.toFixed(2) + ', ' : '') + 
               'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
@@ -3961,9 +3993,9 @@ app.get('/', (req, res) => {
               (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + '">' +
+            d2CellHtml = '<td class="py-3 px-4 text-left" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
               '<div class="flex flex-col items-start gap-1">' +
-              chartHtml + d1Html + d2HtmlContent + diffHtml + trendHtml +
+              chartHtml + d1Html + d2HtmlContent + diffHtml + trendHtml + bigTrendDayHtml +
               '</div></td>'
             }
             
