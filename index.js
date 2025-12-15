@@ -2502,10 +2502,12 @@ app.get('/', (req, res) => {
               <!-- PM Range Filter -->
               <select 
                 id="filterPmRange" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">PM Range: All</option>
                 <option value="Below">Below</option>
                 <option value="Lower">Lower</option>
                 <option value="Upper">Upper</option>
@@ -2515,10 +2517,12 @@ app.get('/', (req, res) => {
               <!-- V Dir Filter -->
               <select 
                 id="filterVDir" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">V Dir: All</option>
                 <option value="Up">Up</option>
                 <option value="Down">Down</option>
               </select>
@@ -2526,10 +2530,12 @@ app.get('/', (req, res) => {
               <!-- S Dir Filter -->
               <select 
                 id="filterSDir" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">S Dir: All</option>
                 <option value="Up">Up</option>
                 <option value="Down">Down</option>
               </select>
@@ -2537,10 +2543,12 @@ app.get('/', (req, res) => {
               <!-- Area Filter -->
               <select 
                 id="filterArea" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">Area: All</option>
                 <option value="strong_bullish">Strong Bullish</option>
                 <option value="bullish">Bullish</option>
                 <option value="light_bullish">Light Bullish</option>
@@ -2562,13 +2570,29 @@ app.get('/', (req, res) => {
             <div class="flex flex-wrap gap-2 items-center text-xs">
               <span class="text-muted-foreground font-medium">Stoch Filters:</span>
               
+              <!-- D1 Direction Filter -->
+              <select 
+                id="filterD1Direction" 
+                multiple
+                size="1"
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
+              >
+                <option value="up">D1: Up</option>
+                <option value="down">D1: Down</option>
+                <option value="flat">D1: Flat</option>
+              </select>
+              
               <!-- D1 Value Filter -->
               <select 
                 id="filterD1Value" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">D1 Value: All</option>
                 <option value="<10">&lt;10 (Extreme Oversold)</option>
                 <option value="10-20">10-20 (Oversold)</option>
                 <option value="20-50">20-50 (Lower Range)</option>
@@ -2577,13 +2601,29 @@ app.get('/', (req, res) => {
                 <option value=">90">&gt;90 (Extreme Overbought)</option>
               </select>
               
+              <!-- D2 Direction Filter -->
+              <select 
+                id="filterD2Direction" 
+                multiple
+                size="1"
+                class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
+              >
+                <option value="up">D2: Up</option>
+                <option value="down">D2: Down</option>
+                <option value="flat">D2: Flat</option>
+              </select>
+              
               <!-- D2 Value Filter -->
               <select 
                 id="filterD2Value" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">D2 Value: All</option>
                 <option value="<10">&lt;10 (Extreme Oversold)</option>
                 <option value="10-20">10-20 (Oversold)</option>
                 <option value="20-50">20-50 (Lower Range)</option>
@@ -2595,10 +2635,12 @@ app.get('/', (req, res) => {
               <!-- Trend Message Filter -->
               <select 
                 id="filterTrendMessage" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">Trend Message: All</option>
                 <option value="Do Not Long">Do Not Long</option>
                 <option value="Do Not Short">Do Not Short</option>
                 <option value="Try Long">Try Long</option>
@@ -2609,10 +2651,12 @@ app.get('/', (req, res) => {
               <!-- % Change Filter -->
               <select 
                 id="filterPercentChange" 
+                multiple
+                size="1"
                 class="px-2 py-1 bg-card border border-border rounded text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-ring"
                 onchange="filterAlerts()"
+                title="Hold Ctrl/Cmd to select multiple"
               >
-                <option value="">% Change: All</option>
                 <option value="<-5">&lt;-5% (Large Down)</option>
                 <option value="-5--2">-5% to -2% (Down)</option>
                 <option value="-2-0">-2% to 0% (Slight Down)</option>
@@ -2674,17 +2718,19 @@ app.get('/', (req, res) => {
         // Search state
         let searchTerm = '';
         
-        // BJ TSI Filter state
-        let bjFilterPmRange = '';
-        let bjFilterVDir = '';
-        let bjFilterSDir = '';
-        let bjFilterArea = '';
+        // BJ TSI Filter state (arrays for multiple selections)
+        let bjFilterPmRange = [];
+        let bjFilterVDir = [];
+        let bjFilterSDir = [];
+        let bjFilterArea = [];
         
-        // Stoch Filter state
-        let stochFilterD1Value = '';
-        let stochFilterD2Value = '';
-        let stochFilterTrendMessage = '';
-        let stochFilterPercentChange = '';
+        // Stoch Filter state (arrays for multiple selections)
+        let stochFilterD1Direction = [];
+        let stochFilterD1Value = [];
+        let stochFilterD2Direction = [];
+        let stochFilterD2Value = [];
+        let stochFilterTrendMessage = [];
+        let stochFilterPercentChange = [];
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
@@ -2940,42 +2986,86 @@ app.get('/', (req, res) => {
         function filterAlerts() {
           searchTerm = document.getElementById('searchInput').value.toLowerCase();
           
-          // BJ TSI Filters
-          bjFilterPmRange = document.getElementById('filterPmRange')?.value || '';
-          bjFilterVDir = document.getElementById('filterVDir')?.value || '';
-          bjFilterSDir = document.getElementById('filterSDir')?.value || '';
-          bjFilterArea = document.getElementById('filterArea')?.value || '';
+          // BJ TSI Filters (get selected options as arrays)
+          const pmRangeSelect = document.getElementById('filterPmRange');
+          bjFilterPmRange = Array.from(pmRangeSelect?.selectedOptions || []).map(opt => opt.value);
           
-          // Stoch Filters
-          stochFilterD1Value = document.getElementById('filterD1Value')?.value || '';
-          stochFilterD2Value = document.getElementById('filterD2Value')?.value || '';
-          stochFilterTrendMessage = document.getElementById('filterTrendMessage')?.value || '';
-          stochFilterPercentChange = document.getElementById('filterPercentChange')?.value || '';
+          const vDirSelect = document.getElementById('filterVDir');
+          bjFilterVDir = Array.from(vDirSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const sDirSelect = document.getElementById('filterSDir');
+          bjFilterSDir = Array.from(sDirSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const areaSelect = document.getElementById('filterArea');
+          bjFilterArea = Array.from(areaSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          // Stoch Filters (get selected options as arrays)
+          const d1DirectionSelect = document.getElementById('filterD1Direction');
+          stochFilterD1Direction = Array.from(d1DirectionSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const d1ValueSelect = document.getElementById('filterD1Value');
+          stochFilterD1Value = Array.from(d1ValueSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const d2DirectionSelect = document.getElementById('filterD2Direction');
+          stochFilterD2Direction = Array.from(d2DirectionSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const d2ValueSelect = document.getElementById('filterD2Value');
+          stochFilterD2Value = Array.from(d2ValueSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const trendMessageSelect = document.getElementById('filterTrendMessage');
+          stochFilterTrendMessage = Array.from(trendMessageSelect?.selectedOptions || []).map(opt => opt.value);
+          
+          const percentChangeSelect = document.getElementById('filterPercentChange');
+          stochFilterPercentChange = Array.from(percentChangeSelect?.selectedOptions || []).map(opt => opt.value);
           
           renderTable();
         }
         
         function clearBjFilters() {
-          document.getElementById('filterPmRange').value = '';
-          document.getElementById('filterVDir').value = '';
-          document.getElementById('filterSDir').value = '';
-          document.getElementById('filterArea').value = '';
-          bjFilterPmRange = '';
-          bjFilterVDir = '';
-          bjFilterSDir = '';
-          bjFilterArea = '';
+          const pmRangeSelect = document.getElementById('filterPmRange');
+          if (pmRangeSelect) Array.from(pmRangeSelect.options).forEach(opt => opt.selected = false);
+          
+          const vDirSelect = document.getElementById('filterVDir');
+          if (vDirSelect) Array.from(vDirSelect.options).forEach(opt => opt.selected = false);
+          
+          const sDirSelect = document.getElementById('filterSDir');
+          if (sDirSelect) Array.from(sDirSelect.options).forEach(opt => opt.selected = false);
+          
+          const areaSelect = document.getElementById('filterArea');
+          if (areaSelect) Array.from(areaSelect.options).forEach(opt => opt.selected = false);
+          
+          bjFilterPmRange = [];
+          bjFilterVDir = [];
+          bjFilterSDir = [];
+          bjFilterArea = [];
           renderTable();
         }
         
         function clearStochFilters() {
-          document.getElementById('filterD1Value').value = '';
-          document.getElementById('filterD2Value').value = '';
-          document.getElementById('filterTrendMessage').value = '';
-          document.getElementById('filterPercentChange').value = '';
-          stochFilterD1Value = '';
-          stochFilterD2Value = '';
-          stochFilterTrendMessage = '';
-          stochFilterPercentChange = '';
+          const d1DirectionSelect = document.getElementById('filterD1Direction');
+          if (d1DirectionSelect) Array.from(d1DirectionSelect.options).forEach(opt => opt.selected = false);
+          
+          const d1ValueSelect = document.getElementById('filterD1Value');
+          if (d1ValueSelect) Array.from(d1ValueSelect.options).forEach(opt => opt.selected = false);
+          
+          const d2DirectionSelect = document.getElementById('filterD2Direction');
+          if (d2DirectionSelect) Array.from(d2DirectionSelect.options).forEach(opt => opt.selected = false);
+          
+          const d2ValueSelect = document.getElementById('filterD2Value');
+          if (d2ValueSelect) Array.from(d2ValueSelect.options).forEach(opt => opt.selected = false);
+          
+          const trendMessageSelect = document.getElementById('filterTrendMessage');
+          if (trendMessageSelect) Array.from(trendMessageSelect.options).forEach(opt => opt.selected = false);
+          
+          const percentChangeSelect = document.getElementById('filterPercentChange');
+          if (percentChangeSelect) Array.from(percentChangeSelect.options).forEach(opt => opt.selected = false);
+          
+          stochFilterD1Direction = [];
+          stochFilterD1Value = [];
+          stochFilterD2Direction = [];
+          stochFilterD2Value = [];
+          stochFilterTrendMessage = [];
+          stochFilterPercentChange = [];
           renderTable();
         }
 
@@ -3126,22 +3216,28 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters
-          if (stochFilterD1Value || stochFilterD2Value || stochFilterTrendMessage || stochFilterPercentChange) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.length > 0 || stochFilterD2Direction.length > 0 || stochFilterD2Value.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // Get D1 and D2 values
+              // Get D1 and D2 values and directions
               const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
               const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+              const d1Direction = alert.dualStochD1Direction || 'flat';
+              const d2Direction = alert.dualStochD2Direction || 'flat';
               
               // Get % change value
               const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+              
+              // Check D1 direction filter
+              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(d1Direction)) return false;
+              
+              // Check D2 direction filter
+              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(d2Direction)) return false;
               
               // Determine trend message from alert data
               let trendMessage = '';
               if (alert.isBigTrendDay) {
                 trendMessage = 'Big Trend Day';
               } else if (d1Value !== null && d2Value !== null) {
-                const d1Direction = alert.dualStochD1Direction || 'flat';
-                const d2Direction = alert.dualStochD2Direction || 'flat';
                 
                 if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
                   trendMessage = 'Do Not Long';
@@ -3154,51 +3250,63 @@ app.get('/', (req, res) => {
                 }
               }
               
-              // Check D1 value filter (only filter if value exists)
-              if (stochFilterD1Value) {
+              // Check D1 value filter (multiple selections)
+              if (stochFilterD1Value.length > 0) {
                 if (d1Value === null || isNaN(d1Value)) return false;
                 const d1Val = d1Value;
-                if (stochFilterD1Value === '<10' && d1Val >= 10) return false;
-                if (stochFilterD1Value === '10-20' && (d1Val < 10 || d1Val >= 20)) return false;
-                if (stochFilterD1Value === '20-50' && (d1Val < 20 || d1Val >= 50)) return false;
-                if (stochFilterD1Value === '50-80' && (d1Val < 50 || d1Val >= 80)) return false;
-                if (stochFilterD1Value === '80-90' && (d1Val < 80 || d1Val >= 90)) return false;
-                if (stochFilterD1Value === '>90' && d1Val <= 90) return false;
+                let matchesD1 = false;
+                for (const filter of stochFilterD1Value) {
+                  if (filter === '<10' && d1Val < 10) { matchesD1 = true; break; }
+                  if (filter === '10-20' && d1Val >= 10 && d1Val < 20) { matchesD1 = true; break; }
+                  if (filter === '20-50' && d1Val >= 20 && d1Val < 50) { matchesD1 = true; break; }
+                  if (filter === '50-80' && d1Val >= 50 && d1Val < 80) { matchesD1 = true; break; }
+                  if (filter === '80-90' && d1Val >= 80 && d1Val < 90) { matchesD1 = true; break; }
+                  if (filter === '>90' && d1Val >= 90) { matchesD1 = true; break; }
+                }
+                if (!matchesD1) return false;
               }
               
-              // Check D2 value filter (only filter if value exists)
-              if (stochFilterD2Value) {
+              // Check D2 value filter (multiple selections)
+              if (stochFilterD2Value.length > 0) {
                 if (d2Value === null || isNaN(d2Value)) return false;
                 const d2Val = d2Value;
-                if (stochFilterD2Value === '<10' && d2Val >= 10) return false;
-                if (stochFilterD2Value === '10-20' && (d2Val < 10 || d2Val >= 20)) return false;
-                if (stochFilterD2Value === '20-50' && (d2Val < 20 || d2Val >= 50)) return false;
-                if (stochFilterD2Value === '50-80' && (d2Val < 50 || d2Val >= 80)) return false;
-                if (stochFilterD2Value === '80-90' && (d2Val < 80 || d2Val >= 90)) return false;
-                if (stochFilterD2Value === '>90' && d2Val <= 90) return false;
+                let matchesD2 = false;
+                for (const filter of stochFilterD2Value) {
+                  if (filter === '<10' && d2Val < 10) { matchesD2 = true; break; }
+                  if (filter === '10-20' && d2Val >= 10 && d2Val < 20) { matchesD2 = true; break; }
+                  if (filter === '20-50' && d2Val >= 20 && d2Val < 50) { matchesD2 = true; break; }
+                  if (filter === '50-80' && d2Val >= 50 && d2Val < 80) { matchesD2 = true; break; }
+                  if (filter === '80-90' && d2Val >= 80 && d2Val < 90) { matchesD2 = true; break; }
+                  if (filter === '>90' && d2Val >= 90) { matchesD2 = true; break; }
+                }
+                if (!matchesD2) return false;
               }
               
-              // Check trend message filter
-              if (stochFilterTrendMessage && trendMessage !== stochFilterTrendMessage) return false;
+              // Check trend message filter (multiple selections)
+              if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
               
-              // Check % change filter
-              if (stochFilterPercentChange) {
+              // Check % change filter (multiple selections)
+              if (stochFilterPercentChange.length > 0) {
                 if (percentChange === null || isNaN(percentChange)) return false;
                 const pctVal = percentChange;
-                if (stochFilterPercentChange === '<-5' && pctVal >= -5) return false;
-                if (stochFilterPercentChange === '-5--2' && (pctVal < -5 || pctVal >= -2)) return false;
-                if (stochFilterPercentChange === '-2-0' && (pctVal < -2 || pctVal >= 0)) return false;
-                if (stochFilterPercentChange === '0-2' && (pctVal < 0 || pctVal >= 2)) return false;
-                if (stochFilterPercentChange === '2-5' && (pctVal < 2 || pctVal >= 5)) return false;
-                if (stochFilterPercentChange === '>5' && pctVal <= 5) return false;
+                let matchesPct = false;
+                for (const filter of stochFilterPercentChange) {
+                  if (filter === '<-5' && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
+                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
+                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
+                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5) { matchesPct = true; break; }
+                }
+                if (!matchesPct) return false;
               }
               
               return true;
             });
           }
           
-          // Apply BJ TSI Filters
-          if (bjFilterPmRange || bjFilterVDir || bjFilterSDir || bjFilterArea) {
+          // Apply BJ TSI Filters (multiple selections)
+          if (bjFilterPmRange.length > 0 || bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Calculate BJ TSI values for filtering
               const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
@@ -3244,11 +3352,11 @@ app.get('/', (req, res) => {
                 else areaValue = 'strong_bearish';
               }
               
-              // Apply filters
-              if (bjFilterPmRange && pmRangeStatus !== bjFilterPmRange) return false;
-              if (bjFilterVDir && vDir !== bjFilterVDir) return false;
-              if (bjFilterSDir && sDir !== bjFilterSDir) return false;
-              if (bjFilterArea && areaValue !== bjFilterArea) return false;
+              // Apply filters (check if value is in selected array)
+              if (bjFilterPmRange.length > 0 && !bjFilterPmRange.includes(pmRangeStatus)) return false;
+              if (bjFilterVDir.length > 0 && !bjFilterVDir.includes(vDir)) return false;
+              if (bjFilterSDir.length > 0 && !bjFilterSDir.includes(sDir)) return false;
+              if (bjFilterArea.length > 0 && !bjFilterArea.includes(areaValue)) return false;
               
               return true;
             });
