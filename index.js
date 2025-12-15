@@ -4256,7 +4256,15 @@ app.get('/', (req, res) => {
             }
             let trendHtml = ''
             if (trendMessage) {
-              trendHtml = '<div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
+              // Combine trend message with diff if available
+              trendHtml = '<div class="flex items-center gap-1"><div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
+              if (diffHtml) {
+                trendHtml += diffHtml
+              }
+              trendHtml += '</div>'
+            } else if (diffHtml) {
+              // If no trend message but diff exists, show diff alone
+              trendHtml = diffHtml
             }
             // Add Big Trend Day indicator
             let bigTrendDayHtml = ''
@@ -4271,15 +4279,11 @@ app.get('/', (req, res) => {
               (d1D2Diff !== null ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
               (trendMessage ? ', ' + trendMessage : '')
             let d2TitleEscaped = d2TitleText.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-            // Build horizontal layout: Chart | D1: X↓ | Diff: (X) | D2: X↓ LH | Try Short | 🔥 Big Trend Day
+            // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH | Try Short | Diff: (X) | 🔥 Big Trend Day
             let parts = []
             if (chartHtml) parts.push(chartHtml)
             if (d1Html) {
-              let d1Part = d1Html
-              if (diffHtml) {
-                d1Part += ' | ' + diffHtml
-              }
-              parts.push(d1Part)
+              parts.push(d1Html)
             }
             if (d2HtmlContent) {
               parts.push(d2HtmlContent)
