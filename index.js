@@ -2563,6 +2563,40 @@ app.get('/', (req, res) => {
         .noUi-active .noUi-tooltip {
           display: block;
         }
+        /* Calculator slide-in panel */
+        .calculator-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .calculator-overlay.open {
+          opacity: 1;
+          visibility: visible;
+        }
+        .calculator-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 100%;
+          max-width: 600px;
+          height: 100vh;
+          background: hsl(222.2 84% 4.9%);
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+          z-index: 1001;
+          transform: translateX(100%);
+          transition: transform 0.3s ease;
+          overflow-y: auto;
+        }
+        .calculator-panel.open {
+          transform: translateX(0);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -2589,9 +2623,9 @@ app.get('/', (req, res) => {
                 <span id="notificationIcon">🔔</span>
                 <span id="notificationText">Notifications ON</span>
               </button>
-              <a href="/calculator" class="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
+              <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Calculator
-              </a>
+              </button>
             </div>
           </div>
         </div>
@@ -5128,6 +5162,360 @@ app.get('/', (req, res) => {
         
         // Update pattern timers every second
         setInterval(updatePatternTimers, 1000)
+        
+        // Calculator slide-in panel functions
+        function openCalculator() {
+          document.getElementById('calculatorOverlay').classList.add('open');
+          document.getElementById('calculatorPanel').classList.add('open');
+          document.body.style.overflow = 'hidden';
+          // Initialize calculator on open
+          setTimeout(() => {
+            if (typeof calculate === 'function') {
+              calculate();
+            }
+          }, 100);
+        }
+        
+        function closeCalculator() {
+          document.getElementById('calculatorOverlay').classList.remove('open');
+          document.getElementById('calculatorPanel').classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        
+        // Close calculator when clicking overlay
+        document.addEventListener('DOMContentLoaded', function() {
+          const overlay = document.getElementById('calculatorOverlay');
+          if (overlay) {
+            overlay.addEventListener('click', function(e) {
+              if (e.target === overlay) {
+                closeCalculator();
+              }
+            });
+          }
+          
+          // Close calculator on Escape key
+          document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+              const panel = document.getElementById('calculatorPanel');
+              if (panel && panel.classList.contains('open')) {
+                closeCalculator();
+              }
+            }
+          });
+        });
+      </script>
+      
+      <!-- Calculator Slide-in Panel -->
+      <div id="calculatorOverlay" class="calculator-overlay" onclick="closeCalculator()"></div>
+      <div id="calculatorPanel" class="calculator-panel">
+        <div class="p-6">
+          <!-- Header with close button -->
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Share Calculator</h1>
+              <p class="text-muted-foreground">Calculate position sizing based on portfolio allocation</p>
+            </div>
+            <button onclick="closeCalculator()" class="text-muted-foreground hover:text-foreground transition-colors p-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Calculator Inputs -->
+          <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+            <div class="flex flex-row gap-2">
+              <!-- Portfolio Value with Currency Toggle -->
+              <div class="flex-[0.5]">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
+                  Portfolio Value
+                </label>
+                <div class="flex gap-1">
+                  <input 
+                    type="number" 
+                    id="portfolioValue" 
+                    placeholder="180000"
+                    class="flex-1 px-2 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                    oninput="calculate()"
+                    value="180000"
+                  />
+                  <select 
+                    id="currency" 
+                    class="px-2 py-2 bg-secondary border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+                    onchange="calculate()"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="HKD" selected>HKD</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Share Price (Always USD) -->
+              <div class="flex-[1.5]">
+                <label class="block text-xs font-medium text-muted-foreground mb-1">
+                  Share $US
+                </label>
+                <input 
+                  type="number" 
+                  id="sharePrice" 
+                  placeholder="50"
+                  step="0.01"
+                  class="w-full px-2 py-2 bg-secondary border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
+                  oninput="calculate()"
+                  value="50"
+                />
+              </div>
+            </div>
+            
+            <!-- Quick Select Buttons -->
+            <div class="mt-2 flex flex-wrap gap-1">
+              <button onclick="setStockPrice(1)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$1</button>
+              <button onclick="setStockPrice(5)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$5</button>
+              <button onclick="setStockPrice(10)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$10</button>
+              <button onclick="setStockPrice(15)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$15</button>
+              <button onclick="setStockPrice(20)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$20</button>
+              <button onclick="setStockPrice(50)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$50</button>
+              <button onclick="setStockPrice(80)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$80</button>
+              <button onclick="setStockPrice(100)" class="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 border border-border rounded text-foreground transition-colors">$100</button>
+            </div>
+          </div>
+
+          <!-- Allocation Results -->
+          <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+            <div id="allocationList" class="space-y-2">
+              <!-- Results will be populated here -->
+            </div>
+          </div>
+
+          <!-- % Cheatsheet -->
+          <div class="bg-card rounded-lg shadow-lg p-4 border border-border mb-4">
+            <h3 class="text-lg font-semibold text-foreground mb-3">% Cheatsheet</h3>
+            <p class="text-xs text-muted-foreground mb-3">Required shares to earn target profit from price moves</p>
+            
+            <!-- Custom Calculator -->
+            <div class="bg-secondary/50 rounded-lg p-3 mb-4 border border-border">
+              <div class="flex flex-wrap items-end gap-2">
+                <div class="flex-1 min-w-[120px]">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">Target Profit <span id="customProfitCurrency">(USD)</span></label>
+                  <input 
+                    type="number" 
+                    id="customProfit" 
+                    placeholder="1000"
+                    class="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    oninput="calculateCustom()"
+                  />
+                </div>
+                <div class="flex-1 min-w-[100px]">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">% Move</label>
+                  <input 
+                    type="number" 
+                    id="customPercent" 
+                    placeholder="15"
+                    step="0.1"
+                    class="w-full px-2 py-1.5 bg-background border border-border rounded text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    oninput="calculateCustom()"
+                  />
+                </div>
+                <div class="flex-1 min-w-[120px]">
+                  <label class="block text-xs font-medium text-muted-foreground mb-1">Shares Needed</label>
+                  <div id="customResult" class="px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 font-semibold text-sm text-center">
+                    -
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" id="cheatsheetTable">
+                <thead>
+                  <tr class="border-b border-border">
+                    <th class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-muted-foreground">Target Profit <span id="profitCurrency" class="text-xs">(USD)</span></th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">1%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">2%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">5%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">10%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">15%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">20%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">30%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">50%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">75%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">100%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">150%</th>
+                    <th class="text-center py-2 px-2 text-muted-foreground">200%</th>
+                  </tr>
+                </thead>
+                <tbody id="cheatsheetBody">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Formula Reference -->
+          <div class="mt-4 bg-card rounded-lg shadow p-3 border border-border mb-6">
+            <div class="text-xs text-muted-foreground">
+              💡 Shares are rounded to nice numbers (10, 50, 100, 500, 1000). Actual % may differ slightly.
+              <br>
+              📊 Cheatsheet formula: Required Shares = Target Profit (in USD) ÷ (Stock Price × Move %)
+              <br>
+              💱 Exchange rate: 7.8 HKD = 1 USD (HKD automatically converted for calculations)
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        // Calculator functions (same as original calculator page)
+        function roundToNice(num) {
+          if (num === 0) return 0;
+          
+          // For very small numbers (< 10), round to nearest 10
+          if (num < 10) {
+            return Math.ceil(num / 10) * 10;
+          }
+          // For small numbers (10-99), round to nearest 10
+          else if (num < 100) {
+            return Math.round(num / 10) * 10;
+          }
+          // For medium-small numbers (100-499), round to nearest 50
+          else if (num < 500) {
+            return Math.round(num / 50) * 50;
+          }
+          // For medium numbers (500-999), round to nearest 100
+          else if (num < 1000) {
+            return Math.round(num / 100) * 100;
+          }
+          // For large numbers (1000-4999), round to nearest 500
+          else if (num < 5000) {
+            return Math.round(num / 500) * 500;
+          }
+          // For very large numbers (5000+), round to nearest 1000
+          else {
+            return Math.round(num / 1000) * 1000;
+          }
+        }
+
+        function setStockPrice(price) {
+          document.getElementById('sharePrice').value = price;
+          calculate();
+        }
+
+        function calculate() {
+          const portfolioValueInput = parseFloat(document.getElementById('portfolioValue').value) || 0;
+          const currency = document.getElementById('currency').value;
+          const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
+          const allocationList = document.getElementById('allocationList');
+          const cheatsheetBody = document.getElementById('cheatsheetBody');
+          
+          // Convert HKD to USD if needed (approximate rate: 7.8 HKD = 1 USD)
+          const HKD_TO_USD = 7.8;
+          const portfolioValue = currency === 'HKD' ? portfolioValueInput / HKD_TO_USD : portfolioValueInput;
+
+          if (!portfolioValue || !sharePrice || portfolioValue <= 0 || sharePrice <= 0) {
+            allocationList.innerHTML = '<div class="text-center text-muted-foreground py-8">Enter portfolio value and stock price</div>';
+            cheatsheetBody.innerHTML = '<tr><td colspan="13" class="text-center text-muted-foreground py-4">Enter stock price to see cheatsheet</td></tr>';
+            return;
+          }
+
+          // Allocation breakdown
+          const allocations = [10, 20, 30, 40, 50];
+          
+          allocationList.innerHTML = allocations.map(percent => {
+            const positionSize = portfolioValue * (percent / 100);
+            const exactShares = positionSize / sharePrice;
+            const numShares = roundToNice(exactShares);
+            const actualCost = numShares * sharePrice;
+            const actualPercent = portfolioValue > 0 ? (actualCost / portfolioValue) * 100 : 0;
+            
+            // Convert display cost to selected currency
+            const displayCost = currency === 'HKD' ? actualCost * HKD_TO_USD : actualCost;
+            const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
+
+            return \`
+              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
+                <div class="flex items-baseline gap-2">
+                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-sm text-muted-foreground">shares</span>
+                  <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
+                </div>
+                <div class="text-right">
+                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
+                </div>
+              </div>
+            \`;
+          }).join('');
+          
+          // % Cheatsheet - calculate required shares for different profit targets and % moves
+          // Adjust profit targets based on currency
+          const profitTargetsUSD = [100, 250, 500, 1000, 2500, 5000];
+          const profitTargetsHKD = [1000, 2000, 4000, 8000, 20000, 40000];
+          
+          const profitTargets = currency === 'HKD' ? profitTargetsHKD : profitTargetsUSD;
+          const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
+          
+          // Update currency label in table header
+          document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
+          document.getElementById('customProfitCurrency').textContent = \`(\${currency})\`;
+          
+          const percentMoves = [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200];
+          
+          cheatsheetBody.innerHTML = profitTargets.map(profit => {
+            const cells = percentMoves.map(movePercent => {
+              // Convert profit to USD if in HKD
+              const profitUSD = currency === 'HKD' ? profit / HKD_TO_USD : profit;
+              
+              // Formula: Required Shares = Target Profit (USD) / (Stock Price × Move %)
+              const profitPerShare = sharePrice * (movePercent / 100);
+              const requiredShares = profitUSD / profitPerShare;
+              const roundedShares = roundToNice(requiredShares);
+              
+              // Calculate cost and check if it exceeds 100% of capital
+              const totalCost = roundedShares * sharePrice;
+              const exceedsCapital = totalCost > portfolioValue;
+              
+              // Dim if exceeds capital
+              const cellClass = exceedsCapital ? 'text-muted-foreground/50' : 'text-foreground font-semibold';
+              const titleText = exceedsCapital ? \`Cost: $\${totalCost.toLocaleString()} (exceeds capital)\` : '';
+              
+              return \`<td class="text-center py-2 px-2 \${cellClass}" title="\${titleText}">\${roundedShares.toLocaleString()}</td>\`;
+            }).join('');
+            
+            return \`
+              <tr class="border-b border-border/50 hover:bg-secondary/30">
+                <td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
+                \${cells}
+              </tr>
+            \`;
+          }).join('');
+          
+          // Update custom calculator too
+          calculateCustom();
+        }
+
+        function calculateCustom() {
+          const sharePrice = parseFloat(document.getElementById('sharePrice').value) || 0;
+          const customProfit = parseFloat(document.getElementById('customProfit').value) || 0;
+          const customPercent = parseFloat(document.getElementById('customPercent').value) || 0;
+          const currency = document.getElementById('currency').value;
+          const customResult = document.getElementById('customResult');
+          
+          if (!sharePrice || !customProfit || !customPercent || sharePrice <= 0 || customProfit <= 0 || customPercent <= 0) {
+            customResult.textContent = '-';
+            return;
+          }
+          
+          // Convert HKD to USD if needed
+          const HKD_TO_USD = 7.8;
+          const profitUSD = currency === 'HKD' ? customProfit / HKD_TO_USD : customProfit;
+          
+          // Formula: Required Shares = Target Profit (USD) ÷ (Stock Price × Move %)
+          const profitPerShare = sharePrice * (customPercent / 100);
+          const requiredShares = profitUSD / profitPerShare;
+          const roundedShares = roundToNice(requiredShares);
+          
+          customResult.textContent = roundedShares.toLocaleString();
+        }
       </script>
     </body>
     </html>
