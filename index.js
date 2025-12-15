@@ -2061,19 +2061,17 @@ app.get('/calculator', (req, res) => {
             const displayCost = currency === 'HKD' ? actualCost * HKD_TO_USD : actualCost;
             const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
 
-            return \`
-              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
-                <div class="flex items-baseline gap-2">
-                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
-                  <span class="text-sm text-muted-foreground">shares</span>
-                  <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
-                </div>
-                <div class="text-right">
-                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                  <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
-                </div>
-              </div>
-            \`;
+            return '<div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">' +
+              '<div class="flex items-baseline gap-2">' +
+              '<span class="text-2xl font-bold text-blue-400">' + numShares.toLocaleString() + '</span>' +
+              '<span class="text-sm text-muted-foreground">shares</span>' +
+              '<span class="text-lg font-semibold text-foreground">= ' + percent + '%</span>' +
+              '</div>' +
+              '<div class="text-right">' +
+              '<div class="text-base font-semibold text-green-400">' + currencySymbol + displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</div>' +
+              '<div class="text-xs text-muted-foreground">(' + actualPercent.toFixed(2) + '%)</div>' +
+              '</div>' +
+              '</div>';
           }).join('');
           
           // % Cheatsheet - calculate required shares for different profit targets and % moves
@@ -2085,8 +2083,8 @@ app.get('/calculator', (req, res) => {
           const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
           
           // Update currency label in table header
-          document.getElementById('profitCurrency').textContent = \`(\${currency})\`;
-          document.getElementById('customProfitCurrency').textContent = \`(\${currency})\`;
+          document.getElementById('profitCurrency').textContent = '(' + currency + ')';
+          document.getElementById('customProfitCurrency').textContent = '(' + currency + ')';
           
           const percentMoves = [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200];
           
@@ -2106,17 +2104,15 @@ app.get('/calculator', (req, res) => {
               
               // Dim if exceeds capital
               const cellClass = exceedsCapital ? 'text-muted-foreground/50' : 'text-foreground font-semibold';
-              const titleText = exceedsCapital ? \`Cost: $\${totalCost.toLocaleString()} (exceeds capital)\` : '';
+              const titleText = exceedsCapital ? 'Cost: $' + totalCost.toLocaleString() + ' (exceeds capital)' : '';
               
-              return \`<td class="text-center py-2 px-2 \${cellClass}" title="\${titleText}">\${roundedShares.toLocaleString()}</td>\`;
+              return '<td class="text-center py-2 px-2 ' + cellClass + '" title="' + titleText + '">' + roundedShares.toLocaleString() + '</td>';
             }).join('');
             
-            return \`
-              <tr class="border-b border-border/50 hover:bg-secondary/30">
-                <td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">\${currencySymbol}\${profit.toLocaleString()}</td>
-                \${cells}
-              </tr>
-            \`;
+            return '<tr class="border-b border-border/50 hover:bg-secondary/30">' +
+              '<td class="sticky left-0 bg-card z-10 text-left py-2 px-2 text-green-400 font-semibold">' + currencySymbol + profit.toLocaleString() + '</td>' +
+              cells +
+              '</tr>';
           }).join('');
           
           // Update custom calculator too
