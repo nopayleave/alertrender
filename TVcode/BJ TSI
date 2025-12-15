@@ -266,11 +266,19 @@ currentDay = dayofweek(time, premarketTimezone)
 currentDayOfMonth = dayofmonth(time, premarketTimezone)
 isNewDay = ta.change(currentDay) != 0 or ta.change(currentDayOfMonth) != 0
 
+// Create persistent snapshot variables for webhook (regular variables that hold the last valid values)
+// This ensures the webhook always has access to the premarket range even in alert context
+var float webhookPmHigh = na
+var float webhookPmLow = na
+
 // Reset premarket values only on new day
 if isNewDay
     premarketTsiHigh := na
     premarketTsiLow := na
     premarketDataCaptured := false
+    // Also reset webhook snapshot variables on new day
+    webhookPmHigh := na
+    webhookPmLow := na
 
 // Update premarket high/low during premarket session
 if inPremarket
@@ -310,12 +318,8 @@ premarketRangeLower = na(premarketTsiLow) ? na : premarketTsiLow
 // Calculate 50% midpoint of premarket range
 premarketRangeMidpoint = (not na(premarketRangeUpper) and not na(premarketRangeLower)) ? (premarketRangeUpper + premarketRangeLower) / 2 : na
 
-// Create persistent snapshot variables for webhook (regular variables that hold the last valid values)
-// This ensures the webhook always has access to the premarket range even in alert context
-var float webhookPmHigh = na
-var float webhookPmLow = na
-
 // Update webhook snapshot whenever we have valid premarket values
+// Only update if we have actual new data (not na)
 if not na(premarketTsiHigh)
     webhookPmHigh := premarketTsiHigh
 if not na(premarketTsiLow)

@@ -2519,6 +2519,93 @@ app.get('/', (req, res) => {
           transform: scale(1.1);
           box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
         }
+        /* Dual-handle range slider styles */
+        .range-track {
+          pointer-events: none;
+        }
+        .range-slider-min::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+          z-index: 10;
+        }
+        .range-slider-min::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .range-slider-min::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+        }
+        .range-slider-min::-moz-range-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .range-slider-max::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+          z-index: 20;
+        }
+        .range-slider-max::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .range-slider-max::-moz-range-thumb {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: hsl(210 40% 98%);
+          border: 2px solid rgb(59, 130, 246);
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s;
+        }
+        .range-slider-max::-moz-range-thumb:hover {
+          transform: scale(1.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+        .range-slider-min::-webkit-slider-runnable-track,
+        .range-slider-max::-webkit-slider-runnable-track {
+          height: 4px;
+          background: transparent;
+        }
+        .range-slider-min::-moz-range-track,
+        .range-slider-max::-moz-range-track {
+          height: 4px;
+          background: transparent;
+        }
+        /* Highlight the selected range */
+        .range-slider-min:disabled::-webkit-slider-thumb,
+        .range-slider-max:disabled::-webkit-slider-thumb {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .range-slider-min:disabled::-moz-range-thumb,
+        .range-slider-max:disabled::-moz-range-thumb {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0 md:pt-20">
@@ -2615,6 +2702,55 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
+                  <!-- BJ Value Slider -->
+                  <div class="mb-3">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">BJ Value</label>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                    <div class="px-2" id="bjValueSliderContainer">
+                      <div class="mb-2">
+                        <div class="text-xs text-center text-foreground font-semibold mb-2">
+                          <span id="bjValueMinValue" class="text-blue-400">-50</span> - <span id="bjValueMaxValue" class="text-blue-400">50</span>
+                        </div>
+                        <div class="relative h-8">
+                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
+                          <div id="bjValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
+                          <input 
+                            type="range" 
+                            id="bjValueMinSlider" 
+                            min="-50" 
+                            max="50" 
+                            value="-50" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
+                            oninput="updateBjValueFilter()"
+                            disabled
+                          />
+                          <input 
+                            type="range" 
+                            id="bjValueMaxSlider" 
+                            min="-50" 
+                            max="50" 
+                            value="50" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
+                            oninput="updateBjValueFilter()"
+                            disabled
+                          />
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                          <span>-50</span>
+                          <span>0</span>
+                          <span>50</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <!-- Area -->
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
@@ -2654,16 +2790,52 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- D1 Value -->
+                  <!-- D1 Value Slider -->
                   <div class="mb-3">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Value</label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d1Value', '<10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="<10">&lt;10</button>
-                      <button onclick="toggleFilterChip('d1Value', '10-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="10-20">10-20</button>
-                      <button onclick="toggleFilterChip('d1Value', '20-50', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="20-50">20-50</button>
-                      <button onclick="toggleFilterChip('d1Value', '50-80', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="50-80">50-80</button>
-                      <button onclick="toggleFilterChip('d1Value', '80-90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value="80-90">80-90</button>
-                      <button onclick="toggleFilterChip('d1Value', '>90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d1Value" data-value=">90">&gt;90</button>
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">D1 Value</label>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                    <div class="px-2" id="d1ValueSliderContainer">
+                      <div class="mb-2">
+                        <div class="text-xs text-center text-foreground font-semibold mb-2">
+                          <span id="d1ValueMinValue" class="text-blue-400">0</span> - <span id="d1ValueMaxValue" class="text-blue-400">100</span>
+                        </div>
+                        <div class="relative h-8">
+                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
+                          <div id="d1ValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
+                          <input 
+                            type="range" 
+                            id="d1ValueMinSlider" 
+                            min="0" 
+                            max="100" 
+                            value="0" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
+                            oninput="updateD1ValueFilter()"
+                            disabled
+                          />
+                          <input 
+                            type="range" 
+                            id="d1ValueMaxSlider" 
+                            min="0" 
+                            max="100" 
+                            value="100" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
+                            oninput="updateD1ValueFilter()"
+                            disabled
+                          />
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                          <span>0</span>
+                          <span>50</span>
+                          <span>100</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -2677,16 +2849,52 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- D2 Value -->
+                  <!-- D2 Value Slider -->
                   <div class="mb-3">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Value</label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d2Value', '<10', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="<10">&lt;10</button>
-                      <button onclick="toggleFilterChip('d2Value', '10-20', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="10-20">10-20</button>
-                      <button onclick="toggleFilterChip('d2Value', '20-50', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="20-50">20-50</button>
-                      <button onclick="toggleFilterChip('d2Value', '50-80', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="50-80">50-80</button>
-                      <button onclick="toggleFilterChip('d2Value', '80-90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value="80-90">80-90</button>
-                      <button onclick="toggleFilterChip('d2Value', '>90', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-border/50 bg-secondary/80 hover:bg-secondary active:scale-95 transition-all text-foreground" data-filter="d2Value" data-value=">90">&gt;90</button>
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">D2 Value</label>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                    <div class="px-2" id="d2ValueSliderContainer">
+                      <div class="mb-2">
+                        <div class="text-xs text-center text-foreground font-semibold mb-2">
+                          <span id="d2ValueMinValue" class="text-blue-400">0</span> - <span id="d2ValueMaxValue" class="text-blue-400">100</span>
+                        </div>
+                        <div class="relative h-8">
+                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
+                          <div id="d2ValueRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
+                          <input 
+                            type="range" 
+                            id="d2ValueMinSlider" 
+                            min="0" 
+                            max="100" 
+                            value="0" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
+                            oninput="updateD2ValueFilter()"
+                            disabled
+                          />
+                          <input 
+                            type="range" 
+                            id="d2ValueMaxSlider" 
+                            min="0" 
+                            max="100" 
+                            value="100" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
+                            oninput="updateD2ValueFilter()"
+                            disabled
+                          />
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                          <span>0</span>
+                          <span>50</span>
+                          <span>100</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -2694,34 +2902,47 @@ app.get('/', (req, res) => {
                   <div class="mb-3">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2|</label>
-                      <span id="diffRangeDisplay" class="text-xs font-semibold text-foreground">0 - 50</span>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
                     </div>
-                    <div class="px-2 space-y-2">
-                      <div>
-                        <label class="text-xs text-muted-foreground/70 mb-1 block">Min: <span id="diffMinValue" class="text-foreground font-semibold">0</span></label>
-                        <input 
-                          type="range" 
-                          id="diffMinSlider" 
-                          min="0" 
-                          max="50" 
-                          value="0" 
-                          step="1"
-                          class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer diff-slider"
-                          oninput="updateDiffFilter()"
-                        />
-                      </div>
-                      <div>
-                        <label class="text-xs text-muted-foreground/70 mb-1 block">Max: <span id="diffMaxValue" class="text-foreground font-semibold">50</span></label>
-                        <input 
-                          type="range" 
-                          id="diffMaxSlider" 
-                          min="0" 
-                          max="50" 
-                          value="50" 
-                          step="1"
-                          class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer diff-slider"
-                          oninput="updateDiffFilter()"
-                        />
+                    <div class="px-2" id="diffSliderContainer">
+                      <div class="mb-2">
+                        <div class="text-xs text-center text-foreground font-semibold mb-2">
+                          <span id="diffMinValue" class="text-blue-400">0</span> - <span id="diffMaxValue" class="text-blue-400">50</span>
+                        </div>
+                        <div class="relative h-8">
+                          <div class="absolute top-3 left-0 right-0 h-2 bg-secondary rounded-lg range-track"></div>
+                          <div id="diffRangeIndicator" class="absolute top-3 h-2 bg-blue-500/30 rounded-lg range-indicator" style="left: 0%; width: 100%;"></div>
+                          <input 
+                            type="range" 
+                            id="diffMinSlider" 
+                            min="0" 
+                            max="50" 
+                            value="0" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-min z-10"
+                            oninput="updateDiffFilter()"
+                            disabled
+                          />
+                          <input 
+                            type="range" 
+                            id="diffMaxSlider" 
+                            min="0" 
+                            max="50" 
+                            value="50" 
+                            step="1"
+                            class="absolute w-full h-2 top-3 bg-transparent appearance-none cursor-pointer range-slider-max z-20"
+                            oninput="updateDiffFilter()"
+                            disabled
+                          />
+                        </div>
+                        <div class="flex justify-between mt-1 text-xs text-muted-foreground">
+                          <span>0</span>
+                          <span>25</span>
+                          <span>50</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2806,13 +3027,14 @@ app.get('/', (req, res) => {
         let bjFilterVDir = [];
         let bjFilterSDir = [];
         let bjFilterArea = [];
+        let bjFilterValue = { min: -50, max: 50, active: false }; // BJ Value slider range
         
         // Stoch Filter state (arrays for multiple selections)
         let stochFilterD1Direction = [];
-        let stochFilterD1Value = [];
+        let stochFilterD1Value = { min: 0, max: 100, active: false }; // D1 Value slider range
         let stochFilterD2Direction = [];
-        let stochFilterD2Value = [];
-        let stochFilterDiff = { min: 0, max: 50, active: false }; // Slider range
+        let stochFilterD2Value = { min: 0, max: 100, active: false }; // D2 Value slider range
+        let stochFilterDiff = { min: 0, max: 50, active: false }; // Diff slider range
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
 
@@ -3079,11 +3301,171 @@ app.get('/', (req, res) => {
           filterAlerts();
         }
         
+        // Update visual range indicator for dual-handle slider
+        function updateRangeIndicator(sliderType, minVal, maxVal, minRange, maxRange) {
+          const indicator = document.getElementById(sliderType + 'RangeIndicator');
+          if (indicator) {
+            const range = maxRange - minRange;
+            const leftPercent = ((minVal - minRange) / range) * 100;
+            const widthPercent = ((maxVal - minVal) / range) * 100;
+            indicator.style.left = leftPercent + '%';
+            indicator.style.width = widthPercent + '%';
+          }
+        }
+        
+        // Toggle slider filter on/off
+        function toggleSliderFilter(sliderType) {
+          const toggle = document.getElementById(sliderType + 'Toggle');
+          const container = document.getElementById(sliderType + 'SliderContainer');
+          const minSlider = document.getElementById(sliderType + 'MinSlider');
+          const maxSlider = document.getElementById(sliderType + 'MaxSlider');
+          
+          if (toggle && container && minSlider && maxSlider) {
+            const isEnabled = toggle.checked;
+            minSlider.disabled = !isEnabled;
+            maxSlider.disabled = !isEnabled;
+            
+            // Call the appropriate update function to set active state correctly
+            if (sliderType === 'bjValue') {
+              updateBjValueFilter();
+            } else if (sliderType === 'd1Value') {
+              updateD1ValueFilter();
+            } else if (sliderType === 'd2Value') {
+              updateD2ValueFilter();
+            } else if (sliderType === 'diff') {
+              updateDiffFilter();
+            }
+          }
+        }
+        
+        // Update BJ Value filter from slider values
+        function updateBjValueFilter() {
+          const toggle = document.getElementById('bjValueToggle');
+          const minSlider = document.getElementById('bjValueMinSlider');
+          const maxSlider = document.getElementById('bjValueMaxSlider');
+          const minValueDisplay = document.getElementById('bjValueMinValue');
+          const maxValueDisplay = document.getElementById('bjValueMaxValue');
+          
+          if (minSlider && maxSlider) {
+            let minVal = parseInt(minSlider.value);
+            let maxVal = parseInt(maxSlider.value);
+            
+            // Ensure min doesn't exceed max
+            if (minVal > maxVal) {
+              const temp = minVal;
+              minVal = maxVal;
+              maxVal = temp;
+              minSlider.value = minVal;
+              maxSlider.value = maxVal;
+            }
+            
+            bjFilterValue.min = minVal;
+            bjFilterValue.max = maxVal;
+            // Only active if toggle is checked AND range is not default
+            bjFilterValue.active = toggle && toggle.checked && (minVal > -50 || maxVal < 50);
+            
+            if (minValueDisplay) {
+              minValueDisplay.textContent = minVal;
+            }
+            if (maxValueDisplay) {
+              maxValueDisplay.textContent = maxVal;
+            }
+            
+            // Update visual range indicator
+            updateRangeIndicator('bjValue', minVal, maxVal, -50, 50);
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
+        // Update D1 Value filter from slider values
+        function updateD1ValueFilter() {
+          const toggle = document.getElementById('d1ValueToggle');
+          const minSlider = document.getElementById('d1ValueMinSlider');
+          const maxSlider = document.getElementById('d1ValueMaxSlider');
+          const minValueDisplay = document.getElementById('d1ValueMinValue');
+          const maxValueDisplay = document.getElementById('d1ValueMaxValue');
+          
+          if (minSlider && maxSlider) {
+            let minVal = parseInt(minSlider.value);
+            let maxVal = parseInt(maxSlider.value);
+            
+            // Ensure min doesn't exceed max
+            if (minVal > maxVal) {
+              const temp = minVal;
+              minVal = maxVal;
+              maxVal = temp;
+              minSlider.value = minVal;
+              maxSlider.value = maxVal;
+            }
+            
+            stochFilterD1Value.min = minVal;
+            stochFilterD1Value.max = maxVal;
+            // Only active if toggle is checked AND range is not default
+            stochFilterD1Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
+            
+            if (minValueDisplay) {
+              minValueDisplay.textContent = minVal;
+            }
+            if (maxValueDisplay) {
+              maxValueDisplay.textContent = maxVal;
+            }
+            
+            // Update visual range indicator
+            updateRangeIndicator('d1Value', minVal, maxVal, 0, 100);
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
+        // Update D2 Value filter from slider values
+        function updateD2ValueFilter() {
+          const toggle = document.getElementById('d2ValueToggle');
+          const minSlider = document.getElementById('d2ValueMinSlider');
+          const maxSlider = document.getElementById('d2ValueMaxSlider');
+          const minValueDisplay = document.getElementById('d2ValueMinValue');
+          const maxValueDisplay = document.getElementById('d2ValueMaxValue');
+          
+          if (minSlider && maxSlider) {
+            let minVal = parseInt(minSlider.value);
+            let maxVal = parseInt(maxSlider.value);
+            
+            // Ensure min doesn't exceed max
+            if (minVal > maxVal) {
+              const temp = minVal;
+              minVal = maxVal;
+              maxVal = temp;
+              minSlider.value = minVal;
+              maxSlider.value = maxVal;
+            }
+            
+            stochFilterD2Value.min = minVal;
+            stochFilterD2Value.max = maxVal;
+            // Only active if toggle is checked AND range is not default
+            stochFilterD2Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
+            
+            if (minValueDisplay) {
+              minValueDisplay.textContent = minVal;
+            }
+            if (maxValueDisplay) {
+              maxValueDisplay.textContent = maxVal;
+            }
+            
+            // Update visual range indicator
+            updateRangeIndicator('d2Value', minVal, maxVal, 0, 100);
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
         // Update diff filter from slider values
         function updateDiffFilter() {
+          const toggle = document.getElementById('diffToggle');
           const minSlider = document.getElementById('diffMinSlider');
           const maxSlider = document.getElementById('diffMaxSlider');
-          const display = document.getElementById('diffRangeDisplay');
           const minValueDisplay = document.getElementById('diffMinValue');
           const maxValueDisplay = document.getElementById('diffMaxValue');
           
@@ -3102,17 +3484,18 @@ app.get('/', (req, res) => {
             
             stochFilterDiff.min = minVal;
             stochFilterDiff.max = maxVal;
-            stochFilterDiff.active = (minVal > 0 || maxVal < 50);
+            // Only active if toggle is checked AND range is not default
+            stochFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 50);
             
-            if (display) {
-              display.textContent = minVal === maxVal ? minVal.toString() : minVal + ' - ' + maxVal;
-            }
             if (minValueDisplay) {
               minValueDisplay.textContent = minVal;
             }
             if (maxValueDisplay) {
               maxValueDisplay.textContent = maxVal;
             }
+            
+            // Update visual range indicator
+            updateRangeIndicator('diff', minVal, maxVal, 0, 50);
             
             // Apply filters
             filterAlerts();
@@ -3129,10 +3512,8 @@ app.get('/', (req, res) => {
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
-          stochFilterD1Value = Array.from(document.querySelectorAll('[data-filter="d1Value"].active')).map(chip => chip.dataset.value);
+          // D1/D2 Value and Diff filters are updated via their respective update functions from sliders
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
-          stochFilterD2Value = Array.from(document.querySelectorAll('[data-filter="d2Value"].active')).map(chip => chip.dataset.value);
-          // Diff filter is updated via updateDiffFilter() from slider
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
         }
@@ -3152,30 +3533,60 @@ app.get('/', (req, res) => {
             chip.classList.remove('active');
           });
           
+          // Reset BJ Value slider
+          const bjToggle = document.getElementById('bjValueToggle');
+          const bjMinSlider = document.getElementById('bjValueMinSlider');
+          const bjMaxSlider = document.getElementById('bjValueMaxSlider');
+          if (bjToggle) bjToggle.checked = false;
+          if (bjMinSlider) bjMinSlider.value = -50;
+          if (bjMaxSlider) bjMaxSlider.value = 50;
+          toggleSliderFilter('bjValue');
+          
           bjFilterPmRange = [];
           bjFilterVDir = [];
           bjFilterSDir = [];
           bjFilterArea = [];
+          bjFilterValue = { min: -50, max: 50, active: false };
           renderTable();
         }
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d1Value"], [data-filter="d2Direction"], [data-filter="d2Value"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
             chip.classList.remove('active');
           });
           
+          // Reset D1 Value slider
+          const d1Toggle = document.getElementById('d1ValueToggle');
+          const d1MinSlider = document.getElementById('d1ValueMinSlider');
+          const d1MaxSlider = document.getElementById('d1ValueMaxSlider');
+          if (d1Toggle) d1Toggle.checked = false;
+          if (d1MinSlider) d1MinSlider.value = 0;
+          if (d1MaxSlider) d1MaxSlider.value = 100;
+          toggleSliderFilter('d1Value');
+          
+          // Reset D2 Value slider
+          const d2Toggle = document.getElementById('d2ValueToggle');
+          const d2MinSlider = document.getElementById('d2ValueMinSlider');
+          const d2MaxSlider = document.getElementById('d2ValueMaxSlider');
+          if (d2Toggle) d2Toggle.checked = false;
+          if (d2MinSlider) d2MinSlider.value = 0;
+          if (d2MaxSlider) d2MaxSlider.value = 100;
+          toggleSliderFilter('d2Value');
+          
           // Reset diff sliders
-          const minSlider = document.getElementById('diffMinSlider');
-          const maxSlider = document.getElementById('diffMaxSlider');
-          if (minSlider) minSlider.value = 0;
-          if (maxSlider) maxSlider.value = 50;
-          updateDiffFilter();
+          const diffToggle = document.getElementById('diffToggle');
+          const diffMinSlider = document.getElementById('diffMinSlider');
+          const diffMaxSlider = document.getElementById('diffMaxSlider');
+          if (diffToggle) diffToggle.checked = false;
+          if (diffMinSlider) diffMinSlider.value = 0;
+          if (diffMaxSlider) diffMaxSlider.value = 50;
+          toggleSliderFilter('diff');
           
           stochFilterD1Direction = [];
-          stochFilterD1Value = [];
+          stochFilterD1Value = { min: 0, max: 100, active: false };
           stochFilterD2Direction = [];
-          stochFilterD2Value = [];
+          stochFilterD2Value = { min: 0, max: 100, active: false };
           stochFilterDiff = { min: 0, max: 50, active: false };
           stochFilterTrendMessage = [];
           stochFilterPercentChange = [];
@@ -3329,7 +3740,7 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.length > 0 || stochFilterD2Direction.length > 0 || stochFilterD2Value.length > 0 || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Get D1 and D2 values and directions
               const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
@@ -3363,36 +3774,16 @@ app.get('/', (req, res) => {
                 }
               }
               
-              // Check D1 value filter (multiple selections)
-              if (stochFilterD1Value.length > 0) {
+              // Check D1 value filter using slider range
+              if (stochFilterD1Value.active) {
                 if (d1Value === null || isNaN(d1Value)) return false;
-                const d1Val = d1Value;
-                let matchesD1 = false;
-                for (const filter of stochFilterD1Value) {
-                  if (filter === '<10' && d1Val < 10) { matchesD1 = true; break; }
-                  if (filter === '10-20' && d1Val >= 10 && d1Val < 20) { matchesD1 = true; break; }
-                  if (filter === '20-50' && d1Val >= 20 && d1Val < 50) { matchesD1 = true; break; }
-                  if (filter === '50-80' && d1Val >= 50 && d1Val < 80) { matchesD1 = true; break; }
-                  if (filter === '80-90' && d1Val >= 80 && d1Val < 90) { matchesD1 = true; break; }
-                  if (filter === '>90' && d1Val >= 90) { matchesD1 = true; break; }
-                }
-                if (!matchesD1) return false;
+                if (d1Value < stochFilterD1Value.min || d1Value > stochFilterD1Value.max) return false;
               }
               
-              // Check D2 value filter (multiple selections)
-              if (stochFilterD2Value.length > 0) {
+              // Check D2 value filter using slider range
+              if (stochFilterD2Value.active) {
                 if (d2Value === null || isNaN(d2Value)) return false;
-                const d2Val = d2Value;
-                let matchesD2 = false;
-                for (const filter of stochFilterD2Value) {
-                  if (filter === '<10' && d2Val < 10) { matchesD2 = true; break; }
-                  if (filter === '10-20' && d2Val >= 10 && d2Val < 20) { matchesD2 = true; break; }
-                  if (filter === '20-50' && d2Val >= 20 && d2Val < 50) { matchesD2 = true; break; }
-                  if (filter === '50-80' && d2Val >= 50 && d2Val < 80) { matchesD2 = true; break; }
-                  if (filter === '80-90' && d2Val >= 80 && d2Val < 90) { matchesD2 = true; break; }
-                  if (filter === '>90' && d2Val >= 90) { matchesD2 = true; break; }
-                }
-                if (!matchesD2) return false;
+                if (d2Value < stochFilterD2Value.min || d2Value > stochFilterD2Value.max) return false;
               }
               
               // Check Diff filter (|D1 - D2|) - Absolute difference using slider range
@@ -3426,12 +3817,18 @@ app.get('/', (req, res) => {
           }
           
           // Apply BJ TSI Filters (multiple selections)
-          if (bjFilterPmRange.length > 0 || bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0) {
+          if (bjFilterPmRange.length > 0 || bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValue.active) {
             filteredData = filteredData.filter(alert => {
               // Calculate BJ TSI values for filtering
               const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
               const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
               const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+              
+              // Check BJ Value filter using slider range
+              if (bjFilterValue.active) {
+                if (bjTsi === null || isNaN(bjTsi)) return false;
+                if (bjTsi < bjFilterValue.min || bjTsi > bjFilterValue.max) return false;
+              }
               
               // Get premarket range values
               let premarketRangeUpper = null;
