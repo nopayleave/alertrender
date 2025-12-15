@@ -2253,17 +2253,25 @@ app.get('/', (req, res) => {
           -webkit-tap-highlight-color: transparent;
         }
         .filter-chip.active {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%);
-          border-color: rgba(59, 130, 246, 0.5);
-          color: rgb(96, 165, 250);
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
+          border-color: rgba(59, 130, 246, 0.6) !important;
+          color: rgb(96, 165, 250) !important;
           font-weight: 600;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          opacity: 1 !important;
         }
         .filter-chip:active {
           transform: scale(0.95);
         }
         .filter-chip.active:active {
           transform: scale(0.92);
+        }
+        /* Dim inactive chips when one is active in the group */
+        .filter-group.has-active .filter-chip:not(.active) {
+          opacity: 0.4;
+        }
+        .filter-group.has-active .filter-chip:not(.active):hover {
+          opacity: 0.7;
         }
         /* iOS-style search input focus */
         input:focus {
@@ -2507,14 +2515,14 @@ app.get('/', (req, res) => {
                   <div class="grid grid-cols-2 gap-3 mb-3">
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
-                      <div class="flex flex-wrap gap-1.5">
+                      <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑ Up</button>
                         <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓ Down</button>
                       </div>
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
-                      <div class="flex flex-wrap gap-1.5">
+                      <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑ Up</button>
                         <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓ Down</button>
                       </div>
@@ -2524,7 +2532,7 @@ app.get('/', (req, res) => {
                   <!-- Value vs Signal Toggle -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
                       <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
                     </div>
@@ -2560,7 +2568,7 @@ app.get('/', (req, res) => {
                   <!-- Area -->
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Area</label>
-                    <div class="flex flex-wrap gap-1.5" id="areaChips">
+                    <div class="filter-group flex flex-wrap gap-1.5" id="areaChips">
                       <button onclick="toggleFilterChip('area', 'strong_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="area" data-value="strong_bullish">Strong Bull</button>
                       <button onclick="toggleFilterChip('area', 'bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="area" data-value="bullish">Bullish</button>
                       <button onclick="toggleFilterChip('area', 'light_bullish', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="area" data-value="light_bullish">Light Bull</button>
@@ -2589,7 +2597,7 @@ app.get('/', (req, res) => {
                   <!-- D1 Direction -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑ Up</button>
                       <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓ Down</button>
                       <button onclick="toggleFilterChip('d1Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d1Direction" data-value="flat">→ Flat</button>
@@ -2614,9 +2622,9 @@ app.get('/', (req, res) => {
                           <span class="text-red-400">0</span>
                           <span class="text-red-400">10</span>
                           <span class="text-red-400">20</span>
-                          <span class="text-red-400">40</span>
-                          <span class="text-muted-foreground">50</span>
-                          <span class="text-green-400">60</span>
+                          <span class="text-yellow-400">40</span>
+                          <span class="text-yellow-400">50</span>
+                          <span class="text-yellow-400">60</span>
                           <span class="text-green-400">80</span>
                           <span class="text-green-400">90</span>
                           <span class="text-green-400">100</span>
@@ -2628,7 +2636,7 @@ app.get('/', (req, res) => {
                   <!-- D2 Direction -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑ Up</button>
                       <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓ Down</button>
                       <button onclick="toggleFilterChip('d2Direction', 'flat', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="d2Direction" data-value="flat">→ Flat</button>
@@ -2653,9 +2661,9 @@ app.get('/', (req, res) => {
                           <span class="text-red-400">0</span>
                           <span class="text-red-400">10</span>
                           <span class="text-red-400">20</span>
-                          <span class="text-red-400">40</span>
-                          <span class="text-muted-foreground">50</span>
-                          <span class="text-green-400">60</span>
+                          <span class="text-yellow-400">40</span>
+                          <span class="text-yellow-400">50</span>
+                          <span class="text-yellow-400">60</span>
                           <span class="text-green-400">80</span>
                           <span class="text-green-400">90</span>
                           <span class="text-green-400">100</span>
@@ -2690,7 +2698,7 @@ app.get('/', (req, res) => {
                   <!-- Trend Message -->
                   <div class="mb-3">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">⛔ No Long</button>
                       <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="Do Not Short">⛔ No Short</button>
                       <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">📈 Try Long</button>
@@ -2702,7 +2710,7 @@ app.get('/', (req, res) => {
                   <!-- % Change -->
                   <div>
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">% Change</label>
-                    <div class="flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
                       <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2">-5~-2%</button>
                       <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0">-2~0%</button>
@@ -2878,8 +2886,15 @@ app.get('/', (req, res) => {
             bjValueSlider.setAttribute('disabled', true);
             sliders.bjValue = bjValueSlider;
             bjValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('bjValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('bjValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('bjValueMinValue');
+              const maxEl = document.getElementById('bjValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color based on value: red for negative, yellow for neutral (-15 to 15), green for positive
+              minEl.className = 'font-semibold ' + (minVal < -15 ? 'text-red-400' : minVal > 15 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < -15 ? 'text-red-400' : maxVal > 15 ? 'text-green-400' : 'text-yellow-400');
             });
             bjValueSlider.noUiSlider.on('change', function() {
               updateBjValueFilter();
@@ -2899,8 +2914,15 @@ app.get('/', (req, res) => {
             d1ValueSlider.setAttribute('disabled', true);
             sliders.d1Value = d1ValueSlider;
             d1ValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('d1ValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('d1ValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('d1ValueMinValue');
+              const maxEl = document.getElementById('d1ValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: red (<40), yellow (40-60), green (>60)
+              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
             });
             d1ValueSlider.noUiSlider.on('change', function() {
               updateD1ValueFilter();
@@ -2920,8 +2942,15 @@ app.get('/', (req, res) => {
             d2ValueSlider.setAttribute('disabled', true);
             sliders.d2Value = d2ValueSlider;
             d2ValueSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('d2ValueMinValue').textContent = Math.round(values[0]);
-              document.getElementById('d2ValueMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('d2ValueMinValue');
+              const maxEl = document.getElementById('d2ValueMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: red (<40), yellow (40-60), green (>60)
+              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
             });
             d2ValueSlider.noUiSlider.on('change', function() {
               updateD2ValueFilter();
@@ -2941,8 +2970,15 @@ app.get('/', (req, res) => {
             diffSlider.setAttribute('disabled', true);
             sliders.diff = diffSlider;
             diffSlider.noUiSlider.on('update', function(values) {
-              document.getElementById('diffMinValue').textContent = Math.round(values[0]);
-              document.getElementById('diffMaxValue').textContent = Math.round(values[1]);
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('diffMinValue');
+              const maxEl = document.getElementById('diffMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              // Apply color: blue for small diff, yellow for medium, orange for large
+              minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
             });
             diffSlider.noUiSlider.on('change', function() {
               updateDiffFilter();
@@ -3125,6 +3161,13 @@ app.get('/', (req, res) => {
           // Toggle active state
           element.classList.toggle('active');
           
+          // Update parent container's has-active class
+          const parentGroup = element.closest('.filter-group');
+          if (parentGroup) {
+            const hasAnyActive = parentGroup.querySelector('.filter-chip.active') !== null;
+            parentGroup.classList.toggle('has-active', hasAnyActive);
+          }
+          
           // Update filter arrays based on active chips
           updateFilterArrays();
           
@@ -3267,6 +3310,9 @@ app.get('/', (req, res) => {
           // Remove active class from all BJ filter chips
           document.querySelectorAll('[data-filter="vDir"], [data-filter="sDir"], [data-filter="area"], [data-filter="valueVsSignal"]').forEach(chip => {
             chip.classList.remove('active');
+            // Also remove has-active from parent filter-group
+            const parentGroup = chip.closest('.filter-group');
+            if (parentGroup) parentGroup.classList.remove('has-active');
           });
           
           // Reset BJ Value slider (noUiSlider)
@@ -3289,6 +3335,9 @@ app.get('/', (req, res) => {
           // Remove active class from all Stoch filter chips
           document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
             chip.classList.remove('active');
+            // Also remove has-active from parent filter-group
+            const parentGroup = chip.closest('.filter-group');
+            if (parentGroup) parentGroup.classList.remove('has-active');
           });
           
           // Reset D1 Value slider (noUiSlider)
