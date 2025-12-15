@@ -2473,9 +2473,9 @@ app.get('/', (req, res) => {
         </div>
         
         <!-- Main content area: Filters on left, Table on right when width > 1280px -->
-        <div class="flex flex-col xl:flex-row xl:gap-6">
+        <div class="flex flex-col xl:flex-row xl:gap-6 xl:items-start">
           <!-- Filters sidebar (left on xl, top on smaller screens) -->
-          <div class="xl:w-80 xl:flex-shrink-0">
+          <div class="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-4 xl:self-start">
             <!-- Search bar - sticky on top for desktop, bottom for mobile -->
             <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border xl:border-r xl:pr-6 py-4 xl:py-0">
               <div class="container mx-auto xl:mx-0" style="max-width:1360px;padding-bottom:1rem;">
@@ -2680,12 +2680,9 @@ app.get('/', (req, res) => {
               </div>
             </div>
           </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Table area (right on xl, below filters on smaller screens) -->
-          <div class="flex-1 xl:min-w-0">
+          <div class="w-full xl:flex-1 xl:min-w-0">
             <div class="bg-card rounded-lg shadow-sm">
               <div>
                 <div class="overflow-x-auto">
