@@ -2881,9 +2881,9 @@ app.get('/', (req, res) => {
           star: { id: 'star', title: '⭐', sortable: false, width: 'w-10' },
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-36' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[190px]' },
-          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-auto', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-36', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
+          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[174px]', tooltip: 'BJ TSI: Value, V Dir, S Dir, Area' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
