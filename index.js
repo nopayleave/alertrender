@@ -4327,10 +4327,11 @@ Use this to create a new preset filter button that applies these exact filter se
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
+            // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
             const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
             const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-            const d1Direction = alert.dualStochD1Direction || 'flat';
-            const d2Direction = alert.dualStochD2Direction || 'flat';
+            const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+            const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
             
             // Get % change value
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -4597,10 +4598,11 @@ Use this to create a new preset filter button that applies these exact filter se
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Get D1 and D2 values and directions
+              // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
               const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
               const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-              const d1Direction = alert.dualStochD1Direction || 'flat';
-              const d2Direction = alert.dualStochD2Direction || 'flat';
+              const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+              const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
               
               // Get % change value
               const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
