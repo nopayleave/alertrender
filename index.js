@@ -2925,6 +2925,12 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
             <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
+              <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-white">
+                Down <span id="presetDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span>
+              </button>
+              <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-white">
+                Up <span id="presetUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span>
+              </button>
               <button id="presetTrendDownBig" onclick="applyPresetFilter('trendDownBig')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-white">
                 Trend Down Big <span id="presetTrendDownBigCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span>
               </button>
@@ -3979,7 +3985,41 @@ app.get('/', (req, res) => {
             presetGroup.classList.add('has-active');
           }
           
-          if (preset === 'trendDownBig') {
+          if (preset === 'down') {
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Direction: down
+            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
+            if (d2DownChip) {
+              d2DownChip.classList.add('active');
+              const parentGroup = d2DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+          } else if (preset === 'up') {
+            // Activate D1 Direction: up
+            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
+            if (d1UpChip) {
+              d1UpChip.classList.add('active');
+              const parentGroup = d1UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Direction: up
+            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
+            if (d2UpChip) {
+              d2UpChip.classList.add('active');
+              const parentGroup = d2UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+          } else if (preset === 'trendDownBig') {
             // Activate D1 Direction: down
             const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
             if (d1DownChip) {
@@ -4088,11 +4128,11 @@ app.get('/', (req, res) => {
               if (parentGroup) parentGroup.classList.add('has-active');
             }
             
-            // Activate D1 Value slider: 20 to 40
+            // Activate D1 Value slider: 20 to 100
             const d1Toggle = document.getElementById('d1ValueToggle');
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
-              sliders.d1Value.noUiSlider.set([20, 40]);
+              sliders.d1Value.noUiSlider.set([20, 100]);
               updateD1ValueFilter();
             }
             
@@ -4259,11 +4299,15 @@ Use this to create a new preset filter button that applies these exact filter se
         // Count how many alerts match each preset filter
         function updatePresetFilterCounts() {
           if (alertsData.length === 0) {
+            const downCountEl = document.getElementById('presetDownCount');
+            const upCountEl = document.getElementById('presetUpCount');
             const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
             const rejectDownCountEl = document.getElementById('presetRejectDownCount');
             const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
             const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
             const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
+            if (downCountEl) downCountEl.textContent = '0';
+            if (upCountEl) upCountEl.textContent = '0';
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
             if (rejectDownCountEl) rejectDownCountEl.textContent = '0';
             if (trendUpConCountEl) trendUpConCountEl.textContent = '0';
@@ -4273,6 +4317,8 @@ Use this to create a new preset filter button that applies these exact filter se
           }
 
           // Count preset matches
+          let downCount = 0;
+          let upCount = 0;
           let trendDownBigCount = 0;
           let rejectDownCount = 0;
           let trendUpConCount = 0;
@@ -4315,6 +4361,16 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
+            // Check Down criteria
+            let matchesDown = true;
+            if (d1Direction !== 'down') matchesDown = false;
+            if (d2Direction !== 'down') matchesDown = false;
+            
+            // Check Up criteria
+            let matchesUp = true;
+            if (d1Direction !== 'up') matchesUp = false;
+            if (d2Direction !== 'up') matchesUp = false;
+            
             // Check Trend Down Big criteria
             let matchesTrendDownBig = true;
             if (d1Direction !== 'down') matchesTrendDownBig = false;
@@ -4343,7 +4399,7 @@ Use this to create a new preset filter button that applies these exact filter se
             let matchesTrendUpCon = true;
             if (vDir !== 'Up') matchesTrendUpCon = false;
             if (d1Direction !== 'up') matchesTrendUpCon = false;
-            if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 40) matchesTrendUpCon = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 100) matchesTrendUpCon = false;
             if (d2Direction !== 'up') matchesTrendUpCon = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesTrendUpCon = false;
             
@@ -4362,6 +4418,8 @@ Use this to create a new preset filter button that applies these exact filter se
             if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > -15) matchesExtremeBear = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
             
+            if (matchesDown) downCount++;
+            if (matchesUp) upCount++;
             if (matchesTrendDownBig) trendDownBigCount++;
             if (matchesRejectDown) rejectDownCount++;
             if (matchesTrendUpCon) trendUpConCount++;
@@ -4370,11 +4428,15 @@ Use this to create a new preset filter button that applies these exact filter se
           });
 
           // Update the count displays
+          const downCountEl = document.getElementById('presetDownCount');
+          const upCountEl = document.getElementById('presetUpCount');
           const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
           const rejectDownCountEl = document.getElementById('presetRejectDownCount');
           const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
           const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
           const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
+          if (downCountEl) downCountEl.textContent = downCount;
+          if (upCountEl) upCountEl.textContent = upCount;
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
           if (rejectDownCountEl) rejectDownCountEl.textContent = rejectDownCount;
           if (trendUpConCountEl) trendUpConCountEl.textContent = trendUpConCount;
