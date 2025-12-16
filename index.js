@@ -2931,6 +2931,12 @@ app.get('/', (req, res) => {
               <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
                 Bearish <span id="presetBearishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50">0</span>
               </button>
+              <button id="presetTrendDownBig" onclick="applyPresetFilter('trendDownBig')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400">
+                Trend Down Big <span id="presetTrendDownBigCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-600/50">0</span>
+              </button>
+              <button id="presetRejectDown" onclick="applyPresetFilter('rejectDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400">
+                Reject Down <span id="presetRejectDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-purple-600/50">0</span>
+              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -4087,6 +4093,98 @@ app.get('/', (req, res) => {
                 if (parentGroup) parentGroup.classList.add('has-active');
               }
             });
+            
+          } else if (preset === 'trendDownBig') {
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Value slider: 0 to 40
+            const d1Toggle = document.getElementById('d1ValueToggle');
+            if (d1Toggle && sliders.d1Value) {
+              d1Toggle.checked = true;
+              sliders.d1Value.noUiSlider.set([0, 40]);
+              updateD1ValueFilter();
+            }
+            
+            // Activate D2 Direction: down
+            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
+            if (d2DownChip) {
+              d2DownChip.classList.add('active');
+              const parentGroup = d2DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Value slider: 0 to 26
+            const d2Toggle = document.getElementById('d2ValueToggle');
+            if (d2Toggle && sliders.d2Value) {
+              d2Toggle.checked = true;
+              sliders.d2Value.noUiSlider.set([0, 26]);
+              updateD2ValueFilter();
+            }
+            
+            // Activate Price %: negative ranges
+            ['<-5', '-5--2', '-2-0'].forEach(value => {
+              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
+              if (chip) {
+                chip.classList.add('active');
+                const parentGroup = chip.closest('.filter-group');
+                if (parentGroup) parentGroup.classList.add('has-active');
+              }
+            });
+            
+          } else if (preset === 'rejectDown') {
+            // Activate BJ TSI V Dir: Down
+            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
+            if (vDirDownChip) {
+              vDirDownChip.classList.add('active');
+              const parentGroup = vDirDownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ Value slider: -100 to 13
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.noUiSlider.set([-100, 13]);
+              updateBjValueFilter();
+            }
+            
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Value slider: 60 to 90
+            const d1Toggle = document.getElementById('d1ValueToggle');
+            if (d1Toggle && sliders.d1Value) {
+              d1Toggle.checked = true;
+              sliders.d1Value.noUiSlider.set([60, 90]);
+              updateD1ValueFilter();
+            }
+            
+            // Activate D2 Direction: down
+            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
+            if (d2DownChip) {
+              d2DownChip.classList.add('active');
+              const parentGroup = d2DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Value slider: 0 to 52
+            const d2Toggle = document.getElementById('d2ValueToggle');
+            if (d2Toggle && sliders.d2Value) {
+              d2Toggle.checked = true;
+              sliders.d2Value.noUiSlider.set([0, 52]);
+              updateD2ValueFilter();
+            }
           }
           
           // Update filter arrays from chip states
@@ -4179,14 +4277,20 @@ Use this to create a new preset filter button that applies these exact filter se
           if (alertsData.length === 0) {
             const bullishCountEl = document.getElementById('presetBullishCount');
             const bearishCountEl = document.getElementById('presetBearishCount');
+            const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
+            const rejectDownCountEl = document.getElementById('presetRejectDownCount');
             if (bullishCountEl) bullishCountEl.textContent = '0';
             if (bearishCountEl) bearishCountEl.textContent = '0';
+            if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
+            if (rejectDownCountEl) rejectDownCountEl.textContent = '0';
             return;
           }
 
           // Count bullish matches
           let bullishCount = 0;
           let bearishCount = 0;
+          let trendDownBigCount = 0;
+          let rejectDownCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -4257,15 +4361,45 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
+            // Check Trend Down Big criteria
+            let matchesTrendDownBig = true;
+            if (d1Direction !== 'down') matchesTrendDownBig = false;
+            if (d2Direction !== 'down') matchesTrendDownBig = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 40) matchesTrendDownBig = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 26) matchesTrendDownBig = false;
+            if (percentChange === null || isNaN(percentChange)) {
+              matchesTrendDownBig = false;
+            } else {
+              const pctVal = percentChange;
+              if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
+                matchesTrendDownBig = false;
+              }
+            }
+            
+            // Check Reject Down criteria
+            let matchesRejectDown = true;
+            if (vDir !== 'Down') matchesRejectDown = false;
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > 13) matchesRejectDown = false;
+            if (d1Direction !== 'down') matchesRejectDown = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 60 || d1Value > 90) matchesRejectDown = false;
+            if (d2Direction !== 'down') matchesRejectDown = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 52) matchesRejectDown = false;
+            
             if (matchesBullish) bullishCount++;
             if (matchesBearish) bearishCount++;
+            if (matchesTrendDownBig) trendDownBigCount++;
+            if (matchesRejectDown) rejectDownCount++;
           });
 
           // Update the count displays
           const bullishCountEl = document.getElementById('presetBullishCount');
           const bearishCountEl = document.getElementById('presetBearishCount');
+          const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
+          const rejectDownCountEl = document.getElementById('presetRejectDownCount');
           if (bullishCountEl) bullishCountEl.textContent = bullishCount;
           if (bearishCountEl) bearishCountEl.textContent = bearishCount;
+          if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
+          if (rejectDownCountEl) rejectDownCountEl.textContent = rejectDownCount;
         }
 
         function toggleClearButton() {
