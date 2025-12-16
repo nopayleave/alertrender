@@ -5341,7 +5341,7 @@ Use this to create a new preset filter button that applies these exact filter se
             let d1Arrow = '→';
             let d1Direction = 'flat';
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
-              d1Direction = alert.dualStochD1Direction || 'flat';
+              d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
               d1DirClass = d1Direction === 'up' ? 'text-green-400' : d1Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
               d1Arrow = d1Direction === 'up' ? '↑' : d1Direction === 'down' ? '↓' : '→';
               if (dualStochD1 > 80) {
