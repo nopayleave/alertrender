@@ -2344,6 +2344,13 @@ app.get('/', (req, res) => {
         .filter-group.has-active .filter-chip:not(.active):hover {
           opacity: 0.7;
         }
+        /* Dim inactive preset filter buttons when one is active */
+        .preset-filter-group.has-active .preset-filter-chip:not(.active) {
+          opacity: 0.4;
+        }
+        .preset-filter-group.has-active .preset-filter-chip:not(.active):hover {
+          opacity: 0.7;
+        }
         /* Filter group background */
         .filter-section {
           background: rgba(255, 255, 255, 0.02);
@@ -2905,14 +2912,14 @@ app.get('/', (req, res) => {
           <!-- Table area (right on xl, below filters on smaller screens) -->
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
-            <div class="mb-4 flex gap-2 flex-wrap">
-              <button onclick="applyPresetFilter('bullish')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
-                🟢 Bullish
+            <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
+              <button id="presetBullish" onclick="applyPresetFilter('bullish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
+                Bullish
               </button>
-              <button onclick="applyPresetFilter('bearish')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
-                🔴 Bearish
+              <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
+                Bearish
               </button>
-              <button onclick="clearAllFilters()" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
+              <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
             </div>
@@ -3907,11 +3914,25 @@ app.get('/', (req, res) => {
             searchTerm = '';
             toggleClearButton();
           }
+          // Clear preset filter active states
+          const presetGroup = document.querySelector('.preset-filter-group');
+          if (presetGroup) presetGroup.classList.remove('has-active');
+          document.querySelectorAll('.preset-filter-chip').forEach(btn => {
+            btn.classList.remove('active');
+          });
         }
         
         function applyPresetFilter(preset) {
           // Clear all filters first
           clearAllFilters();
+          
+          // Set active state for preset button
+          const presetGroup = document.querySelector('.preset-filter-group');
+          const presetButton = document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1));
+          if (presetButton && presetGroup) {
+            presetButton.classList.add('active');
+            presetGroup.classList.add('has-active');
+          }
           
           if (preset === 'bullish') {
             // Activate D1 Direction: up
