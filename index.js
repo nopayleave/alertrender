@@ -2606,6 +2606,18 @@ app.get('/', (req, res) => {
         .calculator-panel.open {
           transform: translateX(0);
         }
+        /* Hide scrollbar for cheatsheet table but allow scrolling */
+        .cheatsheet-scroll-container {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+          cursor: grab;
+        }
+        .cheatsheet-scroll-container::-webkit-scrollbar {
+          display: none;  /* Chrome, Safari and Opera */
+        }
+        .cheatsheet-scroll-container:active {
+          cursor: grabbing;
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -4351,7 +4363,10 @@ app.get('/', (req, res) => {
             };
             
             const starred = isStarred(alert.symbol);
-            const starIcon = starred ? '⭐' : '☆';
+            // Pin SVG icons - filled when pinned, outline when not
+            const starIcon = starred 
+              ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>'
+              : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
             
             // Price color based on comparison with previous alert for same symbol
@@ -5213,7 +5228,7 @@ app.get('/', (req, res) => {
                 <div class="flex items-center gap-2">
                   <button 
                     onclick="event.stopPropagation(); toggleStar('\${alert.symbol}')" 
-                    class="text-xl \${starClass} transition-colors cursor-pointer hover:scale-110 transform flex-shrink-0"
+                    class="\${starClass} transition-colors cursor-pointer hover:scale-110 transform flex-shrink-0"
                     title="\${starred ? 'Remove from favorites' : 'Add to favorites'}"
                   >
                     \${starIcon}
@@ -5403,6 +5418,55 @@ app.get('/', (req, res) => {
               }
             }
           });
+          
+          // Drag-to-scroll for cheatsheet table
+          const cheatsheetContainer = document.getElementById('cheatsheetScrollContainer');
+          if (cheatsheetContainer) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+            
+            cheatsheetContainer.addEventListener('mousedown', (e) => {
+              isDown = true;
+              cheatsheetContainer.style.cursor = 'grabbing';
+              startX = e.pageX - cheatsheetContainer.offsetLeft;
+              scrollLeft = cheatsheetContainer.scrollLeft;
+            });
+            
+            cheatsheetContainer.addEventListener('mouseleave', () => {
+              isDown = false;
+              cheatsheetContainer.style.cursor = 'grab';
+            });
+            
+            cheatsheetContainer.addEventListener('mouseup', () => {
+              isDown = false;
+              cheatsheetContainer.style.cursor = 'grab';
+            });
+            
+            cheatsheetContainer.addEventListener('mousemove', (e) => {
+              if (!isDown) return;
+              e.preventDefault();
+              const x = e.pageX - cheatsheetContainer.offsetLeft;
+              const walk = (x - startX) * 2; // Scroll speed multiplier
+              cheatsheetContainer.scrollLeft = scrollLeft - walk;
+            });
+            
+            // Touch support for mobile
+            let touchStartX = 0;
+            let touchScrollLeft = 0;
+            
+            cheatsheetContainer.addEventListener('touchstart', (e) => {
+              touchStartX = e.touches[0].pageX - cheatsheetContainer.offsetLeft;
+              touchScrollLeft = cheatsheetContainer.scrollLeft;
+            });
+            
+            cheatsheetContainer.addEventListener('touchmove', (e) => {
+              e.preventDefault();
+              const x = e.touches[0].pageX - cheatsheetContainer.offsetLeft;
+              const walk = (x - touchStartX) * 2;
+              cheatsheetContainer.scrollLeft = touchScrollLeft - walk;
+            });
+          }
         });
       </script>
       
@@ -5526,7 +5590,7 @@ app.get('/', (req, res) => {
               </div>
             </div>
 
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto cheatsheet-scroll-container" id="cheatsheetScrollContainer">
               <table class="w-full text-sm" id="cheatsheetTable">
                 <thead>
                   <tr class="border-b border-border">
