@@ -2946,6 +2946,12 @@ app.get('/', (req, res) => {
               <button id="presetExtremeBear" onclick="applyPresetFilter('extremeBear')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-pink-500/50 bg-pink-500/20 hover:bg-pink-500/30 active:scale-95 transition-all text-white">
                 Extreme Bear <span id="presetExtremeBearCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-pink-600/50 text-white">0</span>
               </button>
+              <button id="presetBigUp" onclick="applyPresetFilter('bigUp')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-white">
+                Big Up <span id="presetBigUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-cyan-600/50 text-white">0</span>
+              </button>
+              <button id="presetFall" onclick="applyPresetFilter('fall')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-indigo-500/50 bg-indigo-500/20 hover:bg-indigo-500/30 active:scale-95 transition-all text-white">
+                Fall <span id="presetFallCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-600/50 text-white">0</span>
+              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -4209,6 +4215,64 @@ app.get('/', (req, res) => {
               sliders.d2Value.noUiSlider.set([0, 20]);
               updateD2ValueFilter();
             }
+            
+          } else if (preset === 'bigUp') {
+            // Activate BJ TSI V Dir: Up
+            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
+            if (vDirUpChip) {
+              vDirUpChip.classList.add('active');
+              const parentGroup = vDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ TSI S Dir: Up
+            const sDirUpChip = document.querySelector('[data-filter="sDir"][data-value="Up"]');
+            if (sDirUpChip) {
+              sDirUpChip.classList.add('active');
+              const parentGroup = sDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Value vs Signal: above
+            const valueVsSignalAboveChip = document.querySelector('[data-filter="valueVsSignal"][data-value="above"]');
+            if (valueVsSignalAboveChip) {
+              valueVsSignalAboveChip.classList.add('active');
+              const parentGroup = valueVsSignalAboveChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+          } else if (preset === 'fall') {
+            // Activate BJ TSI V Dir: Down
+            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
+            if (vDirDownChip) {
+              vDirDownChip.classList.add('active');
+              const parentGroup = vDirDownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Value vs Signal: below
+            const valueVsSignalBelowChip = document.querySelector('[data-filter="valueVsSignal"][data-value="below"]');
+            if (valueVsSignalBelowChip) {
+              valueVsSignalBelowChip.classList.add('active');
+              const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Direction: down
+            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
+            if (d2DownChip) {
+              d2DownChip.classList.add('active');
+              const parentGroup = d2DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
           }
           
           // Update filter arrays from chip states
@@ -4306,6 +4370,8 @@ Use this to create a new preset filter button that applies these exact filter se
             const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
             const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
             const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
+            const bigUpCountEl = document.getElementById('presetBigUpCount');
+            const fallCountEl = document.getElementById('presetFallCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
@@ -4313,6 +4379,8 @@ Use this to create a new preset filter button that applies these exact filter se
             if (trendUpConCountEl) trendUpConCountEl.textContent = '0';
             if (extremeBullCountEl) extremeBullCountEl.textContent = '0';
             if (extremeBearCountEl) extremeBearCountEl.textContent = '0';
+            if (bigUpCountEl) bigUpCountEl.textContent = '0';
+            if (fallCountEl) fallCountEl.textContent = '0';
             return;
           }
 
@@ -4324,6 +4392,8 @@ Use this to create a new preset filter button that applies these exact filter se
           let trendUpConCount = 0;
           let extremeBullCount = 0;
           let extremeBearCount = 0;
+          let bigUpCount = 0;
+          let fallCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -4419,6 +4489,21 @@ Use this to create a new preset filter button that applies these exact filter se
             if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > -15) matchesExtremeBear = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
             
+            // Check Big Up criteria
+            let matchesBigUp = true;
+            if (vDir !== 'Up') matchesBigUp = false;
+            if (sDir !== 'Up') matchesBigUp = false;
+            // Check Value vs Signal: above (V > S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi <= bjTsl) matchesBigUp = false;
+            
+            // Check Fall criteria
+            let matchesFall = true;
+            if (vDir !== 'Down') matchesFall = false;
+            // Check Value vs Signal: below (V < S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi >= bjTsl) matchesFall = false;
+            if (d1Direction !== 'down') matchesFall = false;
+            if (d2Direction !== 'down') matchesFall = false;
+            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesTrendDownBig) trendDownBigCount++;
@@ -4426,6 +4511,8 @@ Use this to create a new preset filter button that applies these exact filter se
             if (matchesTrendUpCon) trendUpConCount++;
             if (matchesExtremeBull) extremeBullCount++;
             if (matchesExtremeBear) extremeBearCount++;
+            if (matchesBigUp) bigUpCount++;
+            if (matchesFall) fallCount++;
           });
 
           // Update the count displays
@@ -4436,6 +4523,8 @@ Use this to create a new preset filter button that applies these exact filter se
           const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
           const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
           const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
+          const bigUpCountEl = document.getElementById('presetBigUpCount');
+          const fallCountEl = document.getElementById('presetFallCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
@@ -4443,6 +4532,8 @@ Use this to create a new preset filter button that applies these exact filter se
           if (trendUpConCountEl) trendUpConCountEl.textContent = trendUpConCount;
           if (extremeBullCountEl) extremeBullCountEl.textContent = extremeBullCount;
           if (extremeBearCountEl) extremeBearCountEl.textContent = extremeBearCount;
+          if (bigUpCountEl) bigUpCountEl.textContent = bigUpCount;
+          if (fallCountEl) fallCountEl.textContent = fallCount;
         }
 
         // Count how many alerts match each Price % range
