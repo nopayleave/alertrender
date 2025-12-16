@@ -2877,13 +2877,13 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
             <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
-              <button id="presetBullish" onclick="applyPresetFilter('bullish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
+              <button id="presetBullish" onclick="applyPresetFilter('bullish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
                 Bullish <span id="presetBullishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50">0</span>
               </button>
-              <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
+              <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
                 Bearish <span id="presetBearishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50">0</span>
               </button>
-              <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
+              <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
             </div>
