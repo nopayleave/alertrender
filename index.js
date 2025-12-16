@@ -4291,6 +4291,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             // Get BJ TSI values
             const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+            const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
             const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
             const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
             
