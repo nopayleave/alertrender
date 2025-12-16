@@ -3923,12 +3923,19 @@ app.get('/', (req, res) => {
         }
         
         function applyPresetFilter(preset) {
+          const presetGroup = document.querySelector('.preset-filter-group');
+          const presetButton = document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1));
+          
+          // Check if button is already active - if so, deactivate it
+          if (presetButton && presetButton.classList.contains('active')) {
+            clearAllFilters();
+            return;
+          }
+          
           // Clear all filters first
           clearAllFilters();
           
           // Set active state for preset button
-          const presetGroup = document.querySelector('.preset-filter-group');
-          const presetButton = document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1));
           if (presetButton && presetGroup) {
             presetButton.classList.add('active');
             presetGroup.classList.add('has-active');
