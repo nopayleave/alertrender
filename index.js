@@ -2825,10 +2825,10 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- Diff (D1 - D2) - Absolute difference slider -->
+                  <!-- Diff - Absolute difference slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">Diff <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">75</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -2930,7 +2930,7 @@ app.get('/', (req, res) => {
         let stochFilterD1Value = { min: 0, max: 100, active: false }; // D1 Value slider range
         let stochFilterD2Direction = [];
         let stochFilterD2Value = { min: 0, max: 100, active: false }; // D2 Value slider range
-        let stochFilterDiff = { min: 0, max: 50, active: false }; // Diff slider range
+        let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
 
@@ -3233,9 +3233,9 @@ app.get('/', (req, res) => {
           const diffSlider = document.getElementById('diffSlider');
           if (diffSlider && !sliders.diff) {
             noUiSlider.create(diffSlider, {
-              start: [0, 50],
+              start: [0, 75],
               connect: true,
-              range: { 'min': 0, 'max': 50 },
+              range: { 'min': 0, 'max': 75 },
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
@@ -3758,7 +3758,7 @@ app.get('/', (req, res) => {
             stochFilterDiff.min = minVal;
             stochFilterDiff.max = maxVal;
             // Only active if toggle is checked AND range is not default
-            stochFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 50);
+            stochFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 75);
             
             // Apply filters
             filterAlerts();
@@ -3841,14 +3841,14 @@ app.get('/', (req, res) => {
           const diffToggle = document.getElementById('diffToggle');
           if (diffToggle) diffToggle.checked = false;
           if (sliders.diff && sliders.diff.noUiSlider) {
-            sliders.diff.noUiSlider.set([0, 50]);
+            sliders.diff.noUiSlider.set([0, 75]);
           }
           
           stochFilterD1Direction = [];
           stochFilterD1Value = { min: 0, max: 100, active: false };
           stochFilterD2Direction = [];
           stochFilterD2Value = { min: 0, max: 100, active: false };
-          stochFilterDiff = { min: 0, max: 50, active: false };
+          stochFilterDiff = { min: 0, max: 75, active: false };
           stochFilterTrendMessage = [];
           stochFilterPercentChange = [];
           renderTable();
