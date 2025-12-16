@@ -2878,10 +2878,10 @@ app.get('/', (req, res) => {
             <!-- Preset Filter Buttons -->
             <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
               <button id="presetBullish" onclick="applyPresetFilter('bullish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
-                Bullish
+                Bullish <span id="presetBullishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50">0</span>
               </button>
               <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
-                Bearish
+                Bearish <span id="presetBearishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50">0</span>
               </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
@@ -4020,6 +4020,100 @@ app.get('/', (req, res) => {
           }
         }
 
+        // Count how many alerts match each preset filter
+        function updatePresetFilterCounts() {
+          if (alertsData.length === 0) {
+            const bullishCountEl = document.getElementById('presetBullishCount');
+            const bearishCountEl = document.getElementById('presetBearishCount');
+            if (bullishCountEl) bullishCountEl.textContent = '0';
+            if (bearishCountEl) bearishCountEl.textContent = '0';
+            return;
+          }
+
+          // Count bullish matches
+          let bullishCount = 0;
+          let bearishCount = 0;
+
+          alertsData.forEach(alert => {
+            // Get D1 and D2 values and directions
+            const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
+            const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+            const d1Direction = alert.dualStochD1Direction || 'flat';
+            const d2Direction = alert.dualStochD2Direction || 'flat';
+            
+            // Get % change value
+            const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+            
+            // Get BJ TSI values
+            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+            const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
+            const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+            
+            // Calculate V Dir and S Dir
+            const vDir = bjTsiIsBull ? 'Up' : 'Down';
+            const sDir = bjTslIsBull ? 'Up' : 'Down';
+            
+            // Determine trend message
+            let trendMessage = '';
+            if (alert.isBigTrendDay) {
+              trendMessage = 'Big Trend Day';
+            } else if (d1Value !== null && d2Value !== null) {
+              if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
+                trendMessage = 'Do Not Long';
+              } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
+                trendMessage = 'Do Not Short';
+              } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+                trendMessage = 'Try Long';
+              } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+                trendMessage = 'Try Short';
+              }
+            }
+            
+            // Check bullish criteria
+            let matchesBullish = true;
+            if (d1Direction !== 'up') matchesBullish = false;
+            if (d2Direction !== 'up') matchesBullish = false;
+            if (vDir !== 'Up') matchesBullish = false;
+            if (sDir !== 'Up') matchesBullish = false;
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < 15 || bjTsi > 100) matchesBullish = false;
+            if (trendMessage !== 'Try Long') matchesBullish = false;
+            if (percentChange === null || isNaN(percentChange)) {
+              matchesBullish = false;
+            } else {
+              const pctVal = percentChange;
+              if (!((pctVal >= 0 && pctVal < 2) || (pctVal >= 2 && pctVal < 5) || pctVal >= 5)) {
+                matchesBullish = false;
+              }
+            }
+            
+            // Check bearish criteria
+            let matchesBearish = true;
+            if (d1Direction !== 'down') matchesBearish = false;
+            if (d2Direction !== 'down') matchesBearish = false;
+            if (vDir !== 'Down') matchesBearish = false;
+            if (sDir !== 'Down') matchesBearish = false;
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > -15) matchesBearish = false;
+            if (trendMessage !== 'Try Short') matchesBearish = false;
+            if (percentChange === null || isNaN(percentChange)) {
+              matchesBearish = false;
+            } else {
+              const pctVal = percentChange;
+              if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
+                matchesBearish = false;
+              }
+            }
+            
+            if (matchesBullish) bullishCount++;
+            if (matchesBearish) bearishCount++;
+          });
+
+          // Update the count displays
+          const bullishCountEl = document.getElementById('presetBullishCount');
+          const bearishCountEl = document.getElementById('presetBearishCount');
+          if (bullishCountEl) bullishCountEl.textContent = bullishCount;
+          if (bearishCountEl) bearishCountEl.textContent = bearishCount;
+        }
+
         function toggleClearButton() {
           const searchInput = document.getElementById('searchInput');
           const clearButton = document.getElementById('clearButton');
@@ -4330,6 +4424,9 @@ app.get('/', (req, res) => {
           // Update ticker count badge
           const tickerCountEl = document.getElementById('tickerCount');
           if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
+          
+          // Update preset filter counts
+          updatePresetFilterCounts();
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
