@@ -2906,13 +2906,13 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
             <div class="mb-4 flex gap-2 flex-wrap">
-              <button onclick="applyPresetFilter('bullish')" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+              <button onclick="applyPresetFilter('bullish')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
                 🟢 Bullish
               </button>
-              <button onclick="applyPresetFilter('bearish')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+              <button onclick="applyPresetFilter('bearish')" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
                 🔴 Bearish
               </button>
-              <button onclick="clearAllFilters()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors shadow-lg text-sm">
+              <button onclick="clearAllFilters()" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
             </div>
