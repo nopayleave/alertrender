@@ -2925,17 +2925,20 @@ app.get('/', (req, res) => {
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
             <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
-              <button id="presetBullish" onclick="applyPresetFilter('bullish')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400">
-                Bullish <span id="presetBullishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50">0</span>
+              <button id="presetTrendDownBig" onclick="applyPresetFilter('trendDownBig')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-white">
+                Trend Down Big <span id="presetTrendDownBigCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span>
               </button>
-              <button id="presetBearish" onclick="applyPresetFilter('bearish')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400">
-                Bearish <span id="presetBearishCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50">0</span>
+              <button id="presetRejectDown" onclick="applyPresetFilter('rejectDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-white">
+                Reject Down <span id="presetRejectDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-purple-600/50 text-white">0</span>
               </button>
-              <button id="presetTrendDownBig" onclick="applyPresetFilter('trendDownBig')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400">
-                Trend Down Big <span id="presetTrendDownBigCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-600/50">0</span>
+              <button id="presetTrendUpCon" onclick="applyPresetFilter('trendUpCon')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-white">
+                Trend Up Con <span id="presetTrendUpConCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span>
               </button>
-              <button id="presetRejectDown" onclick="applyPresetFilter('rejectDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400">
-                Reject Down <span id="presetRejectDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-purple-600/50">0</span>
+              <button id="presetExtremeBull" onclick="applyPresetFilter('extremeBull')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-white">
+                Extreme Bull <span id="presetExtremeBullCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-yellow-600/50 text-white">0</span>
+              </button>
+              <button id="presetExtremeBear" onclick="applyPresetFilter('extremeBear')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-pink-500/50 bg-pink-500/20 hover:bg-pink-500/30 active:scale-95 transition-all text-white">
+                Extreme Bear <span id="presetExtremeBearCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-pink-600/50 text-white">0</span>
               </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
@@ -3976,125 +3979,7 @@ app.get('/', (req, res) => {
             presetGroup.classList.add('has-active');
           }
           
-          if (preset === 'bullish') {
-            // Activate D1 Direction: up
-            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
-            if (d1UpChip) {
-              d1UpChip.classList.add('active');
-              const parentGroup = d1UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Direction: up
-            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
-            if (d2UpChip) {
-              d2UpChip.classList.add('active');
-              const parentGroup = d2UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ TSI V Dir: Up
-            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
-            if (vDirUpChip) {
-              vDirUpChip.classList.add('active');
-              const parentGroup = vDirUpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ TSI S Dir: Up
-            const sDirUpChip = document.querySelector('[data-filter="sDir"][data-value="Up"]');
-            if (sDirUpChip) {
-              sDirUpChip.classList.add('active');
-              const parentGroup = sDirUpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ Value slider: 15 to 100
-            const bjToggle = document.getElementById('bjValueToggle');
-            if (bjToggle && sliders.bjValue) {
-              bjToggle.checked = true;
-              sliders.bjValue.noUiSlider.set([15, 100]);
-              updateBjValueFilter();
-            }
-            
-            // Activate Trend Message: Try Long
-            const tryLongChip = document.querySelector('[data-filter="trendMessage"][data-value="Try Long"]');
-            if (tryLongChip) {
-              tryLongChip.classList.add('active');
-              const parentGroup = tryLongChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate Price %: positive ranges
-            ['0-2', '2-5', '>5'].forEach(value => {
-              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
-              if (chip) {
-                chip.classList.add('active');
-                const parentGroup = chip.closest('.filter-group');
-                if (parentGroup) parentGroup.classList.add('has-active');
-              }
-            });
-            
-          } else if (preset === 'bearish') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Direction: down
-            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
-            if (d2DownChip) {
-              d2DownChip.classList.add('active');
-              const parentGroup = d2DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ TSI V Dir: Down
-            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
-            if (vDirDownChip) {
-              vDirDownChip.classList.add('active');
-              const parentGroup = vDirDownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ TSI S Dir: Down
-            const sDirDownChip = document.querySelector('[data-filter="sDir"][data-value="Down"]');
-            if (sDirDownChip) {
-              sDirDownChip.classList.add('active');
-              const parentGroup = sDirDownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ Value slider: -100 to -15
-            const bjToggle = document.getElementById('bjValueToggle');
-            if (bjToggle && sliders.bjValue) {
-              bjToggle.checked = true;
-              sliders.bjValue.noUiSlider.set([-100, -15]);
-              updateBjValueFilter();
-            }
-            
-            // Activate Trend Message: Try Short
-            const tryShortChip = document.querySelector('[data-filter="trendMessage"][data-value="Try Short"]');
-            if (tryShortChip) {
-              tryShortChip.classList.add('active');
-              const parentGroup = tryShortChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate Price %: negative ranges
-            ['<-5', '-5--2', '-2-0'].forEach(value => {
-              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
-              if (chip) {
-                chip.classList.add('active');
-                const parentGroup = chip.closest('.filter-group');
-                if (parentGroup) parentGroup.classList.add('has-active');
-              }
-            });
-            
-          } else if (preset === 'trendDownBig') {
+          if (preset === 'trendDownBig') {
             // Activate D1 Direction: down
             const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
             if (d1DownChip) {
@@ -4183,6 +4068,105 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([0, 52]);
+              updateD2ValueFilter();
+            }
+            
+          } else if (preset === 'trendUpCon') {
+            // Activate BJ TSI V Dir: Up
+            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
+            if (vDirUpChip) {
+              vDirUpChip.classList.add('active');
+              const parentGroup = vDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Direction: up
+            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
+            if (d1UpChip) {
+              d1UpChip.classList.add('active');
+              const parentGroup = d1UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Value slider: 20 to 40
+            const d1Toggle = document.getElementById('d1ValueToggle');
+            if (d1Toggle && sliders.d1Value) {
+              d1Toggle.checked = true;
+              sliders.d1Value.noUiSlider.set([20, 40]);
+              updateD1ValueFilter();
+            }
+            
+            // Activate D2 Direction: up
+            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
+            if (d2UpChip) {
+              d2UpChip.classList.add('active');
+              const parentGroup = d2UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D2 Value slider: 40 to 100
+            const d2Toggle = document.getElementById('d2ValueToggle');
+            if (d2Toggle && sliders.d2Value) {
+              d2Toggle.checked = true;
+              sliders.d2Value.noUiSlider.set([40, 100]);
+              updateD2ValueFilter();
+            }
+            
+          } else if (preset === 'extremeBull') {
+            // Activate BJ TSI V Dir: Up
+            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
+            if (vDirUpChip) {
+              vDirUpChip.classList.add('active');
+              const parentGroup = vDirUpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Value vs Signal: above
+            const valueVsSignalAboveChip = document.querySelector('[data-filter="valueVsSignal"][data-value="above"]');
+            if (valueVsSignalAboveChip) {
+              valueVsSignalAboveChip.classList.add('active');
+              const parentGroup = valueVsSignalAboveChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ Value slider: 15 to 100
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.noUiSlider.set([15, 100]);
+              updateBjValueFilter();
+            }
+            
+            // Activate D2 Value slider: 80 to 100
+            const d2Toggle = document.getElementById('d2ValueToggle');
+            if (d2Toggle && sliders.d2Value) {
+              d2Toggle.checked = true;
+              sliders.d2Value.noUiSlider.set([80, 100]);
+              updateD2ValueFilter();
+            }
+            
+          } else if (preset === 'extremeBear') {
+            // Activate Value vs Signal: below
+            const valueVsSignalBelowChip = document.querySelector('[data-filter="valueVsSignal"][data-value="below"]');
+            if (valueVsSignalBelowChip) {
+              valueVsSignalBelowChip.classList.add('active');
+              const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate BJ Value slider: -100 to -15
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.noUiSlider.set([-100, -15]);
+              updateBjValueFilter();
+            }
+            
+            // Activate D2 Value slider: 0 to 20
+            const d2Toggle = document.getElementById('d2ValueToggle');
+            if (d2Toggle && sliders.d2Value) {
+              d2Toggle.checked = true;
+              sliders.d2Value.noUiSlider.set([0, 20]);
               updateD2ValueFilter();
             }
           }
@@ -4275,22 +4259,25 @@ Use this to create a new preset filter button that applies these exact filter se
         // Count how many alerts match each preset filter
         function updatePresetFilterCounts() {
           if (alertsData.length === 0) {
-            const bullishCountEl = document.getElementById('presetBullishCount');
-            const bearishCountEl = document.getElementById('presetBearishCount');
             const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
             const rejectDownCountEl = document.getElementById('presetRejectDownCount');
-            if (bullishCountEl) bullishCountEl.textContent = '0';
-            if (bearishCountEl) bearishCountEl.textContent = '0';
+            const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
+            const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
+            const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
             if (rejectDownCountEl) rejectDownCountEl.textContent = '0';
+            if (trendUpConCountEl) trendUpConCountEl.textContent = '0';
+            if (extremeBullCountEl) extremeBullCountEl.textContent = '0';
+            if (extremeBearCountEl) extremeBearCountEl.textContent = '0';
             return;
           }
 
-          // Count bullish matches
-          let bullishCount = 0;
-          let bearishCount = 0;
+          // Count preset matches
           let trendDownBigCount = 0;
           let rejectDownCount = 0;
+          let trendUpConCount = 0;
+          let extremeBullCount = 0;
+          let extremeBearCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -4327,40 +4314,6 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
-            // Check bullish criteria
-            let matchesBullish = true;
-            if (d1Direction !== 'up') matchesBullish = false;
-            if (d2Direction !== 'up') matchesBullish = false;
-            if (vDir !== 'Up') matchesBullish = false;
-            if (sDir !== 'Up') matchesBullish = false;
-            if (bjTsi === null || isNaN(bjTsi) || bjTsi < 15 || bjTsi > 100) matchesBullish = false;
-            if (trendMessage !== 'Try Long') matchesBullish = false;
-            if (percentChange === null || isNaN(percentChange)) {
-              matchesBullish = false;
-            } else {
-              const pctVal = percentChange;
-              if (!((pctVal >= 0 && pctVal < 2) || (pctVal >= 2 && pctVal < 5) || pctVal >= 5)) {
-                matchesBullish = false;
-              }
-            }
-            
-            // Check bearish criteria
-            let matchesBearish = true;
-            if (d1Direction !== 'down') matchesBearish = false;
-            if (d2Direction !== 'down') matchesBearish = false;
-            if (vDir !== 'Down') matchesBearish = false;
-            if (sDir !== 'Down') matchesBearish = false;
-            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > -15) matchesBearish = false;
-            if (trendMessage !== 'Try Short') matchesBearish = false;
-            if (percentChange === null || isNaN(percentChange)) {
-              matchesBearish = false;
-            } else {
-              const pctVal = percentChange;
-              if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
-                matchesBearish = false;
-              }
-            }
-            
             // Check Trend Down Big criteria
             let matchesTrendDownBig = true;
             if (d1Direction !== 'down') matchesTrendDownBig = false;
@@ -4385,21 +4338,47 @@ Use this to create a new preset filter button that applies these exact filter se
             if (d2Direction !== 'down') matchesRejectDown = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 52) matchesRejectDown = false;
             
-            if (matchesBullish) bullishCount++;
-            if (matchesBearish) bearishCount++;
+            // Check Trend Up Con criteria
+            let matchesTrendUpCon = true;
+            if (vDir !== 'Up') matchesTrendUpCon = false;
+            if (d1Direction !== 'up') matchesTrendUpCon = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 40) matchesTrendUpCon = false;
+            if (d2Direction !== 'up') matchesTrendUpCon = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesTrendUpCon = false;
+            
+            // Check Extreme Bull criteria
+            let matchesExtremeBull = true;
+            if (vDir !== 'Up') matchesExtremeBull = false;
+            // Check Value vs Signal: above (V > S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi <= bjTsl) matchesExtremeBull = false;
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < 15 || bjTsi > 100) matchesExtremeBull = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 80 || d2Value > 100) matchesExtremeBull = false;
+            
+            // Check Extreme Bear criteria
+            let matchesExtremeBear = true;
+            // Check Value vs Signal: below (V < S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi >= bjTsl) matchesExtremeBear = false;
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > -15) matchesExtremeBear = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
+            
             if (matchesTrendDownBig) trendDownBigCount++;
             if (matchesRejectDown) rejectDownCount++;
+            if (matchesTrendUpCon) trendUpConCount++;
+            if (matchesExtremeBull) extremeBullCount++;
+            if (matchesExtremeBear) extremeBearCount++;
           });
 
           // Update the count displays
-          const bullishCountEl = document.getElementById('presetBullishCount');
-          const bearishCountEl = document.getElementById('presetBearishCount');
           const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
           const rejectDownCountEl = document.getElementById('presetRejectDownCount');
-          if (bullishCountEl) bullishCountEl.textContent = bullishCount;
-          if (bearishCountEl) bearishCountEl.textContent = bearishCount;
+          const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
+          const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
+          const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
           if (rejectDownCountEl) rejectDownCountEl.textContent = rejectDownCount;
+          if (trendUpConCountEl) trendUpConCountEl.textContent = trendUpConCount;
+          if (extremeBullCountEl) extremeBullCountEl.textContent = extremeBullCount;
+          if (extremeBearCountEl) extremeBearCountEl.textContent = extremeBearCount;
         }
 
         function toggleClearButton() {
