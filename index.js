@@ -3039,9 +3039,15 @@ app.get('/', (req, res) => {
 
         function formatVolume(vol) {
           if (!vol || vol === 0) return 'N/A';
-          if (vol >= 1000000) return (vol / 1000000).toFixed(1) + 'M';
-          if (vol >= 1000) return (vol / 1000).toFixed(1) + 'K';
-          return vol.toString();
+          if (vol >= 1000000) {
+            const value = vol / 1000000;
+            return (Math.ceil(value * 10) / 10).toFixed(1) + 'M';
+          }
+          if (vol >= 1000) {
+            const value = vol / 1000;
+            return (Math.ceil(value * 10) / 10).toFixed(1) + 'K';
+          }
+          return Math.ceil(vol * 10) / 10 + '';
         }
 
         function sortTable(field) {
@@ -4363,10 +4369,10 @@ app.get('/', (req, res) => {
             };
             
             const starred = isStarred(alert.symbol);
-            // Pin SVG icons - filled when pinned, outline when not
+            // Stationary pin (pushpin) SVG icons - filled when pinned, outline when not
             const starIcon = starred 
-              ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>'
-              : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
+              ? '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 12V4h1a2 2 0 0 0 0-4H7a2 2 0 0 0 0 4h1v8c0 1.1-.9 2-2 2H4a2 2 0 0 0 0 4h16a2 2 0 0 0 0-4h-2c-1.1 0-2-.9-2-2z"/></svg>'
+              : '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V5z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v6M9 18h6"/></svg>';
             const starClass = starred ? 'text-yellow-400' : 'text-muted-foreground hover:text-yellow-400';
             
             // Price color based on comparison with previous alert for same symbol
