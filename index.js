@@ -5326,7 +5326,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             // Use Dual Stoch if available, otherwise Solo Stoch, otherwise generic d2
             const d2Value = dualStochD2 !== null ? dualStochD2 : (soloD2 !== null ? soloD2 : genericD2);
-            const d2Direction = dualStochD2 !== null ? (alert.dualStochD1Direction || 'flat') : (alert.soloStochD2Direction || 'flat');
+            const d2Direction = dualStochD2 !== null ? (alert.dualStochD2Direction || alert.d2Direction || 'flat') : (alert.soloStochD2Direction || alert.d2Direction || 'flat');
             const d2Pattern = dualStochD2 !== null ? (alert.dualStochD1Pattern || '') : (alert.soloStochD2Pattern || '');
             const d2PatternValue = dualStochD2 !== null ? (alert.dualStochD1PatternValue !== null && alert.dualStochD1PatternValue !== undefined ? parseFloat(alert.dualStochD1PatternValue) : null) : (alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null);
             
