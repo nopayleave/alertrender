@@ -2706,7 +2706,7 @@ app.get('/', (req, res) => {
                   
                   <div id="bjTsiFilters" class="filter-content">
                   <!-- V Dir & S Dir -->
-                  <div class="grid grid-cols-2 gap-3 mb-3">
+                  <div class="grid grid-cols-2 gap-3 mb-5">
                     <div>
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
@@ -2724,7 +2724,7 @@ app.get('/', (req, res) => {
                   </div>
               
                   <!-- Value vs Signal Toggle -->
-                  <div class="mb-3">
+                  <div class="mb-5">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
@@ -2733,7 +2733,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- BJ Value Slider -->
-                  <div class="mb-3">
+                  <div class="mb-5">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -2772,7 +2772,7 @@ app.get('/', (req, res) => {
                   <div id="stochFilters" class="filter-content">
             
                   <!-- D1 Direction -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑</button>
@@ -2781,7 +2781,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- D1 Value Slider -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -2799,7 +2799,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- D2 Direction -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑</button>
@@ -2808,7 +2808,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- D2 Value Slider -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -2826,7 +2826,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- Diff (D1 - D2) - Absolute difference slider -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">Diff |D1-D2| <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">50</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
@@ -2844,7 +2844,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- Trend Message -->
-                  <div class="mb-3">
+                  <div class="mb-4">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">No Long</button>
@@ -2856,7 +2856,7 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <!-- Price % -->
-                  <div>
+                  <div class="mb-0">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5">&lt;-5%</button>
@@ -3063,7 +3063,6 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            bjValueSlider.setAttribute('disabled', true);
             sliders.bjValue = bjValueSlider;
             // Initialize gradient
             const bjConnect = bjValueSlider.querySelector('.noUi-connect');
@@ -3124,7 +3123,6 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            d1ValueSlider.setAttribute('disabled', true);
             sliders.d1Value = d1ValueSlider;
             // Initialize gradient
             const d1Connect = d1ValueSlider.querySelector('.noUi-connect');
@@ -3183,7 +3181,6 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            d2ValueSlider.setAttribute('disabled', true);
             sliders.d2Value = d2ValueSlider;
             // Initialize gradient
             const d2Connect = d2ValueSlider.querySelector('.noUi-connect');
@@ -3242,7 +3239,6 @@ app.get('/', (req, res) => {
               step: 1,
               tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
             });
-            diffSlider.setAttribute('disabled', true);
             sliders.diff = diffSlider;
             // Initialize gradient
             const diffConnect = diffSlider.querySelector('.noUi-connect');
@@ -3675,13 +3671,7 @@ app.get('/', (req, res) => {
           const slider = sliders[sliderType];
           
           if (toggle && slider) {
-            const isEnabled = toggle.checked;
-            if (isEnabled) {
-              slider.removeAttribute('disabled');
-            } else {
-              slider.setAttribute('disabled', true);
-            }
-            
+            // Sliders are always enabled - toggle only controls whether filter is active
             // Call the appropriate update function to set active state correctly
             if (sliderType === 'bjValue') {
               updateBjValueFilter();
@@ -3814,7 +3804,6 @@ app.get('/', (req, res) => {
           if (bjToggle) bjToggle.checked = false;
           if (sliders.bjValue && sliders.bjValue.noUiSlider) {
             sliders.bjValue.noUiSlider.set([-100, 100]);
-            sliders.bjValue.setAttribute('disabled', true);
           }
           
           bjFilterVDir = [];
@@ -3839,7 +3828,6 @@ app.get('/', (req, res) => {
           if (d1Toggle) d1Toggle.checked = false;
           if (sliders.d1Value && sliders.d1Value.noUiSlider) {
             sliders.d1Value.noUiSlider.set([0, 100]);
-            sliders.d1Value.setAttribute('disabled', true);
           }
           
           // Reset D2 Value slider (noUiSlider)
@@ -3847,7 +3835,6 @@ app.get('/', (req, res) => {
           if (d2Toggle) d2Toggle.checked = false;
           if (sliders.d2Value && sliders.d2Value.noUiSlider) {
             sliders.d2Value.noUiSlider.set([0, 100]);
-            sliders.d2Value.setAttribute('disabled', true);
           }
           
           // Reset diff slider (noUiSlider)
@@ -3855,7 +3842,6 @@ app.get('/', (req, res) => {
           if (diffToggle) diffToggle.checked = false;
           if (sliders.diff && sliders.diff.noUiSlider) {
             sliders.diff.noUiSlider.set([0, 50]);
-            sliders.diff.setAttribute('disabled', true);
           }
           
           stochFilterD1Direction = [];
@@ -3942,7 +3928,6 @@ app.get('/', (req, res) => {
             const bjToggle = document.getElementById('bjValueToggle');
             if (bjToggle && sliders.bjValue) {
               bjToggle.checked = true;
-              sliders.bjValue.removeAttribute('disabled');
               sliders.bjValue.noUiSlider.set([15, 100]);
               updateBjValueFilter();
             }
@@ -4002,7 +3987,6 @@ app.get('/', (req, res) => {
             const bjToggle = document.getElementById('bjValueToggle');
             if (bjToggle && sliders.bjValue) {
               bjToggle.checked = true;
-              sliders.bjValue.removeAttribute('disabled');
               sliders.bjValue.noUiSlider.set([-100, -15]);
               updateBjValueFilter();
             }
