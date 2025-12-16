@@ -5065,10 +5065,13 @@ app.get('/', (req, res) => {
             }
             
             // V Dir and S Dir
-            const vDirDisplay = bjTsiIsBull ? 'Up' : 'Down';
+            const vDirArrow = bjTsiIsBull ? '↑' : '↓';
             const vDirClass = bjTsiIsBull ? 'text-green-400' : 'text-red-400';
-            const sDirDisplay = bjTslIsBull ? 'Up' : 'Down';
+            const sDirArrow = bjTslIsBull ? '↑' : '↓';
             const sDirClass = bjTslIsBull ? 'text-green-400' : 'text-red-400';
+            // Keep text versions for tooltip
+            const vDirDisplay = bjTsiIsBull ? 'Up' : 'Down';
+            const sDirDisplay = bjTslIsBull ? 'Up' : 'Down';
             
             // ===== BJ TSI OVERVIEW LOGIC =====
             // Combines all signals into a single actionable overview (based on TSI value and direction)
@@ -5261,7 +5264,7 @@ app.get('/', (req, res) => {
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
                     <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
-                    <div class="text-foreground">V Dir: <span class="\${vDirClass}">\${vDirDisplay}</span> | S Dir: <span class="\${sDirClass}">\${sDirDisplay}</span></div>
+                    <div class="text-foreground">V <span class="\${vDirClass}">\${vDirArrow}</span> | S <span class="\${sDirClass}">\${sDirArrow}</span></div>
                     <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
                   </div>
                 </td>
