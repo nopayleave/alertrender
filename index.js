@@ -2625,6 +2625,44 @@ app.get('/', (req, res) => {
         .cheatsheet-scroll-container:active {
           cursor: grabbing;
         }
+        /* Export Modal */
+        .export-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 2000;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .export-modal-overlay.open {
+          opacity: 1;
+          visibility: visible;
+        }
+        .export-modal {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) scale(0.9);
+          background: hsl(222.2 84% 4.9%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          padding: 24px;
+          z-index: 2001;
+          min-width: 400px;
+          max-width: 90vw;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+        }
+        .export-modal.open {
+          opacity: 1;
+          visibility: visible;
+          transform: translate(-50%, -50%) scale(1);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -2869,6 +2907,16 @@ app.get('/', (req, res) => {
                   </div>
                   </div>
                 </div>
+                
+                <!-- Export Settings Button -->
+                <div class="mt-4">
+                  <button onclick="openExportModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2905,6 +2953,37 @@ app.get('/', (req, res) => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Modal -->
+      <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
+        <div class="export-modal" onclick="event.stopPropagation()">
+          <h3 class="text-lg font-semibold text-foreground mb-4">Export Filter Settings</h3>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-muted-foreground mb-2">Preset Name</label>
+            <input 
+              type="text" 
+              id="exportPresetName" 
+              placeholder="Enter preset name..."
+              class="w-full px-3 py-2 bg-card/80 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+              onkeydown="if(event.key === 'Enter') exportFilterSettings()"
+            />
+          </div>
+          <div class="flex gap-3 justify-end">
+            <button 
+              onclick="closeExportModal()" 
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onclick="exportFilterSettings()" 
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
+            >
+              Done
+            </button>
           </div>
         </div>
       </div>
@@ -4018,6 +4097,81 @@ app.get('/', (req, res) => {
           if (!bjToggle || !bjToggle.checked) {
             filterAlerts();
           }
+        }
+
+        // Export filter settings
+        function openExportModal() {
+          const overlay = document.getElementById('exportModalOverlay');
+          const modal = overlay.querySelector('.export-modal');
+          const input = document.getElementById('exportPresetName');
+          
+          overlay.classList.add('open');
+          modal.classList.add('open');
+          input.value = '';
+          input.focus();
+        }
+        
+        function closeExportModal() {
+          const overlay = document.getElementById('exportModalOverlay');
+          const modal = overlay.querySelector('.export-modal');
+          
+          overlay.classList.remove('open');
+          modal.classList.remove('open');
+        }
+        
+        function exportFilterSettings() {
+          const presetName = document.getElementById('exportPresetName').value.trim();
+          
+          if (!presetName) {
+            alert('Please enter a preset name');
+            return;
+          }
+          
+          // Collect all current filter settings
+          updateFilterArrays();
+          
+          const settings = {
+            name: presetName,
+            filters: {
+              // BJ TSI Filters
+              bjTsi: {
+                vDir: bjFilterVDir,
+                sDir: bjFilterSDir,
+                area: bjFilterArea,
+                valueVsSignal: bjFilterValueVsSignal,
+                value: bjFilterValue.active ? { min: bjFilterValue.min, max: bjFilterValue.max } : null
+              },
+              // Stoch Filters
+              stoch: {
+                d1Direction: stochFilterD1Direction,
+                d1Value: stochFilterD1Value.active ? { min: stochFilterD1Value.min, max: stochFilterD1Value.max } : null,
+                d2Direction: stochFilterD2Direction,
+                d2Value: stochFilterD2Value.active ? { min: stochFilterD2Value.min, max: stochFilterD2Value.max } : null,
+                diff: stochFilterDiff.active ? { min: stochFilterDiff.min, max: stochFilterDiff.max } : null,
+                trendMessage: stochFilterTrendMessage,
+                percentChange: stochFilterPercentChange
+              },
+              // Search term
+              search: searchTerm || null
+            }
+          };
+          
+          // Format for AI to create preset button
+          const exportText = \`Preset Name: \${presetName}
+
+Filter Settings:
+\${JSON.stringify(settings, null, 2)}
+
+Use this to create a new preset filter button that applies these exact filter settings.\`;
+          
+          // Copy to clipboard
+          navigator.clipboard.writeText(exportText).then(() => {
+            alert('Filter settings copied to clipboard!');
+            closeExportModal();
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard. Please try again.');
+          });
         }
 
         // Count how many alerts match each preset filter
