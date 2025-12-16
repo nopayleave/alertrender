@@ -2746,15 +2746,6 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="bjValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs font-medium">
-                          <span class="text-red-400">-100</span>
-                          <span class="text-red-400">-60</span>
-                          <span class="text-red-400">-15</span>
-                          <span class="text-muted-foreground">0</span>
-                          <span class="text-green-400">15</span>
-                          <span class="text-green-400">60</span>
-                          <span class="text-green-400">100</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2803,17 +2794,6 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="d1ValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs font-medium">
-                          <span class="text-red-400">0</span>
-                          <span class="text-red-400">10</span>
-                          <span class="text-red-400">20</span>
-                          <span class="text-yellow-400">40</span>
-                          <span class="text-yellow-400">50</span>
-                          <span class="text-yellow-400">60</span>
-                          <span class="text-green-400">80</span>
-                          <span class="text-green-400">90</span>
-                          <span class="text-green-400">100</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2841,17 +2821,6 @@ app.get('/', (req, res) => {
                         <div class="py-2">
                           <div id="d2ValueSlider"></div>
                         </div>
-                        <div class="flex justify-between mt-2 text-xs font-medium">
-                          <span class="text-red-400">0</span>
-                          <span class="text-red-400">10</span>
-                          <span class="text-red-400">20</span>
-                          <span class="text-yellow-400">40</span>
-                          <span class="text-yellow-400">50</span>
-                          <span class="text-yellow-400">60</span>
-                          <span class="text-green-400">80</span>
-                          <span class="text-green-400">90</span>
-                          <span class="text-green-400">100</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -2869,11 +2838,6 @@ app.get('/', (req, res) => {
                       <div class="mb-2">
                         <div class="py-2">
                           <div id="diffSlider"></div>
-                        </div>
-                        <div class="flex justify-between mt-2 text-xs text-muted-foreground">
-                          <span>0</span>
-                          <span>25</span>
-                          <span>50</span>
                         </div>
                       </div>
                     </div>
