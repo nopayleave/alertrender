@@ -5251,8 +5251,10 @@ app.get('/', (req, res) => {
             // Render cells in column order
             const cells = columnOrder.map(colId => cellContent[colId] || '').join('');
             
+            const stockPrice = alert.price ? parseFloat(alert.price) : null;
+            const priceAttr = stockPrice && !isNaN(stockPrice) ? \`oncontextmenu="event.preventDefault(); openCalculatorWithPrice(\${stockPrice});"\` : '';
             return \`
-              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}" style="background-color: rgba(255, 255, 255, 0.02);">
+              <tr class="border-b border-border hover:bg-muted/50 transition-colors \${starred ? 'bg-muted/20' : ''}" style="background-color: rgba(255, 255, 255, 0.02);" \${priceAttr} title="Right-click to open calculator with this stock price">
                 \${cells}
               </tr>
             \`;
@@ -5350,16 +5352,29 @@ app.get('/', (req, res) => {
         setInterval(updatePatternTimers, 1000)
         
         // Calculator slide-in panel functions
-        function openCalculator() {
+        function openCalculator(price = null) {
           document.getElementById('calculatorOverlay').classList.add('open');
           document.getElementById('calculatorPanel').classList.add('open');
           document.body.style.overflow = 'hidden';
+          
+          // Set stock price if provided
+          if (price !== null && !isNaN(price)) {
+            const sharePriceInput = document.getElementById('sharePrice');
+            if (sharePriceInput) {
+              sharePriceInput.value = price;
+            }
+          }
+          
           // Initialize calculator on open
           setTimeout(() => {
             if (typeof calculate === 'function') {
               calculate();
             }
           }, 100);
+        }
+        
+        function openCalculatorWithPrice(price) {
+          openCalculator(price);
         }
         
         function closeCalculator() {
