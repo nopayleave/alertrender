@@ -2965,7 +2965,7 @@ app.get('/', (req, res) => {
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
-                    <thead id="tableHeader" style="background-color: rgba(30, 35, 45, 0.95);">
+                    <thead id="tableHeader" class="sticky z-20 backdrop-blur-sm" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
@@ -3395,12 +3395,28 @@ app.get('/', (req, res) => {
           }
         }
 
+        // Update table header sticky position based on preset button row height
+        function updateTableHeaderPosition() {
+          const presetButtonRow = document.querySelector('.preset-filter-group');
+          const tableHeader = document.getElementById('tableHeader');
+          
+          if (presetButtonRow && tableHeader) {
+            const presetButtonHeight = presetButtonRow.offsetHeight;
+            const topOffset = presetButtonHeight + 16; // 16px for mb-4 margin
+            tableHeader.style.top = topOffset + 'px';
+          }
+        }
+
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
+          updateTableHeaderPosition();
+          
+          // Update position on window resize (in case buttons wrap)
+          window.addEventListener('resize', updateTableHeaderPosition);
         });
 
         // Render table headers dynamically based on column order
@@ -3445,9 +3461,12 @@ app.get('/', (req, res) => {
           
           updateSortIndicators();
           
-          // Attach resize handlers after headers are rendered
-          attachResizeHandlers();
-        }
+            // Attach resize handlers after headers are rendered
+            attachResizeHandlers();
+            
+            // Update table header position after headers are rendered
+            setTimeout(updateTableHeaderPosition, 0);
+          }
         
         // Attach resize handlers to all column headers
         function attachResizeHandlers() {
