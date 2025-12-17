@@ -2725,6 +2725,71 @@ app.get('/', (req, res) => {
                   </button>
                 </div>
                 
+                <!-- BJ TSI Filters - iOS chip style -->
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('bjTsiFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      BJ TSI
+                    </h3>
+                    <button 
+                      onclick="event.stopPropagation(); clearBjFilters()" 
+                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  <div id="bjTsiFilters" class="filter-content">
+                  <!-- V Dir & S Dir -->
+                  <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑</button>
+                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑</button>
+                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓</button>
+                      </div>
+                    </div>
+                  </div>
+              
+                  <!-- Value vs Signal Toggle -->
+                  <div class="mb-5">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
+                      <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
+                    </div>
+                  </div>
+                  
+                  <!-- BJ Value Slider -->
+                  <div class="mb-5">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                    <div class="px-2" id="bjValueSliderContainer">
+                      <div class="mb-2">
+                        <div class="py-2">
+                          <div id="bjValueSlider"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
+                </div>
+                
                 <!-- Stoch Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
@@ -2832,79 +2897,12 @@ app.get('/', (req, res) => {
                   <div class="mb-0">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
-                    </div>
-                  </div>
-                  </div>
-                </div>
-                
-                <!-- BJ TSI Filters - iOS chip style -->
-                <div class="mb-4 filter-section">
-                  <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('bjTsiFilters', this)">
-                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                      BJ TSI
-                    </h3>
-                    <button 
-                      onclick="event.stopPropagation(); clearBjFilters()" 
-                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  
-                  <div id="bjTsiFilters" class="filter-content">
-                  <!-- V Dir & S Dir -->
-                  <div class="grid grid-cols-2 gap-3 mb-5">
-                    <div>
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">V Dir</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('vDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="vDir" data-value="Up">↑</button>
-                        <button onclick="toggleFilterChip('vDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="vDir" data-value="Down">↓</button>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">S Dir</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('sDir', 'Up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="sDir" data-value="Up">↑</button>
-                        <button onclick="toggleFilterChip('sDir', 'Down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="sDir" data-value="Down">↓</button>
-                      </div>
-                    </div>
-                  </div>
-              
-                  <!-- Value vs Signal Toggle -->
-                  <div class="mb-5">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Value vs Signal</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('valueVsSignal', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="valueVsSignal" data-value="above">V &gt; S</button>
-                      <button onclick="toggleFilterChip('valueVsSignal', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="valueVsSignal" data-value="below">V &lt; S</button>
-                    </div>
-                  </div>
-                  
-                  <!-- BJ Value Slider -->
-                  <div class="mb-5">
-                    <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">BJ Value <span class="text-foreground/60">|</span> <span id="bjValueMinValue" class="text-blue-400 font-semibold">-100</span> <span class="text-foreground/60">-</span> <span id="bjValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="bjValueToggle" class="sr-only peer" onchange="toggleSliderFilter('bjValue')">
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                      </label>
-                    </div>
-                    <div class="px-2" id="bjValueSliderContainer">
-                      <div class="mb-2">
-                        <div class="py-2">
-                          <div id="bjValueSlider"></div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                   </div>
@@ -2926,7 +2924,7 @@ app.get('/', (req, res) => {
           <!-- Table area (right on xl, below filters on smaller screens) -->
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
-            <div class="sticky top-0 z-30 mb-4 flex gap-2 flex-wrap preset-filter-group bg-background/95 backdrop-blur-sm pb-2 pt-2">
+            <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
               <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-white">
                 Down <span id="presetDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span>
               </button>
@@ -2965,7 +2963,7 @@ app.get('/', (req, res) => {
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
-                    <thead id="tableHeader" class="sticky z-20 backdrop-blur-sm" style="background-color: rgba(30, 35, 45, 0.95);">
+                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
@@ -3395,28 +3393,12 @@ app.get('/', (req, res) => {
           }
         }
 
-        // Update table header sticky position based on preset button row height
-        function updateTableHeaderPosition() {
-          const presetButtonRow = document.querySelector('.preset-filter-group');
-          const tableHeader = document.getElementById('tableHeader');
-          
-          if (presetButtonRow && tableHeader) {
-            const presetButtonHeight = presetButtonRow.offsetHeight;
-            const topOffset = presetButtonHeight + 16; // 16px for mb-4 margin
-            tableHeader.style.top = topOffset + 'px';
-          }
-        }
-
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
-          updateTableHeaderPosition();
-          
-          // Update position on window resize (in case buttons wrap)
-          window.addEventListener('resize', updateTableHeaderPosition);
         });
 
         // Render table headers dynamically based on column order
@@ -3461,12 +3443,9 @@ app.get('/', (req, res) => {
           
           updateSortIndicators();
           
-            // Attach resize handlers after headers are rendered
-            attachResizeHandlers();
-            
-            // Update table header position after headers are rendered
-            setTimeout(updateTableHeaderPosition, 0);
-          }
+          // Attach resize handlers after headers are rendered
+          attachResizeHandlers();
+        }
         
         // Attach resize handlers to all column headers
         function attachResizeHandlers() {
@@ -4632,34 +4611,28 @@ Use this to create a new preset filter button that applies these exact filter se
         // Count how many alerts match each Price % range
         function updatePricePercentCounts() {
           if (alertsData.length === 0) {
-            const lessThanMinus10CountEl = document.getElementById('pricePercentLessThanMinus10Count');
             const lessThan5CountEl = document.getElementById('pricePercentLessThan5Count');
             const minus5ToMinus2CountEl = document.getElementById('pricePercentMinus5ToMinus2Count');
             const minus2To0CountEl = document.getElementById('pricePercentMinus2To0Count');
             const zeroTo2CountEl = document.getElementById('pricePercent0To2Count');
             const twoTo5CountEl = document.getElementById('pricePercent2To5Count');
             const greaterThan5CountEl = document.getElementById('pricePercentGreaterThan5Count');
-            const greaterThan10CountEl = document.getElementById('pricePercentGreaterThan10Count');
-            if (lessThanMinus10CountEl) lessThanMinus10CountEl.textContent = '0';
             if (lessThan5CountEl) lessThan5CountEl.textContent = '0';
             if (minus5ToMinus2CountEl) minus5ToMinus2CountEl.textContent = '0';
             if (minus2To0CountEl) minus2To0CountEl.textContent = '0';
             if (zeroTo2CountEl) zeroTo2CountEl.textContent = '0';
             if (twoTo5CountEl) twoTo5CountEl.textContent = '0';
             if (greaterThan5CountEl) greaterThan5CountEl.textContent = '0';
-            if (greaterThan10CountEl) greaterThan10CountEl.textContent = '0';
             return;
           }
 
           // Count matches for each range
-          let lessThanMinus10Count = 0;
           let lessThan5Count = 0;
           let minus5ToMinus2Count = 0;
           let minus2To0Count = 0;
           let zeroTo2Count = 0;
           let twoTo5Count = 0;
           let greaterThan5Count = 0;
-          let greaterThan10Count = 0;
 
           alertsData.forEach(alert => {
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -4670,9 +4643,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             const pctVal = percentChange;
             
-            if (pctVal < -10) {
-              lessThanMinus10Count++;
-            } else if (pctVal >= -10 && pctVal < -5) {
+            if (pctVal < -5) {
               lessThan5Count++;
             } else if (pctVal >= -5 && pctVal < -2) {
               minus5ToMinus2Count++;
@@ -4682,30 +4653,24 @@ Use this to create a new preset filter button that applies these exact filter se
               zeroTo2Count++;
             } else if (pctVal >= 2 && pctVal < 5) {
               twoTo5Count++;
-            } else if (pctVal >= 5 && pctVal < 10) {
+            } else if (pctVal >= 5) {
               greaterThan5Count++;
-            } else if (pctVal >= 10) {
-              greaterThan10Count++;
             }
           });
 
           // Update the count displays
-          const lessThanMinus10CountEl = document.getElementById('pricePercentLessThanMinus10Count');
           const lessThan5CountEl = document.getElementById('pricePercentLessThan5Count');
           const minus5ToMinus2CountEl = document.getElementById('pricePercentMinus5ToMinus2Count');
           const minus2To0CountEl = document.getElementById('pricePercentMinus2To0Count');
           const zeroTo2CountEl = document.getElementById('pricePercent0To2Count');
           const twoTo5CountEl = document.getElementById('pricePercent2To5Count');
           const greaterThan5CountEl = document.getElementById('pricePercentGreaterThan5Count');
-          const greaterThan10CountEl = document.getElementById('pricePercentGreaterThan10Count');
-          if (lessThanMinus10CountEl) lessThanMinus10CountEl.textContent = lessThanMinus10Count;
           if (lessThan5CountEl) lessThan5CountEl.textContent = lessThan5Count;
           if (minus5ToMinus2CountEl) minus5ToMinus2CountEl.textContent = minus5ToMinus2Count;
           if (minus2To0CountEl) minus2To0CountEl.textContent = minus2To0Count;
           if (zeroTo2CountEl) zeroTo2CountEl.textContent = zeroTo2Count;
           if (twoTo5CountEl) twoTo5CountEl.textContent = twoTo5Count;
           if (greaterThan5CountEl) greaterThan5CountEl.textContent = greaterThan5Count;
-          if (greaterThan10CountEl) greaterThan10CountEl.textContent = greaterThan10Count;
         }
 
         function toggleClearButton() {
@@ -4921,14 +4886,12 @@ Use this to create a new preset filter button that applies these exact filter se
                 const pctVal = percentChange;
                 let matchesPct = false;
                 for (const filter of stochFilterPercentChange) {
-                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
-                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '<-5' && pctVal < -5) { matchesPct = true; break; }
                   if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
                   if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
                   if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
                   if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
-                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
-                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5) { matchesPct = true; break; }
                 }
                 if (!matchesPct) return false;
               }
