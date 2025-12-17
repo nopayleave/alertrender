@@ -2924,7 +2924,7 @@ app.get('/', (req, res) => {
           <!-- Table area (right on xl, below filters on smaller screens) -->
           <div class="w-full xl:flex-1 xl:min-w-0">
             <!-- Preset Filter Buttons -->
-            <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
+            <div id="presetFilterButtons" class="mb-4 flex gap-2 flex-wrap preset-filter-group">
               <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-white">
                 Down <span id="presetDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span>
               </button>
@@ -2963,7 +2963,7 @@ app.get('/', (req, res) => {
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
-                    <thead id="tableHeader" class="sticky top-[10px] z-20" style="background-color: rgba(30, 35, 45, 0.95);">
+                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
@@ -3394,11 +3394,27 @@ app.get('/', (req, res) => {
         }
 
         // Initialize sort indicators on page load
+        // Update sticky header position based on preset buttons height
+        function updateStickyHeaderPosition() {
+          const presetButtons = document.getElementById('presetFilterButtons');
+          const tableHeader = document.getElementById('tableHeader');
+          
+          if (presetButtons && tableHeader) {
+            const presetButtonsHeight = presetButtons.offsetHeight;
+            const stickyTop = presetButtonsHeight + 10; // 10px gap above preset buttons
+            tableHeader.style.top = stickyTop + 'px';
+          }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
+          updateStickyHeaderPosition();
+          
+          // Update sticky position on window resize (in case buttons wrap)
+          window.addEventListener('resize', updateStickyHeaderPosition);
         });
 
         // Render table headers dynamically based on column order
@@ -3445,6 +3461,9 @@ app.get('/', (req, res) => {
           
           // Attach resize handlers after headers are rendered
           attachResizeHandlers();
+          
+          // Update sticky header position after headers are rendered
+          setTimeout(updateStickyHeaderPosition, 0);
         }
         
         // Attach resize handlers to all column headers
