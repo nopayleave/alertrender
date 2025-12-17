@@ -2897,12 +2897,14 @@ app.get('/', (req, res) => {
                   <div class="mb-0">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
                       <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
                     </div>
                   </div>
                   </div>
@@ -4611,28 +4613,34 @@ Use this to create a new preset filter button that applies these exact filter se
         // Count how many alerts match each Price % range
         function updatePricePercentCounts() {
           if (alertsData.length === 0) {
+            const lessThanMinus10CountEl = document.getElementById('pricePercentLessThanMinus10Count');
             const lessThan5CountEl = document.getElementById('pricePercentLessThan5Count');
             const minus5ToMinus2CountEl = document.getElementById('pricePercentMinus5ToMinus2Count');
             const minus2To0CountEl = document.getElementById('pricePercentMinus2To0Count');
             const zeroTo2CountEl = document.getElementById('pricePercent0To2Count');
             const twoTo5CountEl = document.getElementById('pricePercent2To5Count');
             const greaterThan5CountEl = document.getElementById('pricePercentGreaterThan5Count');
+            const greaterThan10CountEl = document.getElementById('pricePercentGreaterThan10Count');
+            if (lessThanMinus10CountEl) lessThanMinus10CountEl.textContent = '0';
             if (lessThan5CountEl) lessThan5CountEl.textContent = '0';
             if (minus5ToMinus2CountEl) minus5ToMinus2CountEl.textContent = '0';
             if (minus2To0CountEl) minus2To0CountEl.textContent = '0';
             if (zeroTo2CountEl) zeroTo2CountEl.textContent = '0';
             if (twoTo5CountEl) twoTo5CountEl.textContent = '0';
             if (greaterThan5CountEl) greaterThan5CountEl.textContent = '0';
+            if (greaterThan10CountEl) greaterThan10CountEl.textContent = '0';
             return;
           }
 
           // Count matches for each range
+          let lessThanMinus10Count = 0;
           let lessThan5Count = 0;
           let minus5ToMinus2Count = 0;
           let minus2To0Count = 0;
           let zeroTo2Count = 0;
           let twoTo5Count = 0;
           let greaterThan5Count = 0;
+          let greaterThan10Count = 0;
 
           alertsData.forEach(alert => {
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -4643,7 +4651,9 @@ Use this to create a new preset filter button that applies these exact filter se
             
             const pctVal = percentChange;
             
-            if (pctVal < -5) {
+            if (pctVal < -10) {
+              lessThanMinus10Count++;
+            } else if (pctVal >= -10 && pctVal < -5) {
               lessThan5Count++;
             } else if (pctVal >= -5 && pctVal < -2) {
               minus5ToMinus2Count++;
@@ -4653,24 +4663,30 @@ Use this to create a new preset filter button that applies these exact filter se
               zeroTo2Count++;
             } else if (pctVal >= 2 && pctVal < 5) {
               twoTo5Count++;
-            } else if (pctVal >= 5) {
+            } else if (pctVal >= 5 && pctVal < 10) {
               greaterThan5Count++;
+            } else if (pctVal >= 10) {
+              greaterThan10Count++;
             }
           });
 
           // Update the count displays
+          const lessThanMinus10CountEl = document.getElementById('pricePercentLessThanMinus10Count');
           const lessThan5CountEl = document.getElementById('pricePercentLessThan5Count');
           const minus5ToMinus2CountEl = document.getElementById('pricePercentMinus5ToMinus2Count');
           const minus2To0CountEl = document.getElementById('pricePercentMinus2To0Count');
           const zeroTo2CountEl = document.getElementById('pricePercent0To2Count');
           const twoTo5CountEl = document.getElementById('pricePercent2To5Count');
           const greaterThan5CountEl = document.getElementById('pricePercentGreaterThan5Count');
+          const greaterThan10CountEl = document.getElementById('pricePercentGreaterThan10Count');
+          if (lessThanMinus10CountEl) lessThanMinus10CountEl.textContent = lessThanMinus10Count;
           if (lessThan5CountEl) lessThan5CountEl.textContent = lessThan5Count;
           if (minus5ToMinus2CountEl) minus5ToMinus2CountEl.textContent = minus5ToMinus2Count;
           if (minus2To0CountEl) minus2To0CountEl.textContent = minus2To0Count;
           if (zeroTo2CountEl) zeroTo2CountEl.textContent = zeroTo2Count;
           if (twoTo5CountEl) twoTo5CountEl.textContent = twoTo5Count;
           if (greaterThan5CountEl) greaterThan5CountEl.textContent = greaterThan5Count;
+          if (greaterThan10CountEl) greaterThan10CountEl.textContent = greaterThan10Count;
         }
 
         function toggleClearButton() {
@@ -4886,12 +4902,14 @@ Use this to create a new preset filter button that applies these exact filter se
                 const pctVal = percentChange;
                 let matchesPct = false;
                 for (const filter of stochFilterPercentChange) {
-                  if (filter === '<-5' && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
+                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
                   if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
                   if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
                   if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
                   if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
-                  if (filter === '>5' && pctVal >= 5) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
+                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
                 }
                 if (!matchesPct) return false;
               }
