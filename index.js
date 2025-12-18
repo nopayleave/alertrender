@@ -2957,6 +2957,9 @@ app.get('/', (req, res) => {
               <button id="presetBounce" onclick="applyPresetFilter('bounce')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-teal-500/50 bg-teal-500/20 hover:bg-teal-500/30 active:scale-95 transition-all text-white">
                 Bounce <span id="presetBounceCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-teal-600/50 text-white">0</span>
               </button>
+              <button id="presetTrendDown" onclick="applyPresetFilter('trendDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-white">
+                Trend Down <span id="presetTrendDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-600/50 text-white">0</span>
+              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -4332,6 +4335,23 @@ app.get('/', (req, res) => {
               sliders.d2Value.noUiSlider.set([40, 100]);
               updateD2ValueFilter();
             }
+            
+          } else if (preset === 'trendDown') {
+            // Activate BJ TSI V Dir: Down
+            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
+            if (vDirDownChip) {
+              vDirDownChip.classList.add('active');
+              const parentGroup = vDirDownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate Value vs Signal: below
+            const valueVsSignalBelowChip = document.querySelector('[data-filter="valueVsSignal"][data-value="below"]');
+            if (valueVsSignalBelowChip) {
+              valueVsSignalBelowChip.classList.add('active');
+              const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
           }
           
           // Update filter arrays from chip states
@@ -4432,6 +4452,7 @@ Use this to create a new preset filter button that applies these exact filter se
             const bigUpCountEl = document.getElementById('presetBigUpCount');
             const fallCountEl = document.getElementById('presetFallCount');
             const bounceCountEl = document.getElementById('presetBounceCount');
+            const trendDownCountEl = document.getElementById('presetTrendDownCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
@@ -4442,6 +4463,7 @@ Use this to create a new preset filter button that applies these exact filter se
             if (bigUpCountEl) bigUpCountEl.textContent = '0';
             if (fallCountEl) fallCountEl.textContent = '0';
             if (bounceCountEl) bounceCountEl.textContent = '0';
+            if (trendDownCountEl) trendDownCountEl.textContent = '0';
             return;
           }
 
@@ -4456,6 +4478,7 @@ Use this to create a new preset filter button that applies these exact filter se
           let bigUpCount = 0;
           let fallCount = 0;
           let bounceCount = 0;
+          let trendDownCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -4575,6 +4598,12 @@ Use this to create a new preset filter button that applies these exact filter se
             if (d2Direction !== 'up') matchesBounce = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesBounce = false;
             
+            // Check Trend Down criteria
+            let matchesTrendDown = true;
+            if (vDir !== 'Down') matchesTrendDown = false;
+            // Check Value vs Signal: below (V < S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi >= bjTsl) matchesTrendDown = false;
+            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesTrendDownBig) trendDownBigCount++;
@@ -4585,6 +4614,7 @@ Use this to create a new preset filter button that applies these exact filter se
             if (matchesBigUp) bigUpCount++;
             if (matchesFall) fallCount++;
             if (matchesBounce) bounceCount++;
+            if (matchesTrendDown) trendDownCount++;
           });
 
           // Update the count displays
@@ -4598,6 +4628,7 @@ Use this to create a new preset filter button that applies these exact filter se
           const bigUpCountEl = document.getElementById('presetBigUpCount');
           const fallCountEl = document.getElementById('presetFallCount');
           const bounceCountEl = document.getElementById('presetBounceCount');
+          const trendDownCountEl = document.getElementById('presetTrendDownCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
@@ -4608,6 +4639,7 @@ Use this to create a new preset filter button that applies these exact filter se
           if (bigUpCountEl) bigUpCountEl.textContent = bigUpCount;
           if (fallCountEl) fallCountEl.textContent = fallCount;
           if (bounceCountEl) bounceCountEl.textContent = bounceCount;
+          if (trendDownCountEl) trendDownCountEl.textContent = trendDownCount;
         }
 
         // Count how many alerts match each Price % range

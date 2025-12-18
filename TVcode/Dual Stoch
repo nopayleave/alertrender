@@ -17,8 +17,10 @@ linewidthD1 = input.int(3, minval=1, maxval=5, title="D1 Line Width", group="D1 
 // Color Settings
 colorD1Up = input.color(#00FF00, title="D1 Up Color", group="D1 Settings")
 colorD1Down = input.color(#0044ff, title="D1 Down Color", group="D1 Settings")
-colorOverbought = input.color(color.white, title="Overbought Color (>80)", group="D1 Settings")
-colorOversold = input.color(color.white, title="Oversold Color (<20)", group="D1 Settings")
+colorD1TrendUp = input.color(#00FF00, title="D1 Trend Up Color (>80)", group="D1 Settings", tooltip="Color when D1 is above 80 (trend up)")
+colorD1TrendDown = input.color(#ff0000, title="D1 Trend Down Color (<20)", group="D1 Settings", tooltip="Color when D1 is below 20 (trend down)")
+colorD1Below20TrendUp = input.color(#ffff00, title="D1 Below 20 Trend Up Color", group="D1 Settings", tooltip="Color when D1 is below 20 AND trending up")
+colorD1Above80TrendDown = input.color(#ff8800, title="D1 Above 80 Trend Down Color", group="D1 Settings", tooltip="Color when D1 is above 80 AND trending down")
 
 // ===== D2 SETTINGS =====
 length2 = input.int(39, minval=1, title="D2 Length (periodK)", group="D2 Settings")
@@ -29,10 +31,15 @@ linewidthD2 = input.int(3, minval=1, maxval=5, title="D2 Line Width", group="D2 
 // Color Settings
 colorD2Up = input.color(#00FF00, title="D2 Up Color", group="D2 Settings")
 colorD2Down = input.color(#0044ff, title="D2 Down Color", group="D2 Settings")
+colorD2TrendUp = input.color(#00FF00, title="D2 Trend Up Color (>80)", group="D2 Settings", tooltip="Color when D2 is above 80 (trend up)")
+colorD2TrendDown = input.color(#ff0000, title="D2 Trend Down Color (<20)", group="D2 Settings", tooltip="Color when D2 is below 20 (trend down)")
+colorD2Below20TrendUp = input.color(#ffff00, title="D2 Below 20 Trend Up Color", group="D2 Settings", tooltip="Color when D2 is below 20 AND trending up")
+colorD2Above80TrendDown = input.color(#ff8800, title="D2 Above 80 Trend Down Color", group="D2 Settings", tooltip="Color when D2 is above 80 AND trending down")
 
 // Higher Low / Lower High Settings
 showD1HLLH = input.bool(true, title="Show D1 Higher Low/Lower High", group="D1 Settings")
 showD1HLLHOnChart = input.bool(true, title="Show D1 Higher Low/Lower High on Main Chart", group="D1 Settings")
+showD1HLLHBarColor = input.bool(true, title="Color Bars for HL/LH Patterns", group="D1 Settings", tooltip="Color main chart bars when Higher Low/Lower High patterns are detected")
 pivotLengthD1 = input.int(5, minval=1, title="D1 Pivot Length", group="D1 Settings")
 colorHL_D1 = input.color(color.aqua, title="D1 Higher Low Color", group="D1 Settings")
 colorLH_D1 = input.color(color.orange, title="D1 Lower High Color", group="D1 Settings")
@@ -98,19 +105,21 @@ k2 = timeframe_d2 == "" ? k2_chart : k2_mtf
 d2 = timeframe_d2 == "" ? d2_chart : d2_mtf
 
 // ===== D1 COLOR LOGIC =====
-// Priority: Overbought (>80) = white, Oversold (<20) = white, else Up/Down color
+// Priority: Below 20 AND trend up = colorD1Below20TrendUp, Above 80 AND trend down = colorD1Above80TrendDown
+// Then: Above 80 (trend up) = colorD1TrendUp, Below 20 (trend down) = colorD1TrendDown, else Up/Down color
 d1IsUp = d1 >= d1[1]
 d1BaseColor = d1IsUp ? colorD1Up : colorD1Down
-d1LineColor = d1 > 80 ? colorOverbought : d1 < 20 ? colorOversold : d1BaseColor
+d1LineColor = (d1 < 20 and d1IsUp) ? colorD1Below20TrendUp : (d1 > 80 and not d1IsUp) ? colorD1Above80TrendDown : d1 > 80 ? colorD1TrendUp : d1 < 20 ? colorD1TrendDown : d1BaseColor
 
 // Plot D1 line
 plot(d1, title="%D1", color=d1LineColor, linewidth=linewidthD1, display=display.pane)
 
 // ===== D2 COLOR LOGIC =====
-// Priority: Overbought (>80) = white, Oversold (<20) = white, else Up/Down color
+// Priority: Below 20 AND trend up = colorD2Below20TrendUp, Above 80 AND trend down = colorD2Above80TrendDown
+// Then: Above 80 (trend up) = colorD2TrendUp, Below 20 (trend down) = colorD2TrendDown, else Up/Down color
 d2IsUp = d2 >= d2[1]
 d2BaseColor = d2IsUp ? colorD2Up : colorD2Down
-d2LineColor = d2 > 80 ? colorOverbought : d2 < 20 ? colorOversold : d2BaseColor
+d2LineColor = (d2 < 20 and d2IsUp) ? colorD2Below20TrendUp : (d2 > 80 and not d2IsUp) ? colorD2Above80TrendDown : d2 > 80 ? colorD2TrendUp : d2 < 20 ? colorD2TrendDown : d2BaseColor
 
 // ===== D2 DIRECTION TRACKING =====
 var float prevD2 = na
@@ -159,6 +168,14 @@ else
     [bc_k1_raw, bc_d1_raw] = request.security(syminfo.tickerid, timeframe_barColor, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
     bc_d1_val := smoothMtfLines ? ta.sma(bc_d1_raw, mtfSmoothLen) : bc_d1_raw
 
+// Calculate D2 for bar color timeframe
+float bc_d2_val = na
+if timeframe_barColor == ""
+    bc_d2_val := d2
+else
+    [bc_k2_raw, bc_d2_raw] = request.security(syminfo.tickerid, timeframe_barColor, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+    bc_d2_val := smoothMtfLines ? ta.sma(bc_d2_raw, mtfSmoothLen) : bc_d2_raw
+
 // Track direction for bar color timeframe
 var float bc_prevD1 = na
 var string bc_prevD1Direction = "flat"
@@ -167,6 +184,10 @@ bc_upToDown_val = bc_prevD1Direction == "up" and bc_d1Direction == "down"
 bc_downToUp_val = bc_prevD1Direction == "down" and bc_d1Direction == "up"
 bc_prevD1 := bc_d1_val
 bc_prevD1Direction := bc_d1Direction
+
+// Calculate D1-D2 difference for bar color timeframe
+float bc_d1D2Diff = math.abs(bc_d1_val - bc_d2_val)
+bool bc_d1SwitchWithLargeDiff = (bc_upToDown_val or bc_downToUp_val) and bc_d1D2Diff > whiteDotDiffThreshold
 
 // HL/LH detection for bar color timeframe
 bc_pivotHighD1 = ta.pivothigh(bc_d1_val, pivotLengthD1, pivotLengthD1)
@@ -256,16 +277,17 @@ if showWhiteDot and d1SwitchWithLargeDiff
 
 plot(whiteDotPlot, title="White Dot", color=whiteDotPlotColor, linewidth=whiteDotSize, style=plot.style_circles)
 
-// Color main chart candles when direction changes or HL/LH patterns are detected (using bar color timeframe)
+// Color main chart candles for bull/bear dots and HL/LH patterns (using bar color timeframe)
 color barColorValue = na
-if showD1HLLHOnChart and bc_isHigherLow_val
+// Priority 1: Bull/Bear dot coloring (when D1 switches direction with large D1-D2 difference)
+if showD1HLLHOnChart and bc_d1SwitchWithLargeDiff
+    // Bull dot: D1 switches up (bc_downToUp_val), Bear dot: D1 switches down (bc_upToDown_val)
+    barColorValue := bc_downToUp_val ? whiteDotBullColor : whiteDotBearColor
+// Priority 2: HL/LH pattern coloring
+else if showD1HLLHBarColor and bc_isHigherLow_val
     barColorValue := colorHL_D1
-else if showD1HLLHOnChart and bc_isLowerHigh_val
+else if showD1HLLHBarColor and bc_isLowerHigh_val
     barColorValue := colorLH_D1
-else if showD1HLLHOnChart and bc_upToDown_val
-    barColorValue := colorUpToDown
-else if showD1HLLHOnChart and bc_downToUp_val
-    barColorValue := colorDownToUp
 
 barcolor(barColorValue)
 
