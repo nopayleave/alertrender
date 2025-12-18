@@ -2978,6 +2978,9 @@ app.get('/', (req, res) => {
               <button id="presetTrendDown" onclick="applyPresetFilter('trendDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-white">
                 Trend Down <span id="presetTrendDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-600/50 text-white">0</span>
               </button>
+              <button id="presetTrendChange" onclick="applyPresetFilter('trendChange')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-violet-500/50 bg-violet-500/20 hover:bg-violet-500/30 active:scale-95 transition-all text-white">
+                Trend Change <span id="presetTrendChangeCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-violet-600/50 text-white">0</span>
+              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -4467,6 +4470,15 @@ app.get('/', (req, res) => {
               sliders.bjValue.noUiSlider.set([-100, 2]);
               updateBjValueFilter();
             }
+            
+          } else if (preset === 'trendChange') {
+            // Activate BJ Diff slider: 0 to 2
+            const bjDiffToggle = document.getElementById('bjDiffToggle');
+            if (bjDiffToggle && sliders.bjDiff) {
+              bjDiffToggle.checked = true;
+              sliders.bjDiff.noUiSlider.set([0, 2]);
+              updateBjDiffFilter();
+            }
           }
           
           // Update filter arrays from chip states
@@ -4569,6 +4581,7 @@ Use this to create a new preset filter button that applies these exact filter se
             const fallCountEl = document.getElementById('presetFallCount');
             const bounceCountEl = document.getElementById('presetBounceCount');
             const trendDownCountEl = document.getElementById('presetTrendDownCount');
+            const trendChangeCountEl = document.getElementById('presetTrendChangeCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
@@ -4580,6 +4593,7 @@ Use this to create a new preset filter button that applies these exact filter se
             if (fallCountEl) fallCountEl.textContent = '0';
             if (bounceCountEl) bounceCountEl.textContent = '0';
             if (trendDownCountEl) trendDownCountEl.textContent = '0';
+            if (trendChangeCountEl) trendChangeCountEl.textContent = '0';
             return;
           }
 
@@ -4595,6 +4609,7 @@ Use this to create a new preset filter button that applies these exact filter se
           let fallCount = 0;
           let bounceCount = 0;
           let trendDownCount = 0;
+          let trendChangeCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -4722,6 +4737,15 @@ Use this to create a new preset filter button that applies these exact filter se
             // Check BJ Value range: -100 to 2
             if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > 2) matchesTrendDown = false;
             
+            // Check Trend Change criteria
+            let matchesTrendChange = true;
+            // Check BJ Diff range: 0 to 2 (absolute difference between V and S)
+            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) matchesTrendChange = false;
+            else {
+              const absDiff = Math.abs(bjTsi - bjTsl);
+              if (absDiff < 0 || absDiff > 2) matchesTrendChange = false;
+            }
+            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesTrendDownBig) trendDownBigCount++;
@@ -4733,6 +4757,7 @@ Use this to create a new preset filter button that applies these exact filter se
             if (matchesFall) fallCount++;
             if (matchesBounce) bounceCount++;
             if (matchesTrendDown) trendDownCount++;
+            if (matchesTrendChange) trendChangeCount++;
           });
 
           // Update the count displays
@@ -4747,6 +4772,7 @@ Use this to create a new preset filter button that applies these exact filter se
           const fallCountEl = document.getElementById('presetFallCount');
           const bounceCountEl = document.getElementById('presetBounceCount');
           const trendDownCountEl = document.getElementById('presetTrendDownCount');
+          const trendChangeCountEl = document.getElementById('presetTrendChangeCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
@@ -4758,6 +4784,7 @@ Use this to create a new preset filter button that applies these exact filter se
           if (fallCountEl) fallCountEl.textContent = fallCount;
           if (bounceCountEl) bounceCountEl.textContent = bounceCount;
           if (trendDownCountEl) trendDownCountEl.textContent = trendDownCount;
+          if (trendChangeCountEl) trendChangeCountEl.textContent = trendChangeCount;
         }
 
         // Count how many alerts match each Price % range
@@ -5843,6 +5870,25 @@ Use this to create a new preset filter button that applies these exact filter se
             const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
             const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
             
+            // BJ Value color coding
+            // Priority: >40 brighter green, >15 green, >0 light green, <0 light red, <15 red, <40 brighter red
+            let bjValueColorClass = 'text-foreground';
+            if (bjTsi !== null && !isNaN(bjTsi)) {
+              if (bjTsi > 40) {
+                bjValueColorClass = 'text-green-300'; // Brighter green (>40)
+              } else if (bjTsi > 15) {
+                bjValueColorClass = 'text-green-400'; // Green (>15 and <=40)
+              } else if (bjTsi > 0) {
+                bjValueColorClass = 'text-green-500'; // Light green (>0 and <=15)
+              } else if (bjTsi >= -15) {
+                bjValueColorClass = 'text-red-500'; // Light red (<0 and >= -15)
+              } else if (bjTsi >= -40) {
+                bjValueColorClass = 'text-red-400'; // Red (<-15 and >= -40)
+              } else {
+                bjValueColorClass = 'text-red-300'; // Brighter red (<-40)
+              }
+            }
+            
             // Calculate Area with text labels
             let areaDisplay = '-';
             let areaClass = 'text-muted-foreground';
@@ -6074,7 +6120,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('bj')}" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
                   <div class="space-y-1">
                     <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
-                    <div class="font-mono text-foreground">Value: <span class="font-semibold text-foreground">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
+                    <div class="font-mono text-foreground">Value: <span class="font-semibold \${bjValueColorClass}">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
                     <div class="text-foreground">V <span class="\${vDirClass}">\${vDirArrow}</span> | S <span class="\${sDirClass}">\${sDirArrow}</span></div>
                     <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
                   </div>
