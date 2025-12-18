@@ -4352,6 +4352,14 @@ app.get('/', (req, res) => {
               const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
               if (parentGroup) parentGroup.classList.add('has-active');
             }
+            
+            // Activate BJ Value slider: -100 to 2
+            const bjToggle = document.getElementById('bjValueToggle');
+            if (bjToggle && sliders.bjValue) {
+              bjToggle.checked = true;
+              sliders.bjValue.noUiSlider.set([-100, 2]);
+              updateBjValueFilter();
+            }
           }
           
           // Update filter arrays from chip states
@@ -4603,6 +4611,8 @@ Use this to create a new preset filter button that applies these exact filter se
             if (vDir !== 'Down') matchesTrendDown = false;
             // Check Value vs Signal: below (V < S)
             if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi >= bjTsl) matchesTrendDown = false;
+            // Check BJ Value range: -100 to 2
+            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > 2) matchesTrendDown = false;
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
