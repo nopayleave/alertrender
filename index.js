@@ -2787,6 +2787,24 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                   </div>
+                  
+                  <!-- BJ Diff - Absolute difference between V and S -->
+                  <div class="mb-5">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                      <label class="block text-xs font-medium text-muted-foreground">Diff (V-S) <span class="text-foreground/60">|</span> <span id="bjDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="bjDiffMaxValue" class="text-blue-400 font-semibold">50</span></label>
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="bjDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('bjDiff')">
+                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      </label>
+                    </div>
+                    <div class="px-2" id="bjDiffSliderContainer">
+                      <div class="mb-2">
+                        <div class="py-2">
+                          <div id="bjDiffSlider"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -3032,6 +3050,7 @@ app.get('/', (req, res) => {
         let bjFilterArea = [];
         let bjFilterValueVsSignal = []; // Value vs Signal filter (above/below)
         let bjFilterValue = { min: -100, max: 100, active: false }; // BJ Value slider range
+        let bjFilterDiff = { min: 0, max: 50, active: false }; // BJ Diff slider range (absolute difference between V and S)
         
         // Stoch Filter state (arrays for multiple selections)
         let stochFilterD1Direction = [];
@@ -3218,6 +3237,64 @@ app.get('/', (req, res) => {
             });
             bjValueSlider.noUiSlider.on('change', function() {
               updateBjValueFilter();
+            });
+          }
+          
+          // BJ Diff Slider (0 to 50) - Absolute difference between V and S
+          const bjDiffSlider = document.getElementById('bjDiffSlider');
+          if (bjDiffSlider && !sliders.bjDiff) {
+            noUiSlider.create(bjDiffSlider, {
+              start: [0, 50],
+              connect: true,
+              range: { 'min': 0, 'max': 50 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
+            });
+            sliders.bjDiff = bjDiffSlider;
+            // Initialize gradient
+            const bjDiffConnect = bjDiffSlider.querySelector('.noUi-connect');
+            if (bjDiffConnect) {
+              bjDiffConnect.style.background = 'linear-gradient(to right, #60a5fa 0%, #60a5fa 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
+            }
+            bjDiffSlider.noUiSlider.on('update', function(values) {
+              const minVal = Math.round(values[0]);
+              const maxVal = Math.round(values[1]);
+              const minEl = document.getElementById('bjDiffMinValue');
+              const maxEl = document.getElementById('bjDiffMaxValue');
+              minEl.textContent = minVal;
+              maxEl.textContent = maxVal;
+              
+              // Get colors for min and max values
+              const getColor = (val) => {
+                if (val < 10) return '#60a5fa'; // blue-400
+                if (val < 25) return '#eab308'; // yellow-400
+                return '#fb923c'; // orange-400
+              };
+              
+              const minColor = getColor(minVal);
+              const maxColor = getColor(maxVal);
+              
+              // Apply color to text
+              minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
+              
+              // Update slider gradient to match value colors
+              const connect = bjDiffSlider.querySelector('.noUi-connect');
+              if (connect) {
+                if (minColor === maxColor) {
+                  connect.style.background = minColor;
+                } else {
+                  // Add midpoint color if crossing zones
+                  if ((minVal < 10 && maxVal > 25) || (minVal > 25 && maxVal < 10)) {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
+                  } else {
+                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
+                  }
+                }
+              }
+            });
+            bjDiffSlider.noUiSlider.on('change', function() {
+              updateBjDiffFilter();
             });
           }
           
@@ -3796,6 +3873,8 @@ app.get('/', (req, res) => {
             // Call the appropriate update function to set active state correctly
             if (sliderType === 'bjValue') {
               updateBjValueFilter();
+            } else if (sliderType === 'bjDiff') {
+              updateBjDiffFilter();
             } else if (sliderType === 'd1Value') {
               updateD1ValueFilter();
             } else if (sliderType === 'd2Value') {
@@ -3820,6 +3899,26 @@ app.get('/', (req, res) => {
             bjFilterValue.max = maxVal;
             // Only active if toggle is checked AND range is not default
             bjFilterValue.active = toggle && toggle.checked && (minVal > -100 || maxVal < 100);
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
+        // Update BJ Diff filter from noUiSlider values
+        function updateBjDiffFilter() {
+          const toggle = document.getElementById('bjDiffToggle');
+          const slider = sliders.bjDiff;
+          
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]));
+            const maxVal = Math.round(parseFloat(values[1]));
+            
+            bjFilterDiff.min = minVal;
+            bjFilterDiff.max = maxVal;
+            // Only active if toggle is checked AND range is not default
+            bjFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 50);
             
             // Apply filters
             filterAlerts();
@@ -3927,11 +4026,19 @@ app.get('/', (req, res) => {
             sliders.bjValue.noUiSlider.set([-100, 100]);
           }
           
+          // Reset BJ Diff slider (noUiSlider)
+          const bjDiffToggle = document.getElementById('bjDiffToggle');
+          if (bjDiffToggle) bjDiffToggle.checked = false;
+          if (sliders.bjDiff && sliders.bjDiff.noUiSlider) {
+            sliders.bjDiff.noUiSlider.set([0, 50]);
+          }
+          
           bjFilterVDir = [];
           bjFilterSDir = [];
           bjFilterArea = [];
           bjFilterValueVsSignal = [];
           bjFilterValue = { min: -100, max: 100, active: false };
+          bjFilterDiff = { min: 0, max: 50, active: false };
           renderTable();
         }
         
@@ -4412,7 +4519,8 @@ app.get('/', (req, res) => {
                 sDir: bjFilterSDir,
                 area: bjFilterArea,
                 valueVsSignal: bjFilterValueVsSignal,
-                value: bjFilterValue.active ? { min: bjFilterValue.min, max: bjFilterValue.max } : null
+                value: bjFilterValue.active ? { min: bjFilterValue.min, max: bjFilterValue.max } : null,
+                diff: bjFilterDiff.active ? { min: bjFilterDiff.min, max: bjFilterDiff.max } : null
               },
               // Stoch Filters
               stoch: {
@@ -4961,7 +5069,7 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           // Apply BJ TSI Filters (multiple selections)
-          if (bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValueVsSignal.length > 0 || bjFilterValue.active) {
+          if (bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValueVsSignal.length > 0 || bjFilterValue.active || bjFilterDiff.active) {
             filteredData = filteredData.filter(alert => {
               // Calculate BJ TSI values for filtering
               const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
@@ -4973,6 +5081,13 @@ Use this to create a new preset filter button that applies these exact filter se
               if (bjFilterValue.active) {
                 if (bjTsi === null || isNaN(bjTsi)) return false;
                 if (bjTsi < bjFilterValue.min || bjTsi > bjFilterValue.max) return false;
+              }
+              
+              // Check BJ Diff filter (|V - S|) - Absolute difference between V and S
+              if (bjFilterDiff.active) {
+                if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) return false;
+                const absDiff = Math.abs(bjTsi - bjTsl);
+                if (absDiff < bjFilterDiff.min || absDiff > bjFilterDiff.max) return false;
               }
               
               // Check Value vs Signal filter
