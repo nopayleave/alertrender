@@ -1,6 +1,13 @@
 import express from 'express'
 import cors from 'cors'
 import nodemailer from 'nodemailer'
+import Database from 'better-sqlite3'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
 const port = process.env.PORT || 3000
@@ -38,6 +45,64 @@ if (NOTIFICATION_CONFIG.email.enabled && NOTIFICATION_CONFIG.email.smtp.auth.use
   emailTransporter = nodemailer.createTransport(NOTIFICATION_CONFIG.email.smtp)
 }
 
+// Data persistence configuration
+const DATA_DIR = path.join(__dirname, 'data')
+const DB_FILE = path.join(DATA_DIR, 'app-data.db')
+const AUTO_SAVE_INTERVAL = 5 * 60 * 1000 // Auto-save every 5 minutes
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true })
+  console.log(`📁 Created data directory: ${DATA_DIR}`)
+}
+
+// Initialize SQLite database
+let db = null
+function initDatabase() {
+  try {
+    db = new Database(DB_FILE)
+    db.pragma('journal_mode = WAL') // Write-Ahead Logging for better performance
+    
+    // Create tables
+    db.exec(`
+      -- Alerts table
+      CREATE TABLE IF NOT EXISTS alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT NOT NULL,
+        data TEXT NOT NULL,
+        receivedAt INTEGER NOT NULL
+      );
+      
+      -- Alerts history table
+      CREATE TABLE IF NOT EXISTS alerts_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT NOT NULL,
+        data TEXT NOT NULL,
+        receivedAt INTEGER NOT NULL
+      );
+      
+      -- Key-value storage for various data objects
+      CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updatedAt INTEGER NOT NULL
+      );
+      
+      -- Indexes for better query performance
+      CREATE INDEX IF NOT EXISTS idx_alerts_symbol ON alerts(symbol);
+      CREATE INDEX IF NOT EXISTS idx_alerts_receivedAt ON alerts(receivedAt DESC);
+      CREATE INDEX IF NOT EXISTS idx_alerts_history_symbol ON alerts_history(symbol);
+      CREATE INDEX IF NOT EXISTS idx_alerts_history_receivedAt ON alerts_history(receivedAt DESC);
+    `)
+    
+    console.log(`✅ Database initialized: ${DB_FILE}`)
+    return true
+  } catch (error) {
+    console.error('❌ Error initializing database:', error)
+    return false
+  }
+}
+
 // 儲存 alert JSON
 let alerts = [] // All alerts (not just latest per symbol)
 let alertsHistory = [] // All historical alerts (backup storage)
@@ -59,6 +124,135 @@ let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: {
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
+
+// Data persistence functions using SQLite
+function saveDataToDatabase() {
+  if (!db) {
+    console.error('❌ Database not initialized')
+    return false
+  }
+  
+  try {
+    const transaction = db.transaction(() => {
+      const now = Date.now()
+      
+      // Save alerts (keep only recent 5000)
+      const alertsToSave = alerts.slice(0, 5000)
+      db.prepare('DELETE FROM alerts').run()
+      const insertAlert = db.prepare('INSERT INTO alerts (symbol, data, receivedAt) VALUES (?, ?, ?)')
+      for (const alert of alertsToSave) {
+        insertAlert.run(alert.symbol || '', JSON.stringify(alert), alert.receivedAt || now)
+      }
+      
+      // Save alerts history (keep only recent 10000)
+      const historyToSave = alertsHistory.slice(0, 10000)
+      db.prepare('DELETE FROM alerts_history').run()
+      const insertHistory = db.prepare('INSERT INTO alerts_history (symbol, data, receivedAt) VALUES (?, ?, ?)')
+      for (const alert of historyToSave) {
+        insertHistory.run(alert.symbol || '', JSON.stringify(alert), alert.receivedAt || now)
+      }
+      
+      // Save all state objects as JSON
+      const stateData = {
+        dayChangeData,
+        dayVolumeData,
+        vwapCrossingData,
+        quadStochData,
+        quadStochD4Data,
+        octoStochData,
+        previousQSValues,
+        previousDirections,
+        previousPrices,
+        macdCrossingData,
+        bjTsiDataStorage,
+        soloStochDataStorage,
+        dualStochDataStorage,
+        dualStochHistory,
+        bigTrendDay,
+        starredSymbols,
+        previousTrends,
+        patternData
+      }
+      
+      const upsertState = db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
+      for (const [key, value] of Object.entries(stateData)) {
+        upsertState.run(key, JSON.stringify(value), now)
+      }
+      
+      // Save metadata
+      upsertState.run('_metadata', JSON.stringify({ savedAt: new Date().toISOString() }), now)
+    })
+    
+    transaction()
+    
+    console.log(`💾 Data saved to database (${alerts.length} alerts, ${alertsHistory.length} history entries)`)
+    return true
+  } catch (error) {
+    console.error('❌ Error saving data to database:', error)
+    return false
+  }
+}
+
+function loadDataFromDatabase() {
+  if (!db) {
+    console.log('📂 Database not initialized, starting fresh')
+    return false
+  }
+  
+  try {
+    // Load alerts (most recent 5000)
+    const alertsRows = db.prepare('SELECT data FROM alerts ORDER BY receivedAt DESC LIMIT 5000').all()
+    alerts = alertsRows.map(row => JSON.parse(row.data))
+    
+    // Load alerts history (most recent 10000)
+    const historyRows = db.prepare('SELECT data FROM alerts_history ORDER BY receivedAt DESC LIMIT 10000').all()
+    alertsHistory = historyRows.map(row => JSON.parse(row.data))
+    
+    // Load state objects
+    const stateRows = db.prepare('SELECT key, value FROM app_state WHERE key != ?').all('_metadata')
+    for (const row of stateRows) {
+      try {
+        const value = JSON.parse(row.value)
+        switch (row.key) {
+          case 'dayChangeData': dayChangeData = value; break
+          case 'dayVolumeData': dayVolumeData = value; break
+          case 'vwapCrossingData': vwapCrossingData = value; break
+          case 'quadStochData': quadStochData = value; break
+          case 'quadStochD4Data': quadStochD4Data = value; break
+          case 'octoStochData': octoStochData = value; break
+          case 'previousQSValues': previousQSValues = value; break
+          case 'previousDirections': previousDirections = value; break
+          case 'previousPrices': previousPrices = value; break
+          case 'macdCrossingData': macdCrossingData = value; break
+          case 'bjTsiDataStorage': bjTsiDataStorage = value; break
+          case 'soloStochDataStorage': soloStochDataStorage = value; break
+          case 'dualStochDataStorage': dualStochDataStorage = value; break
+          case 'dualStochHistory': dualStochHistory = value; break
+          case 'bigTrendDay': bigTrendDay = value; break
+          case 'starredSymbols': starredSymbols = value; break
+          case 'previousTrends': previousTrends = value; break
+          case 'patternData': patternData = value; break
+        }
+      } catch (e) {
+        console.warn(`⚠️  Failed to parse state key ${row.key}:`, e.message)
+      }
+    }
+    
+    // Get metadata
+    const metadataRow = db.prepare('SELECT value FROM app_state WHERE key = ?').get('_metadata')
+    const savedAt = metadataRow ? JSON.parse(metadataRow.value).savedAt : 'unknown'
+    
+    console.log(`✅ Data loaded from database (saved at: ${savedAt})`)
+    console.log(`   - ${alerts.length} alerts restored`)
+    console.log(`   - ${alertsHistory.length} historical alerts restored`)
+    console.log(`   - ${Object.keys(starredSymbols).length} starred symbols restored`)
+    return true
+  } catch (error) {
+    console.error('❌ Error loading data from database:', error)
+    console.log('📂 Starting with empty data')
+    return false
+  }
+}
 
 // Helper function to get current date string in YYYY-MM-DD format
 function getCurrentDateString() {
@@ -1648,7 +1842,18 @@ app.post('/reset-alerts', (req, res) => {
   dualStochDataStorage = {}
   bigTrendDay = {}
   patternData = {}
-  res.json({ status: 'ok', message: 'All alerts cleared' })
+  saveDataToDatabase() // Save after clearing
+  res.json({ status: 'ok', message: 'All alerts cleared and saved' })
+})
+
+// Endpoint to manually save data
+app.post('/save-data', (req, res) => {
+  const success = saveDataToDatabase()
+  if (success) {
+    res.json({ status: 'ok', message: 'Data saved successfully' })
+  } else {
+    res.status(500).json({ status: 'error', message: 'Failed to save data' })
+  }
 })
 
 // Endpoint to sync starred symbols from frontend
@@ -6653,6 +6858,52 @@ Use this to create a new preset filter button that applies these exact filter se
   `)
 })
 
+// Initialize database and load data on startup
+console.log('🔄 Initializing database...')
+if (initDatabase()) {
+  console.log('🔄 Loading persisted data...')
+  loadDataFromDatabase()
+} else {
+  console.log('⚠️  Database initialization failed, starting with empty data')
+}
+
+// Set up periodic auto-save
+let autoSaveInterval = setInterval(() => {
+  saveDataToDatabase()
+}, AUTO_SAVE_INTERVAL)
+console.log(`⏰ Auto-save enabled (every ${AUTO_SAVE_INTERVAL / 1000 / 60} minutes)`)
+
+// Graceful shutdown handler
+function gracefulShutdown(signal) {
+  console.log(`\n${signal} received, saving data before shutdown...`)
+  clearInterval(autoSaveInterval)
+  saveDataToDatabase()
+  if (db) {
+    db.close()
+    console.log('✅ Database closed')
+  }
+  console.log('✅ Data saved, shutting down gracefully')
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught exception:', error)
+  saveDataToDatabase()
+  if (db) db.close()
+  process.exit(1)
+})
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled rejection at:', promise, 'reason:', reason)
+  saveDataToDatabase()
+})
+
 app.listen(port, () => {
-  console.log(`Server listening on port ${port}`)
+  console.log(`🚀 Server listening on port ${port}`)
+  console.log(`💾 Database: ${DB_FILE}`)
 })
