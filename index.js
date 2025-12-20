@@ -2991,6 +2991,26 @@ app.get('/', (req, res) => {
           visibility: visible;
           transform: translate(-50%, -50%) scale(1);
         }
+        /* Masonry card styles */
+        .masonry-card {
+          break-inside: avoid;
+          margin-bottom: 1rem;
+          background: hsl(217.2 32.6% 17.5%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 1rem;
+          transition: all 0.2s;
+        }
+        .masonry-card:hover {
+          background: hsl(217.2 32.6% 20%);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .masonry-card.starred {
+          border-color: rgba(251, 191, 36, 0.5);
+          background: hsl(217.2 32.6% 20%);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -3013,6 +3033,9 @@ app.get('/', (req, res) => {
               </div>
             </div>
             <div class="flex gap-3 items-center">
+              <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
+                <span id="viewIcon">📋</span>
+              </button>
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 <span id="notificationIcon">🔔</span>
                 <span id="notificationText">Notifications ON</span>
@@ -3313,7 +3336,8 @@ app.get('/', (req, res) => {
                 Clear All
               </button>
             </div>
-            <div class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
+            <!-- Table View -->
+            <div id="tableView" class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
                   <table class="w-full table-auto border-collapse">
@@ -3329,6 +3353,13 @@ app.get('/', (req, res) => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+            
+            <!-- Masonry View -->
+            <div id="masonryView" class="hidden">
+              <div id="masonryContainer" class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-4">
+                <!-- Ticker cards will be dynamically generated -->
               </div>
             </div>
           </div>
@@ -3367,6 +3398,9 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
+        // View state (table or masonry)
+        let currentView = localStorage.getItem('viewMode') || 'table'; // 'table' or 'masonry'
+        
         // Sorting state
         let currentSortField = 'symbol'; // Default to alphabetical sorting
         let currentSortDirection = 'asc';
@@ -3812,7 +3846,272 @@ app.get('/', (req, res) => {
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
+          initializeView(); // Initialize view mode
         });
+        
+        // Initialize view mode
+        function initializeView() {
+          const tableView = document.getElementById('tableView');
+          const masonryView = document.getElementById('masonryView');
+          const viewIcon = document.getElementById('viewIcon');
+          
+          if (currentView === 'masonry') {
+            tableView.classList.add('hidden');
+            masonryView.classList.remove('hidden');
+            viewIcon.textContent = '📋';
+          } else {
+            tableView.classList.remove('hidden');
+            masonryView.classList.add('hidden');
+            viewIcon.textContent = '🧱';
+          }
+        }
+        
+        // Toggle between table and masonry view
+        function toggleView() {
+          currentView = currentView === 'table' ? 'masonry' : 'table';
+          localStorage.setItem('viewMode', currentView);
+          
+          const tableView = document.getElementById('tableView');
+          const masonryView = document.getElementById('masonryView');
+          const viewIcon = document.getElementById('viewIcon');
+          
+          if (currentView === 'masonry') {
+            tableView.classList.add('hidden');
+            masonryView.classList.remove('hidden');
+            viewIcon.textContent = '📋';
+            renderMasonry();
+          } else {
+            tableView.classList.remove('hidden');
+            masonryView.classList.add('hidden');
+            viewIcon.textContent = '🧱';
+            renderTable();
+          }
+        }
+        
+        // Render masonry layout
+        function renderMasonry() {
+          const masonryContainer = document.getElementById('masonryContainer');
+          const lastUpdate = document.getElementById('lastUpdate');
+          
+          if (alertsData.length === 0) {
+            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No alerts available</div>';
+            lastUpdate.innerHTML = 'Last updated: Never <span id="countdown"></span>';
+            return;
+          }
+          
+          // Filter data (same logic as renderTable)
+          let filteredData = alertsData;
+          if (searchTerm) {
+            filteredData = alertsData.filter(alert => 
+              (alert.symbol || '').toLowerCase().includes(searchTerm)
+            );
+          }
+          
+          // Apply Stoch Filters (same as renderTable)
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
+            filteredData = filteredData.filter(alert => {
+              const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
+              const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+              const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+              const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+              const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+              
+              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(d1Direction)) return false;
+              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(d2Direction)) return false;
+              
+              let trendMessage = '';
+              if (alert.isBigTrendDay) {
+                trendMessage = 'Big Trend Day';
+              } else if (d1Value !== null && d2Value !== null) {
+                if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
+                  trendMessage = 'Do Not Long';
+                } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
+                  trendMessage = 'Do Not Short';
+                } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+                  trendMessage = 'Try Long';
+                } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+                  trendMessage = 'Try Short';
+                }
+              }
+              
+              if (stochFilterD1Value.active) {
+                if (d1Value === null || isNaN(d1Value)) return false;
+                if (d1Value < stochFilterD1Value.min || d1Value > stochFilterD1Value.max) return false;
+              }
+              
+              if (stochFilterD2Value.active) {
+                if (d2Value === null || isNaN(d2Value)) return false;
+                if (d2Value < stochFilterD2Value.min || d2Value > stochFilterD2Value.max) return false;
+              }
+              
+              if (stochFilterDiff.active) {
+                if (d1Value === null || isNaN(d1Value) || d2Value === null || isNaN(d2Value)) return false;
+                const absDiff = Math.abs(d1Value - d2Value);
+                if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
+              }
+              
+              if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
+              
+              if (stochFilterPercentChange.length > 0) {
+                if (percentChange === null || isNaN(percentChange)) return false;
+                const pctVal = percentChange;
+                let matchesPct = false;
+                for (const filter of stochFilterPercentChange) {
+                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
+                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
+                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
+                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
+                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
+                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
+                }
+                if (!matchesPct) return false;
+              }
+              
+              return true;
+            });
+          }
+          
+          // Apply BJ TSI Filters (same as renderTable)
+          if (bjFilterVDir.length > 0 || bjFilterSDir.length > 0 || bjFilterArea.length > 0 || bjFilterValueVsSignal.length > 0 || bjFilterValue.active || bjFilterDiff.active) {
+            filteredData = filteredData.filter(alert => {
+              const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+              const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
+              const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
+              const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+              
+              if (bjFilterValue.active) {
+                if (bjTsi === null || isNaN(bjTsi)) return false;
+                if (bjTsi < bjFilterValue.min || bjTsi > bjFilterValue.max) return false;
+              }
+              
+              if (bjFilterDiff.active) {
+                if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) return false;
+                const absDiff = Math.abs(bjTsi - bjTsl);
+                if (absDiff < bjFilterDiff.min || absDiff > bjFilterDiff.max) return false;
+              }
+              
+              if (bjFilterValueVsSignal.length > 0) {
+                if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) return false;
+                const valueVsSignal = bjTsi > bjTsl ? 'above' : 'below';
+                if (!bjFilterValueVsSignal.includes(valueVsSignal)) return false;
+              }
+              
+              const vDir = bjTsiIsBull ? 'Up' : 'Down';
+              const sDir = bjTslIsBull ? 'Up' : 'Down';
+              
+              let areaValue = '';
+              if (bjTsi !== null && !isNaN(bjTsi)) {
+                if (bjTsi > 40) areaValue = 'strong_bullish';
+                else if (bjTsi >= 15) areaValue = 'bullish';
+                else if (bjTsi >= 0) areaValue = 'light_bullish';
+                else if (bjTsi >= -15) areaValue = 'light_bearish';
+                else if (bjTsi >= -40) areaValue = 'bearish';
+                else areaValue = 'strong_bearish';
+              }
+              
+              if (bjFilterVDir.length > 0 && !bjFilterVDir.includes(vDir)) return false;
+              if (bjFilterSDir.length > 0 && !bjFilterSDir.includes(sDir)) return false;
+              if (bjFilterArea.length > 0 && !bjFilterArea.includes(areaValue)) return false;
+              
+              return true;
+            });
+          }
+          
+          // Sort filtered data - starred items always come first
+          if (currentSortField) {
+            filteredData.sort((a, b) => {
+              const aStarred = isStarred(a.symbol);
+              const bStarred = isStarred(b.symbol);
+              
+              if (aStarred && !bStarred) return -1;
+              if (!aStarred && bStarred) return 1;
+              
+              const aVal = getSortValue(a, currentSortField);
+              const bVal = getSortValue(b, currentSortField);
+              
+              if (typeof aVal === 'string') {
+                const result = aVal.localeCompare(bVal);
+                return currentSortDirection === 'asc' ? result : -result;
+              } else {
+                const result = aVal - bVal;
+                return currentSortDirection === 'asc' ? result : -result;
+              }
+            });
+          }
+          
+          if (filteredData.length === 0) {
+            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
+            return;
+          }
+          
+          // Render masonry cards
+          masonryContainer.innerHTML = filteredData.map(alert => {
+            const symbol = alert.symbol || 'N/A';
+            const price = alert.price ? parseFloat(alert.price).toFixed(2) : 'N/A';
+            const changePercent = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay).toFixed(2) : null;
+            const changeClass = changePercent !== null ? (changePercent >= 0 ? 'text-green-400' : 'text-red-400') : 'text-muted-foreground';
+            const changeSign = changePercent !== null && changePercent >= 0 ? '+' : '';
+            
+            // Get D2 value
+            const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+            const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+            const d2Display = d2Value !== null ? d2Value.toFixed(1) : 'N/A';
+            const d2DirArrow = d2Direction === 'up' ? '↑' : d2Direction === 'down' ? '↓' : '→';
+            const d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-red-400' : 'text-muted-foreground';
+            
+            // Get BJ TSI
+            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
+            const bjDisplay = bjTsi !== null ? bjTsi.toFixed(2) : 'N/A';
+            let bjValueClass = 'text-foreground';
+            if (bjTsi !== null && !isNaN(bjTsi)) {
+              if (bjTsi > 40) bjValueClass = 'text-green-300 font-semibold';
+              else if (bjTsi >= 15) bjValueClass = 'text-green-400 font-semibold';
+              else if (bjTsi >= 0) bjValueClass = 'text-green-500 font-semibold';
+              else if (bjTsi >= -15) bjValueClass = 'text-red-500 font-semibold';
+              else if (bjTsi >= -40) bjValueClass = 'text-red-400 font-semibold';
+              else bjValueClass = 'text-red-300 font-semibold';
+            }
+            
+            const starred = isStarred(symbol);
+            const cardClass = starred ? 'masonry-card starred' : 'masonry-card';
+            
+            return \`
+              <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-lg font-bold text-foreground flex items-center gap-2">
+                    \${starred ? '⭐' : ''} \${symbol}
+                  </h3>
+                </div>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">Price:</span>
+                    <span class="text-foreground font-semibold">$\${price}</span>
+                  </div>
+                  \${changePercent !== null ? \`
+                    <div class="flex justify-between">
+                      <span class="text-muted-foreground">Change:</span>
+                      <span class="\${changeClass} font-semibold">\${changeSign}\${changePercent}%</span>
+                    </div>
+                  \` : ''}
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">D2:</span>
+                    <span class="\${d2DirClass} font-semibold">\${d2DirArrow} \${d2Display}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">BJ:</span>
+                    <span class="\${bjValueClass}">\${bjDisplay}</span>
+                  </div>
+                </div>
+              </div>
+            \`;
+          }).join('');
+          
+          // Update last update time
+          const now = new Date();
+          lastUpdate.innerHTML = \`Last updated: \${now.toLocaleTimeString()} <span id="countdown"></span>\`;
+        }
 
         // Render table headers dynamically based on column order
         function renderTableHeaders() {
@@ -5323,6 +5622,12 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         function renderTable() {
+          // If in masonry view, render masonry instead
+          if (currentView === 'masonry') {
+            renderMasonry();
+            return;
+          }
+          
           const alertTable = document.getElementById('alertTable');
           const lastUpdate = document.getElementById('lastUpdate');
           
