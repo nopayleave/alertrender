@@ -1856,6 +1856,129 @@ app.post('/save-data', (req, res) => {
   }
 })
 
+// Endpoint to export database file
+app.get('/export/database', (req, res) => {
+  try {
+    if (!db || !fs.existsSync(DB_FILE)) {
+      return res.status(404).json({ status: 'error', message: 'Database file not found' })
+    }
+    
+    // Save current state before export
+    saveDataToDatabase()
+    
+    const filename = `alertrender-backup-${new Date().toISOString().split('T')[0]}.db`
+    res.setHeader('Content-Type', 'application/octet-stream')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    
+    const fileStream = fs.createReadStream(DB_FILE)
+    fileStream.pipe(res)
+    
+    console.log(`📥 Database export requested: ${filename}`)
+  } catch (error) {
+    console.error('❌ Error exporting database:', error)
+    res.status(500).json({ status: 'error', message: 'Failed to export database' })
+  }
+})
+
+// Endpoint to export all data as JSON
+app.get('/export/json', (req, res) => {
+  try {
+    // Save current state before export
+    saveDataToDatabase()
+    
+    const exportData = {
+      alerts: alerts.slice(0, 5000),
+      alertsHistory: alertsHistory.slice(0, 10000),
+      dayChangeData,
+      dayVolumeData,
+      vwapCrossingData,
+      quadStochData,
+      quadStochD4Data,
+      octoStochData,
+      previousQSValues,
+      previousDirections,
+      previousPrices,
+      macdCrossingData,
+      bjTsiDataStorage,
+      soloStochDataStorage,
+      dualStochDataStorage,
+      dualStochHistory,
+      bigTrendDay,
+      starredSymbols,
+      previousTrends,
+      patternData,
+      exportedAt: new Date().toISOString(),
+      stats: {
+        alertsCount: alerts.length,
+        alertsHistoryCount: alertsHistory.length,
+        starredSymbolsCount: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length
+      }
+    }
+    
+    const filename = `alertrender-backup-${new Date().toISOString().split('T')[0]}.json`
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    
+    res.json(exportData)
+    
+    console.log(`📥 JSON export requested: ${filename} (${alerts.length} alerts, ${alertsHistory.length} history)`)
+  } catch (error) {
+    console.error('❌ Error exporting JSON:', error)
+    res.status(500).json({ status: 'error', message: 'Failed to export data' })
+  }
+})
+
+// Endpoint to get database statistics
+app.get('/export/stats', (req, res) => {
+  try {
+    if (!db) {
+      return res.json({ 
+        status: 'ok', 
+        database: 'not_initialized',
+        stats: {
+          alertsCount: alerts.length,
+          alertsHistoryCount: alertsHistory.length,
+          starredSymbolsCount: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length
+        }
+      })
+    }
+    
+    // Get database file size
+    const dbSize = fs.existsSync(DB_FILE) ? fs.statSync(DB_FILE).size : 0
+    
+    // Get row counts from database
+    const alertsCount = db.prepare('SELECT COUNT(*) as count FROM alerts').get().count
+    const historyCount = db.prepare('SELECT COUNT(*) as count FROM alerts_history').get().count
+    const stateKeysCount = db.prepare('SELECT COUNT(*) as count FROM app_state').get().count
+    
+    // Get unique symbols
+    const uniqueSymbols = db.prepare('SELECT COUNT(DISTINCT symbol) as count FROM alerts').get().count
+    
+    res.json({
+      status: 'ok',
+      database: {
+        file: DB_FILE,
+        size: dbSize,
+        sizeFormatted: `${(dbSize / 1024 / 1024).toFixed(2)} MB`,
+        exists: fs.existsSync(DB_FILE)
+      },
+      stats: {
+        alertsCount,
+        alertsHistoryCount,
+        stateKeysCount,
+        uniqueSymbols,
+        starredSymbolsCount: Object.keys(starredSymbols).filter(k => starredSymbols[k]).length,
+        memoryAlertsCount: alerts.length,
+        memoryHistoryCount: alertsHistory.length
+      },
+      lastSaved: db.prepare('SELECT updatedAt FROM app_state WHERE key = ?').get('_metadata')?.updatedAt || null
+    })
+  } catch (error) {
+    console.error('❌ Error getting stats:', error)
+    res.status(500).json({ status: 'error', message: 'Failed to get statistics' })
+  }
+})
+
 // Endpoint to sync starred symbols from frontend
 app.post('/starred-symbols', (req, res) => {
   try {
