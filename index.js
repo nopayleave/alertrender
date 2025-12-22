@@ -3516,10 +3516,6 @@ app.get('/', (req, res) => {
               <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
                 <span id="viewIcon">📋</span>
               </button>
-              <button id="notificationCenterToggle" onclick="toggleNotificationCenter()" class="inline-flex items-center gap-2 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="Notification Center">
-                <span>🔔</span>
-                <span id="notificationCenterBadge" class="hidden px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">0</span>
-              </button>
               <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
                 <span>📊</span>
                 <span>ORB History</span>
@@ -3735,24 +3731,6 @@ app.get('/', (req, res) => {
                     Export
                   </button>
                 </div>
-                
-                <!-- Notification Settings Button -->
-                <div class="mt-2">
-                  <button onclick="openNotificationSettings()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400 flex items-center justify-center gap-2">
-                    <span>🔔</span>
-                    Toast Settings
-                  </button>
-                </div>
-                
-                <!-- Export Notification Settings Button -->
-                <div class="mt-2">
-                  <button onclick="exportNotificationSettings()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400 flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Export For Noti
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -3855,63 +3833,6 @@ app.get('/', (req, res) => {
         </div>
       </div>
 
-      <!-- Notification Settings Modal -->
-      <div id="notificationSettingsOverlay" class="export-modal-overlay" onclick="closeNotificationSettings()">
-        <div class="export-modal" onclick="event.stopPropagation()">
-          <h3 class="text-lg font-semibold text-foreground mb-4">Toast Notification Settings</h3>
-          <div class="mb-4">
-            <p class="text-sm text-muted-foreground mb-4">Select which ORB crossover types should trigger toast notifications:</p>
-            <div class="space-y-3">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossHigh" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↑High (Crossover High)</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossLow" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↓Low (Crossunder Low)</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossBottom" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↑Bottom (Crossover Bottom)</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossHighDown" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↓High (Crossunder High)</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossMidUp" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↑Mid (Crossover Mid)</span>
-              </label>
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" id="notifCrossMidDown" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
-                <span class="text-foreground">↓Mid (Crossunder Mid)</span>
-              </label>
-            </div>
-          </div>
-          <div class="flex gap-3 justify-end">
-            <button 
-              onclick="closeNotificationSettings()" 
-              class="px-4 py-2 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notification Center Overlay -->
-      <div id="notificationCenterOverlay" class="orb-history-overlay" onclick="closeNotificationCenter()">
-        <div class="orb-history-panel" onclick="event.stopPropagation()">
-          <div class="orb-history-header">
-            <h3>Notification Center</h3>
-            <button class="orb-history-close" onclick="closeNotificationCenter()">×</button>
-          </div>
-          <div class="orb-history-content" id="notificationCenterContent">
-            <div class="orb-history-empty">No active notifications</div>
-          </div>
-        </div>
-      </div>
-
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
         <div class="export-modal" onclick="event.stopPropagation()">
@@ -3985,20 +3906,6 @@ app.get('/', (req, res) => {
         
         // ORB crossover history
         let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
-        
-        // Notification settings (stored in localStorage)
-        let notificationSettings = JSON.parse(localStorage.getItem('orbNotificationSettings')) || {
-          cross_high: true,
-          cross_low: true,
-          cross_bottom: true,
-          cross_high_down: true,
-          cross_mid_up: true,
-          cross_mid_down: true
-        };
-        
-        // Active notifications tracking (for notification center)
-        let activeNotifications = []; // Array of { id, symbol, orbType, crossover, price, timestamp, element }
-        let notificationIdCounter = 0;
         
         // ORB history filter state
         let orbHistoryFilters = {
@@ -4303,7 +4210,6 @@ app.get('/', (req, res) => {
           setupColumnDragAndDrop();
           initializeSliders();
           initializeView(); // Initialize view mode
-          updateNotificationCenterBadge(); // Initialize notification badge
         });
         
         // Initialize view mode
@@ -6895,11 +6801,6 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Show toast notification for ORB crossover
         function showOrbCrossoverToast(symbol, orbType, crossover, price, orbHigh, orbLow) {
-          // Check if this crossover type is enabled in settings
-          if (!notificationSettings[crossover]) {
-            return; // Don't show toast if disabled
-          }
-          
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
           
@@ -6933,38 +6834,28 @@ Use this to create a new preset filter button that applies these exact filter se
           
           const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
           
-          const notificationId = notificationIdCounter++;
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
-          toast.dataset.notificationId = notificationId;
           toast.innerHTML = \`
             <div class="toast-icon">\${icon}</div>
             <div class="toast-content">
               <div class="toast-title">\${title}</div>
               <div class="toast-message">\${message}</div>
             </div>
-            <button class="toast-close" onclick="removeNotification(\${notificationId})">×</button>
+            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
           \`;
           
           toastContainer.appendChild(toast);
           
-          // Track notification
-          const notificationData = {
-            id: notificationId,
-            symbol: symbol,
-            orbType: orbType,
-            crossover: crossover,
-            price: price,
-            timestamp: Date.now(),
-            element: toast
-          };
-          activeNotifications.push(notificationData);
-          updateNotificationCenterBadge();
-          
-          // Update notification center if open
-          if (document.getElementById('notificationCenterOverlay').classList.contains('open')) {
-            renderNotificationCenter();
-          }
+          // Auto-remove after 5 seconds
+          setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => {
+              if (toast.parentElement) {
+                toast.remove();
+              }
+            }, 300);
+          }, 5000);
           
           // Add to history
           orbCrossoverHistory.unshift({
@@ -6986,188 +6877,6 @@ Use this to create a new preset filter button that applies these exact filter se
           if (document.getElementById('orbHistoryOverlay').classList.contains('open')) {
             renderOrbHistory();
           }
-          
-          // Auto-remove after 5 seconds
-          setTimeout(() => {
-            removeNotification(notificationId);
-          }, 5000);
-        }
-        
-        // Remove notification by ID
-        function removeNotification(notificationId) {
-          // Remove from active notifications
-          const index = activeNotifications.findIndex(n => n.id === notificationId);
-          if (index !== -1) {
-            const notification = activeNotifications[index];
-            // Remove from DOM
-            if (notification.element && notification.element.parentElement) {
-              notification.element.classList.add('hiding');
-              setTimeout(() => {
-                if (notification.element.parentElement) {
-                  notification.element.remove();
-                }
-              }, 300);
-            }
-            activeNotifications.splice(index, 1);
-          }
-          updateNotificationCenterBadge();
-          
-          // Update notification center if open
-          if (document.getElementById('notificationCenterOverlay').classList.contains('open')) {
-            renderNotificationCenter();
-          }
-        }
-        
-        // Update notification center badge count
-        function updateNotificationCenterBadge() {
-          const badge = document.getElementById('notificationCenterBadge');
-          if (badge) {
-            if (activeNotifications.length > 0) {
-              badge.textContent = activeNotifications.length;
-              badge.classList.remove('hidden');
-            } else {
-              badge.classList.add('hidden');
-            }
-          }
-        }
-        
-        // Open notification settings modal
-        function openNotificationSettings() {
-          const overlay = document.getElementById('notificationSettingsOverlay');
-          overlay.classList.add('open');
-          
-          // Load current settings into checkboxes
-          document.getElementById('notifCrossHigh').checked = notificationSettings.cross_high;
-          document.getElementById('notifCrossLow').checked = notificationSettings.cross_low;
-          document.getElementById('notifCrossBottom').checked = notificationSettings.cross_bottom;
-          document.getElementById('notifCrossHighDown').checked = notificationSettings.cross_high_down;
-          document.getElementById('notifCrossMidUp').checked = notificationSettings.cross_mid_up;
-          document.getElementById('notifCrossMidDown').checked = notificationSettings.cross_mid_down;
-        }
-        
-        // Close notification settings modal
-        function closeNotificationSettings() {
-          const overlay = document.getElementById('notificationSettingsOverlay');
-          overlay.classList.remove('open');
-        }
-        
-        // Save notification settings
-        function saveNotificationSettings() {
-          notificationSettings = {
-            cross_high: document.getElementById('notifCrossHigh').checked,
-            cross_low: document.getElementById('notifCrossLow').checked,
-            cross_bottom: document.getElementById('notifCrossBottom').checked,
-            cross_high_down: document.getElementById('notifCrossHighDown').checked,
-            cross_mid_up: document.getElementById('notifCrossMidUp').checked,
-            cross_mid_down: document.getElementById('notifCrossMidDown').checked
-          };
-          localStorage.setItem('orbNotificationSettings', JSON.stringify(notificationSettings));
-        }
-        
-        // Export notification settings to clipboard
-        function exportNotificationSettings() {
-          // Format notification settings for export
-          const exportText = \`Notification Settings:
-\${JSON.stringify(notificationSettings, null, 2)}
-
-Use this to configure which ORB crossover types trigger toast notifications.\`;
-          
-          // Copy to clipboard
-          navigator.clipboard.writeText(exportText).then(() => {
-            alert('Notification settings copied to clipboard!');
-          }).catch(err => {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard. Please try again.');
-          });
-        }
-        
-        // Toggle notification center
-        function toggleNotificationCenter() {
-          const overlay = document.getElementById('notificationCenterOverlay');
-          const panel = overlay.querySelector('.orb-history-panel');
-          
-          if (overlay.classList.contains('open')) {
-            closeNotificationCenter();
-          } else {
-            overlay.classList.add('open');
-            panel.classList.add('open');
-            renderNotificationCenter();
-          }
-        }
-        
-        // Close notification center
-        function closeNotificationCenter() {
-          const overlay = document.getElementById('notificationCenterOverlay');
-          const panel = overlay.querySelector('.orb-history-panel');
-          overlay.classList.remove('open');
-          panel.classList.remove('open');
-        }
-        
-        // Render notification center
-        function renderNotificationCenter() {
-          const content = document.getElementById('notificationCenterContent');
-          if (!content) return;
-          
-          if (activeNotifications.length === 0) {
-            content.innerHTML = '<div class="orb-history-empty">No active notifications</div>';
-            return;
-          }
-          
-          // Sort by timestamp (newest first)
-          const sortedNotifications = [...activeNotifications].sort((a, b) => b.timestamp - a.timestamp);
-          
-          content.innerHTML = sortedNotifications.map(notif => {
-            // Determine crossover text and class
-            let crossoverText = '';
-            let itemClass = 'cross-high';
-            
-            switch(notif.crossover) {
-              case 'cross_high':
-                crossoverText = '↑High';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_low':
-                crossoverText = '↓Low';
-                itemClass = 'cross-low';
-                break;
-              case 'cross_bottom':
-                crossoverText = '↑Bottom';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_high_down':
-                crossoverText = '↓High';
-                itemClass = 'cross-low';
-                break;
-              case 'cross_mid_up':
-                crossoverText = '↑Mid';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_mid_down':
-                crossoverText = '↓Mid';
-                itemClass = 'cross-low';
-                break;
-              default:
-                crossoverText = 'Crossover';
-                itemClass = 'cross-high';
-            }
-            
-            const time = new Date(notif.timestamp);
-            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-            const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            return \`
-              <div class="orb-history-item \${itemClass}">
-                <div class="orb-history-item-content">
-                  <span class="orb-history-symbol">\${notif.symbol}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-crossover">\${crossoverText}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
-                  <button onclick="removeNotification(\${notif.id})" class="ml-auto text-red-400 hover:text-red-300 text-xs px-2 py-1">Remove</button>
-                </div>
-              </div>
-            \`;
-          }).join('');
         }
         
         // Toggle ORB history overlay
