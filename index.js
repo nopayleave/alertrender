@@ -3349,6 +3349,67 @@ app.get('/', (req, res) => {
           padding: 48px 24px;
           color: hsl(215 20.2% 65.1%);
         }
+        .orb-history-filters {
+          padding: 16px 24px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          background: hsl(217.2 32.6% 15%);
+        }
+        .orb-history-filter-group {
+          margin-bottom: 12px;
+        }
+        .orb-history-filter-group:last-child {
+          margin-bottom: 0;
+        }
+        .orb-history-filter-label {
+          display: block;
+          font-size: 12px;
+          font-weight: 500;
+          color: hsl(215 20.2% 65.1%);
+          margin-bottom: 8px;
+        }
+        .orb-history-filter-chips {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .orb-history-filter-chip {
+          padding: 6px 12px;
+          font-size: 12px;
+          font-weight: 500;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 6px;
+          background: hsl(217.2 32.6% 17.5%);
+          color: hsl(215 20.2% 65.1%);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .orb-history-filter-chip:hover {
+          background: hsl(217.2 32.6% 20%);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+        .orb-history-filter-chip.active {
+          background: rgba(59, 130, 246, 0.3);
+          border-color: rgba(59, 130, 246, 0.6);
+          color: #60a5fa;
+        }
+        .orb-history-search-input {
+          width: 100%;
+          padding: 8px 12px;
+          font-size: 13px;
+          background: hsl(217.2 32.6% 17.5%);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 6px;
+          color: hsl(210 40% 98%);
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .orb-history-search-input:focus {
+          border-color: rgba(59, 130, 246, 0.6);
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .orb-history-search-input::placeholder {
+          color: hsl(215 20.2% 50%);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -3669,6 +3730,34 @@ app.get('/', (req, res) => {
             <h3>ORB Crossover History</h3>
             <button class="orb-history-close" onclick="closeOrbHistory()">×</button>
           </div>
+          <div class="orb-history-filters">
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">Crossover Type:</label>
+              <div class="orb-history-filter-chips">
+                <button onclick="toggleOrbHistoryFilter('crossover', 'all', this)" class="orb-history-filter-chip active" data-filter="crossover" data-value="all">All</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high">Cross Above</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_low">Cross Below</button>
+              </div>
+            </div>
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">Symbol:</label>
+              <input 
+                type="text" 
+                id="orbHistorySymbolFilter" 
+                placeholder="Search symbol..." 
+                class="orb-history-search-input"
+                oninput="applyOrbHistoryFilters()"
+              />
+            </div>
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">ORB Type:</label>
+              <div class="orb-history-filter-chips">
+                <button onclick="toggleOrbHistoryFilter('orbType', 'all', this)" class="orb-history-filter-chip active" data-filter="orbType" data-value="all">All</button>
+                <button onclick="toggleOrbHistoryFilter('orbType', 'NY', this)" class="orb-history-filter-chip" data-filter="orbType" data-value="NY">NY</button>
+                <button onclick="toggleOrbHistoryFilter('orbType', 'London', this)" class="orb-history-filter-chip" data-filter="orbType" data-value="London">London</button>
+              </div>
+            </div>
+          </div>
           <div class="orb-history-content" id="orbHistoryContent">
             <div class="orb-history-empty">No ORB crossovers recorded yet</div>
           </div>
@@ -3748,6 +3837,13 @@ app.get('/', (req, res) => {
         
         // ORB crossover history
         let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
+        
+        // ORB history filter state
+        let orbHistoryFilters = {
+          crossover: 'all', // 'all', 'cross_high', 'cross_low'
+          symbol: '',
+          orbType: 'all' // 'all', 'NY', 'London'
+        };
 
         // Column order - stored in localStorage
         const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
@@ -6714,6 +6810,32 @@ Use this to create a new preset filter button that applies these exact filter se
           panel.classList.remove('open');
         }
         
+        // Toggle ORB history filter chip
+        function toggleOrbHistoryFilter(filterType, value, element) {
+          // Update active state
+          const chips = element.parentElement.querySelectorAll('.orb-history-filter-chip');
+          chips.forEach(chip => chip.classList.remove('active'));
+          element.classList.add('active');
+          
+          // Update filter state
+          orbHistoryFilters[filterType] = value;
+          
+          // Apply filters
+          applyOrbHistoryFilters();
+        }
+        
+        // Apply ORB history filters
+        function applyOrbHistoryFilters() {
+          // Get symbol filter from input
+          const symbolInput = document.getElementById('orbHistorySymbolFilter');
+          if (symbolInput) {
+            orbHistoryFilters.symbol = symbolInput.value.trim().toLowerCase();
+          }
+          
+          // Render with filters
+          renderOrbHistory();
+        }
+        
         // Render ORB history list
         function renderOrbHistory() {
           const content = document.getElementById('orbHistoryContent');
@@ -6724,7 +6846,32 @@ Use this to create a new preset filter button that applies these exact filter se
             return;
           }
           
-          content.innerHTML = orbCrossoverHistory.map(item => {
+          // Apply filters
+          let filteredHistory = orbCrossoverHistory.filter(item => {
+            // Crossover type filter
+            if (orbHistoryFilters.crossover !== 'all' && item.crossover !== orbHistoryFilters.crossover) {
+              return false;
+            }
+            
+            // Symbol filter
+            if (orbHistoryFilters.symbol && !item.symbol.toLowerCase().includes(orbHistoryFilters.symbol)) {
+              return false;
+            }
+            
+            // ORB type filter
+            if (orbHistoryFilters.orbType !== 'all' && item.orbType !== orbHistoryFilters.orbType) {
+              return false;
+            }
+            
+            return true;
+          });
+          
+          if (filteredHistory.length === 0) {
+            content.innerHTML = '<div class="orb-history-empty">No crossovers match the current filters</div>';
+            return;
+          }
+          
+          content.innerHTML = filteredHistory.map(item => {
             const isCrossHigh = item.crossover === 'cross_high';
             const itemClass = isCrossHigh ? 'cross-high' : 'cross-low';
             const crossoverText = isCrossHigh ? 'Crossed Above High' : 'Crossed Below Low';
@@ -6736,13 +6883,9 @@ Use this to create a new preset filter button that applies these exact filter se
               <div class="orb-history-item \${itemClass}">
                 <div class="orb-history-item-header">
                   <span class="orb-history-symbol">\${item.symbol}</span>
-                  <span class="orb-history-type">\${item.orbType}</span>
                 </div>
                 <div class="orb-history-details">
                   <div>\${crossoverText}</div>
-                  \${item.price ? \`<div>Price: $\${parseFloat(item.price).toFixed(2)}</div>\` : ''}
-                  \${item.orbHigh ? \`<div>ORB High: $\${parseFloat(item.orbHigh).toFixed(2)}</div>\` : ''}
-                  \${item.orbLow ? \`<div>ORB Low: $\${parseFloat(item.orbLow).toFixed(2)}</div>\` : ''}
                 </div>
                 <div class="orb-history-time">\${dateStr} at \${timeStr}</div>
               </div>
