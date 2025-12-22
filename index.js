@@ -3165,6 +3165,74 @@ app.get('/', (req, res) => {
                   </div>
                 </div>
                 
+                <!-- CCI Filters - iOS chip style -->
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('cciFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      CCI
+                    </h3>
+                    <button 
+                      onclick="event.stopPropagation(); clearCciFilters()" 
+                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  <div id="cciFilters" class="filter-content">
+                    <!-- CCI Value Slider -->
+                    <div class="mb-5">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">CCI Value <span class="text-foreground/60">|</span> <span id="cciValueThreshold" class="text-blue-400 font-semibold">0</span></label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="cciValueToggle" class="sr-only peer" onchange="toggleSliderFilter('cciValue')">
+                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
+                      <div class="mb-2 px-1">
+                        <div class="filter-group flex flex-wrap gap-1.5 mb-2">
+                          <button onclick="toggleFilterChip('cciValueMode', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="cciValueMode" data-value="below">Below</button>
+                          <button onclick="toggleFilterChip('cciValueMode', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="cciValueMode" data-value="above">Above</button>
+                        </div>
+                      </div>
+                      <div class="px-2" id="cciValueSliderContainer">
+                        <div class="mb-2">
+                          <div class="py-2">
+                            <div id="cciValueSlider"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- CCI MA Value Slider -->
+                    <div class="mb-5">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">CCI MA Value <span class="text-foreground/60">|</span> <span id="cciMAValueThreshold" class="text-blue-400 font-semibold">0</span></label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="cciMAValueToggle" class="sr-only peer" onchange="toggleSliderFilter('cciMAValue')">
+                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
+                      <div class="mb-2 px-1">
+                        <div class="filter-group flex flex-wrap gap-1.5 mb-2">
+                          <button onclick="toggleFilterChip('cciMAValueMode', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="cciMAValueMode" data-value="below">Below</button>
+                          <button onclick="toggleFilterChip('cciMAValueMode', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="cciMAValueMode" data-value="above">Above</button>
+                        </div>
+                      </div>
+                      <div class="px-2" id="cciMAValueSliderContainer">
+                        <div class="mb-2">
+                          <div class="py-2">
+                            <div id="cciMAValueSlider"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 <!-- Stoch Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
@@ -3332,12 +3400,6 @@ app.get('/', (req, res) => {
               <button id="presetBounce" onclick="applyPresetFilter('bounce')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-teal-500/50 bg-teal-500/20 hover:bg-teal-500/30 active:scale-95 transition-all text-white">
                 Bounce <span id="presetBounceCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-teal-600/50 text-white">0</span>
               </button>
-              <button id="presetTrendDown" onclick="applyPresetFilter('trendDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-white">
-                Trend Down <span id="presetTrendDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-amber-600/50 text-white">0</span>
-              </button>
-              <button id="presetTrendChange" onclick="applyPresetFilter('trendChange')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-violet-500/50 bg-violet-500/20 hover:bg-violet-500/30 active:scale-95 transition-all text-white">
-                Trend Change <span id="presetTrendChangeCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-violet-600/50 text-white">0</span>
-              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -3431,6 +3493,9 @@ app.get('/', (req, res) => {
         let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
+        
+        // Active preset filter (for CCI-based presets)
+        let activePreset = null;
 
         // Starred alerts - stored in localStorage
         let starredAlerts = JSON.parse(localStorage.getItem('starredAlerts')) || {};
@@ -3844,6 +3909,60 @@ app.get('/', (req, res) => {
               updateDiffFilter();
             });
           }
+          
+          // CCI Value Slider (-400 to 400, single value)
+          const cciValueSlider = document.getElementById('cciValueSlider');
+          if (cciValueSlider && !sliders.cciValue) {
+            noUiSlider.create(cciValueSlider, {
+              start: 0,
+              connect: [true, false],
+              range: { 'min': -400, 'max': 400 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }]
+            });
+            sliders.cciValue = cciValueSlider;
+            cciValueSlider.noUiSlider.on('update', function(values) {
+              const value = Math.round(parseFloat(values));
+              const thresholdEl = document.getElementById('cciValueThreshold');
+              if (thresholdEl) {
+                thresholdEl.textContent = value;
+                // Color based on value
+                if (value < -100) thresholdEl.className = 'text-red-400 font-semibold';
+                else if (value > 100) thresholdEl.className = 'text-green-400 font-semibold';
+                else thresholdEl.className = 'text-yellow-400 font-semibold';
+              }
+            });
+            cciValueSlider.noUiSlider.on('change', function() {
+              updateCciValueFilter();
+            });
+          }
+          
+          // CCI MA Value Slider (-400 to 400, single value)
+          const cciMAValueSlider = document.getElementById('cciMAValueSlider');
+          if (cciMAValueSlider && !sliders.cciMAValue) {
+            noUiSlider.create(cciMAValueSlider, {
+              start: 0,
+              connect: [true, false],
+              range: { 'min': -400, 'max': 400 },
+              step: 1,
+              tooltips: [{ to: v => Math.round(v) }]
+            });
+            sliders.cciMAValue = cciMAValueSlider;
+            cciMAValueSlider.noUiSlider.on('update', function(values) {
+              const value = Math.round(parseFloat(values));
+              const thresholdEl = document.getElementById('cciMAValueThreshold');
+              if (thresholdEl) {
+                thresholdEl.textContent = value;
+                // Color based on value
+                if (value < -100) thresholdEl.className = 'text-red-400 font-semibold';
+                else if (value > 100) thresholdEl.className = 'text-green-400 font-semibold';
+                else thresholdEl.className = 'text-yellow-400 font-semibold';
+              }
+            });
+            cciMAValueSlider.noUiSlider.on('change', function() {
+              updateCciMAValueFilter();
+            });
+          }
         }
 
         // Initialize sort indicators on page load
@@ -4024,6 +4143,30 @@ app.get('/', (req, res) => {
               return true;
             });
           }
+          
+          // Apply CCI Filters
+          if (cciFilterValue.active || cciFilterMAValue.active) {
+            filteredData = filteredData.filter(alert => {
+              // CCI Value filter
+              if (cciFilterValue.active) {
+                const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
+                if (cciValue === null || isNaN(cciValue)) return false;
+                if (cciFilterValue.mode === 'below' && cciValue >= cciFilterValue.threshold) return false;
+                if (cciFilterValue.mode === 'above' && cciValue <= cciFilterValue.threshold) return false;
+              }
+              
+              // CCI MA Value filter
+              if (cciFilterMAValue.active) {
+                const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
+                if (cciMAValue === null || isNaN(cciMAValue)) return false;
+                if (cciFilterMAValue.mode === 'below' && cciMAValue >= cciFilterMAValue.threshold) return false;
+                if (cciFilterMAValue.mode === 'above' && cciMAValue <= cciFilterMAValue.threshold) return false;
+              }
+              
+              return true;
+            });
+          }
+          
           
           // Sort filtered data - starred items always come first
           if (currentSortField) {
@@ -4482,18 +4625,47 @@ app.get('/', (req, res) => {
 
         // Chip-based filter toggle function
         function toggleFilterChip(filterType, value, element) {
-          // Toggle active state
-          element.classList.toggle('active');
-          
-          // Update parent container's has-active class
-          const parentGroup = element.closest('.filter-group');
-          if (parentGroup) {
-            const hasAnyActive = parentGroup.querySelector('.filter-chip.active') !== null;
-            parentGroup.classList.toggle('has-active', hasAnyActive);
+          // For CCI mode filters (below/above), ensure only one is active at a time
+          if (filterType === 'cciValueMode' || filterType === 'cciMAValueMode') {
+            const parentGroup = element.closest('.filter-group');
+            if (parentGroup) {
+              // Deactivate all chips in this group
+              parentGroup.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+              });
+              // Activate the clicked chip
+              element.classList.add('active');
+              parentGroup.classList.add('has-active');
+            }
+          } else {
+            // Toggle active state for other filters
+            element.classList.toggle('active');
+            
+            // Update parent container's has-active class
+            const parentGroup = element.closest('.filter-group');
+            if (parentGroup) {
+              const hasAnyActive = parentGroup.querySelector('.filter-chip.active') !== null;
+              parentGroup.classList.toggle('has-active', hasAnyActive);
+            }
           }
           
           // Update filter arrays based on active chips
           updateFilterArrays();
+          
+          // For CCI filters, update the filter state if toggle is checked
+          if (filterType === 'cciValueMode') {
+            const toggle = document.getElementById('cciValueToggle');
+            if (toggle && toggle.checked) {
+              updateCciValueFilter();
+              return; // updateCciValueFilter already calls filterAlerts()
+            }
+          } else if (filterType === 'cciMAValueMode') {
+            const toggle = document.getElementById('cciMAValueToggle');
+            if (toggle && toggle.checked) {
+              updateCciMAValueFilter();
+              return; // updateCciMAValueFilter already calls filterAlerts()
+            }
+          }
           
           // Apply filters
           filterAlerts();
@@ -4621,6 +4793,42 @@ app.get('/', (req, res) => {
           }
         }
         
+        // Update CCI Value filter from noUiSlider value
+        function updateCciValueFilter() {
+          const toggle = document.getElementById('cciValueToggle');
+          const slider = sliders.cciValue;
+          
+          if (slider && slider.noUiSlider) {
+            const value = Math.round(parseFloat(slider.noUiSlider.get()));
+            
+            cciFilterValue.threshold = value;
+            updateFilterArrays(); // Update mode (below/above)
+            // Only active if toggle is checked AND mode is selected
+            cciFilterValue.active = toggle && toggle.checked && cciFilterValue.mode !== null;
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
+        // Update CCI MA Value filter from noUiSlider value
+        function updateCciMAValueFilter() {
+          const toggle = document.getElementById('cciMAValueToggle');
+          const slider = sliders.cciMAValue;
+          
+          if (slider && slider.noUiSlider) {
+            const value = Math.round(parseFloat(slider.noUiSlider.get()));
+            
+            cciFilterMAValue.threshold = value;
+            updateFilterArrays(); // Update mode (below/above)
+            // Only active if toggle is checked AND mode is selected
+            cciFilterMAValue.active = toggle && toggle.checked && cciFilterMAValue.mode !== null;
+            
+            // Apply filters
+            filterAlerts();
+          }
+        }
+        
         // Update filter arrays from chip states
         function updateFilterArrays() {
           // BJ TSI Filters
@@ -4628,6 +4836,12 @@ app.get('/', (req, res) => {
           bjFilterSDir = Array.from(document.querySelectorAll('[data-filter="sDir"].active')).map(chip => chip.dataset.value);
           bjFilterArea = Array.from(document.querySelectorAll('[data-filter="area"].active')).map(chip => chip.dataset.value);
           bjFilterValueVsSignal = Array.from(document.querySelectorAll('[data-filter="valueVsSignal"].active')).map(chip => chip.dataset.value);
+          
+          // CCI Filters
+          const cciValueModeChips = Array.from(document.querySelectorAll('[data-filter="cciValueMode"].active'));
+          cciFilterValue.mode = cciValueModeChips.length > 0 ? cciValueModeChips[0].dataset.value : null;
+          const cciMAValueModeChips = Array.from(document.querySelectorAll('[data-filter="cciMAValueMode"].active'));
+          cciFilterMAValue.mode = cciMAValueModeChips.length > 0 ? cciMAValueModeChips[0].dataset.value : null;
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
@@ -4720,6 +4934,7 @@ app.get('/', (req, res) => {
         
         function clearAllFilters() {
           clearBjFilters();
+          clearCciFilters();
           clearStochFilters();
           // Clear search
           const searchInput = document.getElementById('searchInput');
@@ -4734,6 +4949,7 @@ app.get('/', (req, res) => {
           document.querySelectorAll('.preset-filter-chip').forEach(btn => {
             btn.classList.remove('active');
           });
+          activePreset = null;
         }
         
         function applyPresetFilter(preset) {
@@ -4754,6 +4970,9 @@ app.get('/', (req, res) => {
             presetButton.classList.add('active');
             presetGroup.classList.add('has-active');
           }
+          
+          // Track active preset for CCI-based filtering
+          activePreset = preset;
           
           if (preset === 'down') {
             // Activate D1 Direction: down
@@ -5079,40 +5298,6 @@ app.get('/', (req, res) => {
               updateD2ValueFilter();
             }
             
-          } else if (preset === 'trendDown') {
-            // Activate BJ TSI V Dir: Down
-            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
-            if (vDirDownChip) {
-              vDirDownChip.classList.add('active');
-              const parentGroup = vDirDownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate Value vs Signal: below
-            const valueVsSignalBelowChip = document.querySelector('[data-filter="valueVsSignal"][data-value="below"]');
-            if (valueVsSignalBelowChip) {
-              valueVsSignalBelowChip.classList.add('active');
-              const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ Value slider: -100 to 2
-            const bjToggle = document.getElementById('bjValueToggle');
-            if (bjToggle && sliders.bjValue) {
-              bjToggle.checked = true;
-              sliders.bjValue.noUiSlider.set([-100, 2]);
-              updateBjValueFilter();
-            }
-            
-          } else if (preset === 'trendChange') {
-            // Activate BJ Diff slider: 0 to 2
-            const bjDiffToggle = document.getElementById('bjDiffToggle');
-            if (bjDiffToggle && sliders.bjDiff) {
-              bjDiffToggle.checked = true;
-              sliders.bjDiff.noUiSlider.set([0, 2]);
-              updateBjDiffFilter();
-            }
-          }
           
           // Update filter arrays from chip states
           updateFilterArrays();
@@ -5213,8 +5398,6 @@ Use this to create a new preset filter button that applies these exact filter se
             const bigUpCountEl = document.getElementById('presetBigUpCount');
             const fallCountEl = document.getElementById('presetFallCount');
             const bounceCountEl = document.getElementById('presetBounceCount');
-            const trendDownCountEl = document.getElementById('presetTrendDownCount');
-            const trendChangeCountEl = document.getElementById('presetTrendChangeCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
@@ -5225,8 +5408,6 @@ Use this to create a new preset filter button that applies these exact filter se
             if (bigUpCountEl) bigUpCountEl.textContent = '0';
             if (fallCountEl) fallCountEl.textContent = '0';
             if (bounceCountEl) bounceCountEl.textContent = '0';
-            if (trendDownCountEl) trendDownCountEl.textContent = '0';
-            if (trendChangeCountEl) trendChangeCountEl.textContent = '0';
             return;
           }
 
@@ -5241,8 +5422,6 @@ Use this to create a new preset filter button that applies these exact filter se
           let bigUpCount = 0;
           let fallCount = 0;
           let bounceCount = 0;
-          let trendDownCount = 0;
-          let trendChangeCount = 0;
 
           alertsData.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -5362,23 +5541,6 @@ Use this to create a new preset filter button that applies these exact filter se
             if (d2Direction !== 'up') matchesBounce = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesBounce = false;
             
-            // Check Trend Down criteria
-            let matchesTrendDown = true;
-            if (vDir !== 'Down') matchesTrendDown = false;
-            // Check Value vs Signal: below (V < S)
-            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl) || bjTsi >= bjTsl) matchesTrendDown = false;
-            // Check BJ Value range: -100 to 2
-            if (bjTsi === null || isNaN(bjTsi) || bjTsi < -100 || bjTsi > 2) matchesTrendDown = false;
-            
-            // Check Trend Change criteria
-            let matchesTrendChange = true;
-            // Check BJ Diff range: 0 to 2 (absolute difference between V and S)
-            if (bjTsi === null || isNaN(bjTsi) || bjTsl === null || isNaN(bjTsl)) matchesTrendChange = false;
-            else {
-              const absDiff = Math.abs(bjTsi - bjTsl);
-              if (absDiff < 0 || absDiff > 2) matchesTrendChange = false;
-            }
-            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesTrendDownBig) trendDownBigCount++;
@@ -5389,8 +5551,6 @@ Use this to create a new preset filter button that applies these exact filter se
             if (matchesBigUp) bigUpCount++;
             if (matchesFall) fallCount++;
             if (matchesBounce) bounceCount++;
-            if (matchesTrendDown) trendDownCount++;
-            if (matchesTrendChange) trendChangeCount++;
           });
 
           // Update the count displays
@@ -5404,8 +5564,6 @@ Use this to create a new preset filter button that applies these exact filter se
           const bigUpCountEl = document.getElementById('presetBigUpCount');
           const fallCountEl = document.getElementById('presetFallCount');
           const bounceCountEl = document.getElementById('presetBounceCount');
-          const trendDownCountEl = document.getElementById('presetTrendDownCount');
-          const trendChangeCountEl = document.getElementById('presetTrendChangeCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
@@ -5416,8 +5574,6 @@ Use this to create a new preset filter button that applies these exact filter se
           if (bigUpCountEl) bigUpCountEl.textContent = bigUpCount;
           if (fallCountEl) fallCountEl.textContent = fallCount;
           if (bounceCountEl) bounceCountEl.textContent = bounceCount;
-          if (trendDownCountEl) trendDownCountEl.textContent = trendDownCount;
-          if (trendChangeCountEl) trendChangeCountEl.textContent = trendChangeCount;
         }
 
         // Count how many alerts match each Price % range
@@ -5786,6 +5942,30 @@ Use this to create a new preset filter button that applies these exact filter se
               return true;
             });
           }
+          
+          // Apply CCI Filters
+          if (cciFilterValue.active || cciFilterMAValue.active) {
+            filteredData = filteredData.filter(alert => {
+              // CCI Value filter
+              if (cciFilterValue.active) {
+                const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
+                if (cciValue === null || isNaN(cciValue)) return false;
+                if (cciFilterValue.mode === 'below' && cciValue >= cciFilterValue.threshold) return false;
+                if (cciFilterValue.mode === 'above' && cciValue <= cciFilterValue.threshold) return false;
+              }
+              
+              // CCI MA Value filter
+              if (cciFilterMAValue.active) {
+                const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
+                if (cciMAValue === null || isNaN(cciMAValue)) return false;
+                if (cciFilterMAValue.mode === 'below' && cciMAValue >= cciFilterMAValue.threshold) return false;
+                if (cciFilterMAValue.mode === 'above' && cciMAValue <= cciFilterMAValue.threshold) return false;
+              }
+              
+              return true;
+            });
+          }
+          
 
           // Sort filtered data - starred items always come first
           if (currentSortField) {
