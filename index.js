@@ -4802,47 +4802,10 @@ app.get('/', (req, res) => {
             }
             
           } else if (preset === 'bigUp') {
-            // Activate BJ TSI V Dir: Up
-            const vDirUpChip = document.querySelector('[data-filter="vDir"][data-value="Up"]');
-            if (vDirUpChip) {
-              vDirUpChip.classList.add('active');
-              const parentGroup = vDirUpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate BJ TSI S Dir: Up
-            const sDirUpChip = document.querySelector('[data-filter="sDir"][data-value="Up"]');
-            if (sDirUpChip) {
-              sDirUpChip.classList.add('active');
-              const parentGroup = sDirUpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate Value vs Signal: above
-            const valueVsSignalAboveChip = document.querySelector('[data-filter="valueVsSignal"][data-value="above"]');
-            if (valueVsSignalAboveChip) {
-              valueVsSignalAboveChip.classList.add('active');
-              const parentGroup = valueVsSignalAboveChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
+            // BJ TSI filter removed - preset disabled
+            // No filters to activate
             
           } else if (preset === 'fall') {
-            // Activate BJ TSI V Dir: Down
-            const vDirDownChip = document.querySelector('[data-filter="vDir"][data-value="Down"]');
-            if (vDirDownChip) {
-              vDirDownChip.classList.add('active');
-              const parentGroup = vDirDownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate Value vs Signal: below
-            const valueVsSignalBelowChip = document.querySelector('[data-filter="valueVsSignal"][data-value="below"]');
-            if (valueVsSignalBelowChip) {
-              valueVsSignalBelowChip.classList.add('active');
-              const parentGroup = valueVsSignalBelowChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
             // Activate D1 Direction: down
             const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
             if (d1DownChip) {
@@ -4891,16 +4854,13 @@ app.get('/', (req, res) => {
               sliders.d2Value.noUiSlider.set([40, 100]);
               updateD2ValueFilter();
             }
-            
+          }
           
           // Update filter arrays from chip states
           updateFilterArrays();
           
-          // Apply filters (updateBjValueFilter already calls filterAlerts, so we only need to call it if slider wasn't set)
-          const bjToggle = document.getElementById('bjValueToggle');
-          if (!bjToggle || !bjToggle.checked) {
-            filterAlerts();
-          }
+          // Apply filters
+          filterAlerts();
         }
 
         // Export filter settings
