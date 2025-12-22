@@ -3146,6 +3146,91 @@ app.get('/', (req, res) => {
           border-color: rgba(251, 191, 36, 0.5);
           background: hsl(217.2 32.6% 20%);
         }
+        /* Toast notification styles */
+        .toast-container {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          pointer-events: none;
+        }
+        .toast {
+          pointer-events: auto;
+          min-width: 300px;
+          max-width: 400px;
+          padding: 16px;
+          background: hsl(222.2 84% 4.9%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          animation: slideInRight 0.3s ease-out;
+          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .toast.hiding {
+          animation: slideOutRight 0.3s ease-out;
+          opacity: 0;
+          transform: translateX(100%);
+        }
+        .toast.cross-high {
+          border-left: 4px solid #22c55e;
+        }
+        .toast.cross-low {
+          border-left: 4px solid #ef4444;
+        }
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slideOutRight {
+          from {
+            transform: translateX(0);
+            opacity: 1;
+          }
+          to {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+        }
+        .toast-icon {
+          font-size: 24px;
+          flex-shrink: 0;
+        }
+        .toast-content {
+          flex: 1;
+        }
+        .toast-title {
+          font-weight: 600;
+          font-size: 14px;
+          color: hsl(210 40% 98%);
+          margin-bottom: 4px;
+        }
+        .toast-message {
+          font-size: 12px;
+          color: hsl(215 20.2% 65.1%);
+        }
+        .toast-close {
+          cursor: pointer;
+          color: hsl(215 20.2% 65.1%);
+          font-size: 18px;
+          line-height: 1;
+          padding: 4px;
+          transition: color 0.2s;
+        }
+        .toast-close:hover {
+          color: hsl(210 40% 98%);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -3451,6 +3536,9 @@ app.get('/', (req, res) => {
           </div>
         </div>
       </div>
+
+      <!-- Toast Container -->
+      <div id="toastContainer" class="toast-container"></div>
 
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
@@ -6372,10 +6460,87 @@ Use this to create a new preset filter button that applies these exact filter se
           }).join('');
         }
 
+        // Check for ORB crossovers and show toast notifications
+        function checkOrbCrossover(alert) {
+          if (!alert || !alert.symbol) return;
+          
+          const symbol = alert.symbol;
+          const nyCrossover = alert.nyOrbCrossover || null;
+          const londonCrossover = alert.londonOrbCrossover || null;
+          
+          // Initialize previous crossovers for this symbol if not exists
+          if (!previousOrbCrossovers[symbol]) {
+            previousOrbCrossovers[symbol] = { ny: 'none', london: 'none' };
+          }
+          
+          const prevNy = previousOrbCrossovers[symbol].ny;
+          const prevLondon = previousOrbCrossovers[symbol].london;
+          
+          // Check NY ORB crossover
+          if (nyCrossover && nyCrossover !== 'none' && nyCrossover !== prevNy) {
+            showOrbCrossoverToast(symbol, 'NY', nyCrossover, alert.price, alert.nyOrbHigh, alert.nyOrbLow);
+            previousOrbCrossovers[symbol].ny = nyCrossover;
+          } else if (nyCrossover === 'none' && prevNy !== 'none') {
+            // Reset when crossover ends
+            previousOrbCrossovers[symbol].ny = 'none';
+          }
+          
+          // Check London ORB crossover
+          if (londonCrossover && londonCrossover !== 'none' && londonCrossover !== prevLondon) {
+            showOrbCrossoverToast(symbol, 'London', londonCrossover, alert.price, alert.londonOrbHigh, alert.londonOrbLow);
+            previousOrbCrossovers[symbol].london = londonCrossover;
+          } else if (londonCrossover === 'none' && prevLondon !== 'none') {
+            // Reset when crossover ends
+            previousOrbCrossovers[symbol].london = 'none';
+          }
+        }
+        
+        // Show toast notification for ORB crossover
+        function showOrbCrossoverToast(symbol, orbType, crossover, price, orbHigh, orbLow) {
+          const toastContainer = document.getElementById('toastContainer');
+          if (!toastContainer) return;
+          
+          const isCrossHigh = crossover === 'cross_high';
+          const toastClass = isCrossHigh ? 'cross-high' : 'cross-low';
+          const icon = isCrossHigh ? '🚀' : '🔻';
+          const title = isCrossHigh ? 'ORB High Breakout' : 'ORB Low Breakdown';
+          const message = \`\${symbol} (\${orbType}) crossed \${isCrossHigh ? 'above' : 'below'} ORB\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
+          
+          const toast = document.createElement('div');
+          toast.className = \`toast \${toastClass}\`;
+          toast.innerHTML = \`
+            <div class="toast-icon">\${icon}</div>
+            <div class="toast-content">
+              <div class="toast-title">\${title}</div>
+              <div class="toast-message">\${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+          \`;
+          
+          toastContainer.appendChild(toast);
+          
+          // Auto-remove after 5 seconds
+          setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => {
+              if (toast.parentElement) {
+                toast.remove();
+              }
+            }, 300);
+          }, 5000);
+        }
+        
         async function fetchAlerts() {
           try {
             const response = await fetch('/alerts');
             const data = await response.json();
+            
+            // Check for ORB crossovers in the fetched data
+            if (Array.isArray(data)) {
+              data.forEach(alert => {
+                checkOrbCrossover(alert);
+              });
+            }
             
             alertsData = data;
             renderTable();
@@ -6409,6 +6574,17 @@ Use this to create a new preset filter button that applies these exact filter se
         
         eventSource.onmessage = function(event) {
           console.log('📡 Received real-time update:', event.data);
+          
+          // Parse the event data to check for ORB crossovers
+          try {
+            const update = JSON.parse(event.data);
+            if (update.type === 'alert' && update.data) {
+              checkOrbCrossover(update.data);
+            }
+          } catch (e) {
+            // Not JSON or parse error, continue with normal flow
+          }
+          
           fetchAlerts(); // Refresh immediately when new data arrives
           
           // Show brief update indicator
