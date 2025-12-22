@@ -3743,6 +3743,16 @@ app.get('/', (req, res) => {
                     Toast Settings
                   </button>
                 </div>
+                
+                <!-- Export Notification Settings Button -->
+                <div class="mt-2">
+                  <button onclick="exportNotificationSettings()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export For Noti
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -3904,23 +3914,17 @@ app.get('/', (req, res) => {
 
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
-        <div class="export-modal" onclick="event.stopPropagation()" style="max-width: 700px;">
-          <h3 class="text-lg font-semibold text-foreground mb-4">Export Signal Settings</h3>
+        <div class="export-modal" onclick="event.stopPropagation()">
+          <h3 class="text-lg font-semibold text-foreground mb-4">Export Filter Settings</h3>
           <div class="mb-4">
-            <label class="block text-sm font-medium text-muted-foreground mb-2">Signal Name</label>
+            <label class="block text-sm font-medium text-muted-foreground mb-2">Preset Name</label>
             <input 
               type="text" 
               id="exportPresetName" 
-              placeholder="e.g., Short Continue"
+              placeholder="Enter preset name..."
               class="w-full px-3 py-2 bg-card/80 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
               onkeydown="if(event.key === 'Enter') exportFilterSettings()"
             />
-          </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-muted-foreground mb-2">Current Filter Settings</label>
-            <div id="exportFilterPreview" class="bg-card/40 border border-border/30 rounded-lg p-3 text-xs text-muted-foreground max-h-60 overflow-y-auto">
-              <!-- Will be populated by openExportModal -->
-            </div>
           </div>
           <div class="flex gap-3 justify-end">
             <button 
@@ -3933,7 +3937,7 @@ app.get('/', (req, res) => {
               onclick="exportFilterSettings()" 
               class="px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
             >
-              Export
+              Done
             </button>
           </div>
         </div>
@@ -5377,65 +5381,6 @@ app.get('/', (req, res) => {
           const overlay = document.getElementById('exportModalOverlay');
           const modal = overlay.querySelector('.export-modal');
           const input = document.getElementById('exportPresetName');
-          const preview = document.getElementById('exportFilterPreview');
-          
-          // Update filter arrays to get current state
-          updateFilterArrays();
-          
-          // Build preview of current filter settings
-          let previewText = [];
-          
-          // D1 Direction
-          if (stochFilterD1Direction.length > 0) {
-            previewText.push(\`D1 Direction: \${stochFilterD1Direction.join(', ')}\`);
-          }
-          
-          // D1 Value
-          if (stochFilterD1Value.active) {
-            previewText.push(\`D1 Value: \${stochFilterD1Value.min} - \${stochFilterD1Value.max}\`);
-          }
-          
-          // D2 Direction
-          if (stochFilterD2Direction.length > 0) {
-            previewText.push(\`D2 Direction: \${stochFilterD2Direction.join(', ')}\`);
-          }
-          
-          // D2 Value
-          if (stochFilterD2Value.active) {
-            previewText.push(\`D2 Value: \${stochFilterD2Value.min} - \${stochFilterD2Value.max}\`);
-          }
-          
-          // Diff
-          if (stochFilterDiff.active) {
-            previewText.push(\`Diff: \${stochFilterDiff.min} - \${stochFilterDiff.max}\`);
-          }
-          
-          // Trend Message
-          if (stochFilterTrendMessage.length > 0) {
-            previewText.push(\`Trend: \${stochFilterTrendMessage.join(', ')}\`);
-          }
-          
-          // Price %
-          if (stochFilterPercentChange.length > 0) {
-            previewText.push(\`Price %: \${stochFilterPercentChange.join(', ')}\`);
-          }
-          
-          // ORB Filters
-          if (orbFilterStatus.length > 0) {
-            previewText.push(\`ORB Status: \${orbFilterStatus.join(', ')}\`);
-          }
-          
-          if (priceFilterDirection.length > 0) {
-            previewText.push(\`Price Direction: \${priceFilterDirection.join(', ')}\`);
-          }
-          
-          if (previewText.length === 0) {
-            previewText.push('No filters active');
-          }
-          
-          if (preview) {
-            preview.innerHTML = previewText.map(line => \`<div class="mb-1">• \${line}</div>\`).join('');
-          }
           
           overlay.classList.add('open');
           modal.classList.add('open');
@@ -5475,61 +5420,22 @@ app.get('/', (req, res) => {
                 trendMessage: stochFilterTrendMessage,
                 percentChange: stochFilterPercentChange
               },
-              // ORB Filters
-              orb: {
-                orbStatus: orbFilterStatus,
-                priceDirection: priceFilterDirection
-              },
               // Search term
               search: searchTerm || null
             }
           };
           
-          // Create human-readable description
-          let description = [];
-          if (stochFilterD2Direction.includes('down') && stochFilterD2Value.active) {
-            description.push(\`D2 Direction: Down, D2 Value: \${stochFilterD2Value.min}-\${stochFilterD2Value.max}\`);
-          } else if (stochFilterD2Direction.includes('down')) {
-            description.push('D2 Direction: Down');
-          }
-          if (stochFilterD2Value.active && !stochFilterD2Direction.includes('down')) {
-            description.push(\`D2 Value: \${stochFilterD2Value.min}-\${stochFilterD2Value.max}\`);
-          }
-          if (stochFilterD1Direction.length > 0) {
-            description.push(\`D1 Direction: \${stochFilterD1Direction.join(', ')}\`);
-          }
-          if (stochFilterD1Value.active) {
-            description.push(\`D1 Value: \${stochFilterD1Value.min}-\${stochFilterD1Value.max}\`);
-          }
-          if (stochFilterDiff.active) {
-            description.push(\`Diff: \${stochFilterDiff.min}-\${stochFilterDiff.max}\`);
-          }
-          if (stochFilterTrendMessage.length > 0) {
-            description.push(\`Trend: \${stochFilterTrendMessage.join(', ')}\`);
-          }
-          if (stochFilterPercentChange.length > 0) {
-            description.push(\`Price %: \${stochFilterPercentChange.join(', ')}\`);
-          }
-          if (orbFilterStatus.length > 0) {
-            description.push(\`ORB Status: \${orbFilterStatus.join(', ')}\`);
-          }
-          if (priceFilterDirection.length > 0) {
-            description.push(\`Price Direction: \${priceFilterDirection.join(', ')}\`);
-          }
-          
-          // Format for export (both JSON and human-readable)
-          const exportText = \`Signal Name: \${presetName}
-Description: \${description.length > 0 ? description.join(', ') : 'No filters'}
+          // Format for AI to create preset button
+          const exportText = \`Preset Name: \${presetName}
 
-Filter Settings (JSON):
+Filter Settings:
 \${JSON.stringify(settings, null, 2)}
 
-Use this JSON to create a preset filter button that applies these exact filter settings.\`;
+Use this to create a new preset filter button that applies these exact filter settings.\`;
           
           // Copy to clipboard
           navigator.clipboard.writeText(exportText).then(() => {
-            const descText = description.length > 0 ? '\\n\\n' + description.join('\\n') : '';
-            alert(\`Signal "\${presetName}" exported to clipboard!\${descText}\`);
+            alert('Filter settings copied to clipboard!');
             closeExportModal();
           }).catch(err => {
             console.error('Failed to copy:', err);
@@ -7135,6 +7041,23 @@ Use this JSON to create a preset filter button that applies these exact filter s
             cross_mid_down: document.getElementById('notifCrossMidDown').checked
           };
           localStorage.setItem('orbNotificationSettings', JSON.stringify(notificationSettings));
+        }
+        
+        // Export notification settings to clipboard
+        function exportNotificationSettings() {
+          // Format notification settings for export
+          const exportText = \`Notification Settings:
+\${JSON.stringify(notificationSettings, null, 2)}
+
+Use this to configure which ORB crossover types trigger toast notifications.\`;
+          
+          // Copy to clipboard
+          navigator.clipboard.writeText(exportText).then(() => {
+            alert('Notification settings copied to clipboard!');
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard. Please try again.');
+          });
         }
         
         // Toggle notification center
