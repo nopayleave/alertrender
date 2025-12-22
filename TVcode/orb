@@ -3,48 +3,35 @@ indicator('OBR', overlay = true)
 
 // === Display Toggles ===
 inputMax = input(15, title = 'ORB Duration (minutes)', group='📦 Session ORB Settings 📦')
-show_london_orb = input.bool(true,  title = "Show London ORBs")
-londonORB     = input.session('0700-0715', title = 'London ORB Time (UTC)')
-londonSession = input.session('0700-1600', title = 'London Session Time (UTC)')
 show_ny_orb   = input.bool(true,  title = "Show New York ORB")
-nyORB         = input.session('1430-1445', title = 'New York ORB Time (UTC)')
-nySession     = input.session('1430-2100', title = 'New York Session Time (UTC)')
+nyORB         = input.session('0930-0945', title = 'New York ORB Time')
+nySession     = input.session('0930-1600', title = 'New York Session Time')
 show_50pct_line = input.bool(true, title = "Show 50% ORB Midline", group='📦 Session ORB Settings 📦')
-london_fill_color = input.color(color.rgb(255, 166, 0, 50), title="London ORB Color")
-ny_fill_color     = input.color(color.rgb(255, 0, 191, 50), title="New York ORB Color")
+ny_fill_color     = input.color(color.rgb(128, 128, 128, 50), title="New York ORB Color")
+
+// === Webhook Alerts ===
+enableWebhook = input.bool(false, title="Enable Webhook Alerts", group="🔔 Webhook Alerts")
+webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="🔔 Webhook Alerts")
+
+// Determine alert frequency
+alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
+           webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : 
+           alert.freq_all
 // Convert timeframe to minutes for comparison (timeframe.in_seconds() returns seconds, divide by 60 to get minutes)
 timeframeMinutes = timeframe.in_seconds() / 60.0
 hide = timeframe.isintraday and timeframeMinutes <= inputMax
 
 // === Session Time Checks ===
-t_london        = time(timeframe.period, londonORB + ':1234567', 'UTC')
-t_london_session= time(timeframe.period, londonSession + ':1234567', 'UTC')
-t_ny            = time(timeframe.period, nyORB + ':1234567', 'UTC')
-t_ny_session    = time(timeframe.period, nySession + ':1234567', 'UTC')
+t_ny            = time(timeframe.period, nyORB + ':1234567')
+t_ny_session    = time(timeframe.period, nySession + ':1234567')
 
-in_london         = not na(t_london)
-in_london_session = not na(t_london_session)
 in_ny             = not na(t_ny)
 in_ny_session     = not na(t_ny_session)
 
-is_first_london = in_london and not in_london[1]
 is_first_ny     = in_ny and not in_ny[1]
 
-var float london_high = na
-var float london_low  = na
 var float ny_high     = na
 var float ny_low      = na
-
-if is_first_london
-    london_high := high
-    london_low  := low
-else
-    london_high := london_high[1]
-    london_low  := london_low[1]
-if high > london_high and in_london
-    london_high := high
-if low < london_low and in_london
-    london_low := low
 
 if is_first_ny
     ny_high := high
@@ -57,13 +44,9 @@ if high > ny_high and in_ny
 if low < ny_low and in_ny
     ny_low := low
 
-plot(hide and in_london_session and show_london_orb ? london_high : na, style=plot.style_line, color=london_high[1] != london_high ? na : #00ff6a00, title='London ORB High', linewidth=2)
-plot(hide and in_london_session and show_london_orb ? london_low  : na, style=plot.style_line, color=london_low[1]  != london_low  ? na : #00ff6a00, title='London ORB Low', linewidth=2)
 plot(hide and in_ny_session     and show_ny_orb     ? ny_high     : na, style=plot.style_line, color=ny_high[1]     != ny_high     ? na : #00ff6a00, title='New York ORB High', linewidth=2)
 plot(hide and in_ny_session     and show_ny_orb     ? ny_low      : na, style=plot.style_line, color=ny_low[1]      != ny_low      ? na : #00ff6a00, title='New York ORB Low', linewidth=2)
 
-alertcondition(ta.crossover(high, london_high) and in_london_session and not in_london, title="London ORB High Break", message="Price crossed above London ORB High: {{ticker}} at {{close}}")
-alertcondition(ta.crossunder(low, london_low) and in_london_session and not in_london, title="London ORB Low Break", message="Price crossed below London ORB Low: {{ticker}} at {{close}}")
 alertcondition(ta.crossover(high, ny_high) and in_ny_session and not in_ny, title="New York ORB High Break", message="Price crossed above New York ORB High: {{ticker}} at {{close}}")
 alertcondition(ta.crossunder(low, ny_low) and in_ny_session and not in_ny, title="New York ORB Low Break", message="Price crossed below New York ORB Low: {{ticker}} at {{close}}")
 
@@ -133,20 +116,54 @@ if barstate.islast
     prev4h_lo_lbl := show_prev_4h ? label.new(bar_index, prev_4h_low,  "Prev 4H Low",  style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(255,166,0), 100), size=size.small) : na
 
 // === Fill ORBs ===
-pLondonHigh = plot(hide and in_london_session and show_london_orb ? london_high : na, style=plot.style_line, color=london_high[1]!=london_high ? na : #00bfff00, title='London ORB High', linewidth=2)
-pLondonLow  = plot(hide and in_london_session and show_london_orb ? london_low  : na, style=plot.style_line, color=london_low[1]!=london_low   ? na : #00bfff00, title='London ORB Low',  linewidth=2)
 pNyHigh     = plot(hide and in_ny_session     and show_ny_orb     ? ny_high     : na, style=plot.style_line, color=ny_high[1]!=ny_high       ? na : #00bfff00, title='New York ORB High', linewidth=2)
 pNyLow      = plot(hide and in_ny_session     and show_ny_orb     ? ny_low      : na, style=plot.style_line, color=ny_low[1]!=ny_low         ? na : #00bfff00, title='New York ORB Low',  linewidth=2)
 
-fill(pLondonHigh, pLondonLow, color=london_fill_color)
 fill(pNyHigh, pNyLow, color=ny_fill_color)
 
 // === 50% ORB Midline ===
-london_mid = (london_high + london_low) / 2.0
 ny_mid = (ny_high + ny_low) / 2.0
 
-plot(hide and in_london_session and show_london_orb and show_50pct_line ? london_mid : na, style=plot.style_line, color=color.new(color.white, 30), title='London ORB 50%', linewidth=1, linestyle=plot.linestyle_dashed)
 plot(hide and in_ny_session and show_ny_orb and show_50pct_line ? ny_mid : na, style=plot.style_line, color=color.new(color.white, 30), title='New York ORB 50%', linewidth=1, linestyle=plot.linestyle_dashed)
+
+// === ORB Position Detection ===
+// New York ORB position
+ny_within = not na(ny_high) and not na(ny_low) and close >= ny_low and close <= ny_high
+ny_outside_above = not na(ny_high) and close > ny_high
+ny_outside_below = not na(ny_low) and close < ny_low
+ny_upper_half = ny_within and not na(ny_mid) and close >= ny_mid
+ny_lower_half = ny_within and not na(ny_mid) and close < ny_mid
+
+// Determine New York ORB status
+ny_orb_status = ny_outside_above ? "outside_above" : ny_outside_below ? "outside_below" : ny_upper_half ? "within_upper" : ny_lower_half ? "within_lower" : "unknown"
+
+// Track previous states to detect changes
+var string prev_ny_status = na
+
+// Detect status changes
+ny_status_changed = prev_ny_status != ny_orb_status and not na(ny_orb_status) and not na(prev_ny_status)
+
+// Update previous states
+if not na(ny_orb_status)
+    prev_ny_status := ny_orb_status
+
+// === Webhook Alerts ===
+// New York ORB alerts (only during session, after ORB period)
+if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
+    // Alert on status change or every bar if configured
+    shouldAlert = webhookFrequency == "All" or (barstate.isconfirmed and (ny_status_changed or na(prev_ny_status)))
+    if shouldAlert
+        jsonMsg = '{' +
+          '"symbol": "' + syminfo.ticker + '",' +
+          '"timeframe": "' + timeframe.period + '",' +
+          '"time": ' + str.tostring(time) + ',' +
+          '"price": ' + str.tostring(close) + ',' +
+          '"orbType": "ny",' +
+          '"orbStatus": "' + ny_orb_status + '",' +
+          '"orbHigh": ' + str.tostring(ny_high) + ',' +
+          '"orbLow": ' + str.tostring(ny_low) + ',' +
+          '"orbMid": ' + str.tostring(ny_mid) + '}'
+        alert(jsonMsg, freq = alertFreq)
 
 
 

@@ -117,6 +117,7 @@ let previousDirections = {} // Store previous D1-D8 directions to detect switche
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 let cciDataStorage = {} // Store CCI crossover data by symbol with timestamp
+let orbDataStorage = {} // Store ORB data by symbol with timestamp: { symbol: { orbType, orbStatus, orbHigh, orbLow, orbMid, timestamp } }
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
@@ -165,6 +166,7 @@ function saveDataToDatabase() {
         previousPrices,
         macdCrossingData,
         cciDataStorage,
+        orbDataStorage,
         soloStochDataStorage,
         dualStochDataStorage,
         dualStochHistory,
@@ -225,6 +227,7 @@ function loadDataFromDatabase() {
           case 'previousPrices': previousPrices = value; break
           case 'macdCrossingData': macdCrossingData = value; break
           case 'cciDataStorage': cciDataStorage = value; break
+          case 'orbDataStorage': orbDataStorage = value; break
           case 'soloStochDataStorage': soloStochDataStorage = value; break
           case 'dualStochDataStorage': dualStochDataStorage = value; break
           case 'dualStochHistory': dualStochHistory = value; break
@@ -614,6 +617,7 @@ app.post('/webhook', (req, res) => {
   const isOctoStochAlert = alert.d8Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   const isCciAlert = alert.cciCrossover !== undefined
+  const isOrbAlert = alert.orbType !== undefined && alert.orbStatus !== undefined
   const isSoloStochAlert = alert.d2Signal === 'Solo'
   const isDualStochAlert = alert.d2Signal === 'Dual'
   
@@ -1237,6 +1241,65 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
+  } else if (isOrbAlert) {
+    // ORB alert - store ORB data with timestamp
+    const orbData = {
+      orbType: alert.orbType, // "london" or "ny"
+      orbStatus: alert.orbStatus, // "within_upper", "within_lower", "outside_above", "outside_below"
+      orbHigh: alert.orbHigh,
+      orbLow: alert.orbLow,
+      orbMid: alert.orbMid,
+      timestamp: Date.now()
+    }
+    
+    // Store in a data storage object (similar to cciDataStorage pattern)
+    if (!orbDataStorage) orbDataStorage = {}
+    // Store both London and NY ORB data separately
+    const storageKey = `${alert.symbol}_${alert.orbType}`
+    orbDataStorage[storageKey] = orbData
+    
+    console.log(`✅ ORB data stored for ${alert.symbol} (${alert.orbType}): Status=${alert.orbStatus}, High=${alert.orbHigh}, Low=${alert.orbLow}, Mid=${alert.orbMid}`)
+    
+    // Update existing alert if it exists, or create new one if it doesn't
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      // Store both London and NY ORB data
+      if (alert.orbType === 'london') {
+        alerts[existingIndex].londonOrbStatus = orbData.orbStatus
+        alerts[existingIndex].londonOrbHigh = orbData.orbHigh
+        alerts[existingIndex].londonOrbLow = orbData.orbLow
+        alerts[existingIndex].londonOrbMid = orbData.orbMid
+      } else if (alert.orbType === 'ny') {
+        alerts[existingIndex].nyOrbStatus = orbData.orbStatus
+        alerts[existingIndex].nyOrbHigh = orbData.orbHigh
+        alerts[existingIndex].nyOrbLow = orbData.orbLow
+        alerts[existingIndex].nyOrbMid = orbData.orbMid
+      }
+      alerts[existingIndex].receivedAt = Date.now()
+      console.log(`✅ Updated existing alert for ${alert.symbol} with ORB data (${alert.orbType})`)
+    } else {
+      // Create new alert entry if it doesn't exist
+      const newAlert = {
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        price: alert.price || null,
+        receivedAt: Date.now()
+      }
+      // Add ORB data based on type
+      if (alert.orbType === 'london') {
+        newAlert.londonOrbStatus = orbData.orbStatus
+        newAlert.londonOrbHigh = orbData.orbHigh
+        newAlert.londonOrbLow = orbData.orbLow
+        newAlert.londonOrbMid = orbData.orbMid
+      } else if (alert.orbType === 'ny') {
+        newAlert.nyOrbStatus = orbData.orbStatus
+        newAlert.nyOrbHigh = orbData.orbHigh
+        newAlert.nyOrbLow = orbData.orbLow
+        newAlert.nyOrbMid = orbData.orbMid
+      }
+      alerts.unshift(newAlert)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with ORB data (${alert.orbType})`)
+    }
   } else if (isSoloStochAlert) {
     // Solo Stoch alert - store D2 data with timestamp
     soloStochDataStorage[alert.symbol] = {
@@ -1621,6 +1684,54 @@ app.post('/webhook', (req, res) => {
       }
     }
     
+    // Merge ORB data from storage (both London and NY)
+    const londonOrbInfo = orbDataStorage[`${alert.symbol}_london`]
+    if (londonOrbInfo) {
+      const ageInMinutes = (Date.now() - londonOrbInfo.timestamp) / 60000
+      if (ageInMinutes <= 240) { // ORB data valid for 4 hours
+        alertData.londonOrbStatus = londonOrbInfo.orbStatus
+        alertData.londonOrbHigh = londonOrbInfo.orbHigh
+        alertData.londonOrbLow = londonOrbInfo.orbLow
+        alertData.londonOrbMid = londonOrbInfo.orbMid
+        console.log(`✅ Merged London ORB data for ${alert.symbol}: Status=${londonOrbInfo.orbStatus}, High=${londonOrbInfo.orbHigh}, Low=${londonOrbInfo.orbLow} (age: ${ageInMinutes.toFixed(1)} min)`)
+      } else {
+        delete orbDataStorage[`${alert.symbol}_london`]
+        console.log(`⏰ London ORB data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+      }
+    }
+    
+    const nyOrbInfo = orbDataStorage[`${alert.symbol}_ny`]
+    if (nyOrbInfo) {
+      const ageInMinutes = (Date.now() - nyOrbInfo.timestamp) / 60000
+      if (ageInMinutes <= 240) { // ORB data valid for 4 hours
+        alertData.nyOrbStatus = nyOrbInfo.orbStatus
+        alertData.nyOrbHigh = nyOrbInfo.orbHigh
+        alertData.nyOrbLow = nyOrbInfo.orbLow
+        alertData.nyOrbMid = nyOrbInfo.orbMid
+        console.log(`✅ Merged NY ORB data for ${alert.symbol}: Status=${nyOrbInfo.orbStatus}, High=${nyOrbInfo.orbHigh}, Low=${nyOrbInfo.orbLow} (age: ${ageInMinutes.toFixed(1)} min)`)
+      } else {
+        delete orbDataStorage[`${alert.symbol}_ny`]
+        console.log(`⏰ NY ORB data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+      }
+    }
+    
+    // If no stored ORB data, check if this alert has ORB data
+    if (alert.orbType !== undefined && alert.orbStatus !== undefined) {
+      if (alert.orbType === 'london') {
+        alertData.londonOrbStatus = alert.orbStatus
+        alertData.londonOrbHigh = alert.orbHigh
+        alertData.londonOrbLow = alert.orbLow
+        alertData.londonOrbMid = alert.orbMid
+        console.log(`✅ Using London ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
+      } else if (alert.orbType === 'ny') {
+        alertData.nyOrbStatus = alert.orbStatus
+        alertData.nyOrbHigh = alert.orbHigh
+        alertData.nyOrbLow = alert.orbLow
+        alertData.nyOrbMid = alert.orbMid
+        console.log(`✅ Using NY ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
+      }
+    }
+    
     // Check and add Solo Stoch data if active (within last 60 minutes)
     const soloStochInfo = soloStochDataStorage[alert.symbol]
     if (soloStochInfo) {
@@ -1780,6 +1891,7 @@ app.post('/webhook', (req, res) => {
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
                isCciAlert ? 'cci' :
+               isOrbAlert ? 'orb' :
                isSoloStochAlert ? 'solo_stoch' : 
                isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
@@ -1844,6 +1956,7 @@ app.post('/reset-alerts', (req, res) => {
   previousPrices = {}
   macdCrossingData = {}
   cciDataStorage = {}
+  orbDataStorage = {}
   soloStochDataStorage = {}
   dualStochDataStorage = {}
   bigTrendDay = {}
@@ -3417,7 +3530,7 @@ app.get('/', (req, res) => {
         let previousStochDirections = {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'd2', 'bj', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'd2', 'cci', 'orb', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove 'star' from columnOrder if it exists (legacy support)
         columnOrder = columnOrder.filter(colId => colId !== 'star');
@@ -3428,7 +3541,8 @@ app.get('/', (req, res) => {
           price: 100,
           d2: 220,
           highLevelTrend: 64,
-          bj: 114,
+          cci: 150,
+          orb: 180,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -3460,13 +3574,22 @@ app.get('/', (req, res) => {
             columnOrder.push('d2');
           }
         }
-        // Ensure bj column exists
-        if (!columnOrder.includes('bj')) {
+        // Ensure cci column exists
+        if (!columnOrder.includes('cci')) {
           const d2Index = columnOrder.indexOf('d2');
           if (d2Index !== -1) {
-            columnOrder.splice(d2Index + 1, 0, 'bj');
+            columnOrder.splice(d2Index + 1, 0, 'cci');
           } else {
-            columnOrder.push('bj');
+            columnOrder.push('cci');
+          }
+        }
+        // Ensure orb column exists
+        if (!columnOrder.includes('orb')) {
+          const cciIndex = columnOrder.indexOf('cci');
+          if (cciIndex !== -1) {
+            columnOrder.splice(cciIndex + 1, 0, 'orb');
+          } else {
+            columnOrder.push('orb');
           }
         }
         
@@ -3476,7 +3599,8 @@ app.get('/', (req, res) => {
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          bj: { id: 'bj', title: 'BJ', sortable: true, sortField: 'bjValue', width: 'w-[114px]', tooltip: 'BJ TSI: Value, V Dir, S Dir' },
+          cci: { id: 'cci', title: 'CCI', sortable: true, sortField: 'cciValue', width: 'w-[150px]', tooltip: 'CCI: Value, MA Value, Direction' },
+          orb: { id: 'orb', title: 'ORB', sortable: true, sortField: 'orbHigh', width: 'w-[180px]', tooltip: 'ORB: High, Low, Mid, Status' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
@@ -3511,7 +3635,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'bjValue'];
+            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'cciValue'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -3959,17 +4083,33 @@ app.get('/', (req, res) => {
             const d2DirArrow = d2Direction === 'up' ? '↑' : d2Direction === 'down' ? '↓' : '→';
             const d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-red-400' : 'text-muted-foreground';
             
-            // Get BJ TSI
-            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
-            const bjDisplay = bjTsi !== null ? bjTsi.toFixed(2) : 'N/A';
-            let bjValueClass = 'text-foreground';
-            if (bjTsi !== null && !isNaN(bjTsi)) {
-              if (bjTsi > 40) bjValueClass = 'text-green-300 font-semibold';
-              else if (bjTsi >= 15) bjValueClass = 'text-green-400 font-semibold';
-              else if (bjTsi >= 0) bjValueClass = 'text-green-500 font-semibold';
-              else if (bjTsi >= -15) bjValueClass = 'text-red-500 font-semibold';
-              else if (bjTsi >= -40) bjValueClass = 'text-red-400 font-semibold';
-              else bjValueClass = 'text-red-300 font-semibold';
+            // Get CCI
+            const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
+            const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
+            const cciDirection = alert.cciDirection || null;
+            const cciDisplay = cciValue !== null ? cciValue.toFixed(2) : 'N/A';
+            const cciMADisplay = cciMAValue !== null ? cciMAValue.toFixed(2) : 'N/A';
+            const cciDirArrow = cciDirection === 'up' ? '↑' : cciDirection === 'down' ? '↓' : '→';
+            const cciDirClass = cciDirection === 'up' ? 'text-green-400' : cciDirection === 'down' ? 'text-red-400' : 'text-gray-400';
+            
+            let cciValueClass = 'text-foreground';
+            if (cciValue !== null && !isNaN(cciValue)) {
+              if (cciValue > 100) cciValueClass = 'text-green-300 font-semibold';
+              else if (cciValue > 40) cciValueClass = 'text-green-400 font-semibold';
+              else if (cciValue > 0) cciValueClass = 'text-green-500 font-semibold';
+              else if (cciValue >= -40) cciValueClass = 'text-red-500 font-semibold';
+              else if (cciValue >= -100) cciValueClass = 'text-red-400 font-semibold';
+              else cciValueClass = 'text-red-300 font-semibold';
+            }
+            
+            let cciMAValueClass = 'text-foreground';
+            if (cciMAValue !== null && !isNaN(cciMAValue)) {
+              if (cciMAValue > 100) cciMAValueClass = 'text-green-300 font-semibold';
+              else if (cciMAValue > 40) cciMAValueClass = 'text-green-400 font-semibold';
+              else if (cciMAValue > 0) cciMAValueClass = 'text-green-500 font-semibold';
+              else if (cciMAValue >= -40) cciMAValueClass = 'text-red-500 font-semibold';
+              else if (cciMAValue >= -100) cciMAValueClass = 'text-red-400 font-semibold';
+              else cciMAValueClass = 'text-red-300 font-semibold';
             }
             
             const starred = isStarred(symbol);
@@ -3998,8 +4138,12 @@ app.get('/', (req, res) => {
                     <span class="\${d2DirClass} font-semibold">\${d2DirArrow} \${d2Display}</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-muted-foreground">BJ:</span>
-                    <span class="\${bjValueClass}">\${bjDisplay}</span>
+                    <span class="text-muted-foreground">CCI:</span>
+                    <span class="\${cciValueClass}">\${cciDisplay} <span class="\${cciDirClass}">\${cciDirArrow}</span></span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-muted-foreground">CCI MA:</span>
+                    <span class="\${cciMAValueClass}">\${cciMADisplay} <span class="\${cciDirClass}">\${cciDirArrow}</span></span>
                   </div>
                 </div>
               </div>
@@ -4354,8 +4498,8 @@ app.get('/', (req, res) => {
               return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
-            case 'bjValue':
-              return parseFloat(alert.bjTsi) || 0;
+            case 'cciValue':
+              return parseFloat(alert.cciValue) || 0;
             default:
               return '';
           }
@@ -6140,150 +6284,164 @@ Use this to create a new preset filter button that applies these exact filter se
               d2PatternClass = 'text-orange-400 font-semibold';
             }
             
-            // BJ TSI calculations
-            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
-            const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
-            const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
-            const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
+            // CCI calculations
+            const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
+            const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
+            const cciDirection = alert.cciDirection || null; // 'up' or 'down'
             
-            // BJ Value color coding
-            // Priority: >40 brighter green, >15 green, >0 light green, <0 light red, <15 red, <40 brighter red
-            let bjValueColorClass = 'text-foreground';
-            if (bjTsi !== null && !isNaN(bjTsi)) {
-              if (bjTsi > 40) {
-                bjValueColorClass = 'text-green-300'; // Brighter green (>40)
-              } else if (bjTsi > 15) {
-                bjValueColorClass = 'text-green-400'; // Green (>15 and <=40)
-              } else if (bjTsi > 0) {
-                bjValueColorClass = 'text-green-500'; // Light green (>0 and <=15)
-              } else if (bjTsi >= -15) {
-                bjValueColorClass = 'text-red-500'; // Light red (<0 and >= -15)
-              } else if (bjTsi >= -40) {
-                bjValueColorClass = 'text-red-400'; // Red (<-15 and >= -40)
+            // CCI Value color coding (similar to BJ TSI)
+            let cciValueColorClass = 'text-foreground';
+            if (cciValue !== null && !isNaN(cciValue)) {
+              if (cciValue > 100) {
+                cciValueColorClass = 'text-green-300'; // Brighter green (>100)
+              } else if (cciValue > 40) {
+                cciValueColorClass = 'text-green-400'; // Green (>40 and <=100)
+              } else if (cciValue > 0) {
+                cciValueColorClass = 'text-green-500'; // Light green (>0 and <=40)
+              } else if (cciValue >= -40) {
+                cciValueColorClass = 'text-red-500'; // Light red (<0 and >= -40)
+              } else if (cciValue >= -100) {
+                cciValueColorClass = 'text-red-400'; // Red (<-40 and >= -100)
               } else {
-                bjValueColorClass = 'text-red-300'; // Brighter red (<-40)
+                cciValueColorClass = 'text-red-300'; // Brighter red (<-100)
               }
             }
             
-            // Calculate Area with text labels
-            let areaDisplay = '-';
-            let areaClass = 'text-muted-foreground';
-            let areaValue = ''; // For filtering
-            if (!isNaN(bjTsi)) {
-              if (bjTsi > 40) {
-                areaDisplay = 'Strong Bullish';
-                areaValue = 'strong_bullish';
-                areaClass = 'text-green-400 font-bold';
-              } else if (bjTsi >= 15) {
-                areaDisplay = 'Bullish';
-                areaValue = 'bullish';
-                areaClass = 'text-green-500 font-semibold';
-              } else if (bjTsi >= 0) {
-                areaDisplay = 'Light Bullish';
-                areaValue = 'light_bullish';
-                areaClass = 'text-lime-400 font-semibold';
-              } else if (bjTsi >= -15) {
-                areaDisplay = 'Light Bearish';
-                areaValue = 'light_bearish';
-                areaClass = 'text-orange-400 font-semibold';
-              } else if (bjTsi >= -40) {
-                areaDisplay = 'Bearish';
-                areaValue = 'bearish';
-                areaClass = 'text-red-500 font-semibold';
+            // CCI MA Value color coding
+            let cciMAValueColorClass = 'text-foreground';
+            if (cciMAValue !== null && !isNaN(cciMAValue)) {
+              if (cciMAValue > 100) {
+                cciMAValueColorClass = 'text-green-300'; // Brighter green (>100)
+              } else if (cciMAValue > 40) {
+                cciMAValueColorClass = 'text-green-400'; // Green (>40 and <=100)
+              } else if (cciMAValue > 0) {
+                cciMAValueColorClass = 'text-green-500'; // Light green (>0 and <=40)
+              } else if (cciMAValue >= -40) {
+                cciMAValueColorClass = 'text-red-500'; // Light red (<0 and >= -40)
+              } else if (cciMAValue >= -100) {
+                cciMAValueColorClass = 'text-red-400'; // Red (<-40 and >= -100)
               } else {
-                areaDisplay = 'Strong Bearish';
-                areaValue = 'strong_bearish';
-                areaClass = 'text-red-400 font-bold';
+                cciMAValueColorClass = 'text-red-300'; // Brighter red (<-100)
               }
             }
             
-            // V Dir and S Dir
-            const vDirArrow = bjTsiIsBull ? '↑' : '↓';
-            const vDirClass = bjTsiIsBull ? 'text-green-400' : 'text-red-400';
-            const sDirArrow = bjTslIsBull ? '↑' : '↓';
-            const sDirClass = bjTslIsBull ? 'text-green-400' : 'text-red-400';
-            // Keep text versions for tooltip
-            const vDirDisplay = bjTsiIsBull ? 'Up' : 'Down';
-            const sDirDisplay = bjTslIsBull ? 'Up' : 'Down';
+            // CCI Direction arrows
+            const cciDirArrow = cciDirection === 'up' ? '↑' : cciDirection === 'down' ? '↓' : '→';
+            const cciDirClass = cciDirection === 'up' ? 'text-green-400' : cciDirection === 'down' ? 'text-red-400' : 'text-gray-400';
+            const cciDirDisplay = cciDirection === 'up' ? 'Up' : cciDirection === 'down' ? 'Down' : 'Flat';
             
-            // ===== BJ TSI OVERVIEW LOGIC =====
-            // Combines all signals into a single actionable overview (based on TSI value and direction)
-            let bjOverviewDisplay = '-';
-            let bjOverviewClass = 'text-muted-foreground';
+            // CCI MA Direction (calculate from previous value if available, or use CCI direction as fallback)
+            // For now, we'll use the CCI direction as a proxy for MA direction
+            const cciMADirArrow = cciDirArrow; // Same as CCI direction for now
+            const cciMADirClass = cciDirClass; // Same as CCI direction for now
             
-            if (bjTsi !== null && !isNaN(bjTsi)) {
-              const vUp = bjTsiIsBull;
-              const sUp = bjTslIsBull;
-              const bothUp = vUp && sUp;
-              const bothDown = !vUp && !sUp;
-              const vUpSDown = vUp && !sUp;  // V turning up while S still down (early bullish)
-              const vDownSUp = !vUp && sUp;  // V turning down while S still up (early bearish)
+            // ORB calculations
+            const nyOrbHigh = alert.nyOrbHigh !== null && alert.nyOrbHigh !== undefined ? parseFloat(alert.nyOrbHigh) : null;
+            const nyOrbLow = alert.nyOrbLow !== null && alert.nyOrbLow !== undefined ? parseFloat(alert.nyOrbLow) : null;
+            const nyOrbMid = alert.nyOrbMid !== null && alert.nyOrbMid !== undefined ? parseFloat(alert.nyOrbMid) : null;
+            const nyOrbStatus = alert.nyOrbStatus || null;
+            
+            const londonOrbHigh = alert.londonOrbHigh !== null && alert.londonOrbHigh !== undefined ? parseFloat(alert.londonOrbHigh) : null;
+            const londonOrbLow = alert.londonOrbLow !== null && alert.londonOrbLow !== undefined ? parseFloat(alert.londonOrbLow) : null;
+            const londonOrbMid = alert.londonOrbMid !== null && alert.londonOrbMid !== undefined ? parseFloat(alert.londonOrbMid) : null;
+            const londonOrbStatus = alert.londonOrbStatus || null;
+            
+            // Determine ORB status display (prefer NY, fallback to London)
+            const orbStatus = nyOrbStatus || londonOrbStatus;
+            let orbStatusDisplay = '-';
+            let orbStatusClass = 'text-muted-foreground';
+            
+            if (orbStatus) {
+              if (orbStatus === 'within_upper') {
+                orbStatusDisplay = 'Upper Half';
+                orbStatusClass = 'text-green-400 font-semibold';
+              } else if (orbStatus === 'within_lower') {
+                orbStatusDisplay = 'Lower Half';
+                orbStatusClass = 'text-red-400 font-semibold';
+              } else if (orbStatus === 'outside_above') {
+                orbStatusDisplay = 'Above ORB';
+                orbStatusClass = 'text-green-300 font-bold';
+              } else if (orbStatus === 'outside_below') {
+                orbStatusDisplay = 'Below ORB';
+                orbStatusClass = 'text-red-300 font-bold';
+              }
+            }
+            
+            // ===== CCI OVERVIEW LOGIC =====
+            // Combines CCI value and direction into actionable signals
+            let cciOverviewDisplay = '-';
+            let cciOverviewClass = 'text-muted-foreground';
+            
+            if (cciValue !== null && !isNaN(cciValue) && cciDirection) {
+              const isUp = cciDirection === 'up';
+              const isDown = cciDirection === 'down';
               
-              // Area checks based on TSI value
-              const isStrongBull = bjTsi > 40;
-              const isBullish = bjTsi >= 15;
-              const isStrongBear = bjTsi < -40;
-              const isBearish = bjTsi <= -15;
-              const isNeutralArea = bjTsi > -15 && bjTsi < 15;
+              // Extreme levels
+              const isExtremeBull = cciValue > 100;
+              const isExtremeBear = cciValue < -100;
+              const isStrongBull = cciValue > 40 && cciValue <= 100;
+              const isStrongBear = cciValue < -40 && cciValue >= -100;
+              const isBullish = cciValue > 0 && cciValue <= 40;
+              const isBearish = cciValue < 0 && cciValue >= -40;
               
-              // Priority 1: Strong area signals
-              if (isStrongBull && bothUp) {
-                bjOverviewDisplay = 'Strong Bull';
-                bjOverviewClass = 'text-green-400 font-bold';
+              // Priority 1: Extreme Bullish/Bearish (above 100 up / below -100 down)
+              if (isExtremeBull && isUp) {
+                cciOverviewDisplay = 'Extreme Bullish';
+                cciOverviewClass = 'text-green-300 font-bold animate-pulse';
               }
-              else if (isStrongBear && bothDown) {
-                bjOverviewDisplay = 'Strong Bear';
-                bjOverviewClass = 'text-red-400 font-bold';
+              else if (isExtremeBear && isDown) {
+                cciOverviewDisplay = 'Extreme Bearish';
+                cciOverviewClass = 'text-red-300 font-bold animate-pulse';
               }
-              // Priority 2: Reveal signals (early reversal - KEY SIGNALS)
-              else if (isBearish && vUpSDown) {
-                bjOverviewDisplay = 'Reveal Long';
-                bjOverviewClass = 'text-lime-400 font-bold animate-pulse';
+              // Priority 2: Strong Bullish/Bearish (40-100 up / -40 to -100 down)
+              else if (isStrongBull && isUp) {
+                cciOverviewDisplay = 'Strong Bullish';
+                cciOverviewClass = 'text-green-400 font-bold';
               }
-              else if (isBullish && vDownSUp) {
-                bjOverviewDisplay = 'Reveal Short';
-                bjOverviewClass = 'text-orange-400 font-bold animate-pulse';
+              else if (isStrongBear && isDown) {
+                cciOverviewDisplay = 'Strong Bearish';
+                cciOverviewClass = 'text-red-400 font-bold';
               }
-              // Priority 3: Trending with momentum
-              else if (bothUp && isBullish) {
-                bjOverviewDisplay = 'Bullish';
-                bjOverviewClass = 'text-green-500 font-semibold';
+              // Priority 3: Bullish/Bearish with momentum (0-40 up / 0 to -40 down)
+              else if (isBullish && isUp) {
+                cciOverviewDisplay = 'Bullish';
+                cciOverviewClass = 'text-green-500 font-semibold';
               }
-              else if (bothDown && isBearish) {
-                bjOverviewDisplay = 'Bearish';
-                bjOverviewClass = 'text-red-500 font-semibold';
+              else if (isBearish && isDown) {
+                cciOverviewDisplay = 'Bearish';
+                cciOverviewClass = 'text-red-500 font-semibold';
               }
-              // Priority 4: Building/Recovering (V up, S down - early reversal signs)
-              else if (vUpSDown && isBearish) {
-                bjOverviewDisplay = 'Recovering';
-                bjOverviewClass = 'text-cyan-400 font-semibold';
+              // Priority 4: Reversal signals (extreme but reversing)
+              else if (isExtremeBull && isDown) {
+                cciOverviewDisplay = 'Reversing Down';
+                cciOverviewClass = 'text-yellow-400 font-bold animate-pulse';
               }
-              else if (vUpSDown && isNeutralArea) {
-                bjOverviewDisplay = 'Building Long';
-                bjOverviewClass = 'text-lime-500';
+              else if (isExtremeBear && isUp) {
+                cciOverviewDisplay = 'Reversing Up';
+                cciOverviewClass = 'text-cyan-400 font-bold animate-pulse';
               }
-              // Priority 5: Weakening/Fading (V down, S up - losing momentum)
-              else if (vDownSUp && isBullish) {
-                bjOverviewDisplay = 'Weakening';
-                bjOverviewClass = 'text-yellow-400 font-semibold';
+              // Priority 5: Weak signals (strong but wrong direction)
+              else if (isStrongBull && isDown) {
+                cciOverviewDisplay = 'Weakening';
+                cciOverviewClass = 'text-yellow-500 font-semibold';
               }
-              else if (vDownSUp && isNeutralArea) {
-                bjOverviewDisplay = 'Fading';
-                bjOverviewClass = 'text-orange-400';
+              else if (isStrongBear && isUp) {
+                cciOverviewDisplay = 'Recovering';
+                cciOverviewClass = 'text-cyan-500 font-semibold';
               }
-              // Priority 7: Simple trend following
-              else if (bothUp) {
-                bjOverviewDisplay = 'Trending Up';
-                bjOverviewClass = 'text-green-400';
+              // Priority 6: Neutral trending
+              else if (isUp) {
+                cciOverviewDisplay = 'Trending Up';
+                cciOverviewClass = 'text-green-400';
               }
-              else if (bothDown) {
-                bjOverviewDisplay = 'Trending Down';
-                bjOverviewClass = 'text-red-400';
+              else if (isDown) {
+                cciOverviewDisplay = 'Trending Down';
+                cciOverviewClass = 'text-red-400';
               }
-              // Default: Mixed/Consolidating
+              // Default: Mixed/Neutral
               else {
-                bjOverviewDisplay = '↔️ Mixed';
-                bjOverviewClass = 'text-gray-400';
+                cciOverviewDisplay = '↔️ Neutral';
+                cciOverviewClass = 'text-gray-400';
               }
             }
             
@@ -6392,13 +6550,29 @@ Use this to create a new preset filter button that applies these exact filter se
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
-              bj: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('bj')}" title="BJ TSI: Value=\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : 'N/A'}, V Dir=\${vDirDisplay}, S Dir=\${sDirDisplay}, Area=\${areaDisplay}">
+              cci: \`
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('cci')}" title="CCI: Value=\${cciValue !== null && !isNaN(cciValue) ? cciValue.toFixed(2) : 'N/A'}, MA=\${cciMAValue !== null && !isNaN(cciMAValue) ? cciMAValue.toFixed(2) : 'N/A'}, Dir=\${cciDirDisplay}">
                   <div class="space-y-1">
-                    <div class="text-sm \${bjOverviewClass}">\${bjOverviewDisplay}</div>
-                    <div class="font-mono text-foreground">Value: <span class="font-semibold \${bjValueColorClass}">\${bjTsi !== null && !isNaN(bjTsi) ? bjTsi.toFixed(2) : '-'}</span></div>
-                    <div class="text-foreground">V <span class="\${vDirClass}">\${vDirArrow}</span> | S <span class="\${sDirClass}">\${sDirArrow}</span></div>
-                    <div class="text-foreground">Area: <span class="\${areaClass}">\${areaDisplay}</span></div>
+                    <div class="text-sm \${cciOverviewClass}">\${cciOverviewDisplay}</div>
+                    <div class="font-mono text-foreground">CCI: <span class="font-semibold \${cciValueColorClass}">\${cciValue !== null && !isNaN(cciValue) ? cciValue.toFixed(2) : '-'}</span> <span class="\${cciDirClass}">\${cciDirArrow}</span></div>
+                    <div class="font-mono text-foreground">MA: <span class="font-semibold \${cciMAValueColorClass}">\${cciMAValue !== null && !isNaN(cciMAValue) ? cciMAValue.toFixed(2) : '-'}</span> <span class="\${cciMADirClass}">\${cciMADirArrow}</span></div>
+                  </div>
+                </td>
+              \`,
+              orb: \`
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}">
+                  <div class="space-y-1">
+                    \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
+                      <div class="text-xs text-muted-foreground mb-1">NY ORB</div>
+                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
+                      <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>
+                    \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
+                      <div class="text-xs text-muted-foreground mb-1">London ORB</div>
+                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
+                      <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>
+                    \` : '<div class="text-xs text-muted-foreground">-</div>'}
                   </div>
                 </td>
               \`,
