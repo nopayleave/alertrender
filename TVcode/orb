@@ -155,6 +155,12 @@ if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(
     if barstate.isconfirmed
         // Calculate ORB direction (price movement relative to previous bar)
         orb_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
+        
+        // Detect crossovers/crossunders of ORB high/low
+        orb_cross_high = ta.crossover(high, ny_high)
+        orb_cross_low = ta.crossunder(low, ny_low)
+        orb_crossover = orb_cross_high ? "cross_high" : orb_cross_low ? "cross_low" : "none"
+        
         jsonMsg = '{' +
           '"symbol": "' + syminfo.ticker + '",' +
           '"timeframe": "' + timeframe.period + '",' +
@@ -163,6 +169,7 @@ if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(
           '"orbType": "ny",' +
           '"orbStatus": "' + ny_orb_status + '",' +
           '"orbDirection": "' + orb_direction + '",' +
+          '"orbCrossover": "' + orb_crossover + '",' +
           '"orbHigh": ' + str.tostring(ny_high) + ',' +
           '"orbLow": ' + str.tostring(ny_low) + ',' +
           '"orbMid": ' + str.tostring(ny_mid) + '}'

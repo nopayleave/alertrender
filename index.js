@@ -1247,6 +1247,7 @@ app.post('/webhook', (req, res) => {
       orbType: alert.orbType, // "london" or "ny"
       orbStatus: alert.orbStatus, // "within_upper", "within_lower", "outside_above", "outside_below"
       orbDirection: alert.orbDirection || null, // "up", "down", or "flat"
+      orbCrossover: alert.orbCrossover || null, // "cross_high", "cross_low", or "none"
       orbHigh: alert.orbHigh,
       orbLow: alert.orbLow,
       orbMid: alert.orbMid,
@@ -1268,12 +1269,14 @@ app.post('/webhook', (req, res) => {
       if (alert.orbType === 'london') {
         alerts[existingIndex].londonOrbStatus = orbData.orbStatus
         alerts[existingIndex].londonOrbDirection = orbData.orbDirection || null
+        alerts[existingIndex].londonOrbCrossover = orbData.orbCrossover || null
         alerts[existingIndex].londonOrbHigh = orbData.orbHigh
         alerts[existingIndex].londonOrbLow = orbData.orbLow
         alerts[existingIndex].londonOrbMid = orbData.orbMid
       } else if (alert.orbType === 'ny') {
         alerts[existingIndex].nyOrbStatus = orbData.orbStatus
         alerts[existingIndex].nyOrbDirection = orbData.orbDirection || null
+        alerts[existingIndex].nyOrbCrossover = orbData.orbCrossover || null
         alerts[existingIndex].nyOrbHigh = orbData.orbHigh
         alerts[existingIndex].nyOrbLow = orbData.orbLow
         alerts[existingIndex].nyOrbMid = orbData.orbMid
@@ -1291,11 +1294,15 @@ app.post('/webhook', (req, res) => {
       // Add ORB data based on type
       if (alert.orbType === 'london') {
         newAlert.londonOrbStatus = orbData.orbStatus
+        newAlert.londonOrbDirection = orbData.orbDirection || null
+        newAlert.londonOrbCrossover = orbData.orbCrossover || null
         newAlert.londonOrbHigh = orbData.orbHigh
         newAlert.londonOrbLow = orbData.orbLow
         newAlert.londonOrbMid = orbData.orbMid
       } else if (alert.orbType === 'ny') {
         newAlert.nyOrbStatus = orbData.orbStatus
+        newAlert.nyOrbDirection = orbData.orbDirection || null
+        newAlert.nyOrbCrossover = orbData.orbCrossover || null
         newAlert.nyOrbHigh = orbData.orbHigh
         newAlert.nyOrbLow = orbData.orbLow
         newAlert.nyOrbMid = orbData.orbMid
@@ -1694,6 +1701,7 @@ app.post('/webhook', (req, res) => {
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.londonOrbStatus = londonOrbInfo.orbStatus
         alertData.londonOrbDirection = londonOrbInfo.orbDirection || null
+        alertData.londonOrbCrossover = londonOrbInfo.orbCrossover || null
         alertData.londonOrbHigh = londonOrbInfo.orbHigh
         alertData.londonOrbLow = londonOrbInfo.orbLow
         alertData.londonOrbMid = londonOrbInfo.orbMid
@@ -1710,6 +1718,7 @@ app.post('/webhook', (req, res) => {
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.nyOrbStatus = nyOrbInfo.orbStatus
         alertData.nyOrbDirection = nyOrbInfo.orbDirection || null
+        alertData.nyOrbCrossover = nyOrbInfo.orbCrossover || null
         alertData.nyOrbHigh = nyOrbInfo.orbHigh
         alertData.nyOrbLow = nyOrbInfo.orbLow
         alertData.nyOrbMid = nyOrbInfo.orbMid
@@ -6211,6 +6220,11 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
+            // Get ORB crossover from alert data (prefer NY, fallback to London)
+            const nyOrbCrossover = alert.nyOrbCrossover || null;
+            const londonOrbCrossover = alert.londonOrbCrossover || null;
+            const orbCrossover = nyOrbCrossover || londonOrbCrossover;
+            
             // Build d2 cell HTML string (to avoid template literal nesting issues)  
             if (!d2CellHtml) {
             let chartHtml = miniChartSvg || ''
@@ -6317,7 +6331,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               orb: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Dir=\${orbDirection || 'N/A'}">
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Dir=\${orbDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
                   <div class="space-y-1">
                     \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
@@ -6325,6 +6339,7 @@ Use this to create a new preset filter button that applies these exact filter se
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
@@ -6332,6 +6347,7 @@ Use this to create a new preset filter button that applies these exact filter se
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : '<div class="text-xs text-muted-foreground">-</div>'}
                   </div>
