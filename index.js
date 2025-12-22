@@ -3607,6 +3607,9 @@ app.get('/', (req, res) => {
         
         // Track previous prices for price direction calculation (fallback)
         let previousPrices = {};
+        
+        // Track previous ORB crossover states to detect new crossovers
+        let previousOrbCrossovers = {}; // { symbol: { ny: 'none'|'cross_high'|'cross_low', london: 'none'|'cross_high'|'cross_low' } }
 
         // Column order - stored in localStorage
         const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
