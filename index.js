@@ -6966,6 +6966,27 @@ Use this to create a new preset filter button that applies these exact filter se
             renderNotificationCenter();
           }
           
+          // Add to history
+          orbCrossoverHistory.unshift({
+            symbol: symbol,
+            orbType: orbType,
+            crossover: crossover,
+            price: price,
+            orbHigh: orbHigh,
+            orbLow: orbLow,
+            timestamp: Date.now()
+          });
+          
+          // Keep only last 100 entries
+          if (orbCrossoverHistory.length > 100) {
+            orbCrossoverHistory = orbCrossoverHistory.slice(0, 100);
+          }
+          
+          // Update history display if open
+          if (document.getElementById('orbHistoryOverlay').classList.contains('open')) {
+            renderOrbHistory();
+          }
+          
           // Auto-remove after 5 seconds
           setTimeout(() => {
             removeNotification(notificationId);
@@ -7147,28 +7168,6 @@ Use this to configure which ORB crossover types trigger toast notifications.\`;
               </div>
             \`;
           }).join('');
-        }
-          
-          // Add to history
-          orbCrossoverHistory.unshift({
-            symbol: symbol,
-            orbType: orbType,
-            crossover: crossover,
-            price: price,
-            orbHigh: orbHigh,
-            orbLow: orbLow,
-            timestamp: Date.now()
-          });
-          
-          // Keep only last 100 entries
-          if (orbCrossoverHistory.length > 100) {
-            orbCrossoverHistory = orbCrossoverHistory.slice(0, 100);
-          }
-          
-          // Update history display if open
-          if (document.getElementById('orbHistoryOverlay').classList.contains('open')) {
-            renderOrbHistory();
-          }
         }
         
         // Toggle ORB history overlay
