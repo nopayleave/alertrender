@@ -3385,6 +3385,94 @@ app.get('/', (req, res) => {
           border-color: rgba(59, 130, 246, 0.6);
           color: #60a5fa;
         }
+        /* Filter chip colors for different crossover types */
+        .orb-filter-all {
+          border-color: rgba(156, 163, 175, 0.3);
+          color: hsl(215 20.2% 65.1%);
+        }
+        .orb-filter-all.active {
+          background: rgba(156, 163, 175, 0.2);
+          border-color: rgba(156, 163, 175, 0.5);
+          color: #d1d5db;
+        }
+        .orb-filter-cross-high {
+          border-color: rgba(34, 197, 94, 0.4);
+          color: #4ade80;
+        }
+        .orb-filter-cross-high:hover {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(34, 197, 94, 0.5);
+        }
+        .orb-filter-cross-high.active {
+          background: rgba(34, 197, 94, 0.25);
+          border-color: rgba(34, 197, 94, 0.6);
+          color: #22c55e;
+        }
+        .orb-filter-cross-low {
+          border-color: rgba(239, 68, 68, 0.4);
+          color: #f87171;
+        }
+        .orb-filter-cross-low:hover {
+          background: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.5);
+        }
+        .orb-filter-cross-low.active {
+          background: rgba(239, 68, 68, 0.25);
+          border-color: rgba(239, 68, 68, 0.6);
+          color: #ef4444;
+        }
+        .orb-filter-cross-bottom {
+          border-color: rgba(74, 222, 128, 0.4);
+          color: #4ade80;
+        }
+        .orb-filter-cross-bottom:hover {
+          background: rgba(74, 222, 128, 0.1);
+          border-color: rgba(74, 222, 128, 0.5);
+        }
+        .orb-filter-cross-bottom.active {
+          background: rgba(74, 222, 128, 0.25);
+          border-color: rgba(74, 222, 128, 0.6);
+          color: #4ade80;
+        }
+        .orb-filter-cross-high-down {
+          border-color: rgba(248, 113, 113, 0.4);
+          color: #f87171;
+        }
+        .orb-filter-cross-high-down:hover {
+          background: rgba(248, 113, 113, 0.1);
+          border-color: rgba(248, 113, 113, 0.5);
+        }
+        .orb-filter-cross-high-down.active {
+          background: rgba(248, 113, 113, 0.25);
+          border-color: rgba(248, 113, 113, 0.6);
+          color: #f87171;
+        }
+        .orb-filter-cross-mid-up {
+          border-color: rgba(250, 204, 21, 0.4);
+          color: #facc15;
+        }
+        .orb-filter-cross-mid-up:hover {
+          background: rgba(250, 204, 21, 0.1);
+          border-color: rgba(250, 204, 21, 0.5);
+        }
+        .orb-filter-cross-mid-up.active {
+          background: rgba(250, 204, 21, 0.25);
+          border-color: rgba(250, 204, 21, 0.6);
+          color: #facc15;
+        }
+        .orb-filter-cross-mid-down {
+          border-color: rgba(251, 146, 60, 0.4);
+          color: #fb923c;
+        }
+        .orb-filter-cross-mid-down:hover {
+          background: rgba(251, 146, 60, 0.1);
+          border-color: rgba(251, 146, 60, 0.5);
+        }
+        .orb-filter-cross-mid-down.active {
+          background: rgba(251, 146, 60, 0.25);
+          border-color: rgba(251, 146, 60, 0.6);
+          color: #fb923c;
+        }
         .orb-history-search-input {
           width: 100%;
           padding: 8px 12px;
@@ -3727,13 +3815,13 @@ app.get('/', (req, res) => {
             <div class="orb-history-filter-group">
               <label class="orb-history-filter-label">Crossover Type:</label>
               <div class="orb-history-filter-chips">
-                <button onclick="toggleOrbHistoryFilter('crossover', 'all', this)" class="orb-history-filter-chip active" data-filter="crossover" data-value="all">All</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high">Crossover High</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_low">Crossunder Low</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_bottom', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_bottom">Crossover Bottom</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high_down', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high_down">Crossunder High</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_up', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_mid_up">Crossover Mid</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_down', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_mid_down">Crossunder Mid</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'all', this)" class="orb-history-filter-chip orb-filter-all active" data-filter="crossover" data-value="all">All</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="crossover" data-value="cross_high">Crossover High</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="crossover" data-value="cross_low">Crossunder Low</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_bottom', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="crossover" data-value="cross_bottom">Crossover Bottom</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high_down', this)" class="orb-history-filter-chip orb-filter-cross-high-down" data-filter="crossover" data-value="cross_high_down">Crossunder High</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_up', this)" class="orb-history-filter-chip orb-filter-cross-mid-up" data-filter="crossover" data-value="cross_mid_up">Crossover Mid</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_down', this)" class="orb-history-filter-chip orb-filter-cross-mid-down" data-filter="crossover" data-value="cross_mid_down">Crossunder Mid</button>
               </div>
             </div>
           </div>
