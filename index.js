@@ -3231,6 +3231,124 @@ app.get('/', (req, res) => {
         .toast-close:hover {
           color: hsl(210 40% 98%);
         }
+        /* ORB History Overlay */
+        .orb-history-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 2000;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .orb-history-overlay.open {
+          opacity: 1;
+          visibility: visible;
+        }
+        .orb-history-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 100%;
+          max-width: 600px;
+          height: 100vh;
+          background: hsl(222.2 84% 4.9%);
+          border-left: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+          z-index: 2001;
+          transform: translateX(100%);
+          transition: transform 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .orb-history-panel.open {
+          transform: translateX(0);
+        }
+        .orb-history-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .orb-history-header h3 {
+          font-size: 18px;
+          font-weight: 600;
+          color: hsl(210 40% 98%);
+        }
+        .orb-history-close {
+          cursor: pointer;
+          color: hsl(215 20.2% 65.1%);
+          font-size: 24px;
+          line-height: 1;
+          padding: 4px;
+          transition: color 0.2s;
+        }
+        .orb-history-close:hover {
+          color: hsl(210 40% 98%);
+        }
+        .orb-history-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px;
+        }
+        .orb-history-item {
+          padding: 12px 16px;
+          margin-bottom: 8px;
+          background: hsl(217.2 32.6% 17.5%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          border-left: 4px solid;
+          transition: background 0.2s;
+        }
+        .orb-history-item:hover {
+          background: hsl(217.2 32.6% 20%);
+        }
+        .orb-history-item.cross-high {
+          border-left-color: #22c55e;
+        }
+        .orb-history-item.cross-low {
+          border-left-color: #ef4444;
+        }
+        .orb-history-item-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .orb-history-symbol {
+          font-weight: 600;
+          font-size: 16px;
+          color: hsl(210 40% 98%);
+        }
+        .orb-history-type {
+          font-size: 12px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          background: rgba(59, 130, 246, 0.2);
+          color: #60a5fa;
+        }
+        .orb-history-details {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          font-size: 13px;
+          color: hsl(215 20.2% 65.1%);
+        }
+        .orb-history-time {
+          font-size: 11px;
+          color: hsl(215 20.2% 50%);
+          margin-top: 4px;
+        }
+        .orb-history-empty {
+          text-align: center;
+          padding: 48px 24px;
+          color: hsl(215 20.2% 65.1%);
+        }
       </style>
     </head>
     <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
@@ -3255,6 +3373,10 @@ app.get('/', (req, res) => {
             <div class="flex gap-3 items-center">
               <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
                 <span id="viewIcon">📋</span>
+              </button>
+              <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
+                <span>📊</span>
+                <span>ORB History</span>
               </button>
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 <span id="notificationIcon">🔔</span>
@@ -3540,6 +3662,19 @@ app.get('/', (req, res) => {
       <!-- Toast Container -->
       <div id="toastContainer" class="toast-container"></div>
 
+      <!-- ORB History Overlay -->
+      <div id="orbHistoryOverlay" class="orb-history-overlay" onclick="closeOrbHistory()">
+        <div class="orb-history-panel" onclick="event.stopPropagation()">
+          <div class="orb-history-header">
+            <h3>ORB Crossover History</h3>
+            <button class="orb-history-close" onclick="closeOrbHistory()">×</button>
+          </div>
+          <div class="orb-history-content" id="orbHistoryContent">
+            <div class="orb-history-empty">No ORB crossovers recorded yet</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
         <div class="export-modal" onclick="event.stopPropagation()">
@@ -3610,6 +3745,9 @@ app.get('/', (req, res) => {
         
         // Track previous ORB crossover states to detect new crossovers
         let previousOrbCrossovers = {}; // { symbol: { ny: 'none'|'cross_high'|'cross_low', london: 'none'|'cross_high'|'cross_low' } }
+        
+        // ORB crossover history
+        let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
 
         // Column order - stored in localStorage
         const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
@@ -6531,6 +6669,85 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }, 300);
           }, 5000);
+          
+          // Add to history
+          orbCrossoverHistory.unshift({
+            symbol: symbol,
+            orbType: orbType,
+            crossover: crossover,
+            price: price,
+            orbHigh: orbHigh,
+            orbLow: orbLow,
+            timestamp: Date.now()
+          });
+          
+          // Keep only last 100 entries
+          if (orbCrossoverHistory.length > 100) {
+            orbCrossoverHistory = orbCrossoverHistory.slice(0, 100);
+          }
+          
+          // Update history display if open
+          if (document.getElementById('orbHistoryOverlay').classList.contains('open')) {
+            renderOrbHistory();
+          }
+        }
+        
+        // Toggle ORB history overlay
+        function toggleOrbHistory() {
+          const overlay = document.getElementById('orbHistoryOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          
+          if (overlay.classList.contains('open')) {
+            closeOrbHistory();
+          } else {
+            overlay.classList.add('open');
+            panel.classList.add('open');
+            renderOrbHistory();
+          }
+        }
+        
+        // Close ORB history overlay
+        function closeOrbHistory() {
+          const overlay = document.getElementById('orbHistoryOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          overlay.classList.remove('open');
+          panel.classList.remove('open');
+        }
+        
+        // Render ORB history list
+        function renderOrbHistory() {
+          const content = document.getElementById('orbHistoryContent');
+          if (!content) return;
+          
+          if (orbCrossoverHistory.length === 0) {
+            content.innerHTML = '<div class="orb-history-empty">No ORB crossovers recorded yet</div>';
+            return;
+          }
+          
+          content.innerHTML = orbCrossoverHistory.map(item => {
+            const isCrossHigh = item.crossover === 'cross_high';
+            const itemClass = isCrossHigh ? 'cross-high' : 'cross-low';
+            const crossoverText = isCrossHigh ? 'Crossed Above High' : 'Crossed Below Low';
+            const time = new Date(item.timestamp);
+            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            return \`
+              <div class="orb-history-item \${itemClass}">
+                <div class="orb-history-item-header">
+                  <span class="orb-history-symbol">\${item.symbol}</span>
+                  <span class="orb-history-type">\${item.orbType}</span>
+                </div>
+                <div class="orb-history-details">
+                  <div>\${crossoverText}</div>
+                  \${item.price ? \`<div>Price: $\${parseFloat(item.price).toFixed(2)}</div>\` : ''}
+                  \${item.orbHigh ? \`<div>ORB High: $\${parseFloat(item.orbHigh).toFixed(2)}</div>\` : ''}
+                  \${item.orbLow ? \`<div>ORB Low: $\${parseFloat(item.orbLow).toFixed(2)}</div>\` : ''}
+                </div>
+                <div class="orb-history-time">\${dateStr} at \${timeStr}</div>
+              </div>
+            \`;
+          }).join('');
         }
         
         async function fetchAlerts() {
