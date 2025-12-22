@@ -3314,35 +3314,28 @@ app.get('/', (req, res) => {
         .orb-history-item.cross-low {
           border-left-color: #ef4444;
         }
-        .orb-history-item-header {
+        .orb-history-item-content {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
+          gap: 8px;
+          flex-wrap: wrap;
         }
         .orb-history-symbol {
           font-weight: 600;
-          font-size: 16px;
+          font-size: 14px;
           color: hsl(210 40% 98%);
         }
-        .orb-history-type {
+        .orb-history-separator {
+          color: hsl(215 20.2% 50%);
           font-size: 12px;
-          padding: 4px 8px;
-          border-radius: 4px;
-          background: rgba(59, 130, 246, 0.2);
-          color: #60a5fa;
         }
-        .orb-history-details {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+        .orb-history-crossover {
           font-size: 13px;
           color: hsl(215 20.2% 65.1%);
         }
         .orb-history-time {
-          font-size: 11px;
+          font-size: 12px;
           color: hsl(215 20.2% 50%);
-          margin-top: 4px;
         }
         .orb-history-empty {
           text-align: center;
@@ -3735,26 +3728,12 @@ app.get('/', (req, res) => {
               <label class="orb-history-filter-label">Crossover Type:</label>
               <div class="orb-history-filter-chips">
                 <button onclick="toggleOrbHistoryFilter('crossover', 'all', this)" class="orb-history-filter-chip active" data-filter="crossover" data-value="all">All</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high">Cross Above</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_low">Cross Below</button>
-              </div>
-            </div>
-            <div class="orb-history-filter-group">
-              <label class="orb-history-filter-label">Symbol:</label>
-              <input 
-                type="text" 
-                id="orbHistorySymbolFilter" 
-                placeholder="Search symbol..." 
-                class="orb-history-search-input"
-                oninput="applyOrbHistoryFilters()"
-              />
-            </div>
-            <div class="orb-history-filter-group">
-              <label class="orb-history-filter-label">ORB Type:</label>
-              <div class="orb-history-filter-chips">
-                <button onclick="toggleOrbHistoryFilter('orbType', 'all', this)" class="orb-history-filter-chip active" data-filter="orbType" data-value="all">All</button>
-                <button onclick="toggleOrbHistoryFilter('orbType', 'NY', this)" class="orb-history-filter-chip" data-filter="orbType" data-value="NY">NY</button>
-                <button onclick="toggleOrbHistoryFilter('orbType', 'London', this)" class="orb-history-filter-chip" data-filter="orbType" data-value="London">London</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high">Crossover High</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_low">Crossunder Low</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_bottom', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_bottom">Crossover Bottom</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high_down', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_high_down">Crossunder High</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_up', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_mid_up">Crossover Mid</button>
+                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_down', this)" class="orb-history-filter-chip" data-filter="crossover" data-value="cross_mid_down">Crossunder Mid</button>
               </div>
             </div>
           </div>
@@ -3840,9 +3819,7 @@ app.get('/', (req, res) => {
         
         // ORB history filter state
         let orbHistoryFilters = {
-          crossover: 'all', // 'all', 'cross_high', 'cross_low'
-          symbol: '',
-          orbType: 'all' // 'all', 'NY', 'London'
+          crossover: 'all' // 'all', 'cross_high', 'cross_low', 'cross_bottom', 'cross_high_down', 'cross_mid_up', 'cross_mid_down'
         };
 
         // Column order - stored in localStorage
@@ -6667,7 +6644,7 @@ Use this to create a new preset filter button that applies these exact filter se
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
-                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
+                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
@@ -6675,7 +6652,7 @@ Use this to create a new preset filter button that applies these exact filter se
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
-                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
+                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : '<div class="text-xs text-muted-foreground">-</div>'}
                   </div>
@@ -6737,11 +6714,35 @@ Use this to create a new preset filter button that applies these exact filter se
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
           
-          const isCrossHigh = crossover === 'cross_high';
-          const toastClass = isCrossHigh ? 'cross-high' : 'cross-low';
-          const icon = isCrossHigh ? '🚀' : '🔻';
-          const title = isCrossHigh ? 'ORB High Breakout' : 'ORB Low Breakdown';
-          const message = \`\${symbol} (\${orbType}) crossed \${isCrossHigh ? 'above' : 'below'} ORB\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
+          // Determine if it's a bullish (up) or bearish (down) crossover
+          const isBullish = ['cross_high', 'cross_bottom', 'cross_mid_up'].includes(crossover);
+          const toastClass = isBullish ? 'cross-high' : 'cross-low';
+          const icon = isBullish ? '🚀' : '🔻';
+          
+          // Get title based on crossover type
+          let title = 'ORB Crossover';
+          switch(crossover) {
+            case 'cross_high':
+              title = 'ORB High Breakout';
+              break;
+            case 'cross_low':
+              title = 'ORB Low Breakdown';
+              break;
+            case 'cross_bottom':
+              title = 'ORB Bottom Breakout';
+              break;
+            case 'cross_high_down':
+              title = 'ORB High Breakdown';
+              break;
+            case 'cross_mid_up':
+              title = 'ORB Mid Breakout';
+              break;
+            case 'cross_mid_down':
+              title = 'ORB Mid Breakdown';
+              break;
+          }
+          
+          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
           
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
@@ -6826,12 +6827,6 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Apply ORB history filters
         function applyOrbHistoryFilters() {
-          // Get symbol filter from input
-          const symbolInput = document.getElementById('orbHistorySymbolFilter');
-          if (symbolInput) {
-            orbHistoryFilters.symbol = symbolInput.value.trim().toLowerCase();
-          }
-          
           // Render with filters
           renderOrbHistory();
         }
@@ -6853,16 +6848,6 @@ Use this to create a new preset filter button that applies these exact filter se
               return false;
             }
             
-            // Symbol filter
-            if (orbHistoryFilters.symbol && !item.symbol.toLowerCase().includes(orbHistoryFilters.symbol)) {
-              return false;
-            }
-            
-            // ORB type filter
-            if (orbHistoryFilters.orbType !== 'all' && item.orbType !== orbHistoryFilters.orbType) {
-              return false;
-            }
-            
             return true;
           });
           
@@ -6872,22 +6857,53 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           content.innerHTML = filteredHistory.map(item => {
-            const isCrossHigh = item.crossover === 'cross_high';
-            const itemClass = isCrossHigh ? 'cross-high' : 'cross-low';
-            const crossoverText = isCrossHigh ? 'Crossed Above High' : 'Crossed Below Low';
+            // Determine crossover text and class based on crossover type
+            let crossoverText = '';
+            let itemClass = 'cross-high';
+            
+            switch(item.crossover) {
+              case 'cross_high':
+                crossoverText = 'Crossed Above High';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_low':
+                crossoverText = 'Crossed Below Low';
+                itemClass = 'cross-low';
+                break;
+              case 'cross_bottom':
+                crossoverText = 'Crossed Above Bottom';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_high_down':
+                crossoverText = 'Crossed Below High';
+                itemClass = 'cross-low';
+                break;
+              case 'cross_mid_up':
+                crossoverText = 'Crossed Above Mid';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_mid_down':
+                crossoverText = 'Crossed Below Mid';
+                itemClass = 'cross-low';
+                break;
+              default:
+                crossoverText = 'Crossover';
+                itemClass = 'cross-high';
+            }
+            
             const time = new Date(item.timestamp);
-            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
             const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             
             return \`
               <div class="orb-history-item \${itemClass}">
-                <div class="orb-history-item-header">
+                <div class="orb-history-item-content">
                   <span class="orb-history-symbol">\${item.symbol}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-crossover">\${crossoverText}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
                 </div>
-                <div class="orb-history-details">
-                  <div>\${crossoverText}</div>
-                </div>
-                <div class="orb-history-time">\${dateStr} at \${timeStr}</div>
               </div>
             \`;
           }).join('');
