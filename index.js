@@ -1246,7 +1246,7 @@ app.post('/webhook', (req, res) => {
     const orbData = {
       orbType: alert.orbType, // "london" or "ny"
       orbStatus: alert.orbStatus, // "within_upper", "within_lower", "outside_above", "outside_below"
-      orbDirection: alert.orbDirection || null, // "up", "down", or "flat"
+      priceDirection: alert.priceDirection || null, // "up", "down", or "flat"
       orbCrossover: alert.orbCrossover || null, // "cross_high", "cross_low", or "none"
       orbHigh: alert.orbHigh,
       orbLow: alert.orbLow,
@@ -1268,14 +1268,14 @@ app.post('/webhook', (req, res) => {
       // Store both London and NY ORB data
       if (alert.orbType === 'london') {
         alerts[existingIndex].londonOrbStatus = orbData.orbStatus
-        alerts[existingIndex].londonOrbDirection = orbData.orbDirection || null
+        alerts[existingIndex].londonPriceDirection = orbData.priceDirection || null
         alerts[existingIndex].londonOrbCrossover = orbData.orbCrossover || null
         alerts[existingIndex].londonOrbHigh = orbData.orbHigh
         alerts[existingIndex].londonOrbLow = orbData.orbLow
         alerts[existingIndex].londonOrbMid = orbData.orbMid
       } else if (alert.orbType === 'ny') {
         alerts[existingIndex].nyOrbStatus = orbData.orbStatus
-        alerts[existingIndex].nyOrbDirection = orbData.orbDirection || null
+        alerts[existingIndex].nyPriceDirection = orbData.priceDirection || null
         alerts[existingIndex].nyOrbCrossover = orbData.orbCrossover || null
         alerts[existingIndex].nyOrbHigh = orbData.orbHigh
         alerts[existingIndex].nyOrbLow = orbData.orbLow
@@ -1294,14 +1294,14 @@ app.post('/webhook', (req, res) => {
       // Add ORB data based on type
       if (alert.orbType === 'london') {
         newAlert.londonOrbStatus = orbData.orbStatus
-        newAlert.londonOrbDirection = orbData.orbDirection || null
+        newAlert.londonPriceDirection = orbData.priceDirection || null
         newAlert.londonOrbCrossover = orbData.orbCrossover || null
         newAlert.londonOrbHigh = orbData.orbHigh
         newAlert.londonOrbLow = orbData.orbLow
         newAlert.londonOrbMid = orbData.orbMid
       } else if (alert.orbType === 'ny') {
         newAlert.nyOrbStatus = orbData.orbStatus
-        newAlert.nyOrbDirection = orbData.orbDirection || null
+        newAlert.nyPriceDirection = orbData.priceDirection || null
         newAlert.nyOrbCrossover = orbData.orbCrossover || null
         newAlert.nyOrbHigh = orbData.orbHigh
         newAlert.nyOrbLow = orbData.orbLow
@@ -1700,7 +1700,7 @@ app.post('/webhook', (req, res) => {
       const ageInMinutes = (Date.now() - londonOrbInfo.timestamp) / 60000
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.londonOrbStatus = londonOrbInfo.orbStatus
-        alertData.londonOrbDirection = londonOrbInfo.orbDirection || null
+        alertData.londonPriceDirection = londonOrbInfo.priceDirection || null
         alertData.londonOrbCrossover = londonOrbInfo.orbCrossover || null
         alertData.londonOrbHigh = londonOrbInfo.orbHigh
         alertData.londonOrbLow = londonOrbInfo.orbLow
@@ -1717,7 +1717,7 @@ app.post('/webhook', (req, res) => {
       const ageInMinutes = (Date.now() - nyOrbInfo.timestamp) / 60000
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.nyOrbStatus = nyOrbInfo.orbStatus
-        alertData.nyOrbDirection = nyOrbInfo.orbDirection || null
+        alertData.nyPriceDirection = nyOrbInfo.priceDirection || null
         alertData.nyOrbCrossover = nyOrbInfo.orbCrossover || null
         alertData.nyOrbHigh = nyOrbInfo.orbHigh
         alertData.nyOrbLow = nyOrbInfo.orbLow
@@ -1733,14 +1733,14 @@ app.post('/webhook', (req, res) => {
     if (alert.orbType !== undefined && alert.orbStatus !== undefined) {
       if (alert.orbType === 'london') {
         alertData.londonOrbStatus = alert.orbStatus
-        alertData.londonOrbDirection = alert.orbDirection || null
+        alertData.londonPriceDirection = alert.priceDirection || null
         alertData.londonOrbHigh = alert.orbHigh
         alertData.londonOrbLow = alert.orbLow
         alertData.londonOrbMid = alert.orbMid
         console.log(`✅ Using London ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
       } else if (alert.orbType === 'ny') {
         alertData.nyOrbStatus = alert.orbStatus
-        alertData.nyOrbDirection = alert.orbDirection || null
+        alertData.nyPriceDirection = alert.priceDirection || null
         alertData.nyOrbHigh = alert.orbHigh
         alertData.nyOrbLow = alert.orbLow
         alertData.nyOrbMid = alert.orbMid
@@ -3240,12 +3240,12 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     
-                    <!-- ORB Direction -->
+                    <!-- Price Direction -->
                     <div class="mb-0">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('orbDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbDirection" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('orbDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbDirection" data-value="down">↓</button>
+                        <button onclick="toggleFilterChip('priceDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="priceDirection" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('priceDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="priceDirection" data-value="down">↓</button>
                       </div>
                     </div>
                   </div>
@@ -3506,7 +3506,7 @@ app.get('/', (req, res) => {
         
         // ORB Filter state
         let orbFilterStatus = []; // ORB Status filter (multiple selections: within_lower, within_upper, outside_below, outside_above)
-        let orbFilterDirection = []; // ORB Direction filter (multiple selections: up, down)
+        let priceFilterDirection = []; // Price Direction filter (multiple selections: up, down)
         
         // Active preset filter (for CCI-based presets)
         let activePreset = null;
@@ -3516,6 +3516,9 @@ app.get('/', (req, res) => {
         
         // Track previous stochastic directions for flash detection
         let previousStochDirections = {};
+        
+        // Track previous prices for price direction calculation (fallback)
+        let previousPrices = {};
 
         // Column order - stored in localStorage
         const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
@@ -3942,7 +3945,7 @@ app.get('/', (req, res) => {
           }
           
           // Apply ORB Filters
-          if (orbFilterStatus.length > 0 || orbFilterDirection.length > 0) {
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
               const nyOrbStatus = alert.nyOrbStatus || null;
               const londonOrbStatus = alert.londonOrbStatus || null;
@@ -3953,22 +3956,22 @@ app.get('/', (req, res) => {
                 if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
               }
               
-              // ORB Direction filter
-              if (orbFilterDirection.length > 0) {
-                const nyOrbDirection = alert.nyOrbDirection || null;
-                const londonOrbDirection = alert.londonOrbDirection || null;
-                let orbDirection = nyOrbDirection || londonOrbDirection;
+              // Price Direction filter
+              if (priceFilterDirection.length > 0) {
+                const nyPriceDirection = alert.nyPriceDirection || null;
+                const londonPriceDirection = alert.londonPriceDirection || null;
+                let priceDirection = nyPriceDirection || londonPriceDirection;
                 
                 // Fallback: Calculate from price movement if not available
-                if (!orbDirection) {
+                if (!priceDirection) {
                   const currentPrice = alert.price ? parseFloat(alert.price) : null;
                   const prevPrice = previousPrices[alert.symbol];
                   if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
                   }
                 }
                 
-                if (!orbDirection || !orbFilterDirection.includes(orbDirection)) return false;
+                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
               }
               
               return true;
@@ -4550,7 +4553,7 @@ app.get('/', (req, res) => {
         function updateFilterArrays() {
           // ORB Filters
           orbFilterStatus = Array.from(document.querySelectorAll('[data-filter="orbStatus"].active')).map(chip => chip.dataset.value);
-          orbFilterDirection = Array.from(document.querySelectorAll('[data-filter="orbDirection"].active')).map(chip => chip.dataset.value);
+          priceFilterDirection = Array.from(document.querySelectorAll('[data-filter="priceDirection"].active')).map(chip => chip.dataset.value);
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
@@ -4563,14 +4566,14 @@ app.get('/', (req, res) => {
         // Clear ORB filters
         function clearOrbFilters() {
           // Remove active class from all ORB filter chips
-          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="orbDirection"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="priceDirection"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
           });
           
           orbFilterStatus = [];
-          orbFilterDirection = [];
+          priceFilterDirection = [];
           renderTable();
         }
         
@@ -5425,7 +5428,7 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           // Apply ORB Filters
-          if (orbFilterStatus.length > 0 || orbFilterDirection.length > 0) {
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
               const nyOrbStatus = alert.nyOrbStatus || null;
               const londonOrbStatus = alert.londonOrbStatus || null;
@@ -5436,22 +5439,22 @@ Use this to create a new preset filter button that applies these exact filter se
                 if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
               }
               
-              // ORB Direction filter
-              if (orbFilterDirection.length > 0) {
-                const nyOrbDirection = alert.nyOrbDirection || null;
-                const londonOrbDirection = alert.londonOrbDirection || null;
-                let orbDirection = nyOrbDirection || londonOrbDirection;
+              // Price Direction filter
+              if (priceFilterDirection.length > 0) {
+                const nyPriceDirection = alert.nyPriceDirection || null;
+                const londonPriceDirection = alert.londonPriceDirection || null;
+                let priceDirection = nyPriceDirection || londonPriceDirection;
                 
                 // Fallback: Calculate from price movement if not available
-                if (!orbDirection) {
+                if (!priceDirection) {
                   const currentPrice = alert.price ? parseFloat(alert.price) : null;
                   const prevPrice = previousPrices[alert.symbol];
                   if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
                   }
                 }
                 
-                if (!orbDirection || !orbFilterDirection.includes(orbDirection)) return false;
+                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
               }
               
               return true;
@@ -6206,17 +6209,17 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
-            // Get ORB direction from alert data (prefer NY, fallback to London)
-            const nyOrbDirection = alert.nyOrbDirection || null;
-            const londonOrbDirection = alert.londonOrbDirection || null;
-            let orbDirection = nyOrbDirection || londonOrbDirection;
+            // Get price direction from alert data (prefer NY, fallback to London)
+            const nyPriceDirection = alert.nyPriceDirection || null;
+            const londonPriceDirection = alert.londonPriceDirection || null;
+            let priceDirection = nyPriceDirection || londonPriceDirection;
             
-            // Fallback: Calculate ORB direction from price movement if not available
-            if (!orbDirection) {
+            // Fallback: Calculate price direction from price movement if not available
+            if (!priceDirection) {
               const currentPrice = alert.price ? parseFloat(alert.price) : null;
               const prevPrice = previousPrices[alert.symbol];
               if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
               }
             }
             
@@ -6331,14 +6334,14 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               orb: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Dir=\${orbDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Price Dir=\${priceDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
                   <div class="space-y-1">
                     \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
-                        \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                        \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
                         \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
@@ -6346,7 +6349,7 @@ Use this to create a new preset filter button that applies these exact filter se
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
-                        \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                        \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
                         \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (orbCrossover === 'cross_high' ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (orbCrossover === 'cross_high' ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : '<div class="text-xs text-muted-foreground">-</div>'}
