@@ -6563,12 +6563,10 @@ Use this to create a new preset filter button that applies these exact filter se
                 <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}">
                   <div class="space-y-1">
                     \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
-                      <div class="text-xs text-muted-foreground mb-1">NY ORB</div>
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
                       <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
-                      <div class="text-xs text-muted-foreground mb-1">London ORB</div>
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
                       <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>

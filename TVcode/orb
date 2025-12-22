@@ -149,10 +149,10 @@ if not na(ny_orb_status)
 
 // === Webhook Alerts ===
 // New York ORB alerts (only during session, after ORB period)
+// Send alerts every bar during session to monitor all symbols continuously
 if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
-    // Alert on status change or every bar if configured
-    shouldAlert = webhookFrequency == "All" or (barstate.isconfirmed and (ny_status_changed or na(prev_ny_status)))
-    if shouldAlert
+    // Alert every bar during session (for continuous monitoring of all symbols)
+    if barstate.isconfirmed
         jsonMsg = '{' +
           '"symbol": "' + syminfo.ticker + '",' +
           '"timeframe": "' + timeframe.period + '",' +
