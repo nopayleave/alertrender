@@ -3239,7 +3239,7 @@ app.get('/', (req, res) => {
           right: 0;
           bottom: 0;
           background: rgba(0, 0, 0, 0.5);
-          z-index: 2000;
+          z-index: 10000;
           opacity: 0;
           visibility: hidden;
           transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -3258,7 +3258,7 @@ app.get('/', (req, res) => {
           background: hsl(222.2 84% 4.9%);
           border-left: 1px solid rgba(255, 255, 255, 0.1);
           box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
-          z-index: 2001;
+          z-index: 10001;
           transform: translateX(100%);
           transition: transform 0.3s ease;
           display: flex;
@@ -3586,6 +3586,8 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbStatus" data-value="within_upper">Upper Half</button>
                         <button onclick="toggleFilterChip('orbStatus', 'outside_below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="orbStatus" data-value="outside_below">Below ORB</button>
                         <button onclick="toggleFilterChip('orbStatus', 'outside_above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="orbStatus" data-value="outside_above">Above ORB</button>
+                        <button onclick="toggleFilterChip('orbStatus', 'within_lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="orbStatus" data-value="within_lower">Below Mid</button>
+                        <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="orbStatus" data-value="within_upper">Above Mid</button>
                       </div>
                     </div>
                     
@@ -6951,27 +6953,27 @@ Use this to create a new preset filter button that applies these exact filter se
             
             switch(item.crossover) {
               case 'cross_high':
-                crossoverText = 'Crossed Above High';
+                crossoverText = '↑High';
                 itemClass = 'cross-high';
                 break;
               case 'cross_low':
-                crossoverText = 'Crossed Below Low';
+                crossoverText = '↓Low';
                 itemClass = 'cross-low';
                 break;
               case 'cross_bottom':
-                crossoverText = 'Crossed Above Bottom';
+                crossoverText = '↑Bottom';
                 itemClass = 'cross-high';
                 break;
               case 'cross_high_down':
-                crossoverText = 'Crossed Below High';
+                crossoverText = '↓High';
                 itemClass = 'cross-low';
                 break;
               case 'cross_mid_up':
-                crossoverText = 'Crossed Above Mid';
+                crossoverText = '↑Mid';
                 itemClass = 'cross-high';
                 break;
               case 'cross_mid_down':
-                crossoverText = 'Crossed Below Mid';
+                crossoverText = '↓Mid';
                 itemClass = 'cross-low';
                 break;
               default:
