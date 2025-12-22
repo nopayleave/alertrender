@@ -3907,6 +3907,9 @@ app.get('/', (req, res) => {
         // ORB crossover history
         let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
         
+        // Track previous preset filter matches to detect new matches
+        let previousPresetMatches = {}; // { symbol: ['down', 'up', 'trendDownBig'] }
+        
         // ORB history filter state
         let orbHistoryFilters = {
           crossover: 'all' // 'all', 'cross_high', 'cross_low', 'cross_bottom', 'cross_high_down', 'cross_mid_up', 'cross_mid_down'
@@ -6764,6 +6767,107 @@ Use this to create a new preset filter button that applies these exact filter se
           }).join('');
         }
 
+        // Check if alert matches any preset filter
+        function checkPresetMatches(alert) {
+          if (!alert || !alert.symbol) return [];
+          
+          const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
+          const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+          const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+          const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+          const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+          
+          const matches = [];
+          
+          // Check Down preset
+          if (d1Direction === 'down' && d2Direction === 'down') {
+            matches.push('down');
+          }
+          
+          // Check Up preset
+          if (d1Direction === 'up' && d2Direction === 'up') {
+            matches.push('up');
+          }
+          
+          // Check Trend Down Big preset
+          let matchesTrendDownBig = true;
+          if (d1Direction !== 'down') matchesTrendDownBig = false;
+          if (d2Direction !== 'down') matchesTrendDownBig = false;
+          if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 40) matchesTrendDownBig = false;
+          if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 26) matchesTrendDownBig = false;
+          if (percentChange === null || isNaN(percentChange)) {
+            matchesTrendDownBig = false;
+          } else {
+            const pctVal = percentChange;
+            if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
+              matchesTrendDownBig = false;
+            }
+          }
+          if (matchesTrendDownBig) {
+            matches.push('trendDownBig');
+          }
+          
+          return matches;
+        }
+        
+        // Show toast notification for preset filter match
+        function showPresetMatchToast(symbol, presetName, price) {
+          const toastContainer = document.getElementById('toastContainer');
+          if (!toastContainer) return;
+          
+          // Get preset display name and styling
+          let title = '';
+          let toastClass = '';
+          let icon = '';
+          
+          switch(presetName) {
+            case 'down':
+              title = 'Down Signal';
+              toastClass = 'cross-low';
+              icon = '🔻';
+              break;
+            case 'up':
+              title = 'Up Signal';
+              toastClass = 'cross-high';
+              icon = '🚀';
+              break;
+            case 'trendDownBig':
+              title = 'Trend Down Big';
+              toastClass = 'cross-low';
+              icon = '📉';
+              break;
+            default:
+              title = 'Preset Match';
+              toastClass = 'cross-high';
+              icon = '📊';
+          }
+          
+          const message = \`\${symbol} matches \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
+          
+          const toast = document.createElement('div');
+          toast.className = \`toast \${toastClass}\`;
+          toast.innerHTML = \`
+            <div class="toast-icon">\${icon}</div>
+            <div class="toast-content">
+              <div class="toast-title">\${title}</div>
+              <div class="toast-message">\${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+          \`;
+          
+          toastContainer.appendChild(toast);
+          
+          // Auto-remove after 5 seconds
+          setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => {
+              if (toast.parentElement) {
+                toast.remove();
+              }
+            }, 300);
+          }, 5000);
+        }
+        
         // Check for ORB crossovers and show toast notifications
         function checkOrbCrossover(alert) {
           if (!alert || !alert.symbol) return;
@@ -7004,10 +7108,32 @@ Use this to create a new preset filter button that applies these exact filter se
             const response = await fetch('/alerts');
             const data = await response.json();
             
-            // Check for ORB crossovers in the fetched data
+            // Check for ORB crossovers and preset matches in the fetched data
             if (Array.isArray(data)) {
               data.forEach(alert => {
                 checkOrbCrossover(alert);
+                
+                // Check preset filter matches
+                const currentMatches = checkPresetMatches(alert);
+                const symbol = alert.symbol;
+                
+                // Initialize previous matches for this symbol if not exists
+                if (!previousPresetMatches[symbol]) {
+                  previousPresetMatches[symbol] = [];
+                }
+                
+                const prevMatches = previousPresetMatches[symbol];
+                
+                // Check for new matches (presets that weren't matched before)
+                currentMatches.forEach(preset => {
+                  if (!prevMatches.includes(preset)) {
+                    // New match detected - show toast
+                    showPresetMatchToast(symbol, preset, alert.price);
+                  }
+                });
+                
+                // Update previous matches
+                previousPresetMatches[symbol] = currentMatches;
               });
             }
             
@@ -7044,11 +7170,35 @@ Use this to create a new preset filter button that applies these exact filter se
         eventSource.onmessage = function(event) {
           console.log('📡 Received real-time update:', event.data);
           
-          // Parse the event data to check for ORB crossovers
+          // Parse the event data to check for ORB crossovers and preset matches
           try {
             const update = JSON.parse(event.data);
             if (update.type === 'alert' && update.data) {
               checkOrbCrossover(update.data);
+              
+              // Check preset filter matches
+              const currentMatches = checkPresetMatches(update.data);
+              const symbol = update.data.symbol;
+              
+              if (symbol) {
+                // Initialize previous matches for this symbol if not exists
+                if (!previousPresetMatches[symbol]) {
+                  previousPresetMatches[symbol] = [];
+                }
+                
+                const prevMatches = previousPresetMatches[symbol];
+                
+                // Check for new matches (presets that weren't matched before)
+                currentMatches.forEach(preset => {
+                  if (!prevMatches.includes(preset)) {
+                    // New match detected - show toast
+                    showPresetMatchToast(symbol, preset, update.data.price);
+                  }
+                });
+                
+                // Update previous matches
+                previousPresetMatches[symbol] = currentMatches;
+              }
             }
           } catch (e) {
             // Not JSON or parse error, continue with normal flow
