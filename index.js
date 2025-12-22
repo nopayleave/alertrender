@@ -116,7 +116,7 @@ let previousQSValues = {} // Store previous QS values to detect changes
 let previousDirections = {} // Store previous D1-D8 directions to detect switches
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
-let bjTsiDataStorage = {} // Store BJ TSI data by symbol with timestamp
+let cciDataStorage = {} // Store CCI crossover data by symbol with timestamp
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
@@ -164,7 +164,7 @@ function saveDataToDatabase() {
         previousDirections,
         previousPrices,
         macdCrossingData,
-        bjTsiDataStorage,
+        cciDataStorage,
         soloStochDataStorage,
         dualStochDataStorage,
         dualStochHistory,
@@ -224,7 +224,7 @@ function loadDataFromDatabase() {
           case 'previousDirections': previousDirections = value; break
           case 'previousPrices': previousPrices = value; break
           case 'macdCrossingData': macdCrossingData = value; break
-          case 'bjTsiDataStorage': bjTsiDataStorage = value; break
+          case 'cciDataStorage': cciDataStorage = value; break
           case 'soloStochDataStorage': soloStochDataStorage = value; break
           case 'dualStochDataStorage': dualStochDataStorage = value; break
           case 'dualStochHistory': dualStochHistory = value; break
@@ -613,7 +613,7 @@ app.post('/webhook', (req, res) => {
   const isQuadStochD4Alert = alert.d4Signal !== undefined
   const isOctoStochAlert = alert.d8Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
-  const isBjTsiAlert = alert.bjTsi !== undefined
+  const isCciAlert = alert.cciCrossover !== undefined
   const isSoloStochAlert = alert.d2Signal === 'Solo'
   const isDualStochAlert = alert.d2Signal === 'Dual'
   
@@ -625,7 +625,7 @@ app.post('/webhook', (req, res) => {
     isQuadStochD4Alert,
     isOctoStochAlert,
     isMacdCrossingAlert,
-    isBjTsiAlert,
+    isCciAlert,
     isSoloStochAlert,
     isDualStochAlert,
     symbol: alert.symbol
@@ -1197,39 +1197,45 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with VWAP crossing`)
     }
-  } else if (isBjTsiAlert && !alert.price) {
-    // BJ TSI alert - store BJ TSI data with timestamp
-    bjTsiDataStorage[alert.symbol] = {
-      bjTsi: alert.bjTsi,
-      bjTsl: alert.bjTsl,
-      bjTsiIsBull: alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true',
-      bjTslIsBull: alert.bjTslIsBull === true || alert.bjTslIsBull === 'true',
+  } else if (isCciAlert) {
+    // CCI alert - store CCI crossover data with timestamp
+    const cciData = {
+      cciCrossover: alert.cciCrossover,
+      cciDirection: alert.cciDirection,
+      cciValue: alert.cciValue,
+      cciMAValue: alert.cciMAValue,
       timestamp: Date.now()
     }
-    console.log(`✅ BJ TSI data stored for ${alert.symbol}: TSI=${alert.bjTsi}, TSL=${alert.bjTsl}`)
+    
+    // Store in a data storage object (similar to bjTsiDataStorage pattern)
+    if (!cciDataStorage) cciDataStorage = {}
+    cciDataStorage[alert.symbol] = cciData
+    
+    console.log(`✅ CCI data stored for ${alert.symbol}: Crossover=${alert.cciCrossover}, Direction=${alert.cciDirection}, CCI=${alert.cciValue}, MA=${alert.cciMAValue}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
-      alerts[existingIndex].bjTsi = bjTsiDataStorage[alert.symbol].bjTsi
-      alerts[existingIndex].bjTsl = bjTsiDataStorage[alert.symbol].bjTsl
-      alerts[existingIndex].bjTsiIsBull = bjTsiDataStorage[alert.symbol].bjTsiIsBull
-      alerts[existingIndex].bjTslIsBull = bjTsiDataStorage[alert.symbol].bjTslIsBull
+      alerts[existingIndex].cciCrossover = cciData.cciCrossover
+      alerts[existingIndex].cciDirection = cciData.cciDirection
+      alerts[existingIndex].cciValue = cciData.cciValue
+      alerts[existingIndex].cciMAValue = cciData.cciMAValue
       alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with BJ TSI data`)
+      console.log(`✅ Updated existing alert for ${alert.symbol} with CCI data`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
-        bjTsi: bjTsiDataStorage[alert.symbol].bjTsi,
-        bjTsl: bjTsiDataStorage[alert.symbol].bjTsl,
-        bjTsiIsBull: bjTsiDataStorage[alert.symbol].bjTsiIsBull,
-        bjTslIsBull: bjTsiDataStorage[alert.symbol].bjTslIsBull,
+        price: alert.price || null,
+        cciCrossover: cciData.cciCrossover,
+        cciDirection: cciData.cciDirection,
+        cciValue: cciData.cciValue,
+        cciMAValue: cciData.cciMAValue,
         receivedAt: Date.now()
       }
       alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with BJ TSI data`)
+      console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
   } else if (isSoloStochAlert) {
     // Solo Stoch alert - store D2 data with timestamp
@@ -1588,30 +1594,30 @@ app.post('/webhook', (req, res) => {
       }
     }
     
-    // Check and add BJ TSI data if active (within last 60 minutes)
-    const bjTsiInfo = bjTsiDataStorage[alert.symbol]
-    if (bjTsiInfo) {
-      const ageInMinutes = (Date.now() - bjTsiInfo.timestamp) / 60000
+    // Check and add CCI data if active (within last 60 minutes)
+    const cciInfo = cciDataStorage[alert.symbol]
+    if (cciInfo) {
+      const ageInMinutes = (Date.now() - cciInfo.timestamp) / 60000
       if (ageInMinutes <= 60) {
-        // BJ TSI data is recent (within 60 minutes), merge it
-        alertData.bjTsi = bjTsiInfo.bjTsi
-        alertData.bjTsl = bjTsiInfo.bjTsl
-        alertData.bjTsiIsBull = bjTsiInfo.bjTsiIsBull
-        alertData.bjTslIsBull = bjTsiInfo.bjTslIsBull
-        console.log(`✅ Merged BJ TSI data for ${alert.symbol}: TSI=${bjTsiInfo.bjTsi}, TSL=${bjTsiInfo.bjTsl} (age: ${ageInMinutes.toFixed(1)} min)`)
+        // CCI data is recent (within 60 minutes), merge it
+        alertData.cciCrossover = cciInfo.cciCrossover
+        alertData.cciDirection = cciInfo.cciDirection
+        alertData.cciValue = cciInfo.cciValue
+        alertData.cciMAValue = cciInfo.cciMAValue
+        console.log(`✅ Merged CCI data for ${alert.symbol}: Crossover=${cciInfo.cciCrossover}, Direction=${cciInfo.cciDirection}, CCI=${cciInfo.cciValue} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
-        delete bjTsiDataStorage[alert.symbol]
-        console.log(`⏰ BJ TSI data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        delete cciDataStorage[alert.symbol]
+        console.log(`⏰ CCI data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     } else {
-      // If no stored BJ TSI data, check if this alert has BJ TSI data
-      if (alert.bjTsi !== undefined) {
-        alertData.bjTsi = alert.bjTsi
-        alertData.bjTsl = alert.bjTsl
-        alertData.bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true'
-        alertData.bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true'
-        console.log(`✅ Using BJ TSI data from alert for ${alert.symbol}: TSI=${alert.bjTsi}`)
+      // If no stored CCI data, check if this alert has CCI data
+      if (alert.cciCrossover !== undefined) {
+        alertData.cciCrossover = alert.cciCrossover
+        alertData.cciDirection = alert.cciDirection
+        alertData.cciValue = alert.cciValue
+        alertData.cciMAValue = alert.cciMAValue
+        console.log(`✅ Using CCI data from alert for ${alert.symbol}: Crossover=${alert.cciCrossover}`)
       }
     }
     
@@ -1773,7 +1779,7 @@ app.post('/webhook', (req, res) => {
                isQuadStochD4Alert ? 'quad_stoch_d4' :
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
-               isBjTsiAlert ? 'bj_tsi' :
+               isCciAlert ? 'cci' :
                isSoloStochAlert ? 'solo_stoch' : 
                isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
@@ -1837,7 +1843,7 @@ app.post('/reset-alerts', (req, res) => {
   previousDirections = {}
   previousPrices = {}
   macdCrossingData = {}
-  bjTsiDataStorage = {}
+  cciDataStorage = {}
   soloStochDataStorage = {}
   dualStochDataStorage = {}
   bigTrendDay = {}
