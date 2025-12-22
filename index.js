@@ -3516,6 +3516,10 @@ app.get('/', (req, res) => {
               <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
                 <span id="viewIcon">📋</span>
               </button>
+              <button id="notificationCenterToggle" onclick="toggleNotificationCenter()" class="inline-flex items-center gap-2 px-4 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="Notification Center">
+                <span>🔔</span>
+                <span id="notificationCenterBadge" class="hidden px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">0</span>
+              </button>
               <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
                 <span>📊</span>
                 <span>ORB History</span>
@@ -3588,17 +3592,17 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('orbStatus', 'outside_above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="orbStatus" data-value="outside_above">Above ORB</button>
                         <button onclick="toggleFilterChip('orbStatus', 'within_lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="orbStatus" data-value="within_lower">Below Mid</button>
                         <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="orbStatus" data-value="within_upper">Above Mid</button>
-                      </div>
                     </div>
-                    
+                  </div>
+              
                     <!-- Price Direction -->
                     <div class="mb-0">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price Direction</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
+                    <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('priceDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="priceDirection" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('priceDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="priceDirection" data-value="down">↓</button>
-                      </div>
                     </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -3731,6 +3735,14 @@ app.get('/', (req, res) => {
                     Export
                   </button>
                 </div>
+                
+                <!-- Notification Settings Button -->
+                <div class="mt-2">
+                  <button onclick="openNotificationSettings()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400 flex items-center justify-center gap-2">
+                    <span>🔔</span>
+                    Toast Settings
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -3833,19 +3845,82 @@ app.get('/', (req, res) => {
         </div>
       </div>
 
+      <!-- Notification Settings Modal -->
+      <div id="notificationSettingsOverlay" class="export-modal-overlay" onclick="closeNotificationSettings()">
+        <div class="export-modal" onclick="event.stopPropagation()">
+          <h3 class="text-lg font-semibold text-foreground mb-4">Toast Notification Settings</h3>
+          <div class="mb-4">
+            <p class="text-sm text-muted-foreground mb-4">Select which ORB crossover types should trigger toast notifications:</p>
+            <div class="space-y-3">
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossHigh" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↑High (Crossover High)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossLow" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↓Low (Crossunder Low)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossBottom" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↑Bottom (Crossover Bottom)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossHighDown" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↓High (Crossunder High)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossMidUp" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↑Mid (Crossover Mid)</span>
+              </label>
+              <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="notifCrossMidDown" class="w-5 h-5 rounded border-border/50 bg-card text-purple-500 focus:ring-purple-500/50" onchange="saveNotificationSettings()">
+                <span class="text-foreground">↓Mid (Crossunder Mid)</span>
+              </label>
+            </div>
+          </div>
+          <div class="flex gap-3 justify-end">
+            <button 
+              onclick="closeNotificationSettings()" 
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notification Center Overlay -->
+      <div id="notificationCenterOverlay" class="orb-history-overlay" onclick="closeNotificationCenter()">
+        <div class="orb-history-panel" onclick="event.stopPropagation()">
+          <div class="orb-history-header">
+            <h3>Notification Center</h3>
+            <button class="orb-history-close" onclick="closeNotificationCenter()">×</button>
+          </div>
+          <div class="orb-history-content" id="notificationCenterContent">
+            <div class="orb-history-empty">No active notifications</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
-        <div class="export-modal" onclick="event.stopPropagation()">
-          <h3 class="text-lg font-semibold text-foreground mb-4">Export Filter Settings</h3>
+        <div class="export-modal" onclick="event.stopPropagation()" style="max-width: 700px;">
+          <h3 class="text-lg font-semibold text-foreground mb-4">Export Signal Settings</h3>
           <div class="mb-4">
-            <label class="block text-sm font-medium text-muted-foreground mb-2">Preset Name</label>
+            <label class="block text-sm font-medium text-muted-foreground mb-2">Signal Name</label>
             <input 
               type="text" 
               id="exportPresetName" 
-              placeholder="Enter preset name..."
+              placeholder="e.g., Short Continue"
               class="w-full px-3 py-2 bg-card/80 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
               onkeydown="if(event.key === 'Enter') exportFilterSettings()"
             />
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-muted-foreground mb-2">Current Filter Settings</label>
+            <div id="exportFilterPreview" class="bg-card/40 border border-border/30 rounded-lg p-3 text-xs text-muted-foreground max-h-60 overflow-y-auto">
+              <!-- Will be populated by openExportModal -->
+            </div>
           </div>
           <div class="flex gap-3 justify-end">
             <button 
@@ -3858,7 +3933,7 @@ app.get('/', (req, res) => {
               onclick="exportFilterSettings()" 
               class="px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
             >
-              Done
+              Export
             </button>
           </div>
         </div>
@@ -3906,6 +3981,20 @@ app.get('/', (req, res) => {
         
         // ORB crossover history
         let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
+        
+        // Notification settings (stored in localStorage)
+        let notificationSettings = JSON.parse(localStorage.getItem('orbNotificationSettings')) || {
+          cross_high: true,
+          cross_low: true,
+          cross_bottom: true,
+          cross_high_down: true,
+          cross_mid_up: true,
+          cross_mid_down: true
+        };
+        
+        // Active notifications tracking (for notification center)
+        let activeNotifications = []; // Array of { id, symbol, orbType, crossover, price, timestamp, element }
+        let notificationIdCounter = 0;
         
         // ORB history filter state
         let orbHistoryFilters = {
@@ -4210,6 +4299,7 @@ app.get('/', (req, res) => {
           setupColumnDragAndDrop();
           initializeSliders();
           initializeView(); // Initialize view mode
+          updateNotificationCenterBadge(); // Initialize notification badge
         });
         
         // Initialize view mode
@@ -5279,7 +5369,7 @@ app.get('/', (req, res) => {
           updateFilterArrays();
           
           // Apply filters
-          filterAlerts();
+            filterAlerts();
         }
 
         // Export filter settings
@@ -5287,6 +5377,65 @@ app.get('/', (req, res) => {
           const overlay = document.getElementById('exportModalOverlay');
           const modal = overlay.querySelector('.export-modal');
           const input = document.getElementById('exportPresetName');
+          const preview = document.getElementById('exportFilterPreview');
+          
+          // Update filter arrays to get current state
+          updateFilterArrays();
+          
+          // Build preview of current filter settings
+          let previewText = [];
+          
+          // D1 Direction
+          if (stochFilterD1Direction.length > 0) {
+            previewText.push(\`D1 Direction: \${stochFilterD1Direction.join(', ')}\`);
+          }
+          
+          // D1 Value
+          if (stochFilterD1Value.active) {
+            previewText.push(\`D1 Value: \${stochFilterD1Value.min} - \${stochFilterD1Value.max}\`);
+          }
+          
+          // D2 Direction
+          if (stochFilterD2Direction.length > 0) {
+            previewText.push(\`D2 Direction: \${stochFilterD2Direction.join(', ')}\`);
+          }
+          
+          // D2 Value
+          if (stochFilterD2Value.active) {
+            previewText.push(\`D2 Value: \${stochFilterD2Value.min} - \${stochFilterD2Value.max}\`);
+          }
+          
+          // Diff
+          if (stochFilterDiff.active) {
+            previewText.push(\`Diff: \${stochFilterDiff.min} - \${stochFilterDiff.max}\`);
+          }
+          
+          // Trend Message
+          if (stochFilterTrendMessage.length > 0) {
+            previewText.push(\`Trend: \${stochFilterTrendMessage.join(', ')}\`);
+          }
+          
+          // Price %
+          if (stochFilterPercentChange.length > 0) {
+            previewText.push(\`Price %: \${stochFilterPercentChange.join(', ')}\`);
+          }
+          
+          // ORB Filters
+          if (orbFilterStatus.length > 0) {
+            previewText.push(\`ORB Status: \${orbFilterStatus.join(', ')}\`);
+          }
+          
+          if (priceFilterDirection.length > 0) {
+            previewText.push(\`Price Direction: \${priceFilterDirection.join(', ')}\`);
+          }
+          
+          if (previewText.length === 0) {
+            previewText.push('No filters active');
+          }
+          
+          if (preview) {
+            preview.innerHTML = previewText.map(line => \`<div class="mb-1">• \${line}</div>\`).join('');
+          }
           
           overlay.classList.add('open');
           modal.classList.add('open');
@@ -5326,22 +5475,61 @@ app.get('/', (req, res) => {
                 trendMessage: stochFilterTrendMessage,
                 percentChange: stochFilterPercentChange
               },
+              // ORB Filters
+              orb: {
+                orbStatus: orbFilterStatus,
+                priceDirection: priceFilterDirection
+              },
               // Search term
               search: searchTerm || null
             }
           };
           
-          // Format for AI to create preset button
-          const exportText = \`Preset Name: \${presetName}
+          // Create human-readable description
+          let description = [];
+          if (stochFilterD2Direction.includes('down') && stochFilterD2Value.active) {
+            description.push(\`D2 Direction: Down, D2 Value: \${stochFilterD2Value.min}-\${stochFilterD2Value.max}\`);
+          } else if (stochFilterD2Direction.includes('down')) {
+            description.push('D2 Direction: Down');
+          }
+          if (stochFilterD2Value.active && !stochFilterD2Direction.includes('down')) {
+            description.push(\`D2 Value: \${stochFilterD2Value.min}-\${stochFilterD2Value.max}\`);
+          }
+          if (stochFilterD1Direction.length > 0) {
+            description.push(\`D1 Direction: \${stochFilterD1Direction.join(', ')}\`);
+          }
+          if (stochFilterD1Value.active) {
+            description.push(\`D1 Value: \${stochFilterD1Value.min}-\${stochFilterD1Value.max}\`);
+          }
+          if (stochFilterDiff.active) {
+            description.push(\`Diff: \${stochFilterDiff.min}-\${stochFilterDiff.max}\`);
+          }
+          if (stochFilterTrendMessage.length > 0) {
+            description.push(\`Trend: \${stochFilterTrendMessage.join(', ')}\`);
+          }
+          if (stochFilterPercentChange.length > 0) {
+            description.push(\`Price %: \${stochFilterPercentChange.join(', ')}\`);
+          }
+          if (orbFilterStatus.length > 0) {
+            description.push(\`ORB Status: \${orbFilterStatus.join(', ')}\`);
+          }
+          if (priceFilterDirection.length > 0) {
+            description.push(\`Price Direction: \${priceFilterDirection.join(', ')}\`);
+          }
+          
+          // Format for export (both JSON and human-readable)
+          const exportText = \`Signal Name: \${presetName}
+Description: \${description.length > 0 ? description.join(', ') : 'No filters'}
 
-Filter Settings:
+Filter Settings (JSON):
 \${JSON.stringify(settings, null, 2)}
 
-Use this to create a new preset filter button that applies these exact filter settings.\`;
+Use this JSON to create a preset filter button that applies these exact filter settings.\`;
           
           // Copy to clipboard
           navigator.clipboard.writeText(exportText).then(() => {
-            alert('Filter settings copied to clipboard!');
+            const descText = description.length > 0 ? '\\n\\n' + description.join('\\n') : '';
+            alert(\`Signal "\${presetName}" exported to clipboard!\${descText}\`);
             closeExportModal();
           }).catch(err => {
             console.error('Failed to copy:', err);
@@ -5836,7 +6024,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 const nyPriceDirection = alert.nyPriceDirection || null;
                 const londonPriceDirection = alert.londonPriceDirection || null;
                 let priceDirection = nyPriceDirection || londonPriceDirection;
-                
+              
                 // Fallback: Calculate from price movement if not available
                 if (!priceDirection) {
                   const currentPrice = alert.price ? parseFloat(alert.price) : null;
@@ -5852,7 +6040,7 @@ Use this to create a new preset filter button that applies these exact filter se
               return true;
             });
           }
-          
+
           // Sort filtered data - starred items always come first
           if (currentSortField) {
             filteredData.sort((a, b) => {
@@ -6801,6 +6989,11 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Show toast notification for ORB crossover
         function showOrbCrossoverToast(symbol, orbType, crossover, price, orbHigh, orbLow) {
+          // Check if this crossover type is enabled in settings
+          if (!notificationSettings[crossover]) {
+            return; // Don't show toast if disabled
+          }
+          
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
           
@@ -6834,28 +7027,204 @@ Use this to create a new preset filter button that applies these exact filter se
           
           const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
           
+          const notificationId = notificationIdCounter++;
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
+          toast.dataset.notificationId = notificationId;
           toast.innerHTML = \`
             <div class="toast-icon">\${icon}</div>
             <div class="toast-content">
               <div class="toast-title">\${title}</div>
               <div class="toast-message">\${message}</div>
             </div>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            <button class="toast-close" onclick="removeNotification(\${notificationId})">×</button>
           \`;
           
           toastContainer.appendChild(toast);
           
+          // Track notification
+          const notificationData = {
+            id: notificationId,
+            symbol: symbol,
+            orbType: orbType,
+            crossover: crossover,
+            price: price,
+            timestamp: Date.now(),
+            element: toast
+          };
+          activeNotifications.push(notificationData);
+          updateNotificationCenterBadge();
+          
+          // Update notification center if open
+          if (document.getElementById('notificationCenterOverlay').classList.contains('open')) {
+            renderNotificationCenter();
+          }
+          
           // Auto-remove after 5 seconds
           setTimeout(() => {
-            toast.classList.add('hiding');
-            setTimeout(() => {
-              if (toast.parentElement) {
-                toast.remove();
-              }
-            }, 300);
+            removeNotification(notificationId);
           }, 5000);
+        }
+        
+        // Remove notification by ID
+        function removeNotification(notificationId) {
+          // Remove from active notifications
+          const index = activeNotifications.findIndex(n => n.id === notificationId);
+          if (index !== -1) {
+            const notification = activeNotifications[index];
+            // Remove from DOM
+            if (notification.element && notification.element.parentElement) {
+              notification.element.classList.add('hiding');
+              setTimeout(() => {
+                if (notification.element.parentElement) {
+                  notification.element.remove();
+                }
+              }, 300);
+            }
+            activeNotifications.splice(index, 1);
+          }
+          updateNotificationCenterBadge();
+          
+          // Update notification center if open
+          if (document.getElementById('notificationCenterOverlay').classList.contains('open')) {
+            renderNotificationCenter();
+          }
+        }
+        
+        // Update notification center badge count
+        function updateNotificationCenterBadge() {
+          const badge = document.getElementById('notificationCenterBadge');
+          if (badge) {
+            if (activeNotifications.length > 0) {
+              badge.textContent = activeNotifications.length;
+              badge.classList.remove('hidden');
+            } else {
+              badge.classList.add('hidden');
+            }
+          }
+        }
+        
+        // Open notification settings modal
+        function openNotificationSettings() {
+          const overlay = document.getElementById('notificationSettingsOverlay');
+          overlay.classList.add('open');
+          
+          // Load current settings into checkboxes
+          document.getElementById('notifCrossHigh').checked = notificationSettings.cross_high;
+          document.getElementById('notifCrossLow').checked = notificationSettings.cross_low;
+          document.getElementById('notifCrossBottom').checked = notificationSettings.cross_bottom;
+          document.getElementById('notifCrossHighDown').checked = notificationSettings.cross_high_down;
+          document.getElementById('notifCrossMidUp').checked = notificationSettings.cross_mid_up;
+          document.getElementById('notifCrossMidDown').checked = notificationSettings.cross_mid_down;
+        }
+        
+        // Close notification settings modal
+        function closeNotificationSettings() {
+          const overlay = document.getElementById('notificationSettingsOverlay');
+          overlay.classList.remove('open');
+        }
+        
+        // Save notification settings
+        function saveNotificationSettings() {
+          notificationSettings = {
+            cross_high: document.getElementById('notifCrossHigh').checked,
+            cross_low: document.getElementById('notifCrossLow').checked,
+            cross_bottom: document.getElementById('notifCrossBottom').checked,
+            cross_high_down: document.getElementById('notifCrossHighDown').checked,
+            cross_mid_up: document.getElementById('notifCrossMidUp').checked,
+            cross_mid_down: document.getElementById('notifCrossMidDown').checked
+          };
+          localStorage.setItem('orbNotificationSettings', JSON.stringify(notificationSettings));
+        }
+        
+        // Toggle notification center
+        function toggleNotificationCenter() {
+          const overlay = document.getElementById('notificationCenterOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          
+          if (overlay.classList.contains('open')) {
+            closeNotificationCenter();
+          } else {
+            overlay.classList.add('open');
+            panel.classList.add('open');
+            renderNotificationCenter();
+          }
+        }
+        
+        // Close notification center
+        function closeNotificationCenter() {
+          const overlay = document.getElementById('notificationCenterOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          overlay.classList.remove('open');
+          panel.classList.remove('open');
+        }
+        
+        // Render notification center
+        function renderNotificationCenter() {
+          const content = document.getElementById('notificationCenterContent');
+          if (!content) return;
+          
+          if (activeNotifications.length === 0) {
+            content.innerHTML = '<div class="orb-history-empty">No active notifications</div>';
+            return;
+          }
+          
+          // Sort by timestamp (newest first)
+          const sortedNotifications = [...activeNotifications].sort((a, b) => b.timestamp - a.timestamp);
+          
+          content.innerHTML = sortedNotifications.map(notif => {
+            // Determine crossover text and class
+            let crossoverText = '';
+            let itemClass = 'cross-high';
+            
+            switch(notif.crossover) {
+              case 'cross_high':
+                crossoverText = '↑High';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_low':
+                crossoverText = '↓Low';
+                itemClass = 'cross-low';
+                break;
+              case 'cross_bottom':
+                crossoverText = '↑Bottom';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_high_down':
+                crossoverText = '↓High';
+                itemClass = 'cross-low';
+                break;
+              case 'cross_mid_up':
+                crossoverText = '↑Mid';
+                itemClass = 'cross-high';
+                break;
+              case 'cross_mid_down':
+                crossoverText = '↓Mid';
+                itemClass = 'cross-low';
+                break;
+              default:
+                crossoverText = 'Crossover';
+                itemClass = 'cross-high';
+            }
+            
+            const time = new Date(notif.timestamp);
+            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            return \`
+              <div class="orb-history-item \${itemClass}">
+                <div class="orb-history-item-content">
+                  <span class="orb-history-symbol">\${notif.symbol}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-crossover">\${crossoverText}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
+                  <button onclick="removeNotification(\${notif.id})" class="ml-auto text-red-400 hover:text-red-300 text-xs px-2 py-1">Remove</button>
+                </div>
+              </div>
+            \`;
+          }).join('');
+        }
           
           // Add to history
           orbCrossoverHistory.unshift({
@@ -6998,7 +7367,7 @@ Use this to create a new preset filter button that applies these exact filter se
             \`;
           }).join('');
         }
-        
+
         async function fetchAlerts() {
           try {
             const response = await fetch('/alerts');
