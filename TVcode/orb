@@ -153,6 +153,8 @@ if not na(ny_orb_status)
 if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
     // Alert every bar during session (for continuous monitoring of all symbols)
     if barstate.isconfirmed
+        // Calculate ORB direction (price movement relative to previous bar)
+        orb_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
         jsonMsg = '{' +
           '"symbol": "' + syminfo.ticker + '",' +
           '"timeframe": "' + timeframe.period + '",' +
@@ -160,6 +162,7 @@ if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(
           '"price": ' + str.tostring(close) + ',' +
           '"orbType": "ny",' +
           '"orbStatus": "' + ny_orb_status + '",' +
+          '"orbDirection": "' + orb_direction + '",' +
           '"orbHigh": ' + str.tostring(ny_high) + ',' +
           '"orbLow": ' + str.tostring(ny_low) + ',' +
           '"orbMid": ' + str.tostring(ny_mid) + '}'

@@ -1246,6 +1246,7 @@ app.post('/webhook', (req, res) => {
     const orbData = {
       orbType: alert.orbType, // "london" or "ny"
       orbStatus: alert.orbStatus, // "within_upper", "within_lower", "outside_above", "outside_below"
+      orbDirection: alert.orbDirection || null, // "up", "down", or "flat"
       orbHigh: alert.orbHigh,
       orbLow: alert.orbLow,
       orbMid: alert.orbMid,
@@ -1266,11 +1267,13 @@ app.post('/webhook', (req, res) => {
       // Store both London and NY ORB data
       if (alert.orbType === 'london') {
         alerts[existingIndex].londonOrbStatus = orbData.orbStatus
+        alerts[existingIndex].londonOrbDirection = orbData.orbDirection || null
         alerts[existingIndex].londonOrbHigh = orbData.orbHigh
         alerts[existingIndex].londonOrbLow = orbData.orbLow
         alerts[existingIndex].londonOrbMid = orbData.orbMid
       } else if (alert.orbType === 'ny') {
         alerts[existingIndex].nyOrbStatus = orbData.orbStatus
+        alerts[existingIndex].nyOrbDirection = orbData.orbDirection || null
         alerts[existingIndex].nyOrbHigh = orbData.orbHigh
         alerts[existingIndex].nyOrbLow = orbData.orbLow
         alerts[existingIndex].nyOrbMid = orbData.orbMid
@@ -1690,6 +1693,7 @@ app.post('/webhook', (req, res) => {
       const ageInMinutes = (Date.now() - londonOrbInfo.timestamp) / 60000
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.londonOrbStatus = londonOrbInfo.orbStatus
+        alertData.londonOrbDirection = londonOrbInfo.orbDirection || null
         alertData.londonOrbHigh = londonOrbInfo.orbHigh
         alertData.londonOrbLow = londonOrbInfo.orbLow
         alertData.londonOrbMid = londonOrbInfo.orbMid
@@ -1705,6 +1709,7 @@ app.post('/webhook', (req, res) => {
       const ageInMinutes = (Date.now() - nyOrbInfo.timestamp) / 60000
       if (ageInMinutes <= 240) { // ORB data valid for 4 hours
         alertData.nyOrbStatus = nyOrbInfo.orbStatus
+        alertData.nyOrbDirection = nyOrbInfo.orbDirection || null
         alertData.nyOrbHigh = nyOrbInfo.orbHigh
         alertData.nyOrbLow = nyOrbInfo.orbLow
         alertData.nyOrbMid = nyOrbInfo.orbMid
@@ -1719,12 +1724,14 @@ app.post('/webhook', (req, res) => {
     if (alert.orbType !== undefined && alert.orbStatus !== undefined) {
       if (alert.orbType === 'london') {
         alertData.londonOrbStatus = alert.orbStatus
+        alertData.londonOrbDirection = alert.orbDirection || null
         alertData.londonOrbHigh = alert.orbHigh
         alertData.londonOrbLow = alert.orbLow
         alertData.londonOrbMid = alert.orbMid
         console.log(`✅ Using London ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
       } else if (alert.orbType === 'ny') {
         alertData.nyOrbStatus = alert.orbStatus
+        alertData.nyOrbDirection = alert.orbDirection || null
         alertData.nyOrbHigh = alert.orbHigh
         alertData.nyOrbLow = alert.orbLow
         alertData.nyOrbMid = alert.orbMid
@@ -3195,69 +3202,41 @@ app.get('/', (req, res) => {
                   </button>
                 </div>
                 
-                <!-- CCI Filters - iOS chip style -->
+                <!-- ORB Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('cciFilters', this)">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('orbFilters', this)">
                       <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
-                      CCI
+                      ORB
                     </h3>
                     <button 
-                      onclick="event.stopPropagation(); clearCciFilters()" 
+                      onclick="event.stopPropagation(); clearOrbFilters()" 
                       class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
                     >
                       Clear
                     </button>
                   </div>
                   
-                  <div id="cciFilters" class="filter-content">
-                    <!-- CCI Value Slider -->
-                    <div class="mb-5">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">CCI Value <span class="text-foreground/60">|</span> <span id="cciValueThreshold" class="text-blue-400 font-semibold">0</span></label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="cciValueToggle" class="sr-only peer" onchange="toggleSliderFilter('cciValue')">
-                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                      </div>
-                      <div class="mb-2 px-1">
-                        <div class="filter-group flex flex-wrap gap-1.5 mb-2">
-                          <button onclick="toggleFilterChip('cciValueMode', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="cciValueMode" data-value="below">Below</button>
-                          <button onclick="toggleFilterChip('cciValueMode', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="cciValueMode" data-value="above">Above</button>
-                        </div>
-                      </div>
-                      <div class="px-2" id="cciValueSliderContainer">
-                        <div class="mb-2">
-                          <div class="py-2">
-                            <div id="cciValueSlider"></div>
-                          </div>
-                        </div>
+                  <div id="orbFilters" class="filter-content">
+                    <!-- ORB Status -->
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Status</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('orbStatus', 'within_lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbStatus" data-value="within_lower">Lower Half</button>
+                        <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbStatus" data-value="within_upper">Upper Half</button>
+                        <button onclick="toggleFilterChip('orbStatus', 'outside_below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="orbStatus" data-value="outside_below">Below ORB</button>
+                        <button onclick="toggleFilterChip('orbStatus', 'outside_above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="orbStatus" data-value="outside_above">Above ORB</button>
                       </div>
                     </div>
                     
-                    <!-- CCI MA Value Slider -->
-                    <div class="mb-5">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">CCI MA Value <span class="text-foreground/60">|</span> <span id="cciMAValueThreshold" class="text-blue-400 font-semibold">0</span></label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="cciMAValueToggle" class="sr-only peer" onchange="toggleSliderFilter('cciMAValue')">
-                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                      </div>
-                      <div class="mb-2 px-1">
-                        <div class="filter-group flex flex-wrap gap-1.5 mb-2">
-                          <button onclick="toggleFilterChip('cciMAValueMode', 'below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="cciMAValueMode" data-value="below">Below</button>
-                          <button onclick="toggleFilterChip('cciMAValueMode', 'above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="cciMAValueMode" data-value="above">Above</button>
-                        </div>
-                      </div>
-                      <div class="px-2" id="cciMAValueSliderContainer">
-                        <div class="mb-2">
-                          <div class="py-2">
-                            <div id="cciMAValueSlider"></div>
-                          </div>
-                        </div>
+                    <!-- ORB Direction -->
+                    <div class="mb-0">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Direction</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('orbDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbDirection" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('orbDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbDirection" data-value="down">↓</button>
                       </div>
                     </div>
                   </div>
@@ -3516,9 +3495,9 @@ app.get('/', (req, res) => {
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
         
-        // CCI Filter state
-        let cciFilterValue = { threshold: 0, active: false, mode: null }; // CCI Value filter
-        let cciFilterMAValue = { threshold: 0, active: false, mode: null }; // CCI MA Value filter
+        // ORB Filter state
+        let orbFilterStatus = []; // ORB Status filter (multiple selections: within_lower, within_upper, outside_below, outside_above)
+        let orbFilterDirection = []; // ORB Direction filter (multiple selections: up, down)
         
         // Active preset filter (for CCI-based presets)
         let activePreset = null;
@@ -3530,7 +3509,7 @@ app.get('/', (req, res) => {
         let previousStochDirections = {};
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'd2', 'cci', 'orb', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove 'star' from columnOrder if it exists (legacy support)
         columnOrder = columnOrder.filter(colId => colId !== 'star');
@@ -3541,7 +3520,6 @@ app.get('/', (req, res) => {
           price: 100,
           d2: 220,
           highLevelTrend: 64,
-          cci: 150,
           orb: 180,
           volume: 80
         };
@@ -3574,15 +3552,6 @@ app.get('/', (req, res) => {
             columnOrder.push('d2');
           }
         }
-        // Ensure cci column exists
-        if (!columnOrder.includes('cci')) {
-          const d2Index = columnOrder.indexOf('d2');
-          if (d2Index !== -1) {
-            columnOrder.splice(d2Index + 1, 0, 'cci');
-          } else {
-            columnOrder.push('cci');
-          }
-        }
         // Ensure orb column exists
         if (!columnOrder.includes('orb')) {
           const cciIndex = columnOrder.indexOf('cci');
@@ -3599,7 +3568,6 @@ app.get('/', (req, res) => {
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          cci: { id: 'cci', title: 'CCI', sortable: true, sortField: 'cciValue', width: 'w-[150px]', tooltip: 'CCI: Value, MA Value, Direction' },
           orb: { id: 'orb', title: 'ORB', sortable: true, sortField: 'orbHigh', width: 'w-[180px]', tooltip: 'ORB: High, Low, Mid, Status' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
@@ -3635,7 +3603,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'cciValue'];
+            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'orbHigh'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -3829,59 +3797,6 @@ app.get('/', (req, res) => {
             });
           }
           
-          // CCI Value Slider (-400 to 400, single value)
-          const cciValueSlider = document.getElementById('cciValueSlider');
-          if (cciValueSlider && !sliders.cciValue) {
-            noUiSlider.create(cciValueSlider, {
-              start: 0,
-              connect: [true, false],
-              range: { 'min': -400, 'max': 400 },
-              step: 1,
-              tooltips: [{ to: v => Math.round(v) }]
-            });
-            sliders.cciValue = cciValueSlider;
-            cciValueSlider.noUiSlider.on('update', function(values) {
-              const value = Math.round(parseFloat(values));
-              const thresholdEl = document.getElementById('cciValueThreshold');
-              if (thresholdEl) {
-                thresholdEl.textContent = value;
-                // Color based on value
-                if (value < -100) thresholdEl.className = 'text-red-400 font-semibold';
-                else if (value > 100) thresholdEl.className = 'text-green-400 font-semibold';
-                else thresholdEl.className = 'text-yellow-400 font-semibold';
-              }
-            });
-            cciValueSlider.noUiSlider.on('change', function() {
-              updateCciValueFilter();
-            });
-          }
-          
-          // CCI MA Value Slider (-400 to 400, single value)
-          const cciMAValueSlider = document.getElementById('cciMAValueSlider');
-          if (cciMAValueSlider && !sliders.cciMAValue) {
-            noUiSlider.create(cciMAValueSlider, {
-              start: 0,
-              connect: [true, false],
-              range: { 'min': -400, 'max': 400 },
-              step: 1,
-              tooltips: [{ to: v => Math.round(v) }]
-            });
-            sliders.cciMAValue = cciMAValueSlider;
-            cciMAValueSlider.noUiSlider.on('update', function(values) {
-              const value = Math.round(parseFloat(values));
-              const thresholdEl = document.getElementById('cciMAValueThreshold');
-              if (thresholdEl) {
-                thresholdEl.textContent = value;
-                // Color based on value
-                if (value < -100) thresholdEl.className = 'text-red-400 font-semibold';
-                else if (value > 100) thresholdEl.className = 'text-green-400 font-semibold';
-                else thresholdEl.className = 'text-yellow-400 font-semibold';
-              }
-            });
-            cciMAValueSlider.noUiSlider.on('change', function() {
-              updateCciMAValueFilter();
-            });
-          }
         }
 
         // Initialize sort indicators on page load
@@ -4017,29 +3932,39 @@ app.get('/', (req, res) => {
             });
           }
           
-          // Apply CCI Filters
-          if (cciFilterValue.active || cciFilterMAValue.active) {
+          // Apply ORB Filters
+          if (orbFilterStatus.length > 0 || orbFilterDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // CCI Value filter
-              if (cciFilterValue.active) {
-                const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
-                if (cciValue === null || isNaN(cciValue)) return false;
-                if (cciFilterValue.mode === 'below' && cciValue >= cciFilterValue.threshold) return false;
-                if (cciFilterValue.mode === 'above' && cciValue <= cciFilterValue.threshold) return false;
+              const nyOrbStatus = alert.nyOrbStatus || null;
+              const londonOrbStatus = alert.londonOrbStatus || null;
+              const orbStatus = nyOrbStatus || londonOrbStatus;
+              
+              // ORB Status filter
+              if (orbFilterStatus.length > 0) {
+                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
               }
               
-              // CCI MA Value filter
-              if (cciFilterMAValue.active) {
-                const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
-                if (cciMAValue === null || isNaN(cciMAValue)) return false;
-                if (cciFilterMAValue.mode === 'below' && cciMAValue >= cciFilterMAValue.threshold) return false;
-                if (cciFilterMAValue.mode === 'above' && cciMAValue <= cciFilterMAValue.threshold) return false;
+              // ORB Direction filter
+              if (orbFilterDirection.length > 0) {
+                const nyOrbDirection = alert.nyOrbDirection || null;
+                const londonOrbDirection = alert.londonOrbDirection || null;
+                let orbDirection = nyOrbDirection || londonOrbDirection;
+                
+                // Fallback: Calculate from price movement if not available
+                if (!orbDirection) {
+                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
+                  const prevPrice = previousPrices[alert.symbol];
+                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
+                    orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                  }
+                }
+                
+                if (!orbDirection || !orbFilterDirection.includes(orbDirection)) return false;
               }
               
               return true;
             });
           }
-          
           
           // Sort filtered data - starred items always come first
           if (currentSortField) {
@@ -4498,8 +4423,6 @@ app.get('/', (req, res) => {
               return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
-            case 'cciValue':
-              return parseFloat(alert.cciValue) || 0;
             default:
               return '';
           }
@@ -4518,47 +4441,18 @@ app.get('/', (req, res) => {
 
         // Chip-based filter toggle function
         function toggleFilterChip(filterType, value, element) {
-          // For CCI mode filters (below/above), ensure only one is active at a time
-          if (filterType === 'cciValueMode' || filterType === 'cciMAValueMode') {
-            const parentGroup = element.closest('.filter-group');
-            if (parentGroup) {
-              // Deactivate all chips in this group
-              parentGroup.querySelectorAll('.filter-chip').forEach(chip => {
-                chip.classList.remove('active');
-              });
-              // Activate the clicked chip
-              element.classList.add('active');
-              parentGroup.classList.add('has-active');
-            }
-          } else {
-            // Toggle active state for other filters
-            element.classList.toggle('active');
-            
-            // Update parent container's has-active class
-            const parentGroup = element.closest('.filter-group');
-            if (parentGroup) {
-              const hasAnyActive = parentGroup.querySelector('.filter-chip.active') !== null;
-              parentGroup.classList.toggle('has-active', hasAnyActive);
-            }
+          // Toggle active state for filters
+          element.classList.toggle('active');
+          
+          // Update parent container's has-active class
+          const parentGroup = element.closest('.filter-group');
+          if (parentGroup) {
+            const hasAnyActive = parentGroup.querySelector('.filter-chip.active') !== null;
+            parentGroup.classList.toggle('has-active', hasAnyActive);
           }
           
           // Update filter arrays based on active chips
           updateFilterArrays();
-          
-          // For CCI filters, update the filter state if toggle is checked
-          if (filterType === 'cciValueMode') {
-            const toggle = document.getElementById('cciValueToggle');
-            if (toggle && toggle.checked) {
-              updateCciValueFilter();
-              return; // updateCciValueFilter already calls filterAlerts()
-            }
-          } else if (filterType === 'cciMAValueMode') {
-            const toggle = document.getElementById('cciMAValueToggle');
-            if (toggle && toggle.checked) {
-              updateCciMAValueFilter();
-              return; // updateCciMAValueFilter already calls filterAlerts()
-            }
-          }
           
           // Apply filters
           filterAlerts();
@@ -4643,48 +4537,11 @@ app.get('/', (req, res) => {
         }
         
         // Update CCI Value filter from noUiSlider value
-        function updateCciValueFilter() {
-          const toggle = document.getElementById('cciValueToggle');
-          const slider = sliders.cciValue;
-          
-          if (slider && slider.noUiSlider) {
-            const value = Math.round(parseFloat(slider.noUiSlider.get()));
-            
-            cciFilterValue.threshold = value;
-            updateFilterArrays(); // Update mode (below/above)
-            // Only active if toggle is checked AND mode is selected
-            cciFilterValue.active = toggle && toggle.checked && cciFilterValue.mode !== null;
-            
-            // Apply filters
-            filterAlerts();
-          }
-        }
-        
-        // Update CCI MA Value filter from noUiSlider value
-        function updateCciMAValueFilter() {
-          const toggle = document.getElementById('cciMAValueToggle');
-          const slider = sliders.cciMAValue;
-          
-          if (slider && slider.noUiSlider) {
-            const value = Math.round(parseFloat(slider.noUiSlider.get()));
-            
-            cciFilterMAValue.threshold = value;
-            updateFilterArrays(); // Update mode (below/above)
-            // Only active if toggle is checked AND mode is selected
-            cciFilterMAValue.active = toggle && toggle.checked && cciFilterMAValue.mode !== null;
-            
-            // Apply filters
-            filterAlerts();
-          }
-        }
-        
         // Update filter arrays from chip states
         function updateFilterArrays() {
-          // CCI Filters
-          const cciValueModeChips = Array.from(document.querySelectorAll('[data-filter="cciValueMode"].active'));
-          cciFilterValue.mode = cciValueModeChips.length > 0 ? cciValueModeChips[0].dataset.value : null;
-          const cciMAValueModeChips = Array.from(document.querySelectorAll('[data-filter="cciMAValueMode"].active'));
-          cciFilterMAValue.mode = cciMAValueModeChips.length > 0 ? cciMAValueModeChips[0].dataset.value : null;
+          // ORB Filters
+          orbFilterStatus = Array.from(document.querySelectorAll('[data-filter="orbStatus"].active')).map(chip => chip.dataset.value);
+          orbFilterDirection = Array.from(document.querySelectorAll('[data-filter="orbDirection"].active')).map(chip => chip.dataset.value);
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
@@ -4692,6 +4549,20 @@ app.get('/', (req, res) => {
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
+        }
+        
+        // Clear ORB filters
+        function clearOrbFilters() {
+          // Remove active class from all ORB filter chips
+          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="orbDirection"]').forEach(chip => {
+            chip.classList.remove('active');
+            const parentGroup = chip.closest('.filter-group');
+            if (parentGroup) parentGroup.classList.remove('has-active');
+          });
+          
+          orbFilterStatus = [];
+          orbFilterDirection = [];
+          renderTable();
         }
         
         function filterAlerts() {
@@ -5544,30 +5415,40 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply CCI Filters
-          if (cciFilterValue.active || cciFilterMAValue.active) {
+          // Apply ORB Filters
+          if (orbFilterStatus.length > 0 || orbFilterDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // CCI Value filter
-              if (cciFilterValue.active) {
-                const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
-                if (cciValue === null || isNaN(cciValue)) return false;
-                if (cciFilterValue.mode === 'below' && cciValue >= cciFilterValue.threshold) return false;
-                if (cciFilterValue.mode === 'above' && cciValue <= cciFilterValue.threshold) return false;
+              const nyOrbStatus = alert.nyOrbStatus || null;
+              const londonOrbStatus = alert.londonOrbStatus || null;
+              const orbStatus = nyOrbStatus || londonOrbStatus;
+              
+              // ORB Status filter
+              if (orbFilterStatus.length > 0) {
+                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
               }
               
-              // CCI MA Value filter
-              if (cciFilterMAValue.active) {
-                const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
-                if (cciMAValue === null || isNaN(cciMAValue)) return false;
-                if (cciFilterMAValue.mode === 'below' && cciMAValue >= cciFilterMAValue.threshold) return false;
-                if (cciFilterMAValue.mode === 'above' && cciMAValue <= cciFilterMAValue.threshold) return false;
+              // ORB Direction filter
+              if (orbFilterDirection.length > 0) {
+                const nyOrbDirection = alert.nyOrbDirection || null;
+                const londonOrbDirection = alert.londonOrbDirection || null;
+                let orbDirection = nyOrbDirection || londonOrbDirection;
+                
+                // Fallback: Calculate from price movement if not available
+                if (!orbDirection) {
+                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
+                  const prevPrice = previousPrices[alert.symbol];
+                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
+                    orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                  }
+                }
+                
+                if (!orbDirection || !orbFilterDirection.includes(orbDirection)) return false;
               }
               
               return true;
             });
           }
           
-
           // Sort filtered data - starred items always come first
           if (currentSortField) {
             filteredData.sort((a, b) => {
@@ -6284,57 +6165,6 @@ Use this to create a new preset filter button that applies these exact filter se
               d2PatternClass = 'text-orange-400 font-semibold';
             }
             
-            // CCI calculations
-            const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
-            const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
-            const cciDirection = alert.cciDirection || null; // 'up' or 'down'
-            
-            // CCI Value color coding (similar to BJ TSI)
-            let cciValueColorClass = 'text-foreground';
-            if (cciValue !== null && !isNaN(cciValue)) {
-              if (cciValue > 100) {
-                cciValueColorClass = 'text-green-300'; // Brighter green (>100)
-              } else if (cciValue > 40) {
-                cciValueColorClass = 'text-green-400'; // Green (>40 and <=100)
-              } else if (cciValue > 0) {
-                cciValueColorClass = 'text-green-500'; // Light green (>0 and <=40)
-              } else if (cciValue >= -40) {
-                cciValueColorClass = 'text-red-500'; // Light red (<0 and >= -40)
-              } else if (cciValue >= -100) {
-                cciValueColorClass = 'text-red-400'; // Red (<-40 and >= -100)
-              } else {
-                cciValueColorClass = 'text-red-300'; // Brighter red (<-100)
-              }
-            }
-            
-            // CCI MA Value color coding
-            let cciMAValueColorClass = 'text-foreground';
-            if (cciMAValue !== null && !isNaN(cciMAValue)) {
-              if (cciMAValue > 100) {
-                cciMAValueColorClass = 'text-green-300'; // Brighter green (>100)
-              } else if (cciMAValue > 40) {
-                cciMAValueColorClass = 'text-green-400'; // Green (>40 and <=100)
-              } else if (cciMAValue > 0) {
-                cciMAValueColorClass = 'text-green-500'; // Light green (>0 and <=40)
-              } else if (cciMAValue >= -40) {
-                cciMAValueColorClass = 'text-red-500'; // Light red (<0 and >= -40)
-              } else if (cciMAValue >= -100) {
-                cciMAValueColorClass = 'text-red-400'; // Red (<-40 and >= -100)
-              } else {
-                cciMAValueColorClass = 'text-red-300'; // Brighter red (<-100)
-              }
-            }
-            
-            // CCI Direction arrows
-            const cciDirArrow = cciDirection === 'up' ? '↑' : cciDirection === 'down' ? '↓' : '→';
-            const cciDirClass = cciDirection === 'up' ? 'text-green-400' : cciDirection === 'down' ? 'text-red-400' : 'text-gray-400';
-            const cciDirDisplay = cciDirection === 'up' ? 'Up' : cciDirection === 'down' ? 'Down' : 'Flat';
-            
-            // CCI MA Direction (calculate from previous value if available, or use CCI direction as fallback)
-            // For now, we'll use the CCI direction as a proxy for MA direction
-            const cciMADirArrow = cciDirArrow; // Same as CCI direction for now
-            const cciMADirClass = cciDirClass; // Same as CCI direction for now
-            
             // ORB calculations
             const nyOrbHigh = alert.nyOrbHigh !== null && alert.nyOrbHigh !== undefined ? parseFloat(alert.nyOrbHigh) : null;
             const nyOrbLow = alert.nyOrbLow !== null && alert.nyOrbLow !== undefined ? parseFloat(alert.nyOrbLow) : null;
@@ -6367,81 +6197,17 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
-            // ===== CCI OVERVIEW LOGIC =====
-            // Combines CCI value and direction into actionable signals
-            let cciOverviewDisplay = '-';
-            let cciOverviewClass = 'text-muted-foreground';
+            // Get ORB direction from alert data (prefer NY, fallback to London)
+            const nyOrbDirection = alert.nyOrbDirection || null;
+            const londonOrbDirection = alert.londonOrbDirection || null;
+            let orbDirection = nyOrbDirection || londonOrbDirection;
             
-            if (cciValue !== null && !isNaN(cciValue) && cciDirection) {
-              const isUp = cciDirection === 'up';
-              const isDown = cciDirection === 'down';
-              
-              // Extreme levels
-              const isExtremeBull = cciValue > 100;
-              const isExtremeBear = cciValue < -100;
-              const isStrongBull = cciValue > 40 && cciValue <= 100;
-              const isStrongBear = cciValue < -40 && cciValue >= -100;
-              const isBullish = cciValue > 0 && cciValue <= 40;
-              const isBearish = cciValue < 0 && cciValue >= -40;
-              
-              // Priority 1: Extreme Bullish/Bearish (above 100 up / below -100 down)
-              if (isExtremeBull && isUp) {
-                cciOverviewDisplay = 'Extreme Bullish';
-                cciOverviewClass = 'text-green-300 font-bold animate-pulse';
-              }
-              else if (isExtremeBear && isDown) {
-                cciOverviewDisplay = 'Extreme Bearish';
-                cciOverviewClass = 'text-red-300 font-bold animate-pulse';
-              }
-              // Priority 2: Strong Bullish/Bearish (40-100 up / -40 to -100 down)
-              else if (isStrongBull && isUp) {
-                cciOverviewDisplay = 'Strong Bullish';
-                cciOverviewClass = 'text-green-400 font-bold';
-              }
-              else if (isStrongBear && isDown) {
-                cciOverviewDisplay = 'Strong Bearish';
-                cciOverviewClass = 'text-red-400 font-bold';
-              }
-              // Priority 3: Bullish/Bearish with momentum (0-40 up / 0 to -40 down)
-              else if (isBullish && isUp) {
-                cciOverviewDisplay = 'Bullish';
-                cciOverviewClass = 'text-green-500 font-semibold';
-              }
-              else if (isBearish && isDown) {
-                cciOverviewDisplay = 'Bearish';
-                cciOverviewClass = 'text-red-500 font-semibold';
-              }
-              // Priority 4: Reversal signals (extreme but reversing)
-              else if (isExtremeBull && isDown) {
-                cciOverviewDisplay = 'Reversing Down';
-                cciOverviewClass = 'text-yellow-400 font-bold animate-pulse';
-              }
-              else if (isExtremeBear && isUp) {
-                cciOverviewDisplay = 'Reversing Up';
-                cciOverviewClass = 'text-cyan-400 font-bold animate-pulse';
-              }
-              // Priority 5: Weak signals (strong but wrong direction)
-              else if (isStrongBull && isDown) {
-                cciOverviewDisplay = 'Weakening';
-                cciOverviewClass = 'text-yellow-500 font-semibold';
-              }
-              else if (isStrongBear && isUp) {
-                cciOverviewDisplay = 'Recovering';
-                cciOverviewClass = 'text-cyan-500 font-semibold';
-              }
-              // Priority 6: Neutral trending
-              else if (isUp) {
-                cciOverviewDisplay = 'Trending Up';
-                cciOverviewClass = 'text-green-400';
-              }
-              else if (isDown) {
-                cciOverviewDisplay = 'Trending Down';
-                cciOverviewClass = 'text-red-400';
-              }
-              // Default: Mixed/Neutral
-              else {
-                cciOverviewDisplay = '↔️ Neutral';
-                cciOverviewClass = 'text-gray-400';
+            // Fallback: Calculate ORB direction from price movement if not available
+            if (!orbDirection) {
+              const currentPrice = alert.price ? parseFloat(alert.price) : null;
+              const prevPrice = previousPrices[alert.symbol];
+              if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
+                orbDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
               }
             }
             
@@ -6550,26 +6316,23 @@ Use this to create a new preset filter button that applies these exact filter se
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
-              cci: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('cci')}" title="CCI: Value=\${cciValue !== null && !isNaN(cciValue) ? cciValue.toFixed(2) : 'N/A'}, MA=\${cciMAValue !== null && !isNaN(cciMAValue) ? cciMAValue.toFixed(2) : 'N/A'}, Dir=\${cciDirDisplay}">
-                  <div class="space-y-1">
-                    <div class="text-sm \${cciOverviewClass}">\${cciOverviewDisplay}</div>
-                    <div class="font-mono text-foreground">CCI: <span class="font-semibold \${cciValueColorClass}">\${cciValue !== null && !isNaN(cciValue) ? cciValue.toFixed(2) : '-'}</span> <span class="\${cciDirClass}">\${cciDirArrow}</span></div>
-                    <div class="font-mono text-foreground">MA: <span class="font-semibold \${cciMAValueColorClass}">\${cciMAValue !== null && !isNaN(cciMAValue) ? cciMAValue.toFixed(2) : '-'}</span> <span class="\${cciMADirClass}">\${cciMADirArrow}</span></div>
-                  </div>
-                </td>
-              \`,
               orb: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}">
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Dir=\${orbDirection || 'N/A'}">
                   <div class="space-y-1">
                     \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
-                      <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>
+                      <div class="flex items-center gap-1 text-xs">
+                        <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
+                        \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                      </div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
                       <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
                       <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
-                      <div class="text-xs \${orbStatusClass}">\${orbStatusDisplay}</div>
+                      <div class="flex items-center gap-1 text-xs">
+                        <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
+                        \${orbDirection ? '<span class="' + (orbDirection === 'up' ? 'text-green-400' : orbDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (orbDirection === 'up' ? '↑' : orbDirection === 'down' ? '↓' : '→') + '</span>' : ''}
+                      </div>
                     \` : '<div class="text-xs text-muted-foreground">-</div>'}
                   </div>
                 </td>
