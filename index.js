@@ -5149,7 +5149,10 @@ app.get('/', (req, res) => {
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
               sliders.d1Value.noUiSlider.set([0, 40]);
-              updateD1ValueFilter();
+              // Don't call updateD1ValueFilter() here - will update at end
+              stochFilterD1Value.min = 0;
+              stochFilterD1Value.max = 40;
+              stochFilterD1Value.active = true;
             }
             
             // Activate D2 Direction: down
@@ -5165,7 +5168,10 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([0, 26]);
-              updateD2ValueFilter();
+              // Don't call updateD2ValueFilter() here - will update at end
+              stochFilterD2Value.min = 0;
+              stochFilterD2Value.max = 26;
+              stochFilterD2Value.active = true;
             }
             
             // Activate Price %: negative ranges
@@ -5192,7 +5198,9 @@ app.get('/', (req, res) => {
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
               sliders.d1Value.noUiSlider.set([60, 90]);
-              updateD1ValueFilter();
+              stochFilterD1Value.min = 60;
+              stochFilterD1Value.max = 90;
+              stochFilterD1Value.active = true;
             }
             
             // Activate D2 Direction: down
@@ -5208,7 +5216,9 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([0, 52]);
-              updateD2ValueFilter();
+              stochFilterD2Value.min = 0;
+              stochFilterD2Value.max = 52;
+              stochFilterD2Value.active = true;
             }
             
           } else if (preset === 'trendUpCon') {
@@ -5225,7 +5235,9 @@ app.get('/', (req, res) => {
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
               sliders.d1Value.noUiSlider.set([20, 100]);
-              updateD1ValueFilter();
+              stochFilterD1Value.min = 20;
+              stochFilterD1Value.max = 100;
+              stochFilterD1Value.active = true;
             }
             
             // Activate D2 Direction: up
@@ -5241,7 +5253,9 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([40, 100]);
-              updateD2ValueFilter();
+              stochFilterD2Value.min = 40;
+              stochFilterD2Value.max = 100;
+              stochFilterD2Value.active = true;
             }
             
           } else if (preset === 'extremeBull') {
@@ -5250,7 +5264,9 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([80, 100]);
-              updateD2ValueFilter();
+              stochFilterD2Value.min = 80;
+              stochFilterD2Value.max = 100;
+              stochFilterD2Value.active = true;
             }
             
           } else if (preset === 'extremeBear') {
@@ -5259,7 +5275,9 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([0, 20]);
-              updateD2ValueFilter();
+              stochFilterD2Value.min = 0;
+              stochFilterD2Value.max = 20;
+              stochFilterD2Value.active = true;
             }
             
           } else if (preset === 'bigUp') {
@@ -5297,7 +5315,9 @@ app.get('/', (req, res) => {
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
               sliders.d1Value.noUiSlider.set([0, 27]);
-              updateD1ValueFilter();
+              stochFilterD1Value.min = 0;
+              stochFilterD1Value.max = 27;
+              stochFilterD1Value.active = true;
             }
             
             // Activate D2 Direction: up
@@ -5313,15 +5333,20 @@ app.get('/', (req, res) => {
             if (d2Toggle && sliders.d2Value) {
               d2Toggle.checked = true;
               sliders.d2Value.noUiSlider.set([40, 100]);
-              updateD2ValueFilter();
+              stochFilterD2Value.min = 40;
+              stochFilterD2Value.max = 100;
+              stochFilterD2Value.active = true;
             }
           }
           
           // Update filter arrays from chip states
           updateFilterArrays();
           
-          // Apply filters
-            filterAlerts();
+          // Apply filters - ensure renderTable is called
+          filterAlerts();
+          
+          // Force a re-render to ensure filters are applied
+          renderTable();
         }
 
         // Export filter settings
