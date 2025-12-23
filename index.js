@@ -5469,15 +5469,16 @@ Use this to create a new preset filter button that applies these exact filter se
             // Get % change value
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
             
-            // Get BJ TSI values
-            const bjTsi = alert.bjTsi !== null && alert.bjTsi !== undefined && alert.bjTsi !== '' ? parseFloat(alert.bjTsi) : null;
-            const bjTsl = alert.bjTsl !== null && alert.bjTsl !== undefined && alert.bjTsl !== '' ? parseFloat(alert.bjTsl) : null;
-            const bjTsiIsBull = alert.bjTsiIsBull === true || alert.bjTsiIsBull === 'true';
-            const bjTslIsBull = alert.bjTslIsBull === true || alert.bjTslIsBull === 'true';
-            
-            // Calculate V Dir and S Dir
-            const vDir = bjTsiIsBull ? 'Up' : 'Down';
-            const sDir = bjTslIsBull ? 'Up' : 'Down';
+            // Get ORB values (NY takes priority, fallback to London)
+            const nyOrbStatus = alert.nyOrbStatus || null;
+            const londonOrbStatus = alert.londonOrbStatus || null;
+            const orbStatus = nyOrbStatus || londonOrbStatus; // Use NY if available, otherwise London
+            const nyPriceDirection = alert.nyPriceDirection || null;
+            const londonPriceDirection = alert.londonPriceDirection || null;
+            const priceDirection = nyPriceDirection || londonPriceDirection; // Use NY if available, otherwise London
+            const orbHigh = alert.nyOrbHigh || alert.londonOrbHigh || null;
+            const orbLow = alert.nyOrbLow || alert.londonOrbLow || null;
+            const orbMid = alert.nyOrbMid || alert.londonOrbMid || null;
             
             // Determine trend message
             let trendMessage = '';
@@ -5496,16 +5497,32 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             // Check Down criteria
+            // Stoch: D1 and D2 both down
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesDown = true;
             if (d1Direction !== 'down') matchesDown = false;
             if (d2Direction !== 'down') matchesDown = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Up criteria
+            // Stoch: D1 and D2 both up
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesUp = true;
             if (d1Direction !== 'up') matchesUp = false;
             if (d2Direction !== 'up') matchesUp = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Trend Down Big criteria
+            // Stoch: D1 down (0-40), D2 down (0-26), % change negative
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesTrendDownBig = true;
             if (d1Direction !== 'down') matchesTrendDownBig = false;
             if (d2Direction !== 'down') matchesTrendDownBig = false;
@@ -5519,49 +5536,96 @@ Use this to create a new preset filter button that applies these exact filter se
                 matchesTrendDownBig = false;
               }
             }
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Reject Down criteria
-            // D1 Direction: down, D1 Value: 60-90, D2 Direction: down, D2 Value: 0-52
+            // Stoch: D1 down (60-90), D2 down (0-52)
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesRejectDown = true;
             if (d1Direction !== 'down') matchesRejectDown = false;
             if (d2Direction !== 'down') matchesRejectDown = false;
             if (d1Value === null || isNaN(d1Value) || d1Value < 60 || d1Value > 90) matchesRejectDown = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 52) matchesRejectDown = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Trend Up Con criteria
-            // D1 Direction: up, D1 Value: 20-100, D2 Direction: up, D2 Value: 40-100
+            // Stoch: D1 up (20-100), D2 up (40-100)
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesTrendUpCon = true;
             if (d1Direction !== 'up') matchesTrendUpCon = false;
             if (d2Direction !== 'up') matchesTrendUpCon = false;
             if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 100) matchesTrendUpCon = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesTrendUpCon = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Extreme Bull criteria
-            // D2 Value: 80-100
+            // Stoch: D2 Value: 80-100
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesExtremeBull = true;
             if (d2Value === null || isNaN(d2Value) || d2Value < 80 || d2Value > 100) matchesExtremeBull = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Extreme Bear criteria
-            // D2 Value: 0-20
+            // Stoch: D2 Value: 0-20
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesExtremeBear = true;
             if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
-            // Check Big Up criteria (BJ TSI filter removed - preset disabled)
-            let matchesBigUp = false;
+            // Check Big Up criteria
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
+            let matchesBigUp = true;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Fall criteria
-            // D1 Direction: down, D2 Direction: down
+            // Stoch: D1 Direction: down, D2 Direction: down
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesFall = true;
             if (d1Direction !== 'down') matchesFall = false;
             if (d2Direction !== 'down') matchesFall = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             // Check Bounce criteria
-            // D1 Direction: up, D1 Value: 0-27, D2 Direction: up, D2 Value: 40-100
+            // Stoch: D1 Direction: up, D1 Value: 0-27, D2 Direction: up, D2 Value: 40-100
+            // ORB: If ORB data exists, check ORB criteria; if empty, still match
             let matchesBounce = true;
             if (d1Direction !== 'up') matchesBounce = false;
             if (d2Direction !== 'up') matchesBounce = false;
             if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 27) matchesBounce = false;
             if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesBounce = false;
+            // ORB criteria (only if ORB data exists - if empty, still match)
+            if (orbStatus && priceDirection) {
+              // If ORB data exists, can add ORB-specific criteria here
+              // For now, empty ORB = match all, so no additional check needed
+            }
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
