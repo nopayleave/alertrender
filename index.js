@@ -5061,8 +5061,8 @@ app.get('/', (req, res) => {
         }
         
         function clearAllFilters() {
-          clearCciFilters();
           clearStochFilters();
+          clearOrbFilters();
           // Clear search
           const searchInput = document.getElementById('searchInput');
           if (searchInput) {
@@ -7138,11 +7138,16 @@ Use this to create a new preset filter button that applies these exact filter se
           
           content.innerHTML = filteredHistory.map(item => {
             const time = new Date(item.timestamp);
-            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             
             let eventText = '';
             let itemClass = 'cross-high';
+            
+            // Get D1/D2 values for display
+            const d1Value = item.eventData.d1Value !== null && item.eventData.d1Value !== undefined ? parseFloat(item.eventData.d1Value).toFixed(1) : 'N/A';
+            const d2Value = item.eventData.d2Value !== null && item.eventData.d2Value !== undefined ? parseFloat(item.eventData.d2Value).toFixed(1) : 'N/A';
+            const d1D2Display = \`D1:\${d1Value} D2:\${d2Value}\`;
             
             switch(item.eventType) {
               case 'direction_change':
@@ -7168,6 +7173,8 @@ Use this to create a new preset filter button that applies these exact filter se
                   <span class="orb-history-symbol">\${item.symbol}</span>
                   <span class="orb-history-separator">|</span>
                   <span class="orb-history-crossover">\${eventText}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-crossover">\${d1D2Display}</span>
                   <span class="orb-history-separator">|</span>
                   <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
                 </div>
@@ -7211,6 +7218,8 @@ Use this to create a new preset filter button that applies these exact filter se
                 d2Direction: d2Direction,
                 prevD1Direction: prevState.d1Direction,
                 prevD2Direction: prevState.d2Direction,
+                d1Value: d1Value,
+                d2Value: d2Value,
                 isBullish: isBullish
               },
               price: alert.price,
@@ -7230,6 +7239,8 @@ Use this to create a new preset filter button that applies these exact filter se
               eventData: {
                 presetName: preset === 'down' ? 'Down' : preset === 'up' ? 'Up' : 'Trend Down Big',
                 preset: preset,
+                d1Value: d1Value,
+                d2Value: d2Value,
                 isBullish: isBullish
               },
               price: alert.price,
