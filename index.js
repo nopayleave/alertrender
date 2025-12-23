@@ -3749,6 +3749,12 @@ app.get('/', (req, res) => {
               <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-white">
                 Up <span id="presetUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span>
               </button>
+              <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-white">
+                Ext. Bull <span id="presetExtBullCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-yellow-600/50 text-white">0</span>
+              </button>
+              <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-pink-500/50 bg-pink-500/20 hover:bg-pink-500/30 active:scale-95 transition-all text-white">
+                Ext. Bear <span id="presetExtBearCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-pink-600/50 text-white">0</span>
+              </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
               </button>
@@ -5110,6 +5116,60 @@ app.get('/', (req, res) => {
               const parentGroup = d2UpChip.closest('.filter-group');
               if (parentGroup) parentGroup.classList.add('has-active');
             }
+            
+          } else if (preset === 'extBull') {
+            // Activate ORB Status: outside_above
+            const orbOutsideAboveChip = document.querySelector('[data-filter="orbStatus"][data-value="outside_above"]');
+            if (orbOutsideAboveChip) {
+              orbOutsideAboveChip.classList.add('active');
+              const parentGroup = orbOutsideAboveChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Direction: up
+            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
+            if (d1UpChip) {
+              d1UpChip.classList.add('active');
+              const parentGroup = d1UpChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Value slider: 80 to 100
+            const d1Toggle = document.getElementById('d1ValueToggle');
+            if (d1Toggle && sliders.d1Value) {
+              d1Toggle.checked = true;
+              sliders.d1Value.noUiSlider.set([80, 100]);
+              stochFilterD1Value.min = 80;
+              stochFilterD1Value.max = 100;
+              stochFilterD1Value.active = true;
+            }
+            
+          } else if (preset === 'extBear') {
+            // Activate ORB Status: outside_below
+            const orbOutsideBelowChip = document.querySelector('[data-filter="orbStatus"][data-value="outside_below"]');
+            if (orbOutsideBelowChip) {
+              orbOutsideBelowChip.classList.add('active');
+              const parentGroup = orbOutsideBelowChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Direction: down
+            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
+            if (d1DownChip) {
+              d1DownChip.classList.add('active');
+              const parentGroup = d1DownChip.closest('.filter-group');
+              if (parentGroup) parentGroup.classList.add('has-active');
+            }
+            
+            // Activate D1 Value slider: 0 to 30
+            const d1Toggle = document.getElementById('d1ValueToggle');
+            if (d1Toggle && sliders.d1Value) {
+              d1Toggle.checked = true;
+              sliders.d1Value.noUiSlider.set([0, 30]);
+              stochFilterD1Value.min = 0;
+              stochFilterD1Value.max = 30;
+              stochFilterD1Value.active = true;
+            }
           }
           
           // Update filter arrays from chip states
@@ -5203,14 +5263,20 @@ Use this to create a new preset filter button that applies these exact filter se
           if (data.length === 0) {
             const downCountEl = document.getElementById('presetDownCount');
             const upCountEl = document.getElementById('presetUpCount');
+            const extBullCountEl = document.getElementById('presetExtBullCount');
+            const extBearCountEl = document.getElementById('presetExtBearCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
+            if (extBullCountEl) extBullCountEl.textContent = '0';
+            if (extBearCountEl) extBearCountEl.textContent = '0';
             return;
           }
 
           // Count preset matches
           let downCount = 0;
           let upCount = 0;
+          let extBullCount = 0;
+          let extBearCount = 0;
 
           data.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -5274,15 +5340,45 @@ Use this to create a new preset filter button that applies these exact filter se
               // For now, empty ORB = match all, so no additional check needed
             }
             
+            // Check Ext. Bull criteria
+            // ORB Status: outside_above
+            // Stoch D1 Direction: up
+            // Stoch D1 Value: 80-100
+            let matchesExtBull = true;
+            // ORB Status must be "outside_above"
+            if (!orbStatus || orbStatus !== 'outside_above') matchesExtBull = false;
+            // D1 Direction must be "up"
+            if (d1Direction !== 'up') matchesExtBull = false;
+            // D1 Value must be between 80 and 100
+            if (d1Value === null || isNaN(d1Value) || d1Value < 80 || d1Value > 100) matchesExtBull = false;
+            
+            // Check Ext. Bear criteria
+            // ORB Status: outside_below
+            // Stoch D1 Direction: down
+            // Stoch D1 Value: 0-30
+            let matchesExtBear = true;
+            // ORB Status must be "outside_below"
+            if (!orbStatus || orbStatus !== 'outside_below') matchesExtBear = false;
+            // D1 Direction must be "down"
+            if (d1Direction !== 'down') matchesExtBear = false;
+            // D1 Value must be between 0 and 30
+            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 30) matchesExtBear = false;
+            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
+            if (matchesExtBull) extBullCount++;
+            if (matchesExtBear) extBearCount++;
           });
 
           // Update the count displays
           const downCountEl = document.getElementById('presetDownCount');
           const upCountEl = document.getElementById('presetUpCount');
+          const extBullCountEl = document.getElementById('presetExtBullCount');
+          const extBearCountEl = document.getElementById('presetExtBearCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
+          if (extBullCountEl) extBullCountEl.textContent = extBullCount;
+          if (extBearCountEl) extBearCountEl.textContent = extBearCount;
         }
 
         // Count how many alerts match each Price % range
@@ -6613,6 +6709,21 @@ Use this to create a new preset filter button that applies these exact filter se
             matches.push('up');
           }
           
+          // Check Ext. Bull preset
+          // ORB Status: outside_above, D1 Direction: up, D1 Value: 80-100
+          const nyOrbStatus = alert.nyOrbStatus || null;
+          const londonOrbStatus = alert.londonOrbStatus || null;
+          const orbStatus = nyOrbStatus || londonOrbStatus;
+          if (orbStatus === 'outside_above' && d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) {
+            matches.push('extBull');
+          }
+          
+          // Check Ext. Bear preset
+          // ORB Status: outside_below, D1 Direction: down, D1 Value: 0-30
+          if (orbStatus === 'outside_below' && d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) {
+            matches.push('extBear');
+          }
+          
           return matches;
         }
         
@@ -6636,6 +6747,16 @@ Use this to create a new preset filter button that applies these exact filter se
               title = 'Up Signal';
               toastClass = 'cross-high';
               icon = '🚀';
+              break;
+            case 'extBull':
+              title = 'Ext. Bull Signal';
+              toastClass = 'cross-high';
+              icon = '📈';
+              break;
+            case 'extBear':
+              title = 'Ext. Bear Signal';
+              toastClass = 'cross-low';
+              icon = '📉';
               break;
             default:
               title = 'Preset Match';
@@ -7126,8 +7247,10 @@ Use this to create a new preset filter button that applies these exact filter se
                 // Check for new matches (presets that weren't matched before)
                 currentMatches.forEach(preset => {
                   if (!prevMatches.includes(preset)) {
-                    // New match detected - show toast
-                    showPresetMatchToast(symbol, preset, alert.price);
+                    // New match detected - show toast (skip 'up' and 'down' presets)
+                    if (preset !== 'up' && preset !== 'down') {
+                      showPresetMatchToast(symbol, preset, alert.price);
+                    }
                   }
                 });
                 
@@ -7194,8 +7317,10 @@ Use this to create a new preset filter button that applies these exact filter se
                 // Check for new matches (presets that weren't matched before)
                 currentMatches.forEach(preset => {
                   if (!prevMatches.includes(preset)) {
-                    // New match detected - show toast
-                    showPresetMatchToast(symbol, preset, update.data.price);
+                    // New match detected - show toast (skip 'up' and 'down' presets)
+                    if (preset !== 'up' && preset !== 'down') {
+                      showPresetMatchToast(symbol, preset, update.data.price);
+                    }
                   }
                 });
                 
