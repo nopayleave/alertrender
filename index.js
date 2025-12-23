@@ -5520,26 +5520,48 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
-            // Check Reject Down criteria (BJ TSI filter removed - preset disabled)
-            let matchesRejectDown = false;
+            // Check Reject Down criteria
+            // D1 Direction: down, D1 Value: 60-90, D2 Direction: down, D2 Value: 0-52
+            let matchesRejectDown = true;
+            if (d1Direction !== 'down') matchesRejectDown = false;
+            if (d2Direction !== 'down') matchesRejectDown = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 60 || d1Value > 90) matchesRejectDown = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 52) matchesRejectDown = false;
             
-            // Check Trend Up Con criteria (BJ TSI filter removed - preset disabled)
-            let matchesTrendUpCon = false;
+            // Check Trend Up Con criteria
+            // D1 Direction: up, D1 Value: 20-100, D2 Direction: up, D2 Value: 40-100
+            let matchesTrendUpCon = true;
+            if (d1Direction !== 'up') matchesTrendUpCon = false;
+            if (d2Direction !== 'up') matchesTrendUpCon = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 100) matchesTrendUpCon = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesTrendUpCon = false;
             
-            // Check Extreme Bull criteria (BJ TSI filter removed - preset disabled)
-            let matchesExtremeBull = false;
+            // Check Extreme Bull criteria
+            // D2 Value: 80-100
+            let matchesExtremeBull = true;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 80 || d2Value > 100) matchesExtremeBull = false;
             
-            // Check Extreme Bear criteria (BJ TSI filter removed - preset disabled)
-            let matchesExtremeBear = false;
+            // Check Extreme Bear criteria
+            // D2 Value: 0-20
+            let matchesExtremeBear = true;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
             
             // Check Big Up criteria (BJ TSI filter removed - preset disabled)
             let matchesBigUp = false;
             
-            // Check Fall criteria (BJ TSI filter removed - preset disabled)
-            let matchesFall = false;
+            // Check Fall criteria
+            // D1 Direction: down, D2 Direction: down
+            let matchesFall = true;
+            if (d1Direction !== 'down') matchesFall = false;
+            if (d2Direction !== 'down') matchesFall = false;
             
-            // Check Bounce criteria (BJ TSI filter removed - preset disabled)
-            let matchesBounce = false;
+            // Check Bounce criteria
+            // D1 Direction: up, D1 Value: 0-27, D2 Direction: up, D2 Value: 40-100
+            let matchesBounce = true;
+            if (d1Direction !== 'up') matchesBounce = false;
+            if (d2Direction !== 'up') matchesBounce = false;
+            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 27) matchesBounce = false;
+            if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesBounce = false;
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
@@ -5814,7 +5836,9 @@ Use this to create a new preset filter button that applies these exact filter se
             );
           }
           
-          // Apply ORB Filters first (before Stoch filters) to get base filtered data
+          // Create dataForPresetCounts: filtered by search and ORB only (NOT by Stoch filters)
+          // This ensures preset counts show how many items in the current filtered list match each preset,
+          // regardless of which preset is currently active
           let dataForPresetCounts = [...filteredData];
           if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
             dataForPresetCounts = dataForPresetCounts.filter(alert => {
@@ -5848,8 +5872,11 @@ Use this to create a new preset filter button that applies these exact filter se
               return true;
             });
           }
+          // Note: dataForPresetCounts does NOT have Stoch filters applied
+          // This way, preset counts show matches from the current filtered list (search + ORB),
+          // independent of which preset is currently active
           
-          // Apply Stoch Filters
+          // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Get D1 and D2 values and directions
