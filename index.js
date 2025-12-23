@@ -5627,16 +5627,75 @@ Use this to create a new preset filter button that applies these exact filter se
               // For now, empty ORB = match all, so no additional check needed
             }
             
-            if (matchesDown) downCount++;
-            if (matchesUp) upCount++;
-            if (matchesTrendDownBig) trendDownBigCount++;
-            if (matchesRejectDown) rejectDownCount++;
-            if (matchesTrendUpCon) trendUpConCount++;
-            if (matchesExtremeBull) extremeBullCount++;
-            if (matchesExtremeBear) extremeBearCount++;
-            if (matchesBigUp) bigUpCount++;
-            if (matchesFall) fallCount++;
-            if (matchesBounce) bounceCount++;
+            // Determine which preset this alert matches (if any)
+            let matchesActivePreset = false;
+            if (activePreset) {
+              if (activePreset === 'down' && matchesDown) matchesActivePreset = true;
+              else if (activePreset === 'up' && matchesUp) matchesActivePreset = true;
+              else if (activePreset === 'trendDownBig' && matchesTrendDownBig) matchesActivePreset = true;
+              else if (activePreset === 'rejectDown' && matchesRejectDown) matchesActivePreset = true;
+              else if (activePreset === 'trendUpCon' && matchesTrendUpCon) matchesActivePreset = true;
+              else if (activePreset === 'extremeBull' && matchesExtremeBull) matchesActivePreset = true;
+              else if (activePreset === 'extremeBear' && matchesExtremeBear) matchesActivePreset = true;
+              else if (activePreset === 'bigUp' && matchesBigUp) matchesActivePreset = true;
+              else if (activePreset === 'fall' && matchesFall) matchesActivePreset = true;
+              else if (activePreset === 'bounce' && matchesBounce) matchesActivePreset = true;
+            }
+            
+            // Count presets
+            // If an active preset exists and this alert matches it, exclude it from other preset counts
+            // But still count it for the active preset itself
+            if (matchesDown) {
+              // Only count if no active preset, or if active preset is 'down', or if it doesn't match active preset
+              if (!activePreset || activePreset === 'down' || !matchesActivePreset) {
+                downCount++;
+              }
+            }
+            if (matchesUp) {
+              if (!activePreset || activePreset === 'up' || !matchesActivePreset) {
+                upCount++;
+              }
+            }
+            if (matchesTrendDownBig) {
+              if (!activePreset || activePreset === 'trendDownBig' || !matchesActivePreset) {
+                trendDownBigCount++;
+              }
+            }
+            if (matchesRejectDown) {
+              if (!activePreset || activePreset === 'rejectDown' || !matchesActivePreset) {
+                rejectDownCount++;
+              }
+            }
+            if (matchesTrendUpCon) {
+              if (!activePreset || activePreset === 'trendUpCon' || !matchesActivePreset) {
+                trendUpConCount++;
+              }
+            }
+            if (matchesExtremeBull) {
+              if (!activePreset || activePreset === 'extremeBull' || !matchesActivePreset) {
+                extremeBullCount++;
+              }
+            }
+            if (matchesExtremeBear) {
+              if (!activePreset || activePreset === 'extremeBear' || !matchesActivePreset) {
+                extremeBearCount++;
+              }
+            }
+            if (matchesBigUp) {
+              if (!activePreset || activePreset === 'bigUp' || !matchesActivePreset) {
+                bigUpCount++;
+              }
+            }
+            if (matchesFall) {
+              if (!activePreset || activePreset === 'fall' || !matchesActivePreset) {
+                fallCount++;
+              }
+            }
+            if (matchesBounce) {
+              if (!activePreset || activePreset === 'bounce' || !matchesActivePreset) {
+                bounceCount++;
+              }
+            }
           });
 
           // Update the count displays
