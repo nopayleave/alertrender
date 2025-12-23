@@ -5417,8 +5417,12 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         // Count how many alerts match each preset filter
-        function updatePresetFilterCounts() {
-          if (alertsData.length === 0) {
+        // dataToCount: the data to count from (should be filteredData from renderTable)
+        function updatePresetFilterCounts(dataToCount) {
+          // Use filtered data if provided, otherwise use all alertsData
+          const data = dataToCount || alertsData;
+          
+          if (data.length === 0) {
             const downCountEl = document.getElementById('presetDownCount');
             const upCountEl = document.getElementById('presetUpCount');
             const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
@@ -5454,7 +5458,7 @@ Use this to create a new preset filter button that applies these exact filter se
           let fallCount = 0;
           let bounceCount = 0;
 
-          alertsData.forEach(alert => {
+          data.forEach(alert => {
             // Get D1 and D2 values and directions
             // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
             const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
@@ -5573,8 +5577,12 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         // Count how many alerts match each Price % range
-        function updatePricePercentCounts() {
-          if (alertsData.length === 0) {
+        // dataToCount: the data to count from (should be filteredData from renderTable)
+        function updatePricePercentCounts(dataToCount) {
+          // Use filtered data if provided, otherwise use all alertsData
+          const data = dataToCount || alertsData;
+          
+          if (data.length === 0) {
             const lessThanMinus10CountEl = document.getElementById('pricePercentLessThanMinus10Count');
             const lessThan5CountEl = document.getElementById('pricePercentLessThan5Count');
             const minus5ToMinus2CountEl = document.getElementById('pricePercentMinus5ToMinus2Count');
@@ -5604,7 +5612,7 @@ Use this to create a new preset filter button that applies these exact filter se
           let greaterThan5Count = 0;
           let greaterThan10Count = 0;
 
-          alertsData.forEach(alert => {
+          data.forEach(alert => {
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
             
             if (percentChange === null || isNaN(percentChange)) {
@@ -5959,11 +5967,11 @@ Use this to create a new preset filter button that applies these exact filter se
           const tickerCountEl = document.getElementById('tickerCount');
           if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
           
-          // Update preset filter counts
-          updatePresetFilterCounts();
+          // Update preset filter counts based on filtered data
+          updatePresetFilterCounts(filteredData);
           
-          // Update Price % filter counts
-          updatePricePercentCounts();
+          // Update Price % filter counts based on filtered data
+          updatePricePercentCounts(filteredData);
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
