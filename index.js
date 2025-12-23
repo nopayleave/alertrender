@@ -5814,6 +5814,41 @@ Use this to create a new preset filter button that applies these exact filter se
             );
           }
           
+          // Apply ORB Filters first (before Stoch filters) to get base filtered data
+          let dataForPresetCounts = [...filteredData];
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
+            dataForPresetCounts = dataForPresetCounts.filter(alert => {
+              const nyOrbStatus = alert.nyOrbStatus || null;
+              const londonOrbStatus = alert.londonOrbStatus || null;
+              const orbStatus = nyOrbStatus || londonOrbStatus;
+              
+              // ORB Status filter
+              if (orbFilterStatus.length > 0) {
+                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
+              }
+              
+              // Price Direction filter
+              if (priceFilterDirection.length > 0) {
+                const nyPriceDirection = alert.nyPriceDirection || null;
+                const londonPriceDirection = alert.londonPriceDirection || null;
+                let priceDirection = nyPriceDirection || londonPriceDirection;
+              
+                // Fallback: Calculate from price movement if not available
+                if (!priceDirection) {
+                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
+                  const prevPrice = previousPrices[alert.symbol];
+                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
+                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                  }
+                }
+                
+                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
+              }
+              
+              return true;
+            });
+          }
+          
           // Apply Stoch Filters
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
@@ -5927,6 +5962,10 @@ Use this to create a new preset filter button that applies these exact filter se
               return true;
             });
           }
+          
+          // Update dataForPresetCounts after ORB filters (but before preset filters)
+          // This is the final data that should be used for preset filter counts
+          dataForPresetCounts = [...filteredData];
 
           // Sort filtered data - starred items always come first
           if (currentSortField) {
@@ -5967,11 +6006,12 @@ Use this to create a new preset filter button that applies these exact filter se
           const tickerCountEl = document.getElementById('tickerCount');
           if (tickerCountEl) tickerCountEl.textContent = filteredData.length;
           
-          // Update preset filter counts based on filtered data
-          updatePresetFilterCounts(filteredData);
+          // Update preset filter counts based on data BEFORE preset filters are applied
+          // This ensures counts reflect how many items in the current filtered list match each preset
+          updatePresetFilterCounts(dataForPresetCounts);
           
-          // Update Price % filter counts based on filtered data
-          updatePricePercentCounts(filteredData);
+          // Update Price % filter counts based on data BEFORE preset filters are applied
+          updatePricePercentCounts(dataForPresetCounts);
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
