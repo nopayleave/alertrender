@@ -3505,8 +3505,8 @@ app.get('/', (req, res) => {
                   <div id="connectionStatus" class="flex items-center gap-2">
                     <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
                     <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-                    <div id="realtimeIndicator" class="text-green-400 hidden">
-                      <span class="animate-pulse">🔄 Real-time updates active</span>
+                  <div id="realtimeIndicator" class="text-green-400 hidden">
+                    <span class="animate-pulse">🔄 Real-time updates active</span>
                     </div>
                   </div>
                 </div>
@@ -3748,30 +3748,6 @@ app.get('/', (req, res) => {
               </button>
               <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-white">
                 Up <span id="presetUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span>
-              </button>
-              <button id="presetTrendDownBig" onclick="applyPresetFilter('trendDownBig')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-white">
-                Trend Down Big <span id="presetTrendDownBigCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span>
-              </button>
-              <button id="presetRejectDown" onclick="applyPresetFilter('rejectDown')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-white">
-                Reject Down <span id="presetRejectDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-purple-600/50 text-white">0</span>
-              </button>
-              <button id="presetTrendUpCon" onclick="applyPresetFilter('trendUpCon')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-white">
-                Trend Up Con <span id="presetTrendUpConCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span>
-              </button>
-              <button id="presetExtremeBull" onclick="applyPresetFilter('extremeBull')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-white">
-                Extreme Bull <span id="presetExtremeBullCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-yellow-600/50 text-white">0</span>
-              </button>
-              <button id="presetExtremeBear" onclick="applyPresetFilter('extremeBear')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-pink-500/50 bg-pink-500/20 hover:bg-pink-500/30 active:scale-95 transition-all text-white">
-                Extreme Bear <span id="presetExtremeBearCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-pink-600/50 text-white">0</span>
-              </button>
-              <button id="presetBigUp" onclick="applyPresetFilter('bigUp')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-white">
-                Big Up <span id="presetBigUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-cyan-600/50 text-white">0</span>
-              </button>
-              <button id="presetFall" onclick="applyPresetFilter('fall')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-indigo-500/50 bg-indigo-500/20 hover:bg-indigo-500/30 active:scale-95 transition-all text-white">
-                Fall <span id="presetFallCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-indigo-600/50 text-white">0</span>
-              </button>
-              <button id="presetBounce" onclick="applyPresetFilter('bounce')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-teal-500/50 bg-teal-500/20 hover:bg-teal-500/30 active:scale-95 transition-all text-white">
-                Bounce <span id="presetBounceCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-teal-600/50 text-white">0</span>
               </button>
               <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
                 Clear All
@@ -5134,216 +5110,13 @@ app.get('/', (req, res) => {
               const parentGroup = d2UpChip.closest('.filter-group');
               if (parentGroup) parentGroup.classList.add('has-active');
             }
-            
-          } else if (preset === 'trendDownBig') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 0 to 40
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            if (d1Toggle && sliders.d1Value) {
-              d1Toggle.checked = true;
-              sliders.d1Value.noUiSlider.set([0, 40]);
-              // Don't call updateD1ValueFilter() here - will update at end
-              stochFilterD1Value.min = 0;
-              stochFilterD1Value.max = 40;
-              stochFilterD1Value.active = true;
-            }
-            
-            // Activate D2 Direction: down
-            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
-            if (d2DownChip) {
-              d2DownChip.classList.add('active');
-              const parentGroup = d2DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Value slider: 0 to 26
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([0, 26]);
-              // Don't call updateD2ValueFilter() here - will update at end
-              stochFilterD2Value.min = 0;
-              stochFilterD2Value.max = 26;
-              stochFilterD2Value.active = true;
-            }
-            
-            // Activate Price %: negative ranges
-            ['<-5', '-5--2', '-2-0'].forEach(value => {
-              const chip = document.querySelector(\`[data-filter="percentChange"][data-value="\${value}"]\`);
-              if (chip) {
-                chip.classList.add('active');
-                const parentGroup = chip.closest('.filter-group');
-                if (parentGroup) parentGroup.classList.add('has-active');
-              }
-            });
-            
-          } else if (preset === 'rejectDown') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 60 to 90
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            if (d1Toggle && sliders.d1Value) {
-              d1Toggle.checked = true;
-              sliders.d1Value.noUiSlider.set([60, 90]);
-              stochFilterD1Value.min = 60;
-              stochFilterD1Value.max = 90;
-              stochFilterD1Value.active = true;
-            }
-            
-            // Activate D2 Direction: down
-            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
-            if (d2DownChip) {
-              d2DownChip.classList.add('active');
-              const parentGroup = d2DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Value slider: 0 to 52
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([0, 52]);
-              stochFilterD2Value.min = 0;
-              stochFilterD2Value.max = 52;
-              stochFilterD2Value.active = true;
-            }
-            
-          } else if (preset === 'trendUpCon') {
-            // Activate D1 Direction: up
-            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
-            if (d1UpChip) {
-              d1UpChip.classList.add('active');
-              const parentGroup = d1UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 20 to 100
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            if (d1Toggle && sliders.d1Value) {
-              d1Toggle.checked = true;
-              sliders.d1Value.noUiSlider.set([20, 100]);
-              stochFilterD1Value.min = 20;
-              stochFilterD1Value.max = 100;
-              stochFilterD1Value.active = true;
-            }
-            
-            // Activate D2 Direction: up
-            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
-            if (d2UpChip) {
-              d2UpChip.classList.add('active');
-              const parentGroup = d2UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Value slider: 40 to 100
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([40, 100]);
-              stochFilterD2Value.min = 40;
-              stochFilterD2Value.max = 100;
-              stochFilterD2Value.active = true;
-            }
-            
-          } else if (preset === 'extremeBull') {
-            // Activate D2 Value slider: 80 to 100
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([80, 100]);
-              stochFilterD2Value.min = 80;
-              stochFilterD2Value.max = 100;
-              stochFilterD2Value.active = true;
-            }
-            
-          } else if (preset === 'extremeBear') {
-            // Activate D2 Value slider: 0 to 20
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([0, 20]);
-              stochFilterD2Value.min = 0;
-              stochFilterD2Value.max = 20;
-              stochFilterD2Value.active = true;
-            }
-            
-          } else if (preset === 'bigUp') {
-            // BJ TSI filter removed - preset disabled
-            // No filters to activate
-            
-          } else if (preset === 'fall') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Direction: down
-            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
-            if (d2DownChip) {
-              d2DownChip.classList.add('active');
-              const parentGroup = d2DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-          } else if (preset === 'bounce') {
-            // Activate D1 Direction: up
-            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
-            if (d1UpChip) {
-              d1UpChip.classList.add('active');
-              const parentGroup = d1UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 0 to 27
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            if (d1Toggle && sliders.d1Value) {
-              d1Toggle.checked = true;
-              sliders.d1Value.noUiSlider.set([0, 27]);
-              stochFilterD1Value.min = 0;
-              stochFilterD1Value.max = 27;
-              stochFilterD1Value.active = true;
-            }
-            
-            // Activate D2 Direction: up
-            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
-            if (d2UpChip) {
-              d2UpChip.classList.add('active');
-              const parentGroup = d2UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Value slider: 40 to 100
-            const d2Toggle = document.getElementById('d2ValueToggle');
-            if (d2Toggle && sliders.d2Value) {
-              d2Toggle.checked = true;
-              sliders.d2Value.noUiSlider.set([40, 100]);
-              stochFilterD2Value.min = 40;
-              stochFilterD2Value.max = 100;
-              stochFilterD2Value.active = true;
-            }
           }
           
           // Update filter arrays from chip states
           updateFilterArrays();
           
           // Apply filters - ensure renderTable is called
-          filterAlerts();
+            filterAlerts();
           
           // Force a re-render to ensure filters are applied
           renderTable();
@@ -5383,6 +5156,11 @@ app.get('/', (req, res) => {
           const settings = {
             name: presetName,
             filters: {
+              // ORB Filters
+              orb: {
+                status: orbFilterStatus.length > 0 ? orbFilterStatus : null,
+                priceDirection: priceFilterDirection.length > 0 ? priceFilterDirection : null
+              },
               // Stoch Filters
               stoch: {
                 d1Direction: stochFilterD1Direction,
@@ -5425,38 +5203,14 @@ Use this to create a new preset filter button that applies these exact filter se
           if (data.length === 0) {
             const downCountEl = document.getElementById('presetDownCount');
             const upCountEl = document.getElementById('presetUpCount');
-            const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
-            const rejectDownCountEl = document.getElementById('presetRejectDownCount');
-            const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
-            const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
-            const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
-            const bigUpCountEl = document.getElementById('presetBigUpCount');
-            const fallCountEl = document.getElementById('presetFallCount');
-            const bounceCountEl = document.getElementById('presetBounceCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
-            if (trendDownBigCountEl) trendDownBigCountEl.textContent = '0';
-            if (rejectDownCountEl) rejectDownCountEl.textContent = '0';
-            if (trendUpConCountEl) trendUpConCountEl.textContent = '0';
-            if (extremeBullCountEl) extremeBullCountEl.textContent = '0';
-            if (extremeBearCountEl) extremeBearCountEl.textContent = '0';
-            if (bigUpCountEl) bigUpCountEl.textContent = '0';
-            if (fallCountEl) fallCountEl.textContent = '0';
-            if (bounceCountEl) bounceCountEl.textContent = '0';
             return;
           }
 
           // Count preset matches
           let downCount = 0;
           let upCount = 0;
-          let trendDownBigCount = 0;
-          let rejectDownCount = 0;
-          let trendUpConCount = 0;
-          let extremeBullCount = 0;
-          let extremeBearCount = 0;
-          let bigUpCount = 0;
-          let fallCount = 0;
-          let bounceCount = 0;
 
           data.forEach(alert => {
             // Get D1 and D2 values and directions
@@ -5520,146 +5274,15 @@ Use this to create a new preset filter button that applies these exact filter se
               // For now, empty ORB = match all, so no additional check needed
             }
             
-            // Check Trend Down Big criteria
-            // Stoch: D1 down (0-40), D2 down (0-26), % change negative
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesTrendDownBig = true;
-            if (d1Direction !== 'down') matchesTrendDownBig = false;
-            if (d2Direction !== 'down') matchesTrendDownBig = false;
-            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 40) matchesTrendDownBig = false;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 26) matchesTrendDownBig = false;
-            if (percentChange === null || isNaN(percentChange)) {
-              matchesTrendDownBig = false;
-            } else {
-              const pctVal = percentChange;
-              if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
-                matchesTrendDownBig = false;
-              }
-            }
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Reject Down criteria
-            // Stoch: D1 down (60-90), D2 down (0-52)
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesRejectDown = true;
-            if (d1Direction !== 'down') matchesRejectDown = false;
-            if (d2Direction !== 'down') matchesRejectDown = false;
-            if (d1Value === null || isNaN(d1Value) || d1Value < 60 || d1Value > 90) matchesRejectDown = false;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 52) matchesRejectDown = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Trend Up Con criteria
-            // Stoch: D1 up (20-100), D2 up (40-100)
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesTrendUpCon = true;
-            if (d1Direction !== 'up') matchesTrendUpCon = false;
-            if (d2Direction !== 'up') matchesTrendUpCon = false;
-            if (d1Value === null || isNaN(d1Value) || d1Value < 20 || d1Value > 100) matchesTrendUpCon = false;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesTrendUpCon = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Extreme Bull criteria
-            // Stoch: D2 Value: 80-100
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesExtremeBull = true;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 80 || d2Value > 100) matchesExtremeBull = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Extreme Bear criteria
-            // Stoch: D2 Value: 0-20
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesExtremeBear = true;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 20) matchesExtremeBear = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Big Up criteria
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesBigUp = true;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Fall criteria
-            // Stoch: D1 Direction: down, D2 Direction: down
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesFall = true;
-            if (d1Direction !== 'down') matchesFall = false;
-            if (d2Direction !== 'down') matchesFall = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
-            // Check Bounce criteria
-            // Stoch: D1 Direction: up, D1 Value: 0-27, D2 Direction: up, D2 Value: 40-100
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesBounce = true;
-            if (d1Direction !== 'up') matchesBounce = false;
-            if (d2Direction !== 'up') matchesBounce = false;
-            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 27) matchesBounce = false;
-            if (d2Value === null || isNaN(d2Value) || d2Value < 40 || d2Value > 100) matchesBounce = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
-            
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
-            if (matchesTrendDownBig) trendDownBigCount++;
-            if (matchesRejectDown) rejectDownCount++;
-            if (matchesTrendUpCon) trendUpConCount++;
-            if (matchesExtremeBull) extremeBullCount++;
-            if (matchesExtremeBear) extremeBearCount++;
-            if (matchesBigUp) bigUpCount++;
-            if (matchesFall) fallCount++;
-            if (matchesBounce) bounceCount++;
           });
 
           // Update the count displays
           const downCountEl = document.getElementById('presetDownCount');
           const upCountEl = document.getElementById('presetUpCount');
-          const trendDownBigCountEl = document.getElementById('presetTrendDownBigCount');
-          const rejectDownCountEl = document.getElementById('presetRejectDownCount');
-          const trendUpConCountEl = document.getElementById('presetTrendUpConCount');
-          const extremeBullCountEl = document.getElementById('presetExtremeBullCount');
-          const extremeBearCountEl = document.getElementById('presetExtremeBearCount');
-          const bigUpCountEl = document.getElementById('presetBigUpCount');
-          const fallCountEl = document.getElementById('presetFallCount');
-          const bounceCountEl = document.getElementById('presetBounceCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
-          if (trendDownBigCountEl) trendDownBigCountEl.textContent = trendDownBigCount;
-          if (rejectDownCountEl) rejectDownCountEl.textContent = rejectDownCount;
-          if (trendUpConCountEl) trendUpConCountEl.textContent = trendUpConCount;
-          if (extremeBullCountEl) extremeBullCountEl.textContent = extremeBullCount;
-          if (extremeBearCountEl) extremeBearCountEl.textContent = extremeBearCount;
-          if (bigUpCountEl) bigUpCountEl.textContent = bigUpCount;
-          if (fallCountEl) fallCountEl.textContent = fallCount;
-          if (bounceCountEl) bounceCountEl.textContent = bounceCount;
         }
 
         // Count how many alerts match each Price % range
@@ -6990,24 +6613,6 @@ Use this to create a new preset filter button that applies these exact filter se
             matches.push('up');
           }
           
-          // Check Trend Down Big preset
-          let matchesTrendDownBig = true;
-          if (d1Direction !== 'down') matchesTrendDownBig = false;
-          if (d2Direction !== 'down') matchesTrendDownBig = false;
-          if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 40) matchesTrendDownBig = false;
-          if (d2Value === null || isNaN(d2Value) || d2Value < 0 || d2Value > 26) matchesTrendDownBig = false;
-          if (percentChange === null || isNaN(percentChange)) {
-            matchesTrendDownBig = false;
-          } else {
-            const pctVal = percentChange;
-            if (!(pctVal < -5 || (pctVal >= -5 && pctVal < -2) || (pctVal >= -2 && pctVal < 0))) {
-              matchesTrendDownBig = false;
-            }
-          }
-          if (matchesTrendDownBig) {
-            matches.push('trendDownBig');
-          }
-          
           return matches;
         }
         
@@ -7031,11 +6636,6 @@ Use this to create a new preset filter button that applies these exact filter se
               title = 'Up Signal';
               toastClass = 'cross-high';
               icon = '🚀';
-              break;
-            case 'trendDownBig':
-              title = 'Trend Down Big';
-              toastClass = 'cross-low';
-              icon = '📉';
               break;
             default:
               title = 'Preset Match';
