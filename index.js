@@ -3500,14 +3500,14 @@ app.get('/', (req, res) => {
             <div class="flex-1">
               <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
                 <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground">Trading Alert Dashboard</h1>
-                <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="flex flex-col gap-1 text-sm">
                   <p class="text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
-                  <div id="connectionStatus" class="flex items-center gap-1">
+                  <div id="connectionStatus" class="flex items-center gap-2">
                     <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
                     <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-                  </div>
-                  <div id="realtimeIndicator" class="text-green-400 hidden">
-                    <span class="animate-pulse">🔄 Real-time updates active</span>
+                    <div id="realtimeIndicator" class="text-green-400 hidden">
+                      <span class="animate-pulse">🔄 Real-time updates active</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3519,6 +3519,10 @@ app.get('/', (req, res) => {
               <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
                 <span>📊</span>
                 <span>ORB History</span>
+              </button>
+              <button id="stochHistoryToggle" onclick="toggleStochHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View Stochastic history">
+                <span>📈</span>
+                <span>Stoch History</span>
               </button>
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 <span id="notificationIcon">🔔</span>
@@ -3833,6 +3837,30 @@ app.get('/', (req, res) => {
         </div>
       </div>
 
+      <!-- Stoch History Overlay -->
+      <div id="stochHistoryOverlay" class="orb-history-overlay" onclick="closeStochHistory()">
+        <div class="orb-history-panel" onclick="event.stopPropagation()">
+          <div class="orb-history-header">
+            <h3>Stochastic History</h3>
+            <button class="orb-history-close" onclick="closeStochHistory()">×</button>
+          </div>
+          <div class="orb-history-filters">
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">Event Type:</label>
+              <div class="orb-history-filter-chips">
+                <button onclick="toggleStochHistoryFilter('eventType', 'all', this)" class="orb-history-filter-chip orb-filter-all active" data-filter="eventType" data-value="all">All</button>
+                <button onclick="toggleStochHistoryFilter('eventType', 'direction_change', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="eventType" data-value="direction_change">Direction Change</button>
+                <button onclick="toggleStochHistoryFilter('eventType', 'preset_match', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="eventType" data-value="preset_match">Preset Match</button>
+                <button onclick="toggleStochHistoryFilter('eventType', 'trend_change', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="eventType" data-value="trend_change">Trend Change</button>
+              </div>
+            </div>
+          </div>
+          <div class="orb-history-content" id="stochHistoryContent">
+            <div class="orb-history-empty">No stochastic events recorded yet</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Export Modal -->
       <div id="exportModalOverlay" class="export-modal-overlay" onclick="closeExportModal()">
         <div class="export-modal" onclick="event.stopPropagation()">
@@ -3910,9 +3938,20 @@ app.get('/', (req, res) => {
         // Track previous preset filter matches to detect new matches
         let previousPresetMatches = {}; // { symbol: ['down', 'up', 'trendDownBig'] }
         
+        // Stochastic history
+        let stochHistory = []; // Array of { symbol, eventType, eventData, price, timestamp }
+        
+        // Track previous stochastic states
+        let previousStochStates = {}; // { symbol: { d1Direction, d2Direction, trendMessage, presetMatches } }
+        
         // ORB history filter state
         let orbHistoryFilters = {
           crossover: 'all' // 'all', 'cross_high', 'cross_low', 'cross_bottom', 'cross_high_down', 'cross_mid_up', 'cross_mid_down'
+        };
+        
+        // Stoch history filter state
+        let stochHistoryFilters = {
+          eventType: 'all' // 'all', 'direction_change', 'preset_match', 'trend_change'
         };
 
         // Column order - stored in localStorage
@@ -7005,6 +7044,193 @@ Use this to create a new preset filter button that applies these exact filter se
           panel.classList.remove('open');
         }
         
+        // Toggle Stoch history overlay
+        function toggleStochHistory() {
+          const overlay = document.getElementById('stochHistoryOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          
+          if (overlay.classList.contains('open')) {
+            closeStochHistory();
+          } else {
+            overlay.classList.add('open');
+            panel.classList.add('open');
+            renderStochHistory();
+          }
+        }
+        
+        // Close Stoch history overlay
+        function closeStochHistory() {
+          const overlay = document.getElementById('stochHistoryOverlay');
+          const panel = overlay.querySelector('.orb-history-panel');
+          overlay.classList.remove('open');
+          panel.classList.remove('open');
+        }
+        
+        // Toggle Stoch history filter chip
+        function toggleStochHistoryFilter(filterType, value, element) {
+          // Update active state
+          const chips = element.parentElement.querySelectorAll('.orb-history-filter-chip');
+          chips.forEach(chip => chip.classList.remove('active'));
+          element.classList.add('active');
+          
+          // Update filter state
+          stochHistoryFilters[filterType] = value;
+          
+          // Apply filters
+          applyStochHistoryFilters();
+        }
+        
+        // Apply Stoch history filters
+        function applyStochHistoryFilters() {
+          // Render with filters
+          renderStochHistory();
+        }
+        
+        // Render Stoch history list
+        function renderStochHistory() {
+          const content = document.getElementById('stochHistoryContent');
+          if (!content) return;
+          
+          if (stochHistory.length === 0) {
+            content.innerHTML = '<div class="orb-history-empty">No stochastic events recorded yet</div>';
+            return;
+          }
+          
+          // Apply filters
+          let filteredHistory = stochHistory.filter(item => {
+            // Event type filter
+            if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
+              return false;
+            }
+            
+            return true;
+          });
+          
+          if (filteredHistory.length === 0) {
+            content.innerHTML = '<div class="orb-history-empty">No events match the current filters</div>';
+            return;
+          }
+          
+          content.innerHTML = filteredHistory.map(item => {
+            const time = new Date(item.timestamp);
+            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            
+            let eventText = '';
+            let itemClass = 'cross-high';
+            
+            switch(item.eventType) {
+              case 'direction_change':
+                eventText = item.eventData.description || 'Direction Changed';
+                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
+                break;
+              case 'preset_match':
+                eventText = item.eventData.presetName || 'Preset Match';
+                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
+                break;
+              case 'trend_change':
+                eventText = item.eventData.trendMessage || 'Trend Changed';
+                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
+                break;
+              default:
+                eventText = 'Stochastic Event';
+                itemClass = 'cross-high';
+            }
+            
+            return \`
+              <div class="orb-history-item \${itemClass}">
+                <div class="orb-history-item-content">
+                  <span class="orb-history-symbol">\${item.symbol}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-crossover">\${eventText}</span>
+                  <span class="orb-history-separator">|</span>
+                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
+                </div>
+              </div>
+            \`;
+          }).join('');
+        }
+        
+        // Check for stochastic events and add to history
+        function checkStochEvents(alert) {
+          if (!alert || !alert.symbol) return;
+          
+          const symbol = alert.symbol;
+          const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
+          const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
+          const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+          const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+          
+          // Initialize previous state for this symbol if not exists
+          if (!previousStochStates[symbol]) {
+            previousStochStates[symbol] = {
+              d1Direction: d1Direction,
+              d2Direction: d2Direction,
+              trendMessage: '',
+              presetMatches: []
+            };
+            return; // Don't record initial state
+          }
+          
+          const prevState = previousStochStates[symbol];
+          
+          // Check for direction changes
+          if (d1Direction !== prevState.d1Direction || d2Direction !== prevState.d2Direction) {
+            const isBullish = (d1Direction === 'up' && d2Direction === 'up') || (d1Direction === 'up' && prevState.d1Direction !== 'up');
+            stochHistory.unshift({
+              symbol: symbol,
+              eventType: 'direction_change',
+              eventData: {
+                description: \`D1: \${prevState.d1Direction} → \${d1Direction}, D2: \${prevState.d2Direction} → \${d2Direction}\`,
+                d1Direction: d1Direction,
+                d2Direction: d2Direction,
+                prevD1Direction: prevState.d1Direction,
+                prevD2Direction: prevState.d2Direction,
+                isBullish: isBullish
+              },
+              price: alert.price,
+              timestamp: Date.now()
+            });
+          }
+          
+          // Check for preset matches (already handled in checkPresetMatches, but we can add to history here)
+          const currentPresetMatches = checkPresetMatches(alert);
+          const newPresetMatches = currentPresetMatches.filter(p => !prevState.presetMatches.includes(p));
+          
+          newPresetMatches.forEach(preset => {
+            const isBullish = preset === 'up';
+            stochHistory.unshift({
+              symbol: symbol,
+              eventType: 'preset_match',
+              eventData: {
+                presetName: preset === 'down' ? 'Down' : preset === 'up' ? 'Up' : 'Trend Down Big',
+                preset: preset,
+                isBullish: isBullish
+              },
+              price: alert.price,
+              timestamp: Date.now()
+            });
+          });
+          
+          // Update previous state
+          previousStochStates[symbol] = {
+            d1Direction: d1Direction,
+            d2Direction: d2Direction,
+            trendMessage: prevState.trendMessage,
+            presetMatches: currentPresetMatches
+          };
+          
+          // Keep only last 100 entries
+          if (stochHistory.length > 100) {
+            stochHistory = stochHistory.slice(0, 100);
+          }
+          
+          // Update history display if open
+          if (document.getElementById('stochHistoryOverlay').classList.contains('open')) {
+            renderStochHistory();
+          }
+        }
+        
         // Toggle ORB history filter chip
         function toggleOrbHistoryFilter(filterType, value, element) {
           // Update active state
@@ -7134,6 +7360,9 @@ Use this to create a new preset filter button that applies these exact filter se
                 
                 // Update previous matches
                 previousPresetMatches[symbol] = currentMatches;
+                
+                // Check for stochastic events
+                checkStochEvents(alert);
               });
             }
             
@@ -7165,6 +7394,7 @@ Use this to create a new preset filter button that applies these exact filter se
           connectionText.textContent = 'Connected';
           connectionText.className = 'text-green-400';
           realtimeIndicator.classList.remove('hidden');
+          realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Real-time updates active</span>';
         };
         
         eventSource.onmessage = function(event) {
@@ -7198,6 +7428,9 @@ Use this to create a new preset filter button that applies these exact filter se
                 
                 // Update previous matches
                 previousPresetMatches[symbol] = currentMatches;
+                
+                // Check for stochastic events
+                checkStochEvents(update.data);
               }
             }
           } catch (e) {
