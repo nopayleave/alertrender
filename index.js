@@ -5627,75 +5627,16 @@ Use this to create a new preset filter button that applies these exact filter se
               // For now, empty ORB = match all, so no additional check needed
             }
             
-            // Determine which preset this alert matches (if any)
-            let matchesActivePreset = false;
-            if (activePreset) {
-              if (activePreset === 'down' && matchesDown) matchesActivePreset = true;
-              else if (activePreset === 'up' && matchesUp) matchesActivePreset = true;
-              else if (activePreset === 'trendDownBig' && matchesTrendDownBig) matchesActivePreset = true;
-              else if (activePreset === 'rejectDown' && matchesRejectDown) matchesActivePreset = true;
-              else if (activePreset === 'trendUpCon' && matchesTrendUpCon) matchesActivePreset = true;
-              else if (activePreset === 'extremeBull' && matchesExtremeBull) matchesActivePreset = true;
-              else if (activePreset === 'extremeBear' && matchesExtremeBear) matchesActivePreset = true;
-              else if (activePreset === 'bigUp' && matchesBigUp) matchesActivePreset = true;
-              else if (activePreset === 'fall' && matchesFall) matchesActivePreset = true;
-              else if (activePreset === 'bounce' && matchesBounce) matchesActivePreset = true;
-            }
-            
-            // Count presets
-            // If an active preset exists and this alert matches it, exclude it from other preset counts
-            // But still count it for the active preset itself
-            if (matchesDown) {
-              // Only count if no active preset, or if active preset is 'down', or if it doesn't match active preset
-              if (!activePreset || activePreset === 'down' || !matchesActivePreset) {
-                downCount++;
-              }
-            }
-            if (matchesUp) {
-              if (!activePreset || activePreset === 'up' || !matchesActivePreset) {
-                upCount++;
-              }
-            }
-            if (matchesTrendDownBig) {
-              if (!activePreset || activePreset === 'trendDownBig' || !matchesActivePreset) {
-                trendDownBigCount++;
-              }
-            }
-            if (matchesRejectDown) {
-              if (!activePreset || activePreset === 'rejectDown' || !matchesActivePreset) {
-                rejectDownCount++;
-              }
-            }
-            if (matchesTrendUpCon) {
-              if (!activePreset || activePreset === 'trendUpCon' || !matchesActivePreset) {
-                trendUpConCount++;
-              }
-            }
-            if (matchesExtremeBull) {
-              if (!activePreset || activePreset === 'extremeBull' || !matchesActivePreset) {
-                extremeBullCount++;
-              }
-            }
-            if (matchesExtremeBear) {
-              if (!activePreset || activePreset === 'extremeBear' || !matchesActivePreset) {
-                extremeBearCount++;
-              }
-            }
-            if (matchesBigUp) {
-              if (!activePreset || activePreset === 'bigUp' || !matchesActivePreset) {
-                bigUpCount++;
-              }
-            }
-            if (matchesFall) {
-              if (!activePreset || activePreset === 'fall' || !matchesActivePreset) {
-                fallCount++;
-              }
-            }
-            if (matchesBounce) {
-              if (!activePreset || activePreset === 'bounce' || !matchesActivePreset) {
-                bounceCount++;
-              }
-            }
+            if (matchesDown) downCount++;
+            if (matchesUp) upCount++;
+            if (matchesTrendDownBig) trendDownBigCount++;
+            if (matchesRejectDown) rejectDownCount++;
+            if (matchesTrendUpCon) trendUpConCount++;
+            if (matchesExtremeBull) extremeBullCount++;
+            if (matchesExtremeBear) extremeBearCount++;
+            if (matchesBigUp) bigUpCount++;
+            if (matchesFall) fallCount++;
+            if (matchesBounce) bounceCount++;
           });
 
           // Update the count displays
@@ -5999,6 +5940,40 @@ Use this to create a new preset filter button that applies these exact filter se
           // This way, preset counts show matches from the current filtered list (search + ORB),
           // independent of which preset is currently active
           
+          // Apply ORB Filters to filteredData (before Stoch filters, to match dataForPresetCounts structure)
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
+            filteredData = filteredData.filter(alert => {
+              const nyOrbStatus = alert.nyOrbStatus || null;
+              const londonOrbStatus = alert.londonOrbStatus || null;
+              const orbStatus = nyOrbStatus || londonOrbStatus;
+              
+              // ORB Status filter
+              if (orbFilterStatus.length > 0) {
+                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
+              }
+              
+              // Price Direction filter
+              if (priceFilterDirection.length > 0) {
+                const nyPriceDirection = alert.nyPriceDirection || null;
+                const londonPriceDirection = alert.londonPriceDirection || null;
+                let priceDirection = nyPriceDirection || londonPriceDirection;
+              
+                // Fallback: Calculate from price movement if not available
+                if (!priceDirection) {
+                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
+                  const prevPrice = previousPrices[alert.symbol];
+                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
+                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
+                  }
+                }
+                
+                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
+              }
+              
+              return true;
+            });
+          }
+          
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
             filteredData = filteredData.filter(alert => {
@@ -6078,44 +6053,8 @@ Use this to create a new preset filter button that applies these exact filter se
               return true;
             });
           }
-          
-          // Apply ORB Filters
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
-            filteredData = filteredData.filter(alert => {
-              const nyOrbStatus = alert.nyOrbStatus || null;
-              const londonOrbStatus = alert.londonOrbStatus || null;
-              const orbStatus = nyOrbStatus || londonOrbStatus;
-              
-              // ORB Status filter
-              if (orbFilterStatus.length > 0) {
-                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
-              }
-              
-              // Price Direction filter
-              if (priceFilterDirection.length > 0) {
-                const nyPriceDirection = alert.nyPriceDirection || null;
-                const londonPriceDirection = alert.londonPriceDirection || null;
-                let priceDirection = nyPriceDirection || londonPriceDirection;
-              
-                // Fallback: Calculate from price movement if not available
-                if (!priceDirection) {
-                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
-                  const prevPrice = previousPrices[alert.symbol];
-                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
-                  }
-                }
-                
-                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
-              }
-              
-              return true;
-            });
-          }
-          
-          // Update dataForPresetCounts after ORB filters (but before preset filters)
-          // This is the final data that should be used for preset filter counts
-          dataForPresetCounts = [...filteredData];
+          // Note: dataForPresetCounts is already set correctly above (after search and ORB filters, before Stoch filters)
+          // Do NOT overwrite it here, as filteredData now has Stoch filters applied
 
           // Sort filtered data - starred items always come first
           if (currentSortField) {
