@@ -5261,7 +5261,8 @@ app.get('/', (req, res) => {
           // Generate sector filter buttons
           sectorContainer.innerHTML = sortedSectors.map(sector => {
             const sectorId = sector.replace(/[^a-zA-Z0-9]/g, '');
-            return `<button onclick="toggleFilterChip('sector', '${sector}', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="sector" data-value="${sector}">${sector}</button>`;
+            const sectorJson = JSON.stringify(sector);
+            return `<button onclick="toggleFilterChip('sector', ${sectorJson}, this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="sector" data-value="${sector}">${sector}</button>`;
           }).join('');
           
           if (sortedSectors.length === 0) {
