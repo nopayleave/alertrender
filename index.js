@@ -2719,7 +2719,7 @@ app.get('/calculator', (req, res) => {
                   <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
                 <div class="text-right">
-                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-base font-semibold text-green-400">\${formatCurrency(displayCost)}</div>
                   <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
                 </div>
               </div>
@@ -4393,6 +4393,46 @@ app.get('/', (req, res) => {
           }
           return Math.ceil(vol * 10) / 10 + '';
         }
+        
+        // Format currency values with k notation for values over 1000
+        function formatCurrency(value, showCents = true) {
+          if (!value || isNaN(value)) return 'N/A';
+          
+          const num = parseFloat(value);
+          const absNum = Math.abs(num);
+          
+          if (absNum >= 1000000) {
+            const formatted = (num / 1000000).toFixed(2);
+            return '$' + formatted + 'M';
+          } else if (absNum >= 1000) {
+            const formatted = (num / 1000).toFixed(2);
+            return '$' + formatted + 'k';
+          } else {
+            if (showCents) {
+              return '$' + num.toFixed(2);
+            } else {
+              return '$' + num.toFixed(0);
+            }
+          }
+        }
+        
+        // Format regular numbers with k notation for values over 1000
+        function formatNumber(value, decimals = 2) {
+          if (!value || isNaN(value)) return 'N/A';
+          
+          const num = parseFloat(value);
+          const absNum = Math.abs(num);
+          
+          if (absNum >= 1000000) {
+            const formatted = (num / 1000000).toFixed(decimals);
+            return formatted + 'M';
+          } else if (absNum >= 1000) {
+            const formatted = (num / 1000).toFixed(decimals);
+            return formatted + 'k';
+          } else {
+            return num.toFixed(decimals);
+          }
+        }
 
         function sortTable(field) {
           if (currentSortField === field) {
@@ -4829,7 +4869,7 @@ app.get('/', (req, res) => {
           // Render masonry cards
           masonryContainer.innerHTML = filteredData.map(alert => {
             const symbol = alert.symbol || 'N/A';
-            const price = alert.price ? parseFloat(alert.price).toFixed(2) : 'N/A';
+            const price = alert.price ? formatCurrency(alert.price) : 'N/A';
             const changePercent = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay).toFixed(2) : null;
             const changeClass = changePercent !== null ? (changePercent >= 0 ? 'text-green-400' : 'text-red-400') : 'text-muted-foreground';
             const changeSign = changePercent !== null && changePercent >= 0 ? '+' : '';
@@ -7125,7 +7165,7 @@ Use this to create a new preset filter button that applies these exact filter se
               </td>\`,
               price: \`
                 <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
-                  $\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
+                  \${alert.price ? formatCurrency(alert.price) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
@@ -7138,19 +7178,19 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               orb: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Price Dir=\${priceDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
+                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? formatCurrency(nyOrbHigh) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? formatCurrency(nyOrbLow) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Price Dir=\${priceDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
                   <div class="space-y-1">
                     \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
-                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
-                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${formatCurrency(nyOrbHigh)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? formatCurrency(nyOrbLow) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? formatCurrency(nyOrbMid) : '-'}</span></div>
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
                         \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? '↑↑' : '↓↓') + '</span>' : ''}
                       </div>
                     \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
-                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
-                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${formatCurrency(londonOrbHigh)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? formatCurrency(londonOrbLow) : '-'}</span></div>
+                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? formatCurrency(londonOrbMid) : '-'}</span></div>
                       <div class="flex items-center gap-1 text-xs">
                         <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
                         \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
@@ -7253,7 +7293,7 @@ Use this to create a new preset filter button that applies these exact filter se
               icon = '📊';
           }
           
-          const message = \`\${symbol} matches \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
+          const message = \`\${symbol} matches \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
           
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
@@ -7347,7 +7387,7 @@ Use this to create a new preset filter button that applies these exact filter se
               break;
           }
           
-          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
+          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
           
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
@@ -8476,7 +8516,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
                 <div class="text-right">
-                  <div class="text-base font-semibold text-green-400">\${currencySymbol}\${displayCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                  <div class="text-base font-semibold text-green-400">\${formatCurrency(displayCost)}</div>
                   <div class="text-xs text-muted-foreground">(\${actualPercent.toFixed(2)}%)</div>
                 </div>
               </div>
