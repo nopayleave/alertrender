@@ -3184,6 +3184,54 @@ app.get('/', (req, res) => {
         .exit-rules li {
           margin-bottom: 0.25rem;
         }
+        /* Exit Logic Tabs */
+        .exit-logic-tabs {
+          display: flex;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          margin-bottom: 2rem;
+          gap: 0.5rem;
+        }
+        .exit-logic-tab {
+          padding: 0.75rem 1.5rem;
+          background: transparent;
+          border: none;
+          color: hsl(215 20.2% 65.1%);
+          font-weight: 500;
+          font-size: 0.875rem;
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          transition: all 0.2s;
+          position: relative;
+        }
+        .exit-logic-tab:hover {
+          color: hsl(210 40% 98%);
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .exit-logic-tab.active {
+          color: hsl(210 40% 98%);
+          border-bottom-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.1);
+        }
+        .exit-logic-tab-content {
+          display: none;
+        }
+        .exit-logic-tab-content.active {
+          display: block;
+        }
+        .exit-strategy-container {
+          background: hsl(217.2 32.6% 17.5%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          transition: all 0.2s;
+        }
+        .exit-strategy-container:hover {
+          background: hsl(217.2 32.6% 20%);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
         /* Hide scrollbar for cheatsheet table but allow scrolling */
         .cheatsheet-scroll-container {
           -ms-overflow-style: none;  /* IE and Edge */
@@ -4053,6 +4101,9 @@ app.get('/', (req, res) => {
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
         let sectorFilter = []; // Sector filter (multiple selections: Technology, Healthcare, etc.)
+        
+        // Sector data storage (frontend copy)
+        let sectorData = {}; // Store sector information by symbol
         
         // Active preset filter (for CCI-based presets)
         let activePreset = null;
@@ -7530,6 +7581,16 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             alertsData = data;
+            
+            // Extract sector data from alerts for frontend use
+            if (Array.isArray(data)) {
+              data.forEach(alert => {
+                if (alert.sector && alert.symbol) {
+                  sectorData[alert.symbol] = alert.sector;
+                }
+              });
+            }
+            
             renderTable();
             startCountdown();
             
@@ -7698,6 +7759,27 @@ Use this to create a new preset filter button that applies these exact filter se
           document.getElementById('exitLogicOverlay').classList.remove('open');
           document.getElementById('exitLogicPanel').classList.remove('open');
           document.body.style.overflow = '';
+        }
+        
+        // Switch between exit logic tabs
+        function switchExitTab(tabName) {
+          // Remove active class from all tabs and content
+          document.querySelectorAll('.exit-logic-tab').forEach(tab => {
+            tab.classList.remove('active');
+          });
+          document.querySelectorAll('.exit-logic-tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Add active class to clicked tab
+          event.target.classList.add('active');
+          
+          // Show corresponding content
+          const contentId = tabName + '-content';
+          const content = document.getElementById(contentId);
+          if (content) {
+            content.classList.add('active');
+          }
         }
         
         // Close calculator when clicking overlay
@@ -7962,104 +8044,139 @@ Use this to create a new preset filter button that applies these exact filter se
             </button>
           </div>
 
-          <!-- Strategy Cards -->
-          <div class="space-y-6">
-            <!-- Counter Trend Long -->
-            <div class="strategy-card">
-              <div class="strategy-title">
-                <span class="text-green-400">📈</span>
-                Counter Trend Long
+          <!-- Tabs -->
+          <div class="exit-logic-tabs">
+            <button class="exit-logic-tab active" onclick="switchExitTab('counter-trend')">Counter Trend</button>
+            <button class="exit-logic-tab" onclick="switchExitTab('pullback')">Pull Back</button>
+            <button class="exit-logic-tab" onclick="switchExitTab('general')">General Tips</button>
+          </div>
+
+          <!-- Tab Content -->
+          <div class="exit-logic-content">
+            <!-- Counter Trend Tab -->
+            <div id="counter-trend-content" class="exit-logic-tab-content active">
+              <!-- Counter Trend Long -->
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-green-400">📈</span>
+                  Counter Trend Long
+                </div>
+                <div class="strategy-description">
+                  Long position against the prevailing downtrend, betting on a reversal or bounce.
+                </div>
+                <div class="exit-rules long">
+                  <h4>Exit when:</h4>
+                  <ol>
+                    <li>Drop below previous candle low</li>
+                    <li>Stoch below 50 and down trend</li>
+                    <li>Volume decreases significantly</li>
+                  </ol>
+                </div>
               </div>
-              <div class="strategy-description">
-                Long position against the prevailing downtrend, betting on a reversal or bounce.
-              </div>
-              <div class="exit-rules long">
-                <h4>Exit when:</h4>
-                <ol>
-                  <li>Drop below previous candle low</li>
-                  <li>Stoch below 50 and down trend</li>
-                  <li>Volume decreases significantly</li>
-                </ol>
+
+              <!-- Counter Trend Short -->
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-red-400">📉</span>
+                  Counter Trend Short
+                </div>
+                <div class="strategy-description">
+                  Short position against the prevailing uptrend, betting on a reversal or pullback.
+                </div>
+                <div class="exit-rules short">
+                  <h4>Exit when:</h4>
+                  <ol>
+                    <li>Break above previous candle high</li>
+                    <li>Stoch above 50 and up trend</li>
+                    <li>Strong buying volume emerges</li>
+                  </ol>
+                </div>
               </div>
             </div>
 
-            <!-- Counter Trend Short -->
-            <div class="strategy-card">
-              <div class="strategy-title">
-                <span class="text-red-400">📉</span>
-                Counter Trend Short
+            <!-- Pull Back Tab -->
+            <div id="pullback-content" class="exit-logic-tab-content">
+              <!-- Pull Back Long -->
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-green-400">🔄</span>
+                  Pull Back Long
+                </div>
+                <div class="strategy-description">
+                  Long position during a temporary pullback in an overall uptrend.
+                </div>
+                <div class="exit-rules long">
+                  <h4>Exit when:</h4>
+                  <ol>
+                    <li>Break below pullback support level</li>
+                    <li>Stoch crosses below 30 with momentum</li>
+                    <li>Trend changes from up to down</li>
+                    <li>Volume spike on breakdown</li>
+                  </ol>
+                </div>
               </div>
-              <div class="strategy-description">
-                Short position against the prevailing uptrend, betting on a reversal or pullback.
-              </div>
-              <div class="exit-rules short">
-                <h4>Exit when:</h4>
-                <ol>
-                  <li>Break above previous candle high</li>
-                  <li>Stoch above 50 and up trend</li>
-                  <li>Strong buying volume emerges</li>
-                </ol>
+
+              <!-- Pull Back Short -->
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-red-400">🔄</span>
+                  Pull Back Short
+                </div>
+                <div class="strategy-description">
+                  Short position during a temporary pullback in an overall downtrend.
+                </div>
+                <div class="exit-rules short">
+                  <h4>Exit when:</h4>
+                  <ol>
+                    <li>Break above pullback resistance level</li>
+                    <li>Stoch crosses above 70 with momentum</li>
+                    <li>Trend changes from down to up</li>
+                    <li>Volume spike on breakout</li>
+                  </ol>
+                </div>
               </div>
             </div>
 
-            <!-- Pull Back Long -->
-            <div class="strategy-card">
-              <div class="strategy-title">
-                <span class="text-green-400">🔄</span>
-                Pull Back Long
+            <!-- General Tips Tab -->
+            <div id="general-content" class="exit-logic-tab-content">
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-blue-400">💡</span>
+                  General Exit Tips
+                </div>
+                <div class="strategy-description">
+                  Universal principles that apply across all strategies.
+                </div>
+                <div class="exit-rules" style="border-left-color: #3b82f6;">
+                  <h4>Always consider:</h4>
+                  <ol>
+                    <li>Risk-reward ratio (minimum 1:2)</li>
+                    <li>Time-based exits (avoid holding too long)</li>
+                    <li>Market session changes (London/NY close)</li>
+                    <li>News events and earnings</li>
+                    <li>Overall market sentiment</li>
+                  </ol>
+                </div>
               </div>
-              <div class="strategy-description">
-                Long position during a temporary pullback in an overall uptrend.
-              </div>
-              <div class="exit-rules long">
-                <h4>Exit when:</h4>
-                <ol>
-                  <li>Break below pullback support level</li>
-                  <li>Stoch crosses below 30 with momentum</li>
-                  <li>Trend changes from up to down</li>
-                  <li>Volume spike on breakdown</li>
-                </ol>
-              </div>
-            </div>
 
-            <!-- Pull Back Short -->
-            <div class="strategy-card">
-              <div class="strategy-title">
-                <span class="text-red-400">🔄</span>
-                Pull Back Short
-              </div>
-              <div class="strategy-description">
-                Short position during a temporary pullback in an overall downtrend.
-              </div>
-              <div class="exit-rules short">
-                <h4>Exit when:</h4>
-                <ol>
-                  <li>Break above pullback resistance level</li>
-                  <li>Stoch crosses above 70 with momentum</li>
-                  <li>Trend changes from down to up</li>
-                  <li>Volume spike on breakout</li>
-                </ol>
-              </div>
-            </div>
-
-            <!-- Additional Strategy Tips -->
-            <div class="strategy-card">
-              <div class="strategy-title">
-                <span class="text-blue-400">💡</span>
-                General Exit Tips
-              </div>
-              <div class="strategy-description">
-                Universal principles that apply across all strategies.
-              </div>
-              <div class="exit-rules" style="border-left-color: #3b82f6;">
-                <h4>Always consider:</h4>
-                <ol>
-                  <li>Risk-reward ratio (minimum 1:2)</li>
-                  <li>Time-based exits (avoid holding too long)</li>
-                  <li>Market session changes (London/NY close)</li>
-                  <li>News events and earnings</li>
-                  <li>Overall market sentiment</li>
-                </ol>
+              <div class="exit-strategy-container">
+                <div class="strategy-title">
+                  <span class="text-yellow-400">⚠️</span>
+                  Risk Management
+                </div>
+                <div class="strategy-description">
+                  Essential risk management principles for all trades.
+                </div>
+                <div class="exit-rules" style="border-left-color: #eab308;">
+                  <h4>Risk rules:</h4>
+                  <ol>
+                    <li>Never risk more than 1-2% per trade</li>
+                    <li>Set stop loss before entering position</li>
+                    <li>Scale out profits at key levels</li>
+                    <li>Avoid revenge trading after losses</li>
+                    <li>Keep detailed trading journal</li>
+                  </ol>
+                </div>
               </div>
             </div>
           </div>
