@@ -5258,12 +5258,19 @@ app.get('/', (req, res) => {
           // Sort sectors alphabetically
           const sortedSectors = Array.from(sectors).sort();
           
-          // Generate sector filter buttons
-          sectorContainer.innerHTML = sortedSectors.map(sector => {
-            const sectorId = sector.replace(/[^a-zA-Z0-9]/g, '');
-            const sectorJson = JSON.stringify(sector);
-            return `<button onclick="toggleFilterChip('sector', ${sectorJson}, this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="sector" data-value="${sector}">${sector}</button>`;
-          }).join('');
+          // Generate sector filter buttons using DOM creation to avoid escaping issues
+          sectorContainer.innerHTML = '';
+          sortedSectors.forEach(sector => {
+            const button = document.createElement('button');
+            button.className = 'filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400';
+            button.setAttribute('data-filter', 'sector');
+            button.setAttribute('data-value', sector);
+            button.textContent = sector;
+            button.onclick = function() {
+              toggleFilterChip('sector', sector, this);
+            };
+            sectorContainer.appendChild(button);
+          });
           
           if (sortedSectors.length === 0) {
             sectorContainer.innerHTML = '<span class="text-xs text-muted-foreground">No sectors available</span>';
