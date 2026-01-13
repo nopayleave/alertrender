@@ -685,6 +685,23 @@ app.post('/webhook', (req, res) => {
   // Log incoming webhook for debugging
   console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
   
+  // Integrated Sector Fetching: Trigger immediately for all alerts
+  if (alert.symbol) {
+    if (alert.sector) {
+      // If webhook provides sector, use it and update cache
+      sectorData[alert.symbol] = alert.sector
+      sectorCache[alert.symbol] = {
+        sector: alert.sector,
+        timestamp: Date.now()
+      }
+      console.log(`📊 Received sector from webhook for ${alert.symbol}: ${alert.sector}`)
+    } else {
+      // Otherwise fetch from Yahoo Finance (if not cached)
+      // This is non-blocking - it will trigger fetch and update sectorData when done
+      getSectorForSymbol(alert.symbol)
+    }
+  }
+  
   // Debug BJ TSI values
   if (alert.bjTsi !== undefined) {
     console.log('🔍 BJ TSI Debug:', {
@@ -2120,6 +2137,13 @@ app.get('/alerts', (req, res) => {
   
   // Convert to array and sort by receivedAt (newest first)
   const result = Object.values(latestAlerts).sort((a, b) => b.receivedAt - a.receivedAt)
+  
+  // Inject sector data if missing in alert but present in sectorData
+  result.forEach(alert => {
+    if (!alert.sector && sectorData[alert.symbol]) {
+      alert.sector = sectorData[alert.symbol]
+    }
+  })
   
   res.json(result)
 })
@@ -7839,6 +7863,27 @@ Use this to create a new preset filter button that applies these exact filter se
           // Parse the event data to check for ORB crossovers and preset matches
           try {
             const update = JSON.parse(event.data);
+            
+            // Handle sector updates
+            if (update.type === 'sector_updated') {
+                const { symbol, sector } = update.data;
+                if (symbol && sector) {
+                    sectorData[symbol] = sector;
+                    updateSectorFilterButtons();
+                    // If filtering by sector, re-render to apply filter to the newly sector-tagged item
+                    if (sectorFilter.length > 0) {
+                        renderTable();
+                    }
+                }
+                // Don't treat as alert for other logic
+                return;
+            }
+            
+            if (update.type === 'sectors_refreshed') {
+                fetchAlerts();
+                return;
+            }
+
             if (update.type === 'alert' && update.data) {
               checkOrbCrossover(update.data);
               
