@@ -3095,6 +3095,95 @@ app.get('/', (req, res) => {
         .calculator-panel.open {
           transform: translateX(0);
         }
+        /* Exit Logic slide-in panel */
+        .exit-logic-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 1000;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .exit-logic-overlay.open {
+          opacity: 1;
+          visibility: visible;
+        }
+        .exit-logic-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 100%;
+          max-width: 700px;
+          height: 100vh;
+          background: hsl(222.2 84% 4.9%);
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+          z-index: 1001;
+          transform: translateX(100%);
+          transition: transform 0.3s ease;
+          overflow-y: auto;
+        }
+        .exit-logic-panel.open {
+          transform: translateX(0);
+        }
+        .strategy-card {
+          background: hsl(217.2 32.6% 17.5%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          transition: all 0.2s;
+        }
+        .strategy-card:hover {
+          background: hsl(217.2 32.6% 20%);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .strategy-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: hsl(210 40% 98%);
+          margin-bottom: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .strategy-description {
+          color: hsl(215 20.2% 65.1%);
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
+        }
+        .exit-rules {
+          background: hsl(217.2 32.6% 12%);
+          border-radius: 8px;
+          padding: 1rem;
+          border-left: 4px solid;
+        }
+        .exit-rules.long {
+          border-left-color: #22c55e;
+        }
+        .exit-rules.short {
+          border-left-color: #ef4444;
+        }
+        .exit-rules h4 {
+          color: hsl(210 40% 98%);
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+          font-size: 0.875rem;
+        }
+        .exit-rules ol {
+          list-style: decimal;
+          margin-left: 1.25rem;
+          color: hsl(215 20.2% 75%);
+          font-size: 0.875rem;
+        }
+        .exit-rules li {
+          margin-bottom: 0.25rem;
+        }
         /* Hide scrollbar for cheatsheet table but allow scrolling */
         .cheatsheet-scroll-container {
           -ms-overflow-style: none;  /* IE and Edge */
@@ -3549,6 +3638,9 @@ app.get('/', (req, res) => {
               </button>
               <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Cal.
+              </button>
+              <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
+                🚪 Exit Log
               </button>
             </div>
           </div>
@@ -7587,6 +7679,19 @@ Use this to create a new preset filter button that applies these exact filter se
           document.body.style.overflow = '';
         }
         
+        // Exit Logic slide-in panel functions
+        function openExitLogic() {
+          document.getElementById('exitLogicOverlay').classList.add('open');
+          document.getElementById('exitLogicPanel').classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+        
+        function closeExitLogic() {
+          document.getElementById('exitLogicOverlay').classList.remove('open');
+          document.getElementById('exitLogicPanel').classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        
         // Close calculator when clicking overlay
         document.addEventListener('DOMContentLoaded', function() {
           const overlay = document.getElementById('calculatorOverlay');
@@ -7598,12 +7703,26 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Close calculator on Escape key
+          // Close exit logic when clicking overlay
+          const exitLogicOverlay = document.getElementById('exitLogicOverlay');
+          if (exitLogicOverlay) {
+            exitLogicOverlay.addEventListener('click', function(e) {
+              if (e.target === exitLogicOverlay) {
+                closeExitLogic();
+              }
+            });
+          }
+          
+          // Close calculator or exit logic with Escape key
           document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
-              const panel = document.getElementById('calculatorPanel');
-              if (panel && panel.classList.contains('open')) {
+              const calculatorPanel = document.getElementById('calculatorPanel');
+              const exitLogicPanel = document.getElementById('exitLogicPanel');
+              
+              if (calculatorPanel && calculatorPanel.classList.contains('open')) {
                 closeCalculator();
+              } else if (exitLogicPanel && exitLogicPanel.classList.contains('open')) {
+                closeExitLogic();
               }
             }
           });
@@ -7813,6 +7932,127 @@ Use this to create a new preset filter button that applies these exact filter se
               📊 Cheatsheet formula: Required Shares = Target Profit (in USD) ÷ (Stock Price × Move %)
               <br>
               💱 Exchange rate: 7.8 HKD = 1 USD (HKD automatically converted for calculations)
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Exit Logic Slide-in Panel -->
+      <div id="exitLogicOverlay" class="exit-logic-overlay" onclick="closeExitLogic()"></div>
+      <div id="exitLogicPanel" class="exit-logic-panel">
+        <div class="p-6">
+          <!-- Header with close button -->
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Exit Logic Strategies</h1>
+              <p class="text-muted-foreground">Trading exit strategies for different market conditions</p>
+            </div>
+            <button onclick="closeExitLogic()" class="text-muted-foreground hover:text-foreground transition-colors p-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Strategy Cards -->
+          <div class="space-y-6">
+            <!-- Counter Trend Long -->
+            <div class="strategy-card">
+              <div class="strategy-title">
+                <span class="text-green-400">📈</span>
+                Counter Trend Long
+              </div>
+              <div class="strategy-description">
+                Long position against the prevailing downtrend, betting on a reversal or bounce.
+              </div>
+              <div class="exit-rules long">
+                <h4>Exit when:</h4>
+                <ol>
+                  <li>Drop below previous candle low</li>
+                  <li>Stoch below 50 and down trend</li>
+                  <li>Volume decreases significantly</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Counter Trend Short -->
+            <div class="strategy-card">
+              <div class="strategy-title">
+                <span class="text-red-400">📉</span>
+                Counter Trend Short
+              </div>
+              <div class="strategy-description">
+                Short position against the prevailing uptrend, betting on a reversal or pullback.
+              </div>
+              <div class="exit-rules short">
+                <h4>Exit when:</h4>
+                <ol>
+                  <li>Break above previous candle high</li>
+                  <li>Stoch above 50 and up trend</li>
+                  <li>Strong buying volume emerges</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Pull Back Long -->
+            <div class="strategy-card">
+              <div class="strategy-title">
+                <span class="text-green-400">🔄</span>
+                Pull Back Long
+              </div>
+              <div class="strategy-description">
+                Long position during a temporary pullback in an overall uptrend.
+              </div>
+              <div class="exit-rules long">
+                <h4>Exit when:</h4>
+                <ol>
+                  <li>Break below pullback support level</li>
+                  <li>Stoch crosses below 30 with momentum</li>
+                  <li>Trend changes from up to down</li>
+                  <li>Volume spike on breakdown</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Pull Back Short -->
+            <div class="strategy-card">
+              <div class="strategy-title">
+                <span class="text-red-400">🔄</span>
+                Pull Back Short
+              </div>
+              <div class="strategy-description">
+                Short position during a temporary pullback in an overall downtrend.
+              </div>
+              <div class="exit-rules short">
+                <h4>Exit when:</h4>
+                <ol>
+                  <li>Break above pullback resistance level</li>
+                  <li>Stoch crosses above 70 with momentum</li>
+                  <li>Trend changes from down to up</li>
+                  <li>Volume spike on breakout</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Additional Strategy Tips -->
+            <div class="strategy-card">
+              <div class="strategy-title">
+                <span class="text-blue-400">💡</span>
+                General Exit Tips
+              </div>
+              <div class="strategy-description">
+                Universal principles that apply across all strategies.
+              </div>
+              <div class="exit-rules" style="border-left-color: #3b82f6;">
+                <h4>Always consider:</h4>
+                <ol>
+                  <li>Risk-reward ratio (minimum 1:2)</li>
+                  <li>Time-based exits (avoid holding too long)</li>
+                  <li>Market session changes (London/NY close)</li>
+                  <li>News events and earnings</li>
+                  <li>Overall market sentiment</li>
+                </ol>
+              </div>
             </div>
           </div>
         </div>
