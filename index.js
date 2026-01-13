@@ -4,6 +4,7 @@ import nodemailer from 'nodemailer'
 import Database from 'better-sqlite3'
 import fs from 'fs'
 import path from 'path'
+import yahooFinance from 'yahoo-finance2'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -126,6 +127,8 @@ let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
 let sectorData = {} // Store sector information by symbol
+let sectorCache = {} // Cache for Yahoo Finance sector data with timestamps
+const SECTOR_CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
 
 // Data persistence functions using SQLite
 function saveDataToDatabase() {
@@ -175,7 +178,8 @@ function saveDataToDatabase() {
         starredSymbols,
         previousTrends,
         patternData,
-        sectorData
+        sectorData,
+        sectorCache
       }
       
       const upsertState = db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
@@ -550,6 +554,101 @@ function checkAndNotifyTrendChange(symbol, alertData) {
       previousTrends[symbol] = currentTrend
     }
   }
+}
+
+// Yahoo Finance sector data fetching
+async function fetchSectorFromYahoo(symbol) {
+  try {
+    // Check cache first
+    const cached = sectorCache[symbol]
+    if (cached && (Date.now() - cached.timestamp) < SECTOR_CACHE_DURATION) {
+      console.log(`📊 Using cached sector for ${symbol}: ${cached.sector}`)
+      return cached.sector
+    }
+    
+    console.log(`🔍 Fetching sector data for ${symbol} from Yahoo Finance...`)
+    
+    // Fetch quote summary from Yahoo Finance
+    const quote = await yahooFinance.quoteSummary(symbol, {
+      modules: ['summaryProfile', 'assetProfile']
+    })
+    
+    let sector = null
+    
+    // Try to get sector from summaryProfile first
+    if (quote.summaryProfile && quote.summaryProfile.sector) {
+      sector = quote.summaryProfile.sector
+    }
+    // Fallback to assetProfile
+    else if (quote.assetProfile && quote.assetProfile.sector) {
+      sector = quote.assetProfile.sector
+    }
+    
+    if (sector) {
+      // Cache the result
+      sectorCache[symbol] = {
+        sector: sector,
+        timestamp: Date.now()
+      }
+      
+      // Also store in sectorData for immediate use
+      sectorData[symbol] = sector
+      
+      console.log(`✅ Found sector for ${symbol}: ${sector}`)
+      return sector
+    } else {
+      console.log(`⚠️ No sector found for ${symbol}`)
+      return null
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error fetching sector for ${symbol}:`, error.message)
+    return null
+  }
+}
+
+// Batch fetch sectors for multiple symbols
+async function batchFetchSectors(symbols) {
+  const promises = symbols.map(symbol => fetchSectorFromYahoo(symbol))
+  const results = await Promise.allSettled(promises)
+  
+  results.forEach((result, index) => {
+    const symbol = symbols[index]
+    if (result.status === 'fulfilled' && result.value) {
+      sectorData[symbol] = result.value
+    }
+  })
+}
+
+// Get sector for a symbol (with caching)
+function getSectorForSymbol(symbol) {
+  // Check if we already have it in sectorData
+  if (sectorData[symbol]) {
+    return sectorData[symbol]
+  }
+  
+  // Check cache
+  const cached = sectorCache[symbol]
+  if (cached && (Date.now() - cached.timestamp) < SECTOR_CACHE_DURATION) {
+    sectorData[symbol] = cached.sector
+    return cached.sector
+  }
+  
+  // If not cached or expired, fetch asynchronously (don't block)
+  fetchSectorFromYahoo(symbol).then(sector => {
+    if (sector) {
+      // Broadcast update to frontend when sector is fetched
+      broadcastUpdate('sector_updated', {
+        symbol: symbol,
+        sector: sector,
+        timestamp: Date.now()
+      })
+    }
+  }).catch(error => {
+    console.error(`Error fetching sector for ${symbol}:`, error)
+  })
+  
+  return null
 }
 
 // Helper function to find and update alert by symbol (only for Day script merging)
@@ -1284,10 +1383,16 @@ app.post('/webhook', (req, res) => {
         alerts[existingIndex].nyOrbLow = orbData.orbLow
         alerts[existingIndex].nyOrbMid = orbData.orbMid
       }
-      // Store sector information if available
+      // Store sector information if available, or fetch from Yahoo Finance
       if (alert.sector) {
         alerts[existingIndex].sector = alert.sector
         sectorData[alert.symbol] = alert.sector
+      } else {
+        // Try to get sector from Yahoo Finance
+        const existingSector = getSectorForSymbol(alert.symbol)
+        if (existingSector) {
+          alerts[existingIndex].sector = existingSector
+        }
       }
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with ORB data (${alert.orbType})`)
@@ -1315,10 +1420,16 @@ app.post('/webhook', (req, res) => {
         newAlert.nyOrbLow = orbData.orbLow
         newAlert.nyOrbMid = orbData.orbMid
       }
-      // Store sector information if available
+      // Store sector information if available, or fetch from Yahoo Finance
       if (alert.sector) {
         newAlert.sector = alert.sector
         sectorData[alert.symbol] = alert.sector
+      } else {
+        // Try to get sector from Yahoo Finance
+        const existingSector = getSectorForSymbol(alert.symbol)
+        if (existingSector) {
+          newAlert.sector = existingSector
+        }
       }
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with ORB data (${alert.orbType})`)
@@ -1895,10 +2006,16 @@ app.post('/webhook', (req, res) => {
       previousPrices[alert.symbol] = currentPrice
     }
     
-    // Store sector information if available (for any alert type)
+    // Store sector information if available, or fetch from Yahoo Finance
     if (alert.sector) {
       alertData.sector = alert.sector
       sectorData[alert.symbol] = alert.sector
+    } else {
+      // Try to get sector from Yahoo Finance
+      const existingSector = getSectorForSymbol(alert.symbol)
+      if (existingSector) {
+        alertData.sector = existingSector
+      }
     }
     
     // Add ALL alerts to the front (don't remove existing ones)
@@ -1933,6 +2050,57 @@ app.post('/webhook', (req, res) => {
   })
   
   res.json({ status: 'ok' })
+})
+
+// API to refresh sector data for all symbols
+app.post('/refresh-sectors', async (req, res) => {
+  try {
+    console.log('🔄 Refreshing sector data for all symbols...')
+    
+    // Get all unique symbols from current alerts
+    const symbols = [...new Set(alerts.map(alert => alert.symbol).filter(Boolean))]
+    
+    if (symbols.length === 0) {
+      return res.json({ status: 'ok', message: 'No symbols to refresh', count: 0 })
+    }
+    
+    console.log(`📊 Refreshing sectors for ${symbols.length} symbols: ${symbols.join(', ')}`)
+    
+    // Batch fetch sectors (limit to 10 at a time to avoid rate limiting)
+    const batchSize = 10
+    let refreshed = 0
+    
+    for (let i = 0; i < symbols.length; i += batchSize) {
+      const batch = symbols.slice(i, i + batchSize)
+      await batchFetchSectors(batch)
+      refreshed += batch.length
+      
+      // Small delay between batches to be respectful to Yahoo Finance API
+      if (i + batchSize < symbols.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+    
+    console.log(`✅ Sector refresh complete. Updated ${refreshed} symbols.`)
+    
+    // Broadcast update to frontend
+    broadcastUpdate('sectors_refreshed', {
+      count: refreshed,
+      symbols: symbols,
+      timestamp: Date.now()
+    })
+    
+    res.json({ 
+      status: 'ok', 
+      message: `Refreshed sectors for ${refreshed} symbols`,
+      count: refreshed,
+      symbols: symbols
+    })
+    
+  } catch (error) {
+    console.error('❌ Error refreshing sectors:', error)
+    res.status(500).json({ status: 'error', message: error.message })
+  }
 })
 
 // API for frontend - only latest alerts per symbol
@@ -3689,6 +3857,9 @@ app.get('/', (req, res) => {
               </button>
               <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 🚪 Exit Log
+              </button>
+              <button onclick="refreshSectors()" class="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="Refresh sector data from Yahoo Finance">
+                🏢 Sectors
               </button>
             </div>
           </div>
@@ -7782,6 +7953,53 @@ Use this to create a new preset filter button that applies these exact filter se
           }
         }
         
+        // Refresh sector data from Yahoo Finance
+        async function refreshSectors() {
+          const button = event.target.closest('button');
+          const originalText = button.innerHTML;
+          
+          try {
+            // Update button to show loading state
+            button.innerHTML = '⏳ Refreshing...';
+            button.disabled = true;
+            
+            console.log('🔄 Refreshing sector data...');
+            
+            const response = await fetch('/refresh-sectors', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === 'ok') {
+              console.log(`✅ Refreshed sectors for ${result.count} symbols`);
+              
+              // Show success state briefly
+              button.innerHTML = `✅ Updated ${result.count}`;
+              
+              // Refresh the table to show updated sectors
+              setTimeout(() => {
+                fetchAlerts();
+              }, 500);
+              
+            } else {
+              throw new Error(result.message || 'Failed to refresh sectors');
+            }
+            
+          } catch (error) {
+            console.error('❌ Error refreshing sectors:', error);
+            button.innerHTML = '❌ Error';
+            alert('Failed to refresh sector data. Please try again.');
+          } finally {
+            // Reset button after 2 seconds
+            setTimeout(() => {
+              button.innerHTML = originalText;
+              button.disabled = false;
+            }, 2000);
+          }
+        }
+        
         // Close calculator when clicking overlay
         document.addEventListener('DOMContentLoaded', function() {
           const overlay = document.getElementById('calculatorOverlay');
@@ -8355,6 +8573,30 @@ let autoSaveInterval = setInterval(() => {
   saveDataToDatabase()
 }, AUTO_SAVE_INTERVAL)
 console.log(`⏰ Auto-save enabled (every ${AUTO_SAVE_INTERVAL / 1000 / 60} minutes)`)
+
+// Periodic sector data refresh (every 6 hours)
+setInterval(async () => {
+  try {
+    console.log('🕐 Periodic sector data refresh starting...')
+    
+    // Get symbols that need refresh (older than 12 hours or missing sector)
+    const symbols = [...new Set(alerts.map(alert => alert.symbol).filter(Boolean))]
+    const symbolsToRefresh = symbols.filter(symbol => {
+      const cached = sectorCache[symbol]
+      return !cached || (Date.now() - cached.timestamp) > (12 * 60 * 60 * 1000) // 12 hours
+    })
+    
+    if (symbolsToRefresh.length > 0) {
+      console.log(`📊 Refreshing sectors for ${symbolsToRefresh.length} symbols: ${symbolsToRefresh.join(', ')}`)
+      await batchFetchSectors(symbolsToRefresh)
+      console.log('✅ Periodic sector refresh complete')
+    } else {
+      console.log('✅ All sectors are up to date')
+    }
+  } catch (error) {
+    console.error('❌ Error in periodic sector refresh:', error)
+  }
+}, 6 * 60 * 60 * 1000) // Every 6 hours
 
 // Graceful shutdown handler
 function gracefulShutdown(signal) {
