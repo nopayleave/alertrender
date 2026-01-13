@@ -4393,46 +4393,6 @@ app.get('/', (req, res) => {
           }
           return Math.ceil(vol * 10) / 10 + '';
         }
-
-        // Format currency values with k notation for values over 1000
-        function formatCurrency(value, showCents = true) {
-          if (!value || isNaN(value)) return 'N/A';
-          
-          const num = parseFloat(value);
-          const absNum = Math.abs(num);
-          
-          if (absNum >= 1000000) {
-            const formatted = (num / 1000000).toFixed(2);
-            return '$' + formatted + 'M';
-          } else if (absNum >= 1000) {
-            const formatted = (num / 1000).toFixed(2);
-            return '$' + formatted + 'k';
-          } else {
-            if (showCents) {
-              return '$' + num.toFixed(2);
-            } else {
-              return '$' + num.toFixed(0);
-            }
-          }
-        }
-        
-        // Format regular numbers with k notation for values over 1000
-        function formatNumber(value, decimals = 2) {
-          if (!value || isNaN(value)) return 'N/A';
-          
-          const num = parseFloat(value);
-          const absNum = Math.abs(num);
-          
-          if (absNum >= 1000000) {
-            const formatted = (num / 1000000).toFixed(decimals);
-            return formatted + 'M';
-          } else if (absNum >= 1000) {
-            const formatted = (num / 1000).toFixed(decimals);
-            return formatted + 'k';
-          } else {
-            return num.toFixed(decimals);
-          }
-        }
         
 
         function sortTable(field) {
@@ -4870,7 +4830,7 @@ app.get('/', (req, res) => {
           // Render masonry cards
           masonryContainer.innerHTML = filteredData.map(alert => {
             const symbol = alert.symbol || 'N/A';
-            const price = alert.price ? formatCurrency(alert.price) : 'N/A';
+            const price = alert.price ? parseFloat(alert.price).toFixed(2) : 'N/A';
             const changePercent = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay).toFixed(2) : null;
             const changeClass = changePercent !== null ? (changePercent >= 0 ? 'text-green-400' : 'text-red-400') : 'text-muted-foreground';
             const changeSign = changePercent !== null && changePercent >= 0 ? '+' : '';
@@ -7166,7 +7126,7 @@ Use this to create a new preset filter button that applies these exact filter se
               </td>\`,
               price: \`
                 <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
-                  \${alert.price ? formatCurrency(alert.price) : 'N/A'}
+                  \$\${alert.price ? parseFloat(alert.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
@@ -7294,7 +7254,7 @@ Use this to create a new preset filter button that applies these exact filter se
               icon = '📊';
           }
           
-          const message = \`\${symbol} matches \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
+          const message = \`\${symbol} matches \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
           
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
@@ -7388,7 +7348,7 @@ Use this to create a new preset filter button that applies these exact filter se
               break;
           }
           
-          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
+          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at $' + parseFloat(price).toFixed(2) : ''}\`;
           
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
@@ -8014,10 +7974,10 @@ Use this to create a new preset filter button that applies these exact filter se
             const result = await response.json();
             
             if (result.status === 'ok') {
-              console.log(\`✅ Refreshed sectors for \${result.count} symbols\`);
+              console.log(`✅ Refreshed sectors for ${result.count} symbols`);
               
               // Show success state briefly
-              button.innerHTML = \`✅ Updated \${result.count}\`;
+              button.innerHTML = `✅ Updated ${result.count}`;
               
               // Refresh the table to show updated sectors
               setTimeout(() => {
