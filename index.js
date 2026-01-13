@@ -125,6 +125,7 @@ let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: {
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
+let sectorData = {} // Store sector information by symbol
 
 // Data persistence functions using SQLite
 function saveDataToDatabase() {
@@ -173,7 +174,8 @@ function saveDataToDatabase() {
         bigTrendDay,
         starredSymbols,
         previousTrends,
-        patternData
+        patternData,
+        sectorData
       }
       
       const upsertState = db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
@@ -1251,6 +1253,7 @@ app.post('/webhook', (req, res) => {
       orbHigh: alert.orbHigh,
       orbLow: alert.orbLow,
       orbMid: alert.orbMid,
+      sector: alert.sector || null, // sector information from webhook
       timestamp: Date.now()
     }
     
@@ -1281,6 +1284,11 @@ app.post('/webhook', (req, res) => {
         alerts[existingIndex].nyOrbLow = orbData.orbLow
         alerts[existingIndex].nyOrbMid = orbData.orbMid
       }
+      // Store sector information if available
+      if (alert.sector) {
+        alerts[existingIndex].sector = alert.sector
+        sectorData[alert.symbol] = alert.sector
+      }
       alerts[existingIndex].receivedAt = Date.now()
       console.log(`✅ Updated existing alert for ${alert.symbol} with ORB data (${alert.orbType})`)
     } else {
@@ -1306,6 +1314,11 @@ app.post('/webhook', (req, res) => {
         newAlert.nyOrbHigh = orbData.orbHigh
         newAlert.nyOrbLow = orbData.orbLow
         newAlert.nyOrbMid = orbData.orbMid
+      }
+      // Store sector information if available
+      if (alert.sector) {
+        newAlert.sector = alert.sector
+        sectorData[alert.symbol] = alert.sector
       }
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with ORB data (${alert.orbType})`)
@@ -1880,6 +1893,12 @@ app.post('/webhook', (req, res) => {
     // Store current price as previous for next webhook
     if (!isNaN(currentPrice)) {
       previousPrices[alert.symbol] = currentPrice
+    }
+    
+    // Store sector information if available (for any alert type)
+    if (alert.sector) {
+      alertData.sector = alert.sector
+      sectorData[alert.symbol] = alert.sector
     }
     
     // Add ALL alerts to the front (don't remove existing ones)
@@ -3518,18 +3537,18 @@ app.get('/', (req, res) => {
               </button>
               <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
                 <span>📊</span>
-                <span>ORB History</span>
+                <span>ORB His.</span>
               </button>
               <button id="stochHistoryToggle" onclick="toggleStochHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View Stochastic history">
                 <span>📈</span>
-                <span>Stoch History</span>
+                <span>Stoch His.</span>
               </button>
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 <span id="notificationIcon">🔔</span>
-                <span id="notificationText">Notifications ON</span>
+                <span id="notificationText">Noti</span>
               </button>
               <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
-                📊 Calculator
+                📊 Cal.
               </button>
             </div>
           </div>
@@ -3708,21 +3727,61 @@ app.get('/', (req, res) => {
                       <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="trendMessage" data-value="Big Trend Day">Big Trend</button>
                     </div>
                   </div>
-                  
-                  <!-- Price % -->
-                  <div class="mb-0">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
-                    </div>
                   </div>
+                </div>
+                
+                <!-- Other Filters - iOS chip style -->
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('otherFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      Other
+                    </h3>
+                    <button 
+                      onclick="event.stopPropagation(); clearOtherFilters()" 
+                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  
+                  <div id="otherFilters" class="filter-content">
+                    <!-- Price % -->
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                        <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
+                      </div>
+                    </div>
+                    
+                    <!-- Volume -->
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Vol</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('volume', '<100K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="volume" data-value="<100K">&lt;100K</button>
+                        <button onclick="toggleFilterChip('volume', '100K-500K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="volume" data-value="100K-500K">100K-500K</button>
+                        <button onclick="toggleFilterChip('volume', '500K-1M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="volume" data-value="500K-1M">500K-1M</button>
+                        <button onclick="toggleFilterChip('volume', '1M-5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="volume" data-value="1M-5M">1M-5M</button>
+                        <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
+                      </div>
+                    </div>
+                    
+                    <!-- Sector -->
+                    <div class="mb-0">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Sector</label>
+                      <div class="filter-group flex flex-wrap gap-1.5" id="sectorFilterContainer">
+                        <!-- Sector filter buttons will be dynamically populated -->
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -3898,6 +3957,10 @@ app.get('/', (req, res) => {
         // ORB Filter state
         let orbFilterStatus = []; // ORB Status filter (multiple selections: within_lower, within_upper, outside_below, outside_above)
         let priceFilterDirection = []; // Price Direction filter (multiple selections: up, down)
+        
+        // Other Filter state
+        let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
+        let sectorFilter = []; // Sector filter (multiple selections: Technology, Healthcare, etc.)
         
         // Active preset filter (for CCI-based presets)
         let activePreset = null;
@@ -4295,13 +4358,12 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters (same as renderTable)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
               const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
               const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
               const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
-              const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
               
               if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(d1Direction)) return false;
               if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(d2Direction)) return false;
@@ -4339,23 +4401,6 @@ app.get('/', (req, res) => {
               
               if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
               
-              if (stochFilterPercentChange.length > 0) {
-                if (percentChange === null || isNaN(percentChange)) return false;
-                const pctVal = percentChange;
-                let matchesPct = false;
-                for (const filter of stochFilterPercentChange) {
-                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
-                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
-                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
-                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
-                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
-                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
-                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
-                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
-                }
-                if (!matchesPct) return false;
-              }
-              
               return true;
             });
           }
@@ -4388,6 +4433,52 @@ app.get('/', (req, res) => {
                 }
                 
                 if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
+              }
+              
+              return true;
+            });
+          }
+          
+          // Apply Other Filters (Price %, Volume, Sector) - same as renderTable
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || sectorFilter.length > 0) {
+            filteredData = filteredData.filter(alert => {
+              // Price % filter
+              if (stochFilterPercentChange.length > 0) {
+                const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+                if (percentChange === null || isNaN(percentChange)) return false;
+                const pctVal = percentChange;
+                let matchesPct = false;
+                for (const filter of stochFilterPercentChange) {
+                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
+                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
+                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
+                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
+                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
+                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
+                }
+                if (!matchesPct) return false;
+              }
+              
+              // Volume filter
+              if (volumeFilter.length > 0) {
+                const volume = alert.volume ? parseInt(alert.volume) : 0;
+                let matchesVol = false;
+                for (const filter of volumeFilter) {
+                  if (filter === '<100K' && volume < 100000) { matchesVol = true; break; }
+                  if (filter === '100K-500K' && volume >= 100000 && volume < 500000) { matchesVol = true; break; }
+                  if (filter === '500K-1M' && volume >= 500000 && volume < 1000000) { matchesVol = true; break; }
+                  if (filter === '1M-5M' && volume >= 1000000 && volume < 5000000) { matchesVol = true; break; }
+                  if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
+                }
+                if (!matchesVol) return false;
+              }
+              
+              // Sector filter
+              if (sectorFilter.length > 0) {
+                const sector = alert.sector || sectorData[alert.symbol] || null;
+                if (!sector || !sectorFilter.includes(sector)) return false;
               }
               
               return true;
@@ -4977,6 +5068,10 @@ app.get('/', (req, res) => {
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
+          
+          // Other Filters
+          volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
+          sectorFilter = Array.from(document.querySelectorAll('[data-filter="sector"].active')).map(chip => chip.dataset.value);
         }
         
         // Clear ORB filters
@@ -5004,7 +5099,7 @@ app.get('/', (req, res) => {
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="trendMessage"], [data-filter="percentChange"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="trendMessage"]').forEach(chip => {
             chip.classList.remove('active');
             // Also remove has-active from parent filter-group
             const parentGroup = chip.closest('.filter-group');
@@ -5038,13 +5133,54 @@ app.get('/', (req, res) => {
           stochFilterD2Value = { min: 0, max: 100, active: false };
           stochFilterDiff = { min: 0, max: 75, active: false };
           stochFilterTrendMessage = [];
-          stochFilterPercentChange = [];
           renderTable();
+        }
+        
+        // Clear Other filters
+        function clearOtherFilters() {
+          // Remove active class from all Other filter chips
+          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"], [data-filter="sector"]').forEach(chip => {
+            chip.classList.remove('active');
+            const parentGroup = chip.closest('.filter-group');
+            if (parentGroup) parentGroup.classList.remove('has-active');
+          });
+          
+          stochFilterPercentChange = [];
+          volumeFilter = [];
+          sectorFilter = [];
+          renderTable();
+        }
+        
+        // Populate sector filter buttons dynamically
+        function updateSectorFilterButtons() {
+          const sectorContainer = document.getElementById('sectorFilterContainer');
+          if (!sectorContainer) return;
+          
+          // Get all unique sectors from current data
+          const sectors = new Set();
+          alertsData.forEach(alert => {
+            const sector = alert.sector || sectorData[alert.symbol];
+            if (sector) sectors.add(sector);
+          });
+          
+          // Sort sectors alphabetically
+          const sortedSectors = Array.from(sectors).sort();
+          
+          // Generate sector filter buttons
+          sectorContainer.innerHTML = sortedSectors.map(sector => {
+            const sectorId = sector.replace(/[^a-zA-Z0-9]/g, '');
+            return `<button onclick="toggleFilterChip('sector', '${sector}', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="sector" data-value="${sector}">${sector}</button>`;
+          }).join('');
+          
+          if (sortedSectors.length === 0) {
+            sectorContainer.innerHTML = '<span class="text-xs text-muted-foreground">No sectors available</span>';
+          }
         }
         
         function clearAllFilters() {
           clearStochFilters();
           clearOrbFilters();
+          clearOtherFilters();
           // Clear search
           const searchInput = document.getElementById('searchInput');
           if (searchInput) {
@@ -5536,11 +5672,11 @@ Use this to create a new preset filter button that applies these exact filter se
           if (enabled) {
             toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
             icon.textContent = '🔔';
-            text.textContent = 'Notifications ON';
+            text.textContent = 'Noti';
           } else {
             toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
             icon.textContent = '🔕';
-            text.textContent = 'Notifications OFF';
+            text.textContent = 'Noti';
           }
         }
         
@@ -5693,8 +5829,54 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
+          // Apply Other Filters (Price %, Volume, Sector)
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || sectorFilter.length > 0) {
+            filteredData = filteredData.filter(alert => {
+              // Price % filter
+              if (stochFilterPercentChange.length > 0) {
+                const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+                if (percentChange === null || isNaN(percentChange)) return false;
+                const pctVal = percentChange;
+                let matchesPct = false;
+                for (const filter of stochFilterPercentChange) {
+                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
+                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
+                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
+                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
+                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
+                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
+                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
+                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
+                }
+                if (!matchesPct) return false;
+              }
+              
+              // Volume filter
+              if (volumeFilter.length > 0) {
+                const volume = alert.volume ? parseInt(alert.volume) : 0;
+                let matchesVol = false;
+                for (const filter of volumeFilter) {
+                  if (filter === '<100K' && volume < 100000) { matchesVol = true; break; }
+                  if (filter === '100K-500K' && volume >= 100000 && volume < 500000) { matchesVol = true; break; }
+                  if (filter === '500K-1M' && volume >= 500000 && volume < 1000000) { matchesVol = true; break; }
+                  if (filter === '1M-5M' && volume >= 1000000 && volume < 5000000) { matchesVol = true; break; }
+                  if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
+                }
+                if (!matchesVol) return false;
+              }
+              
+              // Sector filter
+              if (sectorFilter.length > 0) {
+                const sector = alert.sector || sectorData[alert.symbol] || null;
+                if (!sector || !sectorFilter.includes(sector)) return false;
+              }
+              
+              return true;
+            });
+          }
+          
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0 || stochFilterPercentChange.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Get D1 and D2 values and directions
               // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
@@ -5751,24 +5933,6 @@ Use this to create a new preset filter button that applies these exact filter se
               // Check trend message filter (multiple selections)
               if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
               
-              // Check % change filter (multiple selections)
-              if (stochFilterPercentChange.length > 0) {
-                if (percentChange === null || isNaN(percentChange)) return false;
-                const pctVal = percentChange;
-                let matchesPct = false;
-                for (const filter of stochFilterPercentChange) {
-                  if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
-                  if (filter === '<-5' && pctVal >= -10 && pctVal < -5) { matchesPct = true; break; }
-                  if (filter === '-5--2' && pctVal >= -5 && pctVal < -2) { matchesPct = true; break; }
-                  if (filter === '-2-0' && pctVal >= -2 && pctVal < 0) { matchesPct = true; break; }
-                  if (filter === '0-2' && pctVal >= 0 && pctVal < 2) { matchesPct = true; break; }
-                  if (filter === '2-5' && pctVal >= 2 && pctVal < 5) { matchesPct = true; break; }
-                  if (filter === '>5' && pctVal >= 5 && pctVal < 10) { matchesPct = true; break; }
-                  if (filter === '>10' && pctVal >= 10) { matchesPct = true; break; }
-                }
-                if (!matchesPct) return false;
-              }
-              
               return true;
             });
           }
@@ -5820,6 +5984,9 @@ Use this to create a new preset filter button that applies these exact filter se
           
           // Update Price % filter counts based on data BEFORE preset filters are applied
           updatePricePercentCounts(dataForPresetCounts);
+          
+          // Update sector filter buttons based on available sectors
+          updateSectorFilterButtons();
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));

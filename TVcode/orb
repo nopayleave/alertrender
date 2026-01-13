@@ -169,6 +169,7 @@ if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(
         
         jsonMsg = '{' +
           '"symbol": "' + syminfo.ticker + '",' +
+          '"sector": "' + syminfo.sector + '",' +
           '"timeframe": "' + timeframe.period + '",' +
           '"time": ' + str.tostring(time) + ',' +
           '"price": ' + str.tostring(close) + ',' +
