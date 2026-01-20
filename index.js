@@ -4080,6 +4080,15 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
+                  <!-- K/D Crossing -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="kCross" data-value="cross_over">C↑ Crossover</button>
+                      <button onclick="toggleFilterChip('kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="kCross" data-value="cross_under">C↓ Crossunder</button>
+                    </div>
+                  </div>
+                  
                   <!-- Diff - Absolute difference slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
@@ -4324,6 +4333,7 @@ app.get('/', (req, res) => {
         let stochFilterD2Direction = [];
         let stochFilterD2Value = { min: 0, max: 100, active: false }; // D2 Value slider range
         let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
+        let stochFilterKCross = []; // K/D Crossing filter
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
         
@@ -4800,12 +4810,18 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters (same as renderTable)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
               if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
               if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
+              
+              // Check K/D crossing filter
+              if (stochFilterKCross.length > 0) {
+                const kCross = alert.kCross || 'none';
+                if (!stochFilterKCross.includes(kCross)) return false;
+              }
               
               let trendMessage = '';
               if (kValue !== null && dValue !== null) {
@@ -5541,6 +5557,7 @@ app.get('/', (req, res) => {
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
           // D1/D2 Value and Diff filters are updated via their respective update functions from sliders
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
+          stochFilterKCross = Array.from(document.querySelectorAll('[data-filter="kCross"].active')).map(chip => chip.dataset.value);
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
           
@@ -5573,7 +5590,7 @@ app.get('/', (req, res) => {
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="trendMessage"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="kCross"], [data-filter="trendMessage"]').forEach(chip => {
             chip.classList.remove('active');
             // Also remove has-active from parent filter-group
             const parentGroup = chip.closest('.filter-group');
@@ -5606,6 +5623,7 @@ app.get('/', (req, res) => {
           stochFilterD2Direction = [];
           stochFilterD2Value = { min: 0, max: 100, active: false };
           stochFilterDiff = { min: 0, max: 75, active: false };
+          stochFilterKCross = [];
           stochFilterTrendMessage = [];
           renderTable();
         }
@@ -6316,7 +6334,7 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
@@ -6328,6 +6346,12 @@ Use this to create a new preset filter button that applies these exact filter se
               
               // Check D2 direction filter
               if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
+              
+              // Check K/D crossing filter
+              if (stochFilterKCross.length > 0) {
+                const kCross = alert.kCross || 'none';
+                if (!stochFilterKCross.includes(kCross)) return false;
+              }
               
               // Determine trend message from alert data
               let trendMessage = '';
