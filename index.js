@@ -5029,6 +5029,13 @@ app.get('/', (req, res) => {
                   const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
                   
+                  // Change percentage
+                  const changePercent = alert.changeFromPrevDay;
+                  const changeDisplay = changePercent !== null && changePercent !== undefined && !isNaN(changePercent)
+                    ? (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%'
+                    : '';
+                  const changeClass = changePercent >= 0 ? 'text-green-400' : 'text-red-400';
+                  
                   // Crossing tag
                   const kCross = alert.kCross || 'none';
                   const crossTag = kCross === 'cross_over' ? 'C↑' : kCross === 'cross_under' ? 'C↓' : '';
@@ -5037,7 +5044,7 @@ app.get('/', (req, res) => {
             return \`
               <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}</span>
+                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : ''}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     <span class="text-muted-foreground">K</span>
