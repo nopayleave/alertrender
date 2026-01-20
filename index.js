@@ -4337,6 +4337,9 @@ app.get('/', (req, res) => {
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
         
+        // Notification state
+        let notificationsEnabled = true; // Track whether notifications/toasts are enabled
+        
         // Active preset filter (for CCI-based presets)
         let activePreset = null;
 
@@ -6060,6 +6063,7 @@ Use this to create a new preset filter button that applies these exact filter se
           try {
             const response = await fetch('/notification-settings');
             const settings = await response.json();
+            notificationsEnabled = settings.enabled; // Update client-side state
             updateNotificationToggleUI(settings.enabled);
           } catch (error) {
             console.error('Failed to load notification settings:', error);
@@ -6098,6 +6102,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             const result = await updateResponse.json();
             if (result.status === 'ok') {
+              notificationsEnabled = newState; // Update client-side state
               updateNotificationToggleUI(newState);
               console.log(\`🔔 Notifications \${newState ? 'ENABLED' : 'DISABLED'}\`);
             }
@@ -7367,6 +7372,9 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Show toast notification for ORB crossover
         function showOrbCrossoverToast(symbol, orbType, crossover, price, orbHigh, orbLow) {
+          // Check if notifications are enabled
+          if (!notificationsEnabled) return;
+          
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
           
