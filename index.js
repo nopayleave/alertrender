@@ -4944,10 +4944,10 @@ app.get('/', (req, res) => {
           }
           
           const kanbanColumns = [
-            { id: 'lower_half', title: 'Lower Half' },
-            { id: 'below_orb', title: 'Below ORB' },
-            { id: 'upper_half', title: 'Upper Half' },
-            { id: 'above_orb', title: 'Above ORB' }
+            { id: 'below_orb', title: 'Below ORB', bgColor: 'bg-red-900/20' },
+            { id: 'lower_half', title: 'Lower Half', bgColor: 'bg-red-500/10' },
+            { id: 'upper_half', title: 'Upper Half', bgColor: 'bg-green-500/10' },
+            { id: 'above_orb', title: 'Above ORB', bgColor: 'bg-green-900/20' }
           ];
 
           const columnBuckets = {};
@@ -5052,7 +5052,7 @@ app.get('/', (req, res) => {
                 }).join('');
 
             return \`
-              <div class="kanban-column">
+              <div class="kanban-column \${column.bgColor || ''}">
                 <div class="kanban-column-header">
                   <span>\${column.title}</span>
                   <span class="kanban-column-count">\${cards.length}</span>
