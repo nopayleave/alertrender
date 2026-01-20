@@ -3993,8 +3993,6 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbStatus" data-value="within_upper">Upper Half</button>
                         <button onclick="toggleFilterChip('orbStatus', 'outside_below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="orbStatus" data-value="outside_below">Below ORB</button>
                         <button onclick="toggleFilterChip('orbStatus', 'outside_above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="orbStatus" data-value="outside_above">Above ORB</button>
-                        <button onclick="toggleFilterChip('orbStatus', 'within_lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="orbStatus" data-value="within_lower">Below Mid</button>
-                        <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="orbStatus" data-value="within_upper">Above Mid</button>
                     </div>
                   </div>
               
@@ -4945,10 +4943,8 @@ app.get('/', (req, res) => {
           const kanbanColumns = [
             { id: 'lower_half', title: 'Lower Half' },
             { id: 'below_orb', title: 'Below ORB' },
-            { id: 'below_mid', title: 'Below Mid' },
             { id: 'upper_half', title: 'Upper Half' },
-            { id: 'above_orb', title: 'Above ORB' },
-            { id: 'above_mid', title: 'Above Mid' }
+            { id: 'above_orb', title: 'Above ORB' }
           ];
 
           const columnBuckets = {};
@@ -4965,7 +4961,7 @@ app.get('/', (req, res) => {
             );
             const priceRaw = alert.price !== null && alert.price !== undefined ? parseFloat(alert.price) : null;
 
-            let columnId = 'below_mid';
+            let columnId = 'lower_half';
             if (orbStatus === 'within_lower') {
               columnId = 'lower_half';
             } else if (orbStatus === 'within_upper') {
@@ -4975,7 +4971,7 @@ app.get('/', (req, res) => {
             } else if (orbStatus === 'outside_above') {
               columnId = 'above_orb';
             } else if (orbMidRaw !== null && !isNaN(orbMidRaw) && priceRaw !== null && !isNaN(priceRaw)) {
-              columnId = priceRaw >= orbMidRaw ? 'above_mid' : 'below_mid';
+              columnId = priceRaw >= orbMidRaw ? 'upper_half' : 'lower_half';
             }
 
             if (!columnBuckets[columnId]) {
@@ -4997,30 +4993,27 @@ app.get('/', (req, res) => {
               ? '<div class="kanban-card-empty">No tickers</div>'
               : cards.map(alert => {
                   const symbol = alert.symbol || 'N/A';
-                  const price = alert.price ? formatCurrency(alert.price) : 'N/A';
-                  const { kValue, dValue } = getStochValues(alert);
+                  const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
                   const kDisplay = kValue !== null && !isNaN(kValue) ? kValue.toFixed(1) : 'N/A';
                   const dDisplay = dValue !== null && !isNaN(dValue) ? dValue.toFixed(1) : 'N/A';
                   const kClass = getStochValueClass(kValue);
                   const dClass = getStochValueClass(dValue);
-            const starred = isStarred(symbol);
+                  const kArrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '';
+                  const dArrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '';
+                  const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
             
             return \`
               <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
-                      <div class="flex items-center justify-between">
-                        <span class="font-semibold text-foreground">\${starred ? '⭐ ' : ''}\${symbol}</span>
-                        <span class="text-xs text-muted-foreground">\${price}</span>
+                <div class="font-semibold text-foreground">\${starred ? '⭐ ' : ''}\${symbol}</div>
+                <div class="mt-2 text-xs">
+                  <span class="text-muted-foreground">K</span>
+                  <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
+                  <span class="text-muted-foreground mx-1">|</span>
+                  <span class="text-muted-foreground">D</span>
+                  <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${dArrow}</span>
                 </div>
-                      <div class="mt-2 flex items-center justify-between text-xs">
-                        <span class="text-muted-foreground">%K</span>
-                        <span class="\${kClass} font-semibold">\${kDisplay}</span>
-                  </div>
-                      <div class="mt-1 flex items-center justify-between text-xs">
-                        <span class="text-muted-foreground">%D</span>
-                        <span class="\${dClass} font-semibold">\${dDisplay}</span>
-                    </div>
-                  </div>
+              </div>
                   \`;
                 }).join('');
 
