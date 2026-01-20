@@ -4983,6 +4983,29 @@ app.get('/', (req, res) => {
             columnBuckets[columnId].push(alert);
           });
 
+          // Sort each column: starred first, then crossings, then alphabetical
+          Object.keys(columnBuckets).forEach(columnId => {
+            columnBuckets[columnId].sort((a, b) => {
+              const aStarred = isStarred(a.symbol);
+              const bStarred = isStarred(b.symbol);
+              
+              // Starred symbols always come first
+              if (aStarred && !bStarred) return -1;
+              if (!aStarred && bStarred) return 1;
+              
+              // Check for stochastic crossings
+              const aCross = a.kCross && a.kCross !== 'none';
+              const bCross = b.kCross && b.kCross !== 'none';
+              
+              // Crossings come next (after starred)
+              if (aCross && !bCross) return -1;
+              if (!aCross && bCross) return 1;
+              
+              // Then sort alphabetically by symbol
+              return (a.symbol || '').localeCompare(b.symbol || '');
+            });
+          });
+
           const getStochValueClass = (value) => {
             if (value === null || isNaN(value)) return 'text-muted-foreground';
             if (value < 40) return 'text-red-400';
@@ -5003,22 +5026,28 @@ app.get('/', (req, res) => {
                   const dClass = getStochValueClass(dValue);
                   const kArrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '';
                   const dArrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '';
-            const starred = isStarred(symbol);
+                  const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
+                  
+                  // Crossing tag
+                  const kCross = alert.kCross || 'none';
+                  const crossTag = kCross === 'cross_over' ? 'C↑' : kCross === 'cross_under' ? 'C↓' : '';
+                  const crossClass = kCross === 'cross_over' ? 'text-green-400' : kCross === 'cross_under' ? 'text-red-400' : '';
             
             return \`
               <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}</span>
-                  <div class="text-xs whitespace-nowrap">
+                  <div class="text-xs whitespace-nowrap flex items-center gap-1">
+                    \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     <span class="text-muted-foreground">K</span>
                     <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
                     <span class="text-muted-foreground">D</span>
                     <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${dArrow}</span>
-                </div>
                   </div>
-                    </div>
+                </div>
+              </div>
                   \`;
                 }).join('');
 
