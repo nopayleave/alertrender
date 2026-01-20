@@ -3926,16 +3926,13 @@ app.get('/', (req, res) => {
               </button>
               <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 <span id="notificationIcon">🔔</span>
-                <span id="notificationText">Noti</span>
+                <span id="notificationText">Unmute</span>
               </button>
               <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Cal.
               </button>
               <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 🚪 Exit Log
-              </button>
-              <button onclick="refreshSectors()" class="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="Refresh sector data from Yahoo Finance">
-                🏢 Sectors
               </button>
             </div>
           </div>
@@ -4158,16 +4155,8 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('volume', '500K-1M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="volume" data-value="500K-1M">500K-1M</button>
                         <button onclick="toggleFilterChip('volume', '1M-5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="volume" data-value="1M-5M">1M-5M</button>
                         <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
-                      </div>
                     </div>
-                    
-                    <!-- Sector -->
-                    <div class="mb-0">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Sector</label>
-                      <div class="filter-group flex flex-wrap gap-1.5" id="sectorFilterContainer">
-                        <!-- Sector filter buttons will be dynamically populated -->
-                      </div>
-                    </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -4346,7 +4335,6 @@ app.get('/', (req, res) => {
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
-        let sectorFilter = []; // Sector filter (multiple selections: Technology, Healthcare, etc.)
         
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
@@ -4887,8 +4875,8 @@ app.get('/', (req, res) => {
             });
           }
           
-          // Apply Other Filters (Price %, Volume, Sector) - same as renderTable
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || sectorFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume) - same as renderTable
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Price % filter
               if (stochFilterPercentChange.length > 0) {
@@ -4923,12 +4911,6 @@ app.get('/', (req, res) => {
                 if (!matchesVol) return false;
               }
               
-              // Sector filter
-              if (sectorFilter.length > 0) {
-                const sector = alert.sector || sectorData[alert.symbol] || null;
-                if (!sector || !sectorFilter.includes(sector)) return false;
-              }
-              
               return true;
             });
           }
@@ -4959,7 +4941,7 @@ app.get('/', (req, res) => {
             masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
             return;
           }
-
+          
           const kanbanColumns = [
             { id: 'lower_half', title: 'Lower Half' },
             { id: 'below_orb', title: 'Below ORB' },
@@ -5021,24 +5003,24 @@ app.get('/', (req, res) => {
                   const dDisplay = dValue !== null && !isNaN(dValue) ? dValue.toFixed(1) : 'N/A';
                   const kClass = getStochValueClass(kValue);
                   const dClass = getStochValueClass(dValue);
-                  const starred = isStarred(symbol);
+            const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
-
-                  return \`
-                    <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
+            
+            return \`
+              <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
                       <div class="flex items-center justify-between">
                         <span class="font-semibold text-foreground">\${starred ? '⭐ ' : ''}\${symbol}</span>
                         <span class="text-xs text-muted-foreground">\${price}</span>
-                      </div>
+                </div>
                       <div class="mt-2 flex items-center justify-between text-xs">
                         <span class="text-muted-foreground">%K</span>
                         <span class="\${kClass} font-semibold">\${kDisplay}</span>
-                      </div>
+                  </div>
                       <div class="mt-1 flex items-center justify-between text-xs">
                         <span class="text-muted-foreground">%D</span>
                         <span class="\${dClass} font-semibold">\${dDisplay}</span>
-                      </div>
                     </div>
+                  </div>
                   \`;
                 }).join('');
 
@@ -5047,7 +5029,7 @@ app.get('/', (req, res) => {
                 <div class="kanban-column-header">
                   <span>\${column.title}</span>
                   <span class="kanban-column-count">\${cards.length}</span>
-                </div>
+                  </div>
                 \${cardsHtml}
               </div>
             \`;
@@ -5530,7 +5512,6 @@ app.get('/', (req, res) => {
           
           // Other Filters
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
-          sectorFilter = Array.from(document.querySelectorAll('[data-filter="sector"].active')).map(chip => chip.dataset.value);
         }
         
         // Clear ORB filters
@@ -5598,7 +5579,7 @@ app.get('/', (req, res) => {
         // Clear Other filters
         function clearOtherFilters() {
           // Remove active class from all Other filter chips
-          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"], [data-filter="sector"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
@@ -5606,42 +5587,7 @@ app.get('/', (req, res) => {
           
           stochFilterPercentChange = [];
           volumeFilter = [];
-          sectorFilter = [];
           renderTable();
-        }
-        
-        // Populate sector filter buttons dynamically
-        function updateSectorFilterButtons() {
-          const sectorContainer = document.getElementById('sectorFilterContainer');
-          if (!sectorContainer) return;
-          
-          // Get all unique sectors from current data
-          const sectors = new Set();
-          alertsData.forEach(alert => {
-            const sector = alert.sector || sectorData[alert.symbol];
-            if (sector) sectors.add(sector);
-          });
-          
-          // Sort sectors alphabetically
-          const sortedSectors = Array.from(sectors).sort();
-          
-          // Generate sector filter buttons using DOM creation to avoid escaping issues
-          sectorContainer.innerHTML = '';
-          sortedSectors.forEach(sector => {
-            const button = document.createElement('button');
-            button.className = 'filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400';
-            button.setAttribute('data-filter', 'sector');
-            button.setAttribute('data-value', sector);
-            button.textContent = sector;
-            button.onclick = function() {
-              toggleFilterChip('sector', sector, this);
-            };
-            sectorContainer.appendChild(button);
-          });
-          
-          if (sortedSectors.length === 0) {
-            sectorContainer.innerHTML = '<span class="text-xs text-muted-foreground">No sectors available</span>';
-          }
         }
         
         function clearAllFilters() {
@@ -6136,11 +6082,11 @@ Use this to create a new preset filter button that applies these exact filter se
           if (enabled) {
             toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
             icon.textContent = '🔔';
-            text.textContent = 'Noti';
+            text.textContent = 'Unmute';
           } else {
             toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
             icon.textContent = '🔕';
-            text.textContent = 'Noti';
+            text.textContent = 'Mute';
           }
         }
         
@@ -6293,8 +6239,8 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply Other Filters (Price %, Volume, Sector)
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || sectorFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume)
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Price % filter
               if (stochFilterPercentChange.length > 0) {
@@ -6327,12 +6273,6 @@ Use this to create a new preset filter button that applies these exact filter se
                   if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
                 }
                 if (!matchesVol) return false;
-              }
-              
-              // Sector filter
-              if (sectorFilter.length > 0) {
-                const sector = alert.sector || sectorData[alert.symbol] || null;
-                if (!sector || !sectorFilter.includes(sector)) return false;
               }
               
               return true;
@@ -6440,9 +6380,6 @@ Use this to create a new preset filter button that applies these exact filter se
           
           // Update Price % filter counts based on data BEFORE preset filters are applied
           updatePricePercentCounts(dataForPresetCounts);
-          
-          // Update sector filter buttons based on available sectors
-          updateSectorFilterButtons();
 
           // Update last update time with search info
           const mostRecent = Math.max(...alertsData.map(alert => alert.receivedAt || 0));
@@ -7926,11 +7863,6 @@ Use this to create a new preset filter button that applies these exact filter se
                 const { symbol, sector } = update.data;
                 if (symbol && sector) {
                     sectorData[symbol] = sector;
-                    updateSectorFilterButtons();
-                    // If filtering by sector, re-render to apply filter to the newly sector-tagged item
-                    if (sectorFilter.length > 0) {
-                        renderTable();
-                    }
                 }
                 // Don't treat as alert for other logic
                 return;
@@ -8093,53 +8025,6 @@ Use this to create a new preset filter button that applies these exact filter se
           const content = document.getElementById(contentId);
           if (content) {
             content.classList.add('active');
-          }
-        }
-        
-        // Refresh sector data from Yahoo Finance
-        async function refreshSectors() {
-          const button = event.target.closest('button');
-          const originalText = button.innerHTML;
-          
-          try {
-            // Update button to show loading state
-            button.innerHTML = '⏳ Refreshing...';
-            button.disabled = true;
-            
-            console.log('🔄 Refreshing sector data...');
-            
-            const response = await fetch('/refresh-sectors', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-            
-            const result = await response.json();
-            
-            if (result.status === 'ok') {
-              console.log(\`✅ Refreshed sectors for \${result.count} symbols\`);
-              
-              // Show success state briefly
-              button.innerHTML = \`✅ Updated \${result.count}\`;
-              
-              // Refresh the table to show updated sectors
-              setTimeout(() => {
-                fetchAlerts();
-              }, 500);
-              
-            } else {
-              throw new Error(result.message || 'Failed to refresh sectors');
-            }
-            
-          } catch (error) {
-            console.error('❌ Error refreshing sectors:', error);
-            button.innerHTML = '❌ Error';
-            alert('Failed to refresh sector data. Please try again.');
-          } finally {
-            // Reset button after 2 seconds
-            setTimeout(() => {
-              button.innerHTML = originalText;
-              button.disabled = false;
-            }, 2000);
           }
         }
         

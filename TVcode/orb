@@ -9,14 +9,6 @@ nySession     = input.session('0930-1600', title = 'New York Session Time')
 show_50pct_line = input.bool(true, title = "Show 50% ORB Midline", group='📦 Session ORB Settings 📦')
 ny_fill_color     = input.color(color.rgb(128, 128, 128, 50), title="New York ORB Color")
 
-// === Webhook Alerts ===
-enableWebhook = input.bool(false, title="Enable Webhook Alerts", group="🔔 Webhook Alerts")
-webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="🔔 Webhook Alerts")
-
-// Determine alert frequency
-alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
-           webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : 
-           alert.freq_all
 // Convert timeframe to minutes for comparison (timeframe.in_seconds() returns seconds, divide by 60 to get minutes)
 timeframeMinutes = timeframe.in_seconds() / 60.0
 hide = timeframe.isintraday and timeframeMinutes <= inputMax
@@ -155,8 +147,7 @@ if not na(ny_orb_status)
 // === Webhook Alerts ===
 // New York ORB alerts (only during session, after ORB period)
 // Send alerts every bar during session to monitor all symbols continuously
-shouldSendAlert = enableWebhook and (webhookFrequency == "Once Per Bar Close" ? barstate.isconfirmed : true)
-if shouldSendAlert and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
+if barstate.isconfirmed and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
     // Calculate price direction (price movement relative to previous bar)
     price_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
     
@@ -187,7 +178,7 @@ if shouldSendAlert and in_ny_session and not in_ny and not na(ny_high) and not n
       '"orbHigh": ' + str.tostring(ny_high) + ',' +
       '"orbLow": ' + str.tostring(ny_low) + ',' +
       '"orbMid": ' + str.tostring(ny_mid) + '}'
-    alert(jsonMsg, freq = alertFreq)
+    alert(jsonMsg, alert.freq_once_per_bar_close)
 
 
 
