@@ -4174,28 +4174,6 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
                     </div>
                   </div>
-                  
-                  <!-- Intraday % (from today's open) -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Intraday % (from open)</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('intradayChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="intradayChange" data-value="<-5">&lt;-5%</button>
-                      <button onclick="toggleFilterChip('intradayChange', '-5-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="intradayChange" data-value="-5-0">-5~0%</button>
-                      <button onclick="toggleFilterChip('intradayChange', '0-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="intradayChange" data-value="0-5">0~5%</button>
-                      <button onclick="toggleFilterChip('intradayChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="intradayChange" data-value=">5">&gt;5%</button>
-                    </div>
-                  </div>
-                  
-                  <!-- ORB Crossover -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Crossover</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('orbCrossover', 'cross_high', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbCrossover" data-value="cross_high">↑ High</button>
-                      <button onclick="toggleFilterChip('orbCrossover', 'cross_low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbCrossover" data-value="cross_low">↓ Low</button>
-                      <button onclick="toggleFilterChip('orbCrossover', 'cross_mid_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="orbCrossover" data-value="cross_mid_up">↗ Mid Up</button>
-                      <button onclick="toggleFilterChip('orbCrossover', 'cross_mid_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="orbCrossover" data-value="cross_mid_down">↘ Mid Down</button>
-                    </div>
-                  </div>
                   </div>
                 </div>
                 
@@ -4375,8 +4353,6 @@ app.get('/', (req, res) => {
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
-        let intradayChangeFilter = []; // Intraday % change filter (from today's open)
-        let orbCrossoverFilter = []; // ORB Crossover filter (cross_high, cross_low, cross_mid_up, cross_mid_down)
         
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
@@ -4926,8 +4902,8 @@ app.get('/', (req, res) => {
             });
           }
           
-          // Apply Other Filters (Price %, Volume, Intraday %, ORB Crossover) - same as renderTable
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || intradayChangeFilter.length > 0 || orbCrossoverFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume) - same as renderTable
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Price % filter (changeFromPrevDay)
               if (stochFilterPercentChange.length > 0) {
@@ -4960,28 +4936,6 @@ app.get('/', (req, res) => {
                   if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
                 }
                 if (!matchesVol) return false;
-              }
-              
-              // Intraday % filter (intradayChange - from today's open)
-              if (intradayChangeFilter.length > 0) {
-                const intradayChange = alert.intradayChange !== null && alert.intradayChange !== undefined ? parseFloat(alert.intradayChange) : null;
-                if (intradayChange === null || isNaN(intradayChange)) return false;
-                let matchesIntraday = false;
-                for (const filter of intradayChangeFilter) {
-                  if (filter === '<-5' && intradayChange < -5) { matchesIntraday = true; break; }
-                  if (filter === '-5-0' && intradayChange >= -5 && intradayChange < 0) { matchesIntraday = true; break; }
-                  if (filter === '0-5' && intradayChange >= 0 && intradayChange < 5) { matchesIntraday = true; break; }
-                  if (filter === '>5' && intradayChange >= 5) { matchesIntraday = true; break; }
-                }
-                if (!matchesIntraday) return false;
-              }
-              
-              // ORB Crossover filter
-              if (orbCrossoverFilter.length > 0) {
-                const nyOrbCrossover = alert.nyOrbCrossover || null;
-                const londonOrbCrossover = alert.londonOrbCrossover || null;
-                const orbCrossover = nyOrbCrossover || londonOrbCrossover || 'none';
-                if (!orbCrossoverFilter.includes(orbCrossover)) return false;
               }
               
               return true;
@@ -5101,10 +5055,8 @@ app.get('/', (req, res) => {
                   const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
                   
-                  // Change percentage - prioritize intradayChange (from today's open) for ORB trading
-                  const changePercent = alert.intradayChange !== null && alert.intradayChange !== undefined 
-                    ? alert.intradayChange 
-                    : alert.changeFromPrevDay;
+                  // Change percentage (from previous day's close)
+                  const changePercent = alert.changeFromPrevDay;
                   const changeDisplay = changePercent !== null && changePercent !== undefined && !isNaN(changePercent)
                     ? (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%'
                     : '';
@@ -5621,8 +5573,6 @@ app.get('/', (req, res) => {
           
           // Other Filters
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
-          intradayChangeFilter = Array.from(document.querySelectorAll('[data-filter="intradayChange"].active')).map(chip => chip.dataset.value);
-          orbCrossoverFilter = Array.from(document.querySelectorAll('[data-filter="orbCrossover"].active')).map(chip => chip.dataset.value);
         }
         
         // Clear ORB filters
@@ -5691,7 +5641,7 @@ app.get('/', (req, res) => {
         // Clear Other filters
         function clearOtherFilters() {
           // Remove active class from all Other filter chips
-          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"], [data-filter="intradayChange"], [data-filter="orbCrossover"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
@@ -5699,8 +5649,6 @@ app.get('/', (req, res) => {
           
           stochFilterPercentChange = [];
           volumeFilter = [];
-          intradayChangeFilter = [];
-          orbCrossoverFilter = [];
           renderTable();
         }
         
@@ -6355,8 +6303,8 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply Other Filters (Price %, Volume, Intraday %, ORB Crossover)
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || intradayChangeFilter.length > 0 || orbCrossoverFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume)
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               // Price % filter (changeFromPrevDay)
               if (stochFilterPercentChange.length > 0) {
@@ -6389,28 +6337,6 @@ Use this to create a new preset filter button that applies these exact filter se
                   if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
                 }
                 if (!matchesVol) return false;
-              }
-              
-              // Intraday % filter (intradayChange - from today's open)
-              if (intradayChangeFilter.length > 0) {
-                const intradayChange = alert.intradayChange !== null && alert.intradayChange !== undefined ? parseFloat(alert.intradayChange) : null;
-                if (intradayChange === null || isNaN(intradayChange)) return false;
-                let matchesIntraday = false;
-                for (const filter of intradayChangeFilter) {
-                  if (filter === '<-5' && intradayChange < -5) { matchesIntraday = true; break; }
-                  if (filter === '-5-0' && intradayChange >= -5 && intradayChange < 0) { matchesIntraday = true; break; }
-                  if (filter === '0-5' && intradayChange >= 0 && intradayChange < 5) { matchesIntraday = true; break; }
-                  if (filter === '>5' && intradayChange >= 5) { matchesIntraday = true; break; }
-                }
-                if (!matchesIntraday) return false;
-              }
-              
-              // ORB Crossover filter
-              if (orbCrossoverFilter.length > 0) {
-                const nyOrbCrossover = alert.nyOrbCrossover || null;
-                const londonOrbCrossover = alert.londonOrbCrossover || null;
-                const orbCrossover = nyOrbCrossover || londonOrbCrossover || 'none';
-                if (!orbCrossoverFilter.includes(orbCrossover)) return false;
               }
               
               return true;
