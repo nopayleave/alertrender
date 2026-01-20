@@ -2144,85 +2144,6 @@ app.post('/refresh-sectors', async (req, res) => {
   }
 })
 
-// API endpoint for Yahoo Finance news
-app.get('/api/news', async (req, res) => {
-  try {
-    const symbol = req.query.symbol;
-    let url;
-    
-    if (symbol) {
-      // Search news for specific symbol
-      url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}&newsCount=20`;
-    } else {
-      // Get general market news
-      url = 'https://query2.finance.yahoo.com/v1/finance/trending/US?count=20';
-    }
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Yahoo Finance API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    let newsItems = [];
-    
-    if (symbol) {
-      // Extract news from search results
-      newsItems = data.news || [];
-    } else {
-      // Extract news from trending feed
-      // Try to get news from trending quotes
-      if (data.finance && data.finance.result && data.finance.result[0]) {
-        const result = data.finance.result[0];
-        
-        // Try multiple possible locations for news in the response
-        if (result.news) {
-          newsItems = result.news;
-        } else if (result.quotes && result.quotes.length > 0) {
-          // If no direct news, fetch news for top trending symbols
-          const topSymbol = result.quotes[0].symbol;
-          const symbolNewsUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(topSymbol)}&newsCount=20`;
-          const symbolResponse = await fetch(symbolNewsUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-          });
-          const symbolData = await symbolResponse.json();
-          newsItems = symbolData.news || [];
-        }
-      }
-    }
-    
-    // If still no news, try fetching general market news from a top symbol
-    if (newsItems.length === 0 && !symbol) {
-      const generalNewsUrl = 'https://query2.finance.yahoo.com/v1/finance/search?q=SPY&newsCount=20';
-      const generalResponse = await fetch(generalNewsUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-      const generalData = await generalResponse.json();
-      newsItems = generalData.news || [];
-    }
-    
-    res.json({ 
-      news: newsItems,
-      symbol: symbol || 'General Market'
-    });
-  } catch (error) {
-    console.error('Error fetching news:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch news from Yahoo Finance',
-      details: error.message 
-    });
-  }
-});
-
 // API for frontend - only latest alerts per symbol
 app.get('/alerts', (req, res) => {
   // Get only the latest alert per symbol
@@ -3424,71 +3345,6 @@ app.get('/', (req, res) => {
         .exit-logic-panel.open {
           transform: translateX(0);
         }
-        .news-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          z-index: 1000;
-          opacity: 0;
-          visibility: hidden;
-          transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .news-overlay.open {
-          opacity: 1;
-          visibility: visible;
-        }
-        .news-panel {
-          position: fixed;
-          top: 0;
-          right: 0;
-          width: 100%;
-          max-width: 800px;
-          height: 100vh;
-          background: hsl(222.2 84% 4.9%);
-          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
-          z-index: 1001;
-          transform: translateX(100%);
-          transition: transform 0.3s ease;
-          overflow-y: auto;
-        }
-        .news-panel.open {
-          transform: translateX(0);
-        }
-        .news-article {
-          background: hsl(217.2 32.6% 17.5%);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 1.5rem;
-          transition: all 0.2s;
-          cursor: pointer;
-        }
-        .news-article:hover {
-          background: hsl(217.2 32.6% 20%);
-          border-color: rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
-        }
-        .news-article h3 {
-          color: hsl(210 40% 98%);
-          font-size: 1.125rem;
-          font-weight: 600;
-          margin-bottom: 0.5rem;
-          line-height: 1.4;
-        }
-        .news-article p {
-          color: hsl(215 20.2% 65.1%);
-          font-size: 0.875rem;
-          line-height: 1.5;
-          margin-bottom: 0.75rem;
-        }
-        .news-article-meta {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.75rem;
-          color: hsl(215 20.2% 50%);
-        }
         .strategy-card {
           background: hsl(217.2 32.6% 17.5%);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -4088,9 +3944,6 @@ app.get('/', (req, res) => {
               <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 🚪 Exit Log
               </button>
-              <button onclick="openNewsOverlay()" class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="Market News">
-                📰 News
-              </button>
             </div>
           </div>
         </div>
@@ -4321,6 +4174,28 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
                     </div>
                   </div>
+                  
+                  <!-- Intraday % (from today's open) -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Intraday % (from open)</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('intradayChange', '<-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="intradayChange" data-value="<-5">&lt;-5%</button>
+                      <button onclick="toggleFilterChip('intradayChange', '-5-0', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="intradayChange" data-value="-5-0">-5~0%</button>
+                      <button onclick="toggleFilterChip('intradayChange', '0-5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="intradayChange" data-value="0-5">0~5%</button>
+                      <button onclick="toggleFilterChip('intradayChange', '>5', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="intradayChange" data-value=">5">&gt;5%</button>
+                    </div>
+                  </div>
+                  
+                  <!-- ORB Crossover -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Crossover</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('orbCrossover', 'cross_high', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbCrossover" data-value="cross_high">↑ High</button>
+                      <button onclick="toggleFilterChip('orbCrossover', 'cross_low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbCrossover" data-value="cross_low">↓ Low</button>
+                      <button onclick="toggleFilterChip('orbCrossover', 'cross_mid_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="orbCrossover" data-value="cross_mid_up">↗ Mid Up</button>
+                      <button onclick="toggleFilterChip('orbCrossover', 'cross_mid_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="orbCrossover" data-value="cross_mid_down">↘ Mid Down</button>
+                    </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -4500,6 +4375,8 @@ app.get('/', (req, res) => {
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
+        let intradayChangeFilter = []; // Intraday % change filter (from today's open)
+        let orbCrossoverFilter = []; // ORB Crossover filter (cross_high, cross_low, cross_mid_up, cross_mid_down)
         
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
@@ -5049,10 +4926,10 @@ app.get('/', (req, res) => {
             });
           }
           
-          // Apply Other Filters (Price %, Volume) - same as renderTable
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume, Intraday %, ORB Crossover) - same as renderTable
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || intradayChangeFilter.length > 0 || orbCrossoverFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // Price % filter
+              // Price % filter (changeFromPrevDay)
               if (stochFilterPercentChange.length > 0) {
                 const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
                 if (percentChange === null || isNaN(percentChange)) return false;
@@ -5083,6 +4960,28 @@ app.get('/', (req, res) => {
                   if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
                 }
                 if (!matchesVol) return false;
+              }
+              
+              // Intraday % filter (intradayChange - from today's open)
+              if (intradayChangeFilter.length > 0) {
+                const intradayChange = alert.intradayChange !== null && alert.intradayChange !== undefined ? parseFloat(alert.intradayChange) : null;
+                if (intradayChange === null || isNaN(intradayChange)) return false;
+                let matchesIntraday = false;
+                for (const filter of intradayChangeFilter) {
+                  if (filter === '<-5' && intradayChange < -5) { matchesIntraday = true; break; }
+                  if (filter === '-5-0' && intradayChange >= -5 && intradayChange < 0) { matchesIntraday = true; break; }
+                  if (filter === '0-5' && intradayChange >= 0 && intradayChange < 5) { matchesIntraday = true; break; }
+                  if (filter === '>5' && intradayChange >= 5) { matchesIntraday = true; break; }
+                }
+                if (!matchesIntraday) return false;
+              }
+              
+              // ORB Crossover filter
+              if (orbCrossoverFilter.length > 0) {
+                const nyOrbCrossover = alert.nyOrbCrossover || null;
+                const londonOrbCrossover = alert.londonOrbCrossover || null;
+                const orbCrossover = nyOrbCrossover || londonOrbCrossover || 'none';
+                if (!orbCrossoverFilter.includes(orbCrossover)) return false;
               }
               
               return true;
@@ -5722,6 +5621,8 @@ app.get('/', (req, res) => {
           
           // Other Filters
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
+          intradayChangeFilter = Array.from(document.querySelectorAll('[data-filter="intradayChange"].active')).map(chip => chip.dataset.value);
+          orbCrossoverFilter = Array.from(document.querySelectorAll('[data-filter="orbCrossover"].active')).map(chip => chip.dataset.value);
         }
         
         // Clear ORB filters
@@ -5790,7 +5691,7 @@ app.get('/', (req, res) => {
         // Clear Other filters
         function clearOtherFilters() {
           // Remove active class from all Other filter chips
-          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="percentChange"], [data-filter="volume"], [data-filter="intradayChange"], [data-filter="orbCrossover"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
@@ -5798,6 +5699,8 @@ app.get('/', (req, res) => {
           
           stochFilterPercentChange = [];
           volumeFilter = [];
+          intradayChangeFilter = [];
+          orbCrossoverFilter = [];
           renderTable();
         }
         
@@ -6452,10 +6355,10 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply Other Filters (Price %, Volume)
-          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
+          // Apply Other Filters (Price %, Volume, Intraday %, ORB Crossover)
+          if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0 || intradayChangeFilter.length > 0 || orbCrossoverFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // Price % filter
+              // Price % filter (changeFromPrevDay)
               if (stochFilterPercentChange.length > 0) {
                 const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
                 if (percentChange === null || isNaN(percentChange)) return false;
@@ -6486,6 +6389,28 @@ Use this to create a new preset filter button that applies these exact filter se
                   if (filter === '>5M' && volume >= 5000000) { matchesVol = true; break; }
                 }
                 if (!matchesVol) return false;
+              }
+              
+              // Intraday % filter (intradayChange - from today's open)
+              if (intradayChangeFilter.length > 0) {
+                const intradayChange = alert.intradayChange !== null && alert.intradayChange !== undefined ? parseFloat(alert.intradayChange) : null;
+                if (intradayChange === null || isNaN(intradayChange)) return false;
+                let matchesIntraday = false;
+                for (const filter of intradayChangeFilter) {
+                  if (filter === '<-5' && intradayChange < -5) { matchesIntraday = true; break; }
+                  if (filter === '-5-0' && intradayChange >= -5 && intradayChange < 0) { matchesIntraday = true; break; }
+                  if (filter === '0-5' && intradayChange >= 0 && intradayChange < 5) { matchesIntraday = true; break; }
+                  if (filter === '>5' && intradayChange >= 5) { matchesIntraday = true; break; }
+                }
+                if (!matchesIntraday) return false;
+              }
+              
+              // ORB Crossover filter
+              if (orbCrossoverFilter.length > 0) {
+                const nyOrbCrossover = alert.nyOrbCrossover || null;
+                const londonOrbCrossover = alert.londonOrbCrossover || null;
+                const orbCrossover = nyOrbCrossover || londonOrbCrossover || 'none';
+                if (!orbCrossoverFilter.includes(orbCrossover)) return false;
               }
               
               return true;
@@ -8229,118 +8154,6 @@ Use this to create a new preset filter button that applies these exact filter se
           document.body.style.overflow = '';
         }
         
-        // News overlay functions
-        function openNewsOverlay() {
-          document.getElementById('newsOverlay').classList.add('open');
-          document.getElementById('newsPanel').classList.add('open');
-          document.body.style.overflow = 'hidden';
-          // Load general market news by default
-          loadMarketNews();
-        }
-        
-        function closeNewsOverlay() {
-          document.getElementById('newsOverlay').classList.remove('open');
-          document.getElementById('newsPanel').classList.remove('open');
-          document.body.style.overflow = '';
-        }
-        
-        async function loadMarketNews() {
-          const newsContainer = document.getElementById('newsContainer');
-          const newsLoading = document.getElementById('newsLoading');
-          
-          try {
-            newsLoading.classList.remove('hidden');
-            newsContainer.innerHTML = '';
-            
-            const response = await fetch('/api/news');
-            const data = await response.json();
-            
-            newsLoading.classList.add('hidden');
-            
-            if (data.error) {
-              newsContainer.innerHTML = \`<p class="text-red-400 text-center py-8">\${data.error}</p>\`;
-              return;
-            }
-            
-            if (!data.news || data.news.length === 0) {
-              newsContainer.innerHTML = '<p class="text-muted-foreground text-center py-8">No news found</p>';
-              return;
-            }
-            
-            displayNews(data.news);
-          } catch (error) {
-            console.error('Error loading news:', error);
-            newsLoading.classList.add('hidden');
-            newsContainer.innerHTML = '<p class="text-red-400 text-center py-8">Failed to load news</p>';
-          }
-        }
-        
-        async function searchNews() {
-          const searchInput = document.getElementById('newsSearchInput');
-          const symbol = searchInput.value.trim().toUpperCase();
-          
-          if (!symbol) {
-            loadMarketNews();
-            return;
-          }
-          
-          const newsContainer = document.getElementById('newsContainer');
-          const newsLoading = document.getElementById('newsLoading');
-          
-          try {
-            newsLoading.classList.remove('hidden');
-            newsContainer.innerHTML = '';
-            
-            const response = await fetch(\`/api/news?symbol=\${encodeURIComponent(symbol)}\`);
-            const data = await response.json();
-            
-            newsLoading.classList.add('hidden');
-            
-            if (data.error) {
-              newsContainer.innerHTML = \`<p class="text-red-400 text-center py-8">\${data.error}</p>\`;
-              return;
-            }
-            
-            if (!data.news || data.news.length === 0) {
-              newsContainer.innerHTML = \`<p class="text-muted-foreground text-center py-8">No news found for \${symbol}</p>\`;
-              return;
-            }
-            
-            displayNews(data.news);
-          } catch (error) {
-            console.error('Error searching news:', error);
-            newsLoading.classList.add('hidden');
-            newsContainer.innerHTML = '<p class="text-red-400 text-center py-8">Failed to search news</p>';
-          }
-        }
-        
-        function displayNews(newsArray) {
-          const newsContainer = document.getElementById('newsContainer');
-          
-          const newsHtml = newsArray.map(article => {
-            const publishDate = article.providerPublishTime 
-              ? new Date(article.providerPublishTime * 1000).toLocaleString()
-              : 'Unknown date';
-            
-            const thumbnail = article.thumbnail?.resolutions?.[0]?.url || '';
-            
-            return \`
-              <div class="news-article" onclick="window.open('\${article.link}', '_blank')">
-                \${thumbnail ? \`<img src="\${thumbnail}" alt="Article thumbnail" class="w-full h-48 object-cover rounded-lg mb-3" />\` : ''}
-                <h3>\${article.title}</h3>
-                <p>\${article.summary || 'No summary available'}</p>
-                <div class="news-article-meta">
-                  <span>📰 \${article.publisher || 'Unknown'}</span>
-                  <span>🕒 \${publishDate}</span>
-                  \${article.relatedTickers ? \`<span>📊 \${article.relatedTickers.slice(0, 3).join(', ')}</span>\` : ''}
-                </div>
-              </div>
-            \`;
-          }).join('');
-          
-          newsContainer.innerHTML = newsHtml;
-        }
-        
         // Switch between exit logic tabs
         function switchExitTab(tabName) {
           // Remove active class from all tabs and content
@@ -8383,29 +8196,16 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Event listener for news overlay click outside
-          const newsOverlay = document.getElementById('newsOverlay');
-          if (newsOverlay) {
-            newsOverlay.addEventListener('click', function(e) {
-              if (e.target === newsOverlay) {
-                closeNewsOverlay();
-              }
-            });
-          }
-          
-          // Close calculator, exit logic, or news with Escape key
+          // Close calculator or exit logic with Escape key
           document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
               const calculatorPanel = document.getElementById('calculatorPanel');
               const exitLogicPanel = document.getElementById('exitLogicPanel');
-              const newsPanel = document.getElementById('newsPanel');
               
               if (calculatorPanel && calculatorPanel.classList.contains('open')) {
                 closeCalculator();
               } else if (exitLogicPanel && exitLogicPanel.classList.contains('open')) {
                 closeExitLogic();
-              } else if (newsPanel && newsPanel.classList.contains('open')) {
-                closeNewsOverlay();
               }
             }
           });
@@ -8772,55 +8572,6 @@ Use this to create a new preset filter button that applies these exact filter se
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- News Overlay -->
-      <div id="newsOverlay" class="news-overlay" onclick="closeNewsOverlay()"></div>
-      <div id="newsPanel" class="news-panel">
-        <div class="p-6">
-          <!-- Header with close button -->
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Market News</h1>
-              <p class="text-muted-foreground">Latest financial news from Yahoo Finance</p>
-            </div>
-            <button onclick="closeNewsOverlay()" class="text-muted-foreground hover:text-foreground transition-colors p-2">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          
-          <!-- Search Input -->
-          <div class="mb-6">
-            <div class="relative">
-              <input 
-                type="text" 
-                id="newsSearchInput" 
-                placeholder="Search for a stock symbol (e.g., AAPL, TSLA)" 
-                class="w-full px-4 py-3 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-foreground placeholder-muted-foreground"
-                onkeypress="if(event.key==='Enter') searchNews()"
-              />
-              <button 
-                onclick="searchNews()" 
-                class="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                Search
-              </button>
-            </div>
-          </div>
-          
-          <!-- Loading Indicator -->
-          <div id="newsLoading" class="hidden text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p class="text-muted-foreground mt-2">Loading news...</p>
-          </div>
-          
-          <!-- News Container -->
-          <div id="newsContainer" class="space-y-4 overflow-y-auto" style="max-height: calc(100vh - 300px);">
-            <p class="text-muted-foreground text-center py-8">Enter a stock symbol to search for news</p>
           </div>
         </div>
       </div>
