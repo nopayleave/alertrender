@@ -155,40 +155,39 @@ if not na(ny_orb_status)
 // === Webhook Alerts ===
 // New York ORB alerts (only during session, after ORB period)
 // Send alerts every bar during session to monitor all symbols continuously
-if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
-    // Alert every bar during session (for continuous monitoring of all symbols)
-    if barstate.isconfirmed
-        // Calculate price direction (price movement relative to previous bar)
-        price_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
-        
-        // Detect crossovers/crossunders of ORB high/low/mid
-        orb_cross_high = ta.crossover(high, ny_high)
-        orb_cross_low = ta.crossunder(low, ny_low)
-        orb_cross_mid_up = ta.crossover(close, ny_mid)
-        orb_cross_mid_down = ta.crossunder(close, ny_mid)
-        orb_cross_bottom = ta.crossover(close, ny_low)
-        orb_cross_high_down = ta.crossunder(close, ny_high)
-        
-        // Determine which crossover occurred (priority: high/low > mid > bottom/high_down)
-        orb_crossover = orb_cross_high ? "cross_high" : orb_cross_low ? "cross_low" : orb_cross_mid_up ? "cross_mid_up" : orb_cross_mid_down ? "cross_mid_down" : orb_cross_bottom ? "cross_bottom" : orb_cross_high_down ? "cross_high_down" : "none"
-        
-        jsonMsg = '{' +
-          '"symbol": "' + syminfo.ticker + '",' +
-          '"sector": "' + syminfo.sector + '",' +
-          '"timeframe": "' + timeframe.period + '",' +
-          '"time": ' + str.tostring(time) + ',' +
-          '"price": ' + str.tostring(close) + ',' +
-          '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
-          '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
-          '"volume": ' + str.tostring(currentDayVolume) + ',' +
-          '"orbType": "ny",' +
-          '"orbStatus": "' + ny_orb_status + '",' +
-          '"priceDirection": "' + price_direction + '",' +
-          '"orbCrossover": "' + orb_crossover + '",' +
-          '"orbHigh": ' + str.tostring(ny_high) + ',' +
-          '"orbLow": ' + str.tostring(ny_low) + ',' +
-          '"orbMid": ' + str.tostring(ny_mid) + '}'
-        alert(jsonMsg, freq = alertFreq)
+shouldSendAlert = enableWebhook and (webhookFrequency == "Once Per Bar Close" ? barstate.isconfirmed : true)
+if shouldSendAlert and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
+    // Calculate price direction (price movement relative to previous bar)
+    price_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
+    
+    // Detect crossovers/crossunders of ORB high/low/mid
+    orb_cross_high = ta.crossover(high, ny_high)
+    orb_cross_low = ta.crossunder(low, ny_low)
+    orb_cross_mid_up = ta.crossover(close, ny_mid)
+    orb_cross_mid_down = ta.crossunder(close, ny_mid)
+    orb_cross_bottom = ta.crossover(close, ny_low)
+    orb_cross_high_down = ta.crossunder(close, ny_high)
+    
+    // Determine which crossover occurred (priority: high/low > mid > bottom/high_down)
+    orb_crossover = orb_cross_high ? "cross_high" : orb_cross_low ? "cross_low" : orb_cross_mid_up ? "cross_mid_up" : orb_cross_mid_down ? "cross_mid_down" : orb_cross_bottom ? "cross_bottom" : orb_cross_high_down ? "cross_high_down" : "none"
+    
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"sector": "' + syminfo.sector + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"time": ' + str.tostring(time) + ',' +
+      '"price": ' + str.tostring(close) + ',' +
+      '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
+      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
+      '"volume": ' + str.tostring(currentDayVolume) + ',' +
+      '"orbType": "ny",' +
+      '"orbStatus": "' + ny_orb_status + '",' +
+      '"priceDirection": "' + price_direction + '",' +
+      '"orbCrossover": "' + orb_crossover + '",' +
+      '"orbHigh": ' + str.tostring(ny_high) + ',' +
+      '"orbLow": ' + str.tostring(ny_low) + ',' +
+      '"orbMid": ' + str.tostring(ny_mid) + '}'
+    alert(jsonMsg, freq = alertFreq)
 
 
 

@@ -63,7 +63,8 @@ h1 = hline(20, "Lower Band", color=#787B86)
 fill(h0, h1, color=color.rgb(33, 150, 243, 90), title="Background")
 
 // ===== WEBHOOK ALERT =====
-if enableWebhook and barstate.isconfirmed
+shouldSendAlert = enableWebhook and (webhookFrequency == "Once Per Bar Close" ? barstate.isconfirmed : true)
+if shouldSendAlert
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","

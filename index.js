@@ -3488,25 +3488,63 @@ app.get('/', (req, res) => {
           visibility: visible;
           transform: translate(-50%, -50%) scale(1);
         }
-        /* Masonry card styles */
-        .masonry-card {
-          break-inside: avoid;
-          margin-bottom: 1rem;
+        /* Kanban board styles */
+        .kanban-board {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 16px;
+          align-items: start;
+        }
+        .kanban-column {
+          background: hsl(217.2 32.6% 14.5%);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
+          padding: 12px;
+          min-height: 160px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .kanban-column-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 12px;
+          font-weight: 600;
+          color: hsl(210 40% 98%);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .kanban-column-count {
+          font-size: 11px;
+          padding: 2px 6px;
+          border-radius: 999px;
+          background: rgba(59, 130, 246, 0.2);
+          color: #60a5fa;
+          border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+        .kanban-card {
           background: hsl(217.2 32.6% 17.5%);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 1rem;
+          border-radius: 10px;
+          padding: 10px 12px;
           transition: all 0.2s;
         }
-        .masonry-card:hover {
+        .kanban-card:hover {
           background: hsl(217.2 32.6% 20%);
           border-color: rgba(255, 255, 255, 0.2);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
-        .masonry-card.starred {
+        .kanban-card.starred {
           border-color: rgba(251, 191, 36, 0.5);
           background: hsl(217.2 32.6% 20%);
+        }
+        .kanban-card-empty {
+          text-align: center;
+          font-size: 12px;
+          color: hsl(215 20.2% 65.1%);
+          padding: 12px 0 8px;
         }
         /* Toast notification styles */
         .toast-container {
@@ -4186,10 +4224,10 @@ app.get('/', (req, res) => {
               </div>
             </div>
             
-            <!-- Masonry View -->
+            <!-- Kanban View -->
             <div id="masonryView" class="hidden">
-              <div id="masonryContainer" class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-4">
-                <!-- Ticker cards will be dynamically generated -->
+              <div id="masonryContainer" class="kanban-board">
+                <!-- Kanban columns will be dynamically generated -->
               </div>
             </div>
           </div>
@@ -4921,85 +4959,96 @@ app.get('/', (req, res) => {
             masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
             return;
           }
-          
-          // Render masonry cards
-          masonryContainer.innerHTML = filteredData.map(alert => {
-            const symbol = alert.symbol || 'N/A';
-            const price = alert.price ? formatCurrency(alert.price) : 'N/A';
-            const changePercent = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay).toFixed(2) : null;
-            const changeClass = changePercent !== null ? (changePercent >= 0 ? 'text-green-400' : 'text-red-400') : 'text-muted-foreground';
-            const changeSign = changePercent !== null && changePercent >= 0 ? '+' : '';
-            
-            // Get D2 value
-            const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-            const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
-            const d2Display = d2Value !== null ? d2Value.toFixed(1) : 'N/A';
-            const d2DirArrow = d2Direction === 'up' ? '↑' : d2Direction === 'down' ? '↓' : '→';
-            const d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-red-400' : 'text-muted-foreground';
-            
-            // Get CCI
-            const cciValue = alert.cciValue !== null && alert.cciValue !== undefined ? parseFloat(alert.cciValue) : null;
-            const cciMAValue = alert.cciMAValue !== null && alert.cciMAValue !== undefined ? parseFloat(alert.cciMAValue) : null;
-            const cciDirection = alert.cciDirection || null;
-            const cciDisplay = cciValue !== null ? cciValue.toFixed(2) : 'N/A';
-            const cciMADisplay = cciMAValue !== null ? cciMAValue.toFixed(2) : 'N/A';
-            const cciDirArrow = cciDirection === 'up' ? '↑' : cciDirection === 'down' ? '↓' : '→';
-            const cciDirClass = cciDirection === 'up' ? 'text-green-400' : cciDirection === 'down' ? 'text-red-400' : 'text-gray-400';
-            
-            let cciValueClass = 'text-foreground';
-            if (cciValue !== null && !isNaN(cciValue)) {
-              if (cciValue > 100) cciValueClass = 'text-green-300 font-semibold';
-              else if (cciValue > 40) cciValueClass = 'text-green-400 font-semibold';
-              else if (cciValue > 0) cciValueClass = 'text-green-500 font-semibold';
-              else if (cciValue >= -40) cciValueClass = 'text-red-500 font-semibold';
-              else if (cciValue >= -100) cciValueClass = 'text-red-400 font-semibold';
-              else cciValueClass = 'text-red-300 font-semibold';
+
+          const kanbanColumns = [
+            { id: 'lower_half', title: 'Lower Half' },
+            { id: 'below_orb', title: 'Below ORB' },
+            { id: 'below_mid', title: 'Below Mid' },
+            { id: 'upper_half', title: 'Upper Half' },
+            { id: 'above_orb', title: 'Above ORB' },
+            { id: 'above_mid', title: 'Above Mid' }
+          ];
+
+          const columnBuckets = {};
+          kanbanColumns.forEach(column => {
+            columnBuckets[column.id] = [];
+          });
+
+          filteredData.forEach(alert => {
+            const nyOrbStatus = alert.nyOrbStatus || null;
+            const londonOrbStatus = alert.londonOrbStatus || null;
+            const orbStatus = nyOrbStatus || londonOrbStatus;
+            const orbMidRaw = alert.nyOrbMid !== null && alert.nyOrbMid !== undefined ? parseFloat(alert.nyOrbMid) : (
+              alert.londonOrbMid !== null && alert.londonOrbMid !== undefined ? parseFloat(alert.londonOrbMid) : null
+            );
+            const priceRaw = alert.price !== null && alert.price !== undefined ? parseFloat(alert.price) : null;
+
+            let columnId = 'below_mid';
+            if (orbStatus === 'within_lower') {
+              columnId = 'lower_half';
+            } else if (orbStatus === 'within_upper') {
+              columnId = 'upper_half';
+            } else if (orbStatus === 'outside_below') {
+              columnId = 'below_orb';
+            } else if (orbStatus === 'outside_above') {
+              columnId = 'above_orb';
+            } else if (orbMidRaw !== null && !isNaN(orbMidRaw) && priceRaw !== null && !isNaN(priceRaw)) {
+              columnId = priceRaw >= orbMidRaw ? 'above_mid' : 'below_mid';
             }
-            
-            let cciMAValueClass = 'text-foreground';
-            if (cciMAValue !== null && !isNaN(cciMAValue)) {
-              if (cciMAValue > 100) cciMAValueClass = 'text-green-300 font-semibold';
-              else if (cciMAValue > 40) cciMAValueClass = 'text-green-400 font-semibold';
-              else if (cciMAValue > 0) cciMAValueClass = 'text-green-500 font-semibold';
-              else if (cciMAValue >= -40) cciMAValueClass = 'text-red-500 font-semibold';
-              else if (cciMAValue >= -100) cciMAValueClass = 'text-red-400 font-semibold';
-              else cciMAValueClass = 'text-red-300 font-semibold';
+
+            if (!columnBuckets[columnId]) {
+              columnBuckets[columnId] = [];
             }
-            
-            const starred = isStarred(symbol);
-            const cardClass = starred ? 'masonry-card starred' : 'masonry-card';
-            
-            return \`
-              <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-lg font-bold text-foreground flex items-center gap-2">
-                    \${starred ? '⭐' : ''} \${symbol}
-                  </h3>
-                </div>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span class="text-muted-foreground">Price:</span>
-                    <span class="text-foreground font-semibold">$\${price}</span>
-                  </div>
-                  \${changePercent !== null ? \`
-                    <div class="flex justify-between">
-                      <span class="text-muted-foreground">Change:</span>
-                      <span class="\${changeClass} font-semibold">\${changeSign}\${changePercent}%</span>
+            columnBuckets[columnId].push(alert);
+          });
+
+          const getStochValueClass = (value) => {
+            if (value === null || isNaN(value)) return 'text-muted-foreground';
+            if (value < 40) return 'text-red-400';
+            if (value > 60) return 'text-green-400';
+            return 'text-white';
+          };
+
+          masonryContainer.innerHTML = kanbanColumns.map(column => {
+            const cards = columnBuckets[column.id] || [];
+            const cardsHtml = cards.length === 0
+              ? '<div class="kanban-card-empty">No tickers</div>'
+              : cards.map(alert => {
+                  const symbol = alert.symbol || 'N/A';
+                  const price = alert.price ? formatCurrency(alert.price) : 'N/A';
+                  const { kValue, dValue } = getStochValues(alert);
+                  const kDisplay = kValue !== null && !isNaN(kValue) ? kValue.toFixed(1) : 'N/A';
+                  const dDisplay = dValue !== null && !isNaN(dValue) ? dValue.toFixed(1) : 'N/A';
+                  const kClass = getStochValueClass(kValue);
+                  const dClass = getStochValueClass(dValue);
+                  const starred = isStarred(symbol);
+                  const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
+
+                  return \`
+                    <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
+                      <div class="flex items-center justify-between">
+                        <span class="font-semibold text-foreground">\${starred ? '⭐ ' : ''}\${symbol}</span>
+                        <span class="text-xs text-muted-foreground">\${price}</span>
+                      </div>
+                      <div class="mt-2 flex items-center justify-between text-xs">
+                        <span class="text-muted-foreground">%K</span>
+                        <span class="\${kClass} font-semibold">\${kDisplay}</span>
+                      </div>
+                      <div class="mt-1 flex items-center justify-between text-xs">
+                        <span class="text-muted-foreground">%D</span>
+                        <span class="\${dClass} font-semibold">\${dDisplay}</span>
+                      </div>
                     </div>
-                  \` : ''}
-                  <div class="flex justify-between">
-                    <span class="text-muted-foreground">D2:</span>
-                    <span class="\${d2DirClass} font-semibold">\${d2DirArrow} \${d2Display}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-muted-foreground">CCI:</span>
-                    <span class="\${cciValueClass}">\${cciDisplay} <span class="\${cciDirClass}">\${cciDirArrow}</span></span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-muted-foreground">CCI MA:</span>
-                    <span class="\${cciMAValueClass}">\${cciMADisplay} <span class="\${cciDirClass}">\${cciDirArrow}</span></span>
-                  </div>
+                  \`;
+                }).join('');
+
+            return \`
+              <div class="kanban-column">
+                <div class="kanban-column-header">
+                  <span>\${column.title}</span>
+                  <span class="kanban-column-count">\${cards.length}</span>
                 </div>
+                \${cardsHtml}
               </div>
             \`;
           }).join('');
