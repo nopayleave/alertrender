@@ -50,6 +50,8 @@ show_prev_4h    = input.bool(true,  title = "Show Previous 4H High/Low")
 previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
 changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
 currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+currentDayOpen = request.security(syminfo.tickerid, "D", open, lookahead=barmerge.lookahead_off)
+intradayChange = currentDayOpen != 0 ? ((close - currentDayOpen) / currentDayOpen) * 100 : 0
 
 prev_daily_high = request.security(syminfo.tickerid, "D", high[1])
 prev_daily_low  = request.security(syminfo.tickerid, "D", low[1])
@@ -170,6 +172,7 @@ if barstate.isconfirmed and in_ny_session and not in_ny and not na(ny_high) and 
       '"price": ' + str.tostring(close) + ',' +
       '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
       '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
+      '"intradayChange": ' + str.tostring(intradayChange, "#.##") + ',' +
       '"volume": ' + str.tostring(currentDayVolume) + ',' +
       '"orbType": "ny",' +
       '"orbStatus": "' + ny_orb_status + '",' +

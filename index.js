@@ -1400,6 +1400,12 @@ app.post('/webhook', (req, res) => {
         alerts[existingIndex].nyOrbLow = orbData.orbLow
         alerts[existingIndex].nyOrbMid = orbData.orbMid
       }
+      // Store volume, price changes from ORB webhook
+      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.intradayChange !== undefined) alerts[existingIndex].intradayChange = alert.intradayChange
+      if (alert.price !== undefined) alerts[existingIndex].price = alert.price
       // Store sector information if available, or fetch from Yahoo Finance
       if (alert.sector) {
         alerts[existingIndex].sector = alert.sector
@@ -1419,6 +1425,10 @@ app.post('/webhook', (req, res) => {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
         price: alert.price || null,
+        volume: alert.volume || null,
+        previousClose: alert.previousClose || null,
+        changeFromPrevDay: alert.changeFromPrevDay || null,
+        intradayChange: alert.intradayChange || null,
         receivedAt: Date.now()
       }
       // Add ORB data based on type
@@ -5045,8 +5055,10 @@ app.get('/', (req, res) => {
                   const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
                   
-                  // Change percentage
-                  const changePercent = alert.changeFromPrevDay;
+                  // Change percentage - prioritize intradayChange (from today's open) for ORB trading
+                  const changePercent = alert.intradayChange !== null && alert.intradayChange !== undefined 
+                    ? alert.intradayChange 
+                    : alert.changeFromPrevDay;
                   const changeDisplay = changePercent !== null && changePercent !== undefined && !isNaN(changePercent)
                     ? (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%'
                     : '';
