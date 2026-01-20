@@ -5003,20 +5003,22 @@ app.get('/', (req, res) => {
                   const dClass = getStochValueClass(dValue);
                   const kArrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '';
                   const dArrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '';
-                  const starred = isStarred(symbol);
+            const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
             
             return \`
               <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
-                <div class="font-semibold text-foreground">\${starred ? '⭐ ' : ''}\${symbol}</div>
-                <div class="mt-2 text-xs">
-                  <span class="text-muted-foreground">K</span>
-                  <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
-                  <span class="text-muted-foreground mx-1">|</span>
-                  <span class="text-muted-foreground">D</span>
-                  <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${dArrow}</span>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}</span>
+                  <div class="text-xs whitespace-nowrap">
+                    <span class="text-muted-foreground">K</span>
+                    <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
+                    <span class="text-muted-foreground mx-1">|</span>
+                    <span class="text-muted-foreground">D</span>
+                    <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${dArrow}</span>
                 </div>
-              </div>
+                  </div>
+                    </div>
                   \`;
                 }).join('');
 
