@@ -1453,9 +1453,15 @@ app.post('/webhook', (req, res) => {
     }
   } else if (isSoloStochAlert) {
     // Solo Stoch alert - store D2 data with timestamp
+    const d2Value = alert.d2 !== undefined ? alert.d2 : alert.d
+    const d2Direction = alert.d2Direction !== undefined ? alert.d2Direction : alert.dDirection
     soloStochDataStorage[alert.symbol] = {
-      d2: alert.d2,
-      d2Direction: alert.d2Direction,
+      d2: d2Value,
+      d2Direction: d2Direction,
+      k: alert.k || null,
+      kDirection: alert.kDirection || null,
+      d: alert.d || null,
+      dDirection: alert.dDirection || null,
       d2Pattern: alert.d2Pattern || '',
       d2PatternValue: alert.d2PatternValue || null,
       previousClose: alert.previousClose || null,
@@ -1463,15 +1469,19 @@ app.post('/webhook', (req, res) => {
       volume: alert.volume || null,
       timestamp: Date.now()
     }
-    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: D2=${alert.d2}, Dir=${alert.d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
+    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
-      alerts[existingIndex].soloStochD2 = alert.d2
-      alerts[existingIndex].soloStochD2Direction = alert.d2Direction
+      alerts[existingIndex].soloStochD2 = d2Value
+      alerts[existingIndex].soloStochD2Direction = d2Direction
       alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
       alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
+      if (alert.k !== undefined) alerts[existingIndex].k = alert.k
+      if (alert.kDirection !== undefined) alerts[existingIndex].kDirection = alert.kDirection
+      if (alert.d !== undefined) alerts[existingIndex].d = alert.d
+      if (alert.dDirection !== undefined) alerts[existingIndex].dDirection = alert.dDirection
       if (alert.price) alerts[existingIndex].price = alert.price
       if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
       if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
@@ -1487,10 +1497,14 @@ app.post('/webhook', (req, res) => {
         previousClose: alert.previousClose || null,
         changeFromPrevDay: alert.changeFromPrevDay || null,
         volume: alert.volume || null,
-        soloStochD2: alert.d2,
-        soloStochD2Direction: alert.d2Direction,
+        soloStochD2: d2Value,
+        soloStochD2Direction: d2Direction,
         soloStochD2Pattern: alert.d2Pattern || '',
         soloStochD2PatternValue: alert.d2PatternValue || null,
+        k: alert.k || null,
+        kDirection: alert.kDirection || null,
+        d: alert.d || null,
+        dDirection: alert.dDirection || null,
         receivedAt: Date.now()
       }
       alerts.unshift(newAlert)
@@ -3979,19 +3993,19 @@ app.get('/', (req, res) => {
             
                   <div id="stochFilters" class="filter-content">
             
-                  <!-- D1 Direction -->
+                  <!-- K Direction -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑</button>
                       <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
-                  <!-- D1 Value Slider -->
+                  <!-- K Value Slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -4006,19 +4020,19 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- D2 Direction -->
+                  <!-- D Direction -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑</button>
                       <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
-                  <!-- D2 Value Slider -->
+                  <!-- D Value Slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -4055,16 +4069,15 @@ app.get('/', (req, res) => {
                   <div class="mb-4">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="Do Not Long">No Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Do Not Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="Do Not Short">No Short</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="No Long">No Long</button>
+                      <button onclick="toggleFilterChip('trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="No Short">No Short</button>
                       <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">Try Long</button>
                       <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">Try Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Big Trend Day', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="trendMessage" data-value="Big Trend Day">Big Trend</button>
                     </div>
                   </div>
+                    </div>
                   </div>
-                </div>
-                
+                  
                 <!-- Other Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
@@ -4083,20 +4096,20 @@ app.get('/', (req, res) => {
                   </div>
                   
                   <div id="otherFilters" class="filter-content">
-                    <!-- Price % -->
+                  <!-- Price % -->
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                        <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
-                      </div>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
                     </div>
+                  </div>
                     
                     <!-- Volume -->
                     <div class="mb-4">
@@ -4457,6 +4470,29 @@ app.get('/', (req, res) => {
             return num.toFixed(decimals);
           }
         }
+
+        function parseStochValue(value) {
+          if (value === null || value === undefined || value === '') return null;
+          const num = parseFloat(value);
+          return isNaN(num) ? null : num;
+        }
+
+        function getStochValues(alert) {
+          const kValueRaw = parseStochValue(alert.k);
+          const dValueRaw = parseStochValue(alert.d);
+          const fallbackK = parseStochValue(alert.dualStochD1);
+          const fallbackD = parseStochValue(alert.dualStochD2);
+          const soloD = parseStochValue(alert.soloStochD2);
+          const genericD = parseStochValue(alert.d2);
+
+          const kValue = kValueRaw !== null ? kValueRaw : fallbackK;
+          const dValue = dValueRaw !== null ? dValueRaw : (fallbackD !== null ? fallbackD : (soloD !== null ? soloD : genericD));
+
+          const kDirection = alert.kDirection || alert.dualStochD1Direction || alert.d1Direction || 'flat';
+          const dDirection = alert.dDirection || alert.dualStochD2Direction || alert.soloStochD2Direction || alert.d2Direction || 'flat';
+
+          return { kValue, dValue, kDirection, dDirection };
+        }
         
 
         function sortTable(field) {
@@ -4739,42 +4775,37 @@ app.get('/', (req, res) => {
           // Apply Stoch Filters (same as renderTable)
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
-              const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
-              const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-              const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
-              const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+              const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
-              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(d1Direction)) return false;
-              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(d2Direction)) return false;
+              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
+              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
               
               let trendMessage = '';
-              if (alert.isBigTrendDay) {
-                trendMessage = 'Big Trend Day';
-              } else if (d1Value !== null && d2Value !== null) {
-                if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
-                  trendMessage = 'Do Not Long';
-                } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
-                  trendMessage = 'Do Not Short';
-                } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+              if (kValue !== null && dValue !== null) {
+                if (kValue < 15 && dValue < 15) {
+                  trendMessage = 'No Long';
+                } else if (kValue > 80) {
+                  trendMessage = 'No Short';
+                } else if (kDirection === 'up' && kValue > 20) {
                   trendMessage = 'Try Long';
-                } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+                } else if (kDirection === 'down' && kValue < 80) {
                   trendMessage = 'Try Short';
                 }
               }
               
               if (stochFilterD1Value.active) {
-                if (d1Value === null || isNaN(d1Value)) return false;
-                if (d1Value < stochFilterD1Value.min || d1Value > stochFilterD1Value.max) return false;
+                if (kValue === null || isNaN(kValue)) return false;
+                if (kValue < stochFilterD1Value.min || kValue > stochFilterD1Value.max) return false;
               }
               
               if (stochFilterD2Value.active) {
-                if (d2Value === null || isNaN(d2Value)) return false;
-                if (d2Value < stochFilterD2Value.min || d2Value > stochFilterD2Value.max) return false;
+                if (dValue === null || isNaN(dValue)) return false;
+                if (dValue < stochFilterD2Value.min || dValue > stochFilterD2Value.max) return false;
               }
               
               if (stochFilterDiff.active) {
-                if (d1Value === null || isNaN(d1Value) || d2Value === null || isNaN(d2Value)) return false;
-                const absDiff = Math.abs(d1Value - d2Value);
+                if (kValue === null || isNaN(kValue) || dValue === null || isNaN(dValue)) return false;
+                const absDiff = Math.abs(kValue - dValue);
                 if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
               }
               
@@ -5802,12 +5833,11 @@ Use this to create a new preset filter button that applies these exact filter se
           let extBearCount = 0;
 
           data.forEach(alert => {
-            // Get D1 and D2 values and directions
-            // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
-            const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
-            const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-            const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
-            const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+            const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+            const d1Value = kValue;
+            const d2Value = dValue;
+            const d1Direction = kDirection;
+            const d2Direction = dDirection;
             
             // Get % change value
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -5825,16 +5855,14 @@ Use this to create a new preset filter button that applies these exact filter se
             
             // Determine trend message
             let trendMessage = '';
-            if (alert.isBigTrendDay) {
-              trendMessage = 'Big Trend Day';
-            } else if (d1Value !== null && d2Value !== null) {
-              if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
-                trendMessage = 'Do Not Long';
-              } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
-                trendMessage = 'Do Not Short';
-              } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+            if (d1Value !== null && d2Value !== null) {
+              if (d1Value < 15 && d2Value < 15) {
+                trendMessage = 'No Long';
+              } else if (d1Value > 80) {
+                trendMessage = 'No Short';
+              } else if (d1Direction === 'up' && d1Value > 20) {
                 trendMessage = 'Try Long';
-              } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+              } else if (d1Direction === 'down' && d1Value < 80) {
                 trendMessage = 'Try Short';
               }
             }
@@ -6265,55 +6293,47 @@ Use this to create a new preset filter button that applies these exact filter se
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // Get D1 and D2 values and directions
-              // Check both dualStoch fields and generic d1Direction/d2Direction fields (for Quad/Octo Stoch)
-              const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
-              const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-              const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
-              const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+              const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
               // Get % change value
               const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
               
               // Check D1 direction filter
-              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(d1Direction)) return false;
+              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
               
               // Check D2 direction filter
-              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(d2Direction)) return false;
+              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
               
               // Determine trend message from alert data
               let trendMessage = '';
-              if (alert.isBigTrendDay) {
-                trendMessage = 'Big Trend Day';
-              } else if (d1Value !== null && d2Value !== null) {
-                
-                if (d1Direction === 'down' && d2Direction === 'down' && d1Value < 20 && d2Value < 20) {
-                  trendMessage = 'Do Not Long';
-                } else if (d1Direction === 'up' && d2Direction === 'up' && d1Value > 80 && d2Value > 80) {
-                  trendMessage = 'Do Not Short';
-                } else if (d1Direction === 'up' && d2Direction === 'up' && (d1Value > 20 || d2Value > 20)) {
+              if (kValue !== null && dValue !== null) {
+                if (kValue < 15 && dValue < 15) {
+                  trendMessage = 'No Long';
+                } else if (kValue > 80) {
+                  trendMessage = 'No Short';
+                } else if (kDirection === 'up' && kValue > 20) {
                   trendMessage = 'Try Long';
-                } else if (d1Direction === 'down' && d2Direction === 'down' && (d1Value < 80 || d2Value < 80)) {
+                } else if (kDirection === 'down' && kValue < 80) {
                   trendMessage = 'Try Short';
                 }
               }
               
               // Check D1 value filter using slider range
               if (stochFilterD1Value.active) {
-                if (d1Value === null || isNaN(d1Value)) return false;
-                if (d1Value < stochFilterD1Value.min || d1Value > stochFilterD1Value.max) return false;
+                if (kValue === null || isNaN(kValue)) return false;
+                if (kValue < stochFilterD1Value.min || kValue > stochFilterD1Value.max) return false;
               }
               
               // Check D2 value filter using slider range
               if (stochFilterD2Value.active) {
-                if (d2Value === null || isNaN(d2Value)) return false;
-                if (d2Value < stochFilterD2Value.min || d2Value > stochFilterD2Value.max) return false;
+                if (dValue === null || isNaN(dValue)) return false;
+                if (dValue < stochFilterD2Value.min || dValue > stochFilterD2Value.max) return false;
               }
               
               // Check Diff filter (|D1 - D2|) - Absolute difference using slider range
               if (stochFilterDiff.active) {
-                if (d1Value === null || isNaN(d1Value) || d2Value === null || isNaN(d2Value)) return false;
-                const absDiff = Math.abs(d1Value - d2Value);
+                if (kValue === null || isNaN(kValue) || dValue === null || isNaN(dValue)) return false;
+                const absDiff = Math.abs(kValue - dValue);
                 if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
               }
               
@@ -6929,10 +6949,10 @@ Use this to create a new preset filter button that applies these exact filter se
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
             // Solo Stoch D2 or Dual Stoch D1/D2 calculations
-            // Check for Dual Stoch first, then Solo Stoch, then fallback to generic d2
-            const dualStochD1Raw = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined && alert.dualStochD1 !== '' ? parseFloat(alert.dualStochD1) : null;
+            // Check for K/D webhook first, then Dual Stoch, then Solo Stoch, then fallback to generic d2
+            const dualStochD1Raw = parseStochValue(alert.k) !== null ? parseStochValue(alert.k) : parseStochValue(alert.dualStochD1);
             const dualStochD1 = (dualStochD1Raw !== null && !isNaN(dualStochD1Raw)) ? dualStochD1Raw : null;
-            const dualStochD2Raw = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined && alert.dualStochD2 !== '' ? parseFloat(alert.dualStochD2) : null;
+            const dualStochD2Raw = parseStochValue(alert.d) !== null ? parseStochValue(alert.d) : parseStochValue(alert.dualStochD2);
             const dualStochD2 = (dualStochD2Raw !== null && !isNaN(dualStochD2Raw)) ? dualStochD2Raw : null;
             const soloD2Raw = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
             const soloD2 = (soloD2Raw !== null && !isNaN(soloD2Raw)) ? soloD2Raw : null;
@@ -6941,7 +6961,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             // Use Dual Stoch if available, otherwise Solo Stoch, otherwise generic d2
             const d2Value = dualStochD2 !== null ? dualStochD2 : (soloD2 !== null ? soloD2 : genericD2);
-            const d2Direction = dualStochD2 !== null ? (alert.dualStochD2Direction || alert.d2Direction || 'flat') : (alert.soloStochD2Direction || alert.d2Direction || 'flat');
+            const d2Direction = dualStochD2 !== null ? (alert.dDirection || alert.dualStochD2Direction || alert.d2Direction || 'flat') : (alert.soloStochD2Direction || alert.d2Direction || 'flat');
             const d2Pattern = dualStochD2 !== null ? (alert.dualStochD1Pattern || '') : (alert.soloStochD2Pattern || '');
             const d2PatternValue = dualStochD2 !== null ? (alert.dualStochD1PatternValue !== null && alert.dualStochD1PatternValue !== undefined ? parseFloat(alert.dualStochD1PatternValue) : null) : (alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null);
             
@@ -6956,7 +6976,7 @@ Use this to create a new preset filter button that applies these exact filter se
             let d1Arrow = '→';
             let d1Direction = 'flat';
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
-              d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
+              d1Direction = alert.kDirection || alert.dualStochD1Direction || alert.d1Direction || 'flat';
               d1DirClass = d1Direction === 'up' ? 'text-green-400' : d1Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
               d1Arrow = d1Direction === 'up' ? '↑' : d1Direction === 'down' ? '↓' : '→';
               if (dualStochD1 > 80) {
@@ -6989,30 +7009,21 @@ Use this to create a new preset filter button that applies these exact filter se
             let miniChartSvg = alert.dualStochMiniChart || ''
             let d2CellHtml = ''
             
-            // Trend messages based on D1 and D2 values and directions
+            // Trend messages based on K/D values and directions
             let trendMessage = '';
             let trendMessageClass = '';
-            if (dualStochD1 !== null && !isNaN(dualStochD1) && dualStochD2 !== null && !isNaN(dualStochD2)) {
-              const d1Direction = alert.dualStochD1Direction || 'flat';
-              const d2Direction = alert.dualStochD2Direction || 'flat';
-              
-              // Both trending down and both below 20: "Do Not Long"
-              if (d1Direction === 'down' && d2Direction === 'down' && dualStochD1 < 20 && dualStochD2 < 20) {
-                trendMessage = 'Do Not Long';
+            const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+            if (kValue !== null && dValue !== null) {
+              if (kValue < 15 && dValue < 15) {
+                trendMessage = 'No Long';
                 trendMessageClass = 'text-red-500 font-bold';
-              }
-              // Both trending up and both above 80: "Do Not Short"
-              else if (d1Direction === 'up' && d2Direction === 'up' && dualStochD1 > 80 && dualStochD2 > 80) {
-                trendMessage = 'Do Not Short';
+              } else if (kValue > 80) {
+                trendMessage = 'No Short';
                 trendMessageClass = 'text-green-500 font-bold';
-              }
-              // Both trending up and either one above 20: "Try Long"
-              else if (d1Direction === 'up' && d2Direction === 'up' && (dualStochD1 > 20 || dualStochD2 > 20)) {
+              } else if (kDirection === 'up' && kValue > 20) {
                 trendMessage = 'Try Long';
                 trendMessageClass = 'text-green-400 font-semibold';
-              }
-              // Both trending down and either one below 80: "Try Short"
-              else if (d1Direction === 'down' && d2Direction === 'down' && (dualStochD1 < 80 || dualStochD2 < 80)) {
+              } else if (kDirection === 'down' && kValue < 80) {
                 trendMessage = 'Try Short';
                 trendMessageClass = 'text-red-400 font-semibold';
               }
@@ -7104,8 +7115,11 @@ Use this to create a new preset filter button that applies these exact filter se
               chartHtml = '<div class="flex-shrink-0">' + chartHtml + '</div>'
             }
             let d1Html = ''
+            const hasKD = parseStochValue(alert.k) !== null || parseStochValue(alert.d) !== null
+            const d1Label = hasKD ? 'K' : 'D1'
+            const d2Label = hasKD ? 'D' : 'D2'
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
-              d1Html = '<div class="flex flex-row items-center gap-1"><div class="font-mono text-lg ' + d1ValueClass + '">D1: ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
+              d1Html = '<div class="flex flex-row items-center gap-1"><div class="font-mono text-lg ' + d1ValueClass + '">' + d1Label + ': ' + dualStochD1.toFixed(1) + '</div><div class="text-lg ' + d1DirClass + '">' + d1Arrow + '</div></div>'
             }
             let diffHtml = ''
             if (d1D2Diff !== null && !isNaN(d1D2Diff)) {
@@ -7113,7 +7127,7 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             // Combine D2 value with diff box (no separator between them)
             let d2HtmlContent = '<div class="flex flex-row items-center gap-1">' +
-              '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? 'D2: ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
+              '<div class="font-mono text-lg ' + d2ValueClass + '">' + (dualStochD1 !== null ? d2Label + ': ' : '') + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(1) : '-') + '</div>' +
               '<div class="text-lg ' + d2DirClass + '">' + d2Arrow + '</div>' +
               (d2PatternDisplay ? '<div class="text-xs ' + d2PatternClass + '">' + d2PatternDisplay + '</div>' : '') +
               (diffHtml ? '<div class="flex items-center ml-1">' + diffHtml + '</div>' : '') +
@@ -7122,14 +7136,9 @@ Use this to create a new preset filter button that applies these exact filter se
             if (trendMessage) {
               trendHtml = '<div class="text-xs ' + trendMessageClass + '">' + trendMessage + '</div>'
             }
-            // Add Big Trend Day indicator
-            let bigTrendDayHtml = ''
-            if (alert.isBigTrendDay) {
-              bigTrendDayHtml = '<div class="text-xs text-yellow-400 font-bold animate-pulse">🔥 Trend</div>'
-            }
-            let d2TitleText = (dualStochD2 !== null ? 'Dual Stoch D1.D2' : 'Solo Stoch D2') + ': ' + 
-              (dualStochD1 !== null && !isNaN(dualStochD1) ? 'D1=' + dualStochD1.toFixed(2) + '.' : '') + 
-              'D2=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
+            let d2TitleText = (dualStochD2 !== null ? (hasKD ? 'Stoch K.D' : 'Dual Stoch D1.D2') : 'Solo Stoch D2') + ': ' + 
+              (dualStochD1 !== null && !isNaN(dualStochD1) ? d1Label + '=' + dualStochD1.toFixed(2) + '.' : '') + 
+              d2Label + '=' + (d2Value !== null && !isNaN(d2Value) ? d2Value.toFixed(2) : 'N/A') + 
               ', Dir=' + d2Direction + 
               (d2PatternDisplay ? ', Pattern=' + d2Pattern : '') + 
               (d1D2Diff !== null && !isNaN(d1D2Diff) ? ', Diff=' + d1D2Diff.toFixed(1) : '') + 
@@ -7151,7 +7160,7 @@ Use this to create a new preset filter button that applies these exact filter se
               d2: currentD2Dir
             };
             
-            // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH [diff box] | Trend | 🔥 Trend
+            // Build horizontal layout: Chart | D1: X↓ | D2: X↓ LH [diff box] | Trend
             let parts = []
             if (chartHtml) parts.push(chartHtml)
             if (d1Html) {
@@ -7163,12 +7172,9 @@ Use this to create a new preset filter button that applies these exact filter se
             if (trendHtml) {
               parts.push(trendHtml)
             }
-            if (bigTrendDayHtml) {
-              parts.push(bigTrendDayHtml)
-            }
             
             const flashClass = shouldFlash ? ' stoch-flash' : '';
-            d2CellHtml = '<td class="py-3 px-4 text-left' + flashClass + '" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + (alert.isBigTrendDay ? ' - Big Trend Day' : '') + '">' +
+            d2CellHtml = '<td class="py-3 px-4 text-left' + flashClass + '" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -7245,10 +7251,11 @@ Use this to create a new preset filter button that applies these exact filter se
         function checkPresetMatches(alert) {
           if (!alert || !alert.symbol) return [];
           
-          const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
-          const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-          const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
-          const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+          const d1Value = kValue;
+          const d2Value = dValue;
+          const d1Direction = kDirection;
+          const d2Direction = dDirection;
           const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
           
           const matches = [];
@@ -7559,7 +7566,7 @@ Use this to create a new preset filter button that applies these exact filter se
             // Get D1/D2 values for display
             const d1Value = item.eventData.d1Value !== null && item.eventData.d1Value !== undefined ? parseFloat(item.eventData.d1Value).toFixed(1) : 'N/A';
             const d2Value = item.eventData.d2Value !== null && item.eventData.d2Value !== undefined ? parseFloat(item.eventData.d2Value).toFixed(1) : 'N/A';
-            const d1D2Display = \`D1:\${d1Value} D2:\${d2Value}\`;
+            const d1D2Display = \`K:\${d1Value} D:\${d2Value}\`;
             
             switch(item.eventType) {
               case 'direction_change':
@@ -7600,10 +7607,11 @@ Use this to create a new preset filter button that applies these exact filter se
           if (!alert || !alert.symbol) return;
           
           const symbol = alert.symbol;
-          const d1Value = alert.dualStochD1 !== null && alert.dualStochD1 !== undefined ? parseFloat(alert.dualStochD1) : null;
-          const d2Value = alert.dualStochD2 !== null && alert.dualStochD2 !== undefined ? parseFloat(alert.dualStochD2) : null;
-          const d1Direction = alert.dualStochD1Direction || alert.d1Direction || 'flat';
-          const d2Direction = alert.dualStochD2Direction || alert.d2Direction || 'flat';
+          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+          const d1Value = kValue;
+          const d2Value = dValue;
+          const d1Direction = kDirection;
+          const d2Direction = dDirection;
           
           // Initialize previous state for this symbol if not exists
           if (!previousStochStates[symbol]) {
@@ -7625,7 +7633,7 @@ Use this to create a new preset filter button that applies these exact filter se
               symbol: symbol,
               eventType: 'direction_change',
               eventData: {
-                description: \`D1: \${prevState.d1Direction} → \${d1Direction}, D2: \${prevState.d2Direction} → \${d2Direction}\`,
+                description: \`K: \${prevState.d1Direction} → \${d1Direction}, D: \${prevState.d2Direction} → \${d2Direction}\`,
                 d1Direction: d1Direction,
                 d2Direction: d2Direction,
                 prevD1Direction: prevState.d1Direction,

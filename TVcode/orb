@@ -54,6 +54,11 @@ show_prev_daily = input.bool(true,  title = "Show Previous Daily High/Low/Open",
 show_prev_4h    = input.bool(true,  title = "Show Previous 4H High/Low")
 
 // === Previous Day + Previous 4H Data ===
+// Day data for webhook
+previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
+currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
 prev_daily_high = request.security(syminfo.tickerid, "D", high[1])
 prev_daily_low  = request.security(syminfo.tickerid, "D", low[1])
 prev_daily_open = request.security(syminfo.tickerid, "D", open[1])
@@ -173,6 +178,9 @@ if enableWebhook and in_ny_session and not in_ny and not na(ny_high) and not na(
           '"timeframe": "' + timeframe.period + '",' +
           '"time": ' + str.tostring(time) + ',' +
           '"price": ' + str.tostring(close) + ',' +
+          '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
+          '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
+          '"volume": ' + str.tostring(currentDayVolume) + ',' +
           '"orbType": "ny",' +
           '"orbStatus": "' + ny_orb_status + '",' +
           '"priceDirection": "' + price_direction + '",' +
