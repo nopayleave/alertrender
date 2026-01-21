@@ -4099,6 +4099,17 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
+                  <!-- K Level Crossing (90/10) -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="kLevelCross" data-value="c90_up">c90↑</button>
+                      <button onclick="toggleFilterChip('kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="kLevelCross" data-value="c90_down">c90↓</button>
+                      <button onclick="toggleFilterChip('kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="kLevelCross" data-value="c10_down">c10↓</button>
+                      <button onclick="toggleFilterChip('kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="kLevelCross" data-value="c10_up">c10↑</button>
+                    </div>
+                  </div>
+                  
                   <!-- Diff - Absolute difference slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
@@ -4344,6 +4355,7 @@ app.get('/', (req, res) => {
         let stochFilterD2Value = { min: 0, max: 100, active: false }; // D2 Value slider range
         let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
         let stochFilterKCross = []; // K/D Crossing filter
+        let stochFilterKLevelCross = []; // K Level Crossing filter (90/10)
         let stochFilterTrendMessage = [];
         let stochFilterPercentChange = [];
         
@@ -4820,7 +4832,7 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters (same as renderTable)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
@@ -4831,6 +4843,20 @@ app.get('/', (req, res) => {
               if (stochFilterKCross.length > 0) {
                 const kCross = alert.kCross || 'none';
                 if (!stochFilterKCross.includes(kCross)) return false;
+              }
+              
+              // Check K level crossing filter (90/10)
+              if (stochFilterKLevelCross.length > 0) {
+                let matchesLevelCross = false;
+                if (kValue !== null && !isNaN(kValue)) {
+                  for (const filter of stochFilterKLevelCross) {
+                    if (filter === 'c90_up' && kValue >= 90 && kDirection === 'up') { matchesLevelCross = true; break; }
+                    if (filter === 'c90_down' && kValue > 85 && kValue < 90 && kDirection === 'down') { matchesLevelCross = true; break; }
+                    if (filter === 'c10_down' && kValue <= 10 && kDirection === 'down') { matchesLevelCross = true; break; }
+                    if (filter === 'c10_up' && kValue > 10 && kValue <= 15 && kDirection === 'up') { matchesLevelCross = true; break; }
+                  }
+                }
+                if (!matchesLevelCross) return false;
               }
               
               let trendMessage = '';
@@ -5062,10 +5088,29 @@ app.get('/', (req, res) => {
                     : '';
                   const changeClass = changePercent >= 0 ? 'text-green-400' : 'text-red-400';
                   
-                  // Crossing tag
+                  // Crossing tag (K crossing D)
                   const kCross = alert.kCross || 'none';
                   const crossTag = kCross === 'cross_over' ? 'C↑' : kCross === 'cross_under' ? 'C↓' : '';
                   const crossClass = kCross === 'cross_over' ? 'text-green-400' : kCross === 'cross_under' ? 'text-red-400' : '';
+                  
+                  // K crossing 90/10 levels
+                  let levelCrossTag = '';
+                  let levelCrossClass = '';
+                  if (kValue !== null && !isNaN(kValue)) {
+                    if (kValue >= 90 && kDirection === 'up') {
+                      levelCrossTag = 'c90↑';
+                      levelCrossClass = 'text-yellow-400';
+                    } else if (kValue > 85 && kValue < 90 && kDirection === 'down') {
+                      levelCrossTag = 'c90↓';
+                      levelCrossClass = 'text-orange-400';
+                    } else if (kValue <= 10 && kDirection === 'down') {
+                      levelCrossTag = 'c10↓';
+                      levelCrossClass = 'text-purple-400';
+                    } else if (kValue > 10 && kValue <= 15 && kDirection === 'up') {
+                      levelCrossTag = 'c10↑';
+                      levelCrossClass = 'text-cyan-400';
+                    }
+                  }
             
             return \`
               <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
@@ -5073,6 +5118,7 @@ app.get('/', (req, res) => {
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : ''}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
+                    \${levelCrossTag ? \`<span class="\${levelCrossClass} font-bold">\${levelCrossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     <span class="text-muted-foreground">K</span>
                     <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
@@ -5568,6 +5614,7 @@ app.get('/', (req, res) => {
           // D1/D2 Value and Diff filters are updated via their respective update functions from sliders
           stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
           stochFilterKCross = Array.from(document.querySelectorAll('[data-filter="kCross"].active')).map(chip => chip.dataset.value);
+          stochFilterKLevelCross = Array.from(document.querySelectorAll('[data-filter="kLevelCross"].active')).map(chip => chip.dataset.value);
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
           
@@ -5600,7 +5647,7 @@ app.get('/', (req, res) => {
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="kCross"], [data-filter="trendMessage"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="kCross"], [data-filter="kLevelCross"], [data-filter="trendMessage"]').forEach(chip => {
             chip.classList.remove('active');
             // Also remove has-active from parent filter-group
             const parentGroup = chip.closest('.filter-group');
@@ -5634,6 +5681,7 @@ app.get('/', (req, res) => {
           stochFilterD2Value = { min: 0, max: 100, active: false };
           stochFilterDiff = { min: 0, max: 75, active: false };
           stochFilterKCross = [];
+          stochFilterKLevelCross = [];
           stochFilterTrendMessage = [];
           renderTable();
         }
@@ -6344,7 +6392,7 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               
@@ -6361,6 +6409,20 @@ Use this to create a new preset filter button that applies these exact filter se
               if (stochFilterKCross.length > 0) {
                 const kCross = alert.kCross || 'none';
                 if (!stochFilterKCross.includes(kCross)) return false;
+              }
+              
+              // Check K level crossing filter (90/10)
+              if (stochFilterKLevelCross.length > 0) {
+                let matchesLevelCross = false;
+                if (kValue !== null && !isNaN(kValue)) {
+                  for (const filter of stochFilterKLevelCross) {
+                    if (filter === 'c90_up' && kValue >= 90 && kDirection === 'up') { matchesLevelCross = true; break; }
+                    if (filter === 'c90_down' && kValue > 85 && kValue < 90 && kDirection === 'down') { matchesLevelCross = true; break; }
+                    if (filter === 'c10_down' && kValue <= 10 && kDirection === 'down') { matchesLevelCross = true; break; }
+                    if (filter === 'c10_up' && kValue > 10 && kValue <= 15 && kDirection === 'up') { matchesLevelCross = true; break; }
+                  }
+                }
+                if (!matchesLevelCross) return false;
               }
               
               // Determine trend message from alert data

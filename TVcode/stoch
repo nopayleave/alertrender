@@ -46,8 +46,28 @@ kCrossOver = ta.crossover(k, d)
 kCrossUnder = ta.crossunder(k, d)
 kCross = kCrossOver ? "cross_over" : kCrossUnder ? "cross_under" : "none"
 
+// Crossing Display Settings
+showCrossOver = input.bool(true, title="Show K Cross Over D", group="Crossing Settings")
+showCrossUnder = input.bool(true, title="Show K Cross Under D", group="Crossing Settings")
+colorCrossOver = input.color(color.new(#00ff00, 0), title="Cross Over Color", group="Crossing Settings")
+colorCrossUnder = input.color(color.new(#ff0000, 0), title="Cross Under Color", group="Crossing Settings")
+int crossingSize = input.int(4, minval=1, maxval=5, title="Crossing Marker Size", group="Crossing Settings")
+float crossingOffset = input.float(5.0, title="Crossing Marker Offset", group="Crossing Settings", step=1.0)
+
 plot(k, title="%K", color=kLineColor, linewidth=2)
 plot(d, title="%D", color=dLineColor, linewidth=2)
+
+// Plot crossing markers
+float crossOverPlot = na
+if showCrossOver and kCrossOver
+    crossOverPlot := k + crossingOffset
+
+float crossUnderPlot = na
+if showCrossUnder and kCrossUnder
+    crossUnderPlot := k - crossingOffset
+
+plot(crossOverPlot, title="K Cross Over D", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles)
+plot(crossUnderPlot, title="K Cross Under D", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles)
 h0 = hline(80, "Upper Band", color=#787B86)
 hline(50, "Middle Band", color=color.new(#e5ff00, 0))
 hline(60, "Middle top Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
