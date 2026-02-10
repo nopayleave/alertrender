@@ -1,0 +1,176 @@
+//@version=6
+indicator(title="Dual KD (Triple Stoch)", shorttitle="Dual KD", format=format.price, precision=2)
+
+// ===== TIMEFRAME SETTINGS =====
+timeframe1 = input.timeframe("", title="Timeframe 1", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframe2 = input.timeframe("", title="Timeframe 2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframe3 = input.timeframe("", title="Timeframe 3", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+
+// ===== SMOOTHING PER TIMEFRAME =====
+smoothTF1 = input.bool(false, title="Smooth TF1 Lines", group="TF1 Smoothing")
+smoothLen1 = input.int(3, minval=1, title="TF1 Smoothing Length", group="TF1 Smoothing")
+smoothTF2 = input.bool(false, title="Smooth TF2 Lines", group="TF2 Smoothing")
+smoothLen2 = input.int(3, minval=1, title="TF2 Smoothing Length", group="TF2 Smoothing")
+smoothTF3 = input.bool(false, title="Smooth TF3 Lines", group="TF3 Smoothing")
+smoothLen3 = input.int(3, minval=1, title="TF3 Smoothing Length", group="TF3 Smoothing")
+
+// ===== STOCH PARAMS (shared) =====
+periodK = input.int(25, title="%K Length", minval=1, group="Stoch Params")
+smoothK = input.int(7, title="%K Smoothing", minval=1, group="Stoch Params")
+periodD = input.int(6, title="%D Smoothing", minval=1, group="Stoch Params")
+
+// ===== FUNCTION: Stochastic K & D =====
+getStoch() =>
+    st = 100 * (close - ta.lowest(low, periodK)) / (ta.highest(high, periodK) - ta.lowest(low, periodK))
+    k = ta.sma(st, smoothK)
+    d = ta.sma(k, periodD)
+    [k, d]
+
+// ===== TF1: Stochastic from Timeframe 1 =====
+[k1_chart, d1_chart] = getStoch()
+[k1_raw, d1_raw] = request.security(syminfo.tickerid, timeframe1, getStoch(), lookahead=barmerge.lookahead_off)
+k1_tf = timeframe1 == "" ? k1_chart : k1_raw
+d1_tf = timeframe1 == "" ? d1_chart : d1_raw
+k1 = smoothTF1 ? ta.sma(k1_tf, smoothLen1) : k1_tf
+d1 = smoothTF1 ? ta.sma(d1_tf, smoothLen1) : d1_tf
+
+// ===== TF2: Stochastic from Timeframe 2 =====
+[k2_chart, d2_chart] = getStoch()
+[k2_raw, d2_raw] = request.security(syminfo.tickerid, timeframe2, getStoch(), lookahead=barmerge.lookahead_off)
+k2_tf = timeframe2 == "" ? k2_chart : k2_raw
+d2_tf = timeframe2 == "" ? d2_chart : d2_raw
+k2 = smoothTF2 ? ta.sma(k2_tf, smoothLen2) : k2_tf
+d2 = smoothTF2 ? ta.sma(d2_tf, smoothLen2) : d2_tf
+
+// ===== TF3: Stochastic from Timeframe 3 =====
+[k3_chart, d3_chart] = getStoch()
+[k3_raw, d3_raw] = request.security(syminfo.tickerid, timeframe3, getStoch(), lookahead=barmerge.lookahead_off)
+k3_tf = timeframe3 == "" ? k3_chart : k3_raw
+d3_tf = timeframe3 == "" ? d3_chart : d3_raw
+k3 = smoothTF3 ? ta.sma(k3_tf, smoothLen3) : k3_tf
+d3 = smoothTF3 ? ta.sma(d3_tf, smoothLen3) : d3_tf
+
+// ===== COLOR THEME (shared by all timeframes, maps to Style Color 0-5) =====
+colorUp = input.color(#00FF00, title="Color 0: Up", group="Style", tooltip="Base color when trending up")
+colorDown = input.color(#ff0000, title="Color 1: Down", group="Style", tooltip="Base color when trending down")
+colorTrendUp = input.color(#00FF00, title="Color 2: Trend Up (>80)", group="Style", tooltip="In overbought zone, trending up")
+colorTrendDown = input.color(#ff0000, title="Color 3: Trend Down (<20)", group="Style", tooltip="In oversold zone, trending down")
+colorBelow20TrendUp = input.color(#ffffff, title="Color 4: Below 20 Trend Up", group="Style", tooltip="Oversold zone, turning up")
+colorAbove80TrendDown = input.color(#ffffff, title="Color 5: Above 80 Trend Down", group="Style", tooltip="Overbought zone, turning down")
+
+// ===== LINE VISIBILITY =====
+showK1 = input.bool(true, title="Show K1 (TF1)", group="Display")
+showD1 = input.bool(false, title="Show D1 (TF1)", group="Display")
+showK2 = input.bool(true, title="Show K2 (TF2)", group="Display")
+showD2 = input.bool(false, title="Show D2 (TF2)", group="Display")
+showK3 = input.bool(true, title="Show K3 (TF3)", group="Display")
+showD3 = input.bool(false, title="Show D3 (TF3)", group="Display")
+
+// ===== COLOR LOGIC HELPER =====
+getLineColor(val, isUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) =>
+    baseColor = isUp ? colorUp : colorDown
+    (val < 20 and isUp) ? colorBelow20TrendUp : (val > 80 and not isUp) ? colorAbove80TrendDown : val > 80 ? colorTrendUp : val < 20 ? colorTrendDown : baseColor
+
+// TF1, TF2, TF3 - same color theme
+k1IsUp = k1 >= k1[1]
+d1IsUp = d1 >= d1[1]
+k1LineColor = getLineColor(k1, k1IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+d1LineColor = getLineColor(d1, d1IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+k2IsUp = k2 >= k2[1]
+d2IsUp = d2 >= d2[1]
+k2LineColor = getLineColor(k2, k2IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+d2LineColor = getLineColor(d2, d2IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+k3IsUp = k3 >= k3[1]
+d3IsUp = d3 >= d3[1]
+k3LineColor = getLineColor(k3, k3IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+d3LineColor = getLineColor(d3, d3IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown)
+
+// ===== TF ALIGNMENT SIGNALS =====
+countUp = (k1IsUp ? 1 : 0) + (k2IsUp ? 1 : 0) + (k3IsUp ? 1 : 0)
+countDown = (k1IsUp ? 0 : 1) + (k2IsUp ? 0 : 1) + (k3IsUp ? 0 : 1)
+twoUp = countUp == 2
+threeUp = countUp == 3
+twoDown = countDown == 2
+threeDown = countDown == 3
+
+show2Up = input.bool(true, title="Show 2 TF Up", group="Signals")
+show3Up = input.bool(true, title="Show 3 TF Up", group="Signals")
+show2Down = input.bool(true, title="Show 2 TF Down", group="Signals")
+show3Down = input.bool(true, title="Show 3 TF Down", group="Signals")
+colorBullDot = input.color(#00ff00, title="Bull Dot Color", group="Signals")
+colorBearDot = input.color(#ff0000, title="Bear Dot Color", group="Signals")
+dotOffset = input.float(5.0, title="Dot Offset from 50", group="Signals", step=1.0)
+
+// ===== PLOTS (TF1 thin, TF2 mid, TF3 thickest) =====
+plot(showK1 ? k1 : na, title="%K (TF1)", color=k1LineColor, linewidth=1)
+plot(showD1 ? d1 : na, title="%D (TF1)", color=d1LineColor, linewidth=1)
+plot(showK2 ? k2 : na, title="%K (TF2)", color=k2LineColor, linewidth=2)
+plot(showD2 ? d2 : na, title="%D (TF2)", color=d2LineColor, linewidth=2)
+plot(showK3 ? k3 : na, title="%K (TF3)", color=k3LineColor, linewidth=4)
+plot(showD3 ? d3 : na, title="%D (TF3)", color=d3LineColor, linewidth=4)
+
+// TF alignment dots: 2-up (mid), 3-up (big), 2-down (mid), 3-down (big)
+float dot2Up = na
+float dot3Up = na
+float dot2Down = na
+float dot3Down = na
+if show2Up and twoUp
+    dot2Up := 50 + dotOffset
+if show3Up and threeUp
+    dot3Up := 50 + dotOffset * 2
+if show2Down and twoDown
+    dot2Down := 50 - dotOffset
+if show3Down and threeDown
+    dot3Down := 50 - dotOffset * 2
+
+plot(dot2Up, title="2 TF Up", color=colorBullDot, linewidth=3, style=plot.style_circles)
+plot(dot3Up, title="3 TF Up", color=colorBullDot, linewidth=6, style=plot.style_circles)
+plot(dot2Down, title="2 TF Down", color=colorBearDot, linewidth=3, style=plot.style_circles)
+plot(dot3Down, title="3 TF Down", color=colorBearDot, linewidth=6, style=plot.style_circles)
+
+// Reference levels
+h0 = hline(80, "Upper Band", color=#787B86)
+h1 = hline(20, "Lower Band", color=#787B86)
+fill(h0, h1, color=color.rgb(243, 33, 33, 90), title="Background")
+hline(60, "Level 60", color=#787B86)
+hline(50, "Middle Band", color=color.new(#e5ff00, 0))
+hline(40, "Level 40", color=#787B86)
+hline(90, "Level 90", color=#ffffff)
+hline(10, "Level 10", color=color.new(#fffdfd, 0))
+
+// ===== WEBHOOK ALERT =====
+tf1Label = timeframe1 == "" ? timeframe.period : timeframe1
+tf2Label = timeframe2 == "" ? timeframe.period : timeframe2
+tf3Label = timeframe3 == "" ? timeframe.period : timeframe3
+k1Direction = k1 > k1[1] ? "up" : k1 < k1[1] ? "down" : "flat"
+d1Direction = d1 > d1[1] ? "up" : d1 < d1[1] ? "down" : "flat"
+k2Direction = k2 > k2[1] ? "up" : k2 < k2[1] ? "down" : "flat"
+d2Direction = d2 > d2[1] ? "up" : d2 < d2[1] ? "down" : "flat"
+k3Direction = k3 > k3[1] ? "up" : k3 < k3[1] ? "down" : "flat"
+d3Direction = d3 > d3[1] ? "up" : d3 < d3[1] ? "down" : "flat"
+tfSignal = threeUp ? "3_up" : twoUp ? "2_up" : threeDown ? "3_down" : twoDown ? "2_down" : "none"
+
+if barstate.isconfirmed
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"tf1\":\"" + tf1Label + "\","
+    alertStr += "\"k1\":\"" + str.tostring(k1) + "\","
+    alertStr += "\"d1\":\"" + str.tostring(d1) + "\","
+    alertStr += "\"k1Direction\":\"" + k1Direction + "\","
+    alertStr += "\"d1Direction\":\"" + d1Direction + "\","
+    alertStr += "\"tfSignal\":\"" + tfSignal + "\","
+    alertStr += "\"tf2\":\"" + tf2Label + "\","
+    alertStr += "\"k2\":\"" + str.tostring(k2) + "\","
+    alertStr += "\"d2\":\"" + str.tostring(d2) + "\","
+    alertStr += "\"k2Direction\":\"" + k2Direction + "\","
+    alertStr += "\"d2Direction\":\"" + d2Direction + "\","
+    alertStr += "\"tf3\":\"" + tf3Label + "\","
+    alertStr += "\"k3\":\"" + str.tostring(k3) + "\","
+    alertStr += "\"d3\":\"" + str.tostring(d3) + "\","
+    alertStr += "\"k3Direction\":\"" + k3Direction + "\","
+    alertStr += "\"d3Direction\":\"" + d3Direction + "\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)

@@ -1,0 +1,101 @@
+//@version=6
+strategy("Stoch 25-7-6 Minimal Trader (2m)", overlay=false, pyramiding=0, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// ===== SESSION (NYSE RTH only – extended hours excluded) =====
+excludeExtHours = input.bool(true, title="Exclude extended hours", group="Session", tooltip="Only trade 9:30–16:00 ET (no pre-market or after-hours)")
+inSession = not na(time(timeframe.period, "0930-1600", "America/New_York"))
+canTrade = excludeExtHours ? inSession : true
+
+// ===== STOCH =====
+k = ta.sma(ta.stoch(close, high, low, 25), 7)
+d = ta.sma(k, 6)
+
+kUp = k > k[1]
+
+var int bars930 = 0
+bars930 := inSession ? (inSession[1] ? bars930 + 1 : 1) : 0
+
+// ===== DAY BIAS (2nd candle only) =====
+var string dayBias = "none"
+var string focus   = "none"
+var color biasColor = color.gray
+
+if bars930 == 2
+    if k < 40 and kUp
+        dayBias := "W↑"
+        focus := "short"
+        biasColor := color.red
+    else if k < 40 and not kUp
+        dayBias := "S↓"
+        focus := "short"
+        biasColor := color.red
+    else if k >= 40 and kUp
+        dayBias := "S↑"
+        focus := "long"
+        biasColor := color.green
+    else
+        dayBias := "W↓"
+        focus := "long"
+        biasColor := color.green
+
+    label.new(bar_index, 85, dayBias,
+        style=label.style_label_down,
+        color=biasColor,
+        textcolor=color.white,
+        size=size.normal)
+
+// ===== CROSS =====
+kCO = ta.crossover(k, d)
+kCU = ta.crossunder(k, d)
+
+// ===== MOMENTUM SWITCH (PRIORITY) =====
+SS = focus == "long"  and kCU and k < 70
+SL = focus == "short" and kCO and k > 30
+
+if SS
+    focus := "short"
+    label.new(bar_index, k, "SS",
+        color=color.white,
+        textcolor=color.red,
+        size=size.normal)
+
+else if SL
+    focus := "long"
+    label.new(bar_index, k, "SL",
+        color=color.white,
+        textcolor=color.green,
+        size=size.normal)
+
+// ===== STRATEGY EXECUTION (exclude extended hours when enabled) =====
+if canTrade
+    // ---- Momentum switch: close opposite and enter ----
+    if SS
+        strategy.close("Long", comment="SS")
+        strategy.entry("Short", strategy.short, comment="SS")
+    else if SL
+        strategy.close("Short", comment="SL")
+        strategy.entry("Long", strategy.long, comment="SL")
+    // ---- Normal signals (only if not switch bar) ----
+    else if not SS and not SL
+        if focus == "long"
+            if kCO and k > 40
+                strategy.close("Short", comment="Close Short")
+                strategy.entry("Long", strategy.long, comment="Buy")
+            else if kCU
+                strategy.close("Long", comment="Close")
+        if focus == "short"
+            if kCU and k < 40
+                strategy.close("Long", comment="Close Long")
+                strategy.entry("Short", strategy.short, comment="Sell")
+            else if kCO
+                strategy.close("Short", comment="Close")
+
+// ===== PLOT =====
+plot(k, title="K", color=color.white, linewidth=2)
+plot(d, title="D", color=color.gray, linewidth=1)
+
+hline(80)
+hline(60)
+hline(50)
+hline(40)
+hline(20)

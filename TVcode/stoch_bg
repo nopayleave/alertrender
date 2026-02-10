@@ -1,0 +1,119 @@
+//@version=6
+indicator(title="Stochastic", shorttitle="Stoch", format=format.price, precision=2)
+periodK = input.int(25, title="%K Length", minval=1)
+smoothK = input.int(7, title="%K Smoothing", minval=1)
+periodD = input.int(6, title="%D Smoothing", minval=1)
+
+k = ta.sma(ta.stoch(close, high, low, periodK), smoothK)
+d = ta.sma(k, periodD)
+
+// ===== 1min 50 MA =====
+ma50_1m = request.security(syminfo.tickerid, "1", ta.sma(close, 50), lookahead=barmerge.lookahead_off)
+ma50_rising = ma50_1m > ma50_1m[1]
+ma50_falling = ma50_1m < ma50_1m[1]
+priceAboveMA = close > ma50_1m
+priceBelowMA = close < ma50_1m
+farAbovePct = input.float(0.5, title="Far Above MA %", group="MA/MACD Color", minval=0.1, step=0.1) / 100
+farBelowPct = input.float(0.5, title="Far Below MA %", group="MA/MACD Color", minval=0.1, step=0.1) / 100
+priceFarAboveMA = close > ma50_1m * (1 + farAbovePct)
+priceFarBelowMA = close < ma50_1m * (1 - farBelowPct)
+
+// ===== 1min MACD =====
+macdLenFast = input.int(12, title="MACD Fast", group="MA/MACD Color")
+macdLenSlow = input.int(26, title="MACD Slow", group="MA/MACD Color")
+macdLenSig = input.int(9, title="MACD Signal", group="MA/MACD Color")
+fmacd() =>
+    macdLine = ta.ema(close, macdLenFast) - ta.ema(close, macdLenSlow)
+    signalLine = ta.ema(macdLine, macdLenSig)
+    hist = macdLine - signalLine
+    [macdLine, signalLine, hist]
+[_, _, macdHist_1m] = request.security(syminfo.tickerid, "1", fmacd(), lookahead=barmerge.lookahead_off)
+macdHistExpandingUp = macdHist_1m >= 0 and macdHist_1m > macdHist_1m[1]
+macdHistExpandingDown = macdHist_1m <= 0 and macdHist_1m < macdHist_1m[1]
+macdHistContracting = (macdHist_1m > 0 and macdHist_1m < macdHist_1m[1]) or (macdHist_1m < 0 and macdHist_1m > macdHist_1m[1])
+
+// ===== COLOR LOGIC (MA + MACD, 1m scalping) =====
+// ORANGE: %K > 80 and (MACD contracting or price far above 50MA) → no new long (overbought)
+isOrange = k > 80 and (macdHistContracting or priceFarAboveMA)
+// BLUE: %K < 20 and (MACD contracting or price far below 50MA) → no new short (oversold)
+isBlue = k < 20 and (macdHistContracting or priceFarBelowMA)
+// GREEN: valid long — %K > %D, %K > 60, price above rising 50MA, (MACD hist >= 0 or expanding up)
+isGreen = k > d and k > 60 and priceAboveMA and ma50_rising and (macdHist_1m >= 0 or macdHistExpandingUp)
+// RED: valid short — %K < %D, %K < 40, price below falling 50MA, (MACD hist <= 0 or expanding down)
+isRed = k < d and k < 40 and priceBelowMA and ma50_falling and (macdHist_1m <= 0 or macdHistExpandingDown)
+
+colorGreen = input.color(#00FF00, title="Valid Long (Green)", group="MA/MACD Color")
+colorRed = input.color(#ff0000, title="Valid Short (Red)", group="MA/MACD Color")
+colorOrange = input.color(#ff8800, title="No New Long / Overbought (Orange)", group="MA/MACD Color")
+colorBlue = input.color(#0044ff, title="No New Short / Oversold (Blue)", group="MA/MACD Color")
+colorDefault = input.color(#787B86, title="Default", group="MA/MACD Color")
+
+kLineColor = isOrange ? colorOrange : isBlue ? colorBlue : isGreen ? colorGreen : isRed ? colorRed : colorDefault
+dLineColor = kLineColor
+
+// ===== DIRECTION TRACKING =====
+var float prevK = na
+var float prevD = na
+kDirection = na(prevK) ? "flat" : k > prevK ? "up" : k < prevK ? "down" : "flat"
+dDirection = na(prevD) ? "flat" : d > prevD ? "up" : d < prevD ? "down" : "flat"
+prevK := k
+prevD := d
+
+// ===== CROSSING DETECTION =====
+kCrossOver = ta.crossover(k, d)
+kCrossUnder = ta.crossunder(k, d)
+kCross = kCrossOver ? "cross_over" : kCrossUnder ? "cross_under" : "none"
+
+// Crossing Display Settings
+showCrossOver = input.bool(true, title="Show K Cross Over D", group="Crossing Settings")
+showCrossUnder = input.bool(true, title="Show K Cross Under D", group="Crossing Settings")
+colorCrossOver = input.color(color.new(#00ff00, 0), title="Cross Over Color", group="Crossing Settings")
+colorCrossUnder = input.color(color.new(#ff0000, 0), title="Cross Under Color", group="Crossing Settings")
+int crossingSize = input.int(4, minval=1, maxval=5, title="Crossing Marker Size", group="Crossing Settings")
+float crossingOffset = input.float(5.0, title="Crossing Marker Offset", group="Crossing Settings", step=1.0)
+
+plot(k, title="%K", color=kLineColor, linewidth=2)
+plot(d, title="%D", color=dLineColor, linewidth=2)
+
+// Plot crossing markers
+float crossOverPlot = na
+if showCrossOver and kCrossOver
+    crossOverPlot := k + crossingOffset
+
+float crossUnderPlot = na
+if showCrossUnder and kCrossUnder
+    crossUnderPlot := k - crossingOffset
+
+plot(crossOverPlot, title="K Cross Over D", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles)
+plot(crossUnderPlot, title="K Cross Under D", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles)
+h0 = hline(80, "Upper Band", color=#787B86)
+hline(50, "Middle Band", color=color.new(#e5ff00, 0))
+hline(60, "Middle top Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(40, "Middle base Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(90, "Top top Band", color=color.new(#ffffff, 0))
+hline(10, "Base Band", color=color.new(#ffffff, 0))
+h1 = hline(20, "Lower Band", color=#787B86)
+
+// BG fill: 60-100 green, 40-60 white, 0-40 red
+p_100 = plot(100, color=color.new(color.white, 100), display=display.none, editable=false)
+p_60 = plot(60, color=color.new(color.white, 100), display=display.none, editable=false)
+p_40 = plot(40, color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, color=color.new(color.white, 100), display=display.none, editable=false)
+fill(p_60, p_100, color=color.new(#00ff00, 85), title="BG 60-100 Green")
+fill(p_40, p_60, color=color.new(#ffffff, 85), title="BG 40-60 White")
+fill(p_0, p_40, color=color.new(#ff0000, 85), title="BG 0-40 Red")
+
+// ===== WEBHOOK ALERT =====
+if barstate.isconfirmed
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"k\":\"" + str.tostring(k) + "\","
+    alertStr += "\"d\":\"" + str.tostring(d) + "\","
+    alertStr += "\"kDirection\":\"" + kDirection + "\","
+    alertStr += "\"dDirection\":\"" + dDirection + "\","
+    alertStr += "\"kCross\":\"" + kCross + "\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)

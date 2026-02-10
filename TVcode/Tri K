@@ -1,0 +1,276 @@
+//@version=6
+indicator(title="Tri K", shorttitle="Tri K", overlay=false, explicit_plot_zorder=true)
+
+// ===== TIMEFRAME SETTINGS =====
+timeframeD1D2 = input.timeframe("", title="Timeframe for D1-D2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+timeframeD3 = input.timeframe("", title="Timeframe for D3", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
+smoothTF12 = input.bool(false, title="Smooth D1-D2 Lines", group="TF Smoothing")
+smoothLen12 = input.int(3, minval=1, title="D1-D2 Smoothing Length", group="TF Smoothing")
+smoothTF3 = input.bool(false, title="Smooth D3 Lines", group="TF Smoothing")
+smoothLen3 = input.int(10, minval=1, title="D3 Smoothing Length", group="TF Smoothing")
+
+// ===== GLOBAL COLOR SETTINGS =====
+useDirectionColors = input.bool(true, title="Use Direction Colors (Dual KD style)", group="Global Color Settings", tooltip="Apply full direction-based color logic to all D lines")
+useAbove80Color = input.bool(true, title="Use Green#3 Above 80", group="Global Color Settings", tooltip="Apply Green#3 color when direction colors OFF")
+colorGreen3 = input.color(color.new(#00ff00, 0), title="Green#3 Color (Above 80)", group="Global Color Settings")
+useBelow20Color = input.bool(true, title="Use Red Below 20", group="Global Color Settings", tooltip="Apply red color when direction colors OFF")
+colorRedBelow20 = input.color(color.new(#ff0000, 0), title="Red Color (Below 20)", group="Global Color Settings")
+
+// ===== DIRECTION COLORS (Dual KD style - shared by all D lines when useDirectionColors) =====
+colorUp = input.color(#00FF00, title="Up Color", group="Direction Colors")
+colorDown = input.color(#ff0000, title="Down Color", group="Direction Colors")
+colorTrendUp = input.color(#00FF00, title="Trend Up Color (>80)", group="Direction Colors")
+colorTrendDown = input.color(#ff0000, title="Trend Down Color (<20)", group="Direction Colors")
+colorBelow20TrendUp = input.color(#ffffff, title="Below 20 Trend Up Color", group="Direction Colors")
+colorAbove80TrendDown = input.color(#ffffff, title="Above 80 Trend Down Color", group="Direction Colors")
+
+// Stoch1 - Short Term
+length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
+smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
+periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
+useD1ColorLogic = input.bool(false, title="Use Up/Down Color Logic", group="Stoch1 Settings", tooltip="Enable to color D1 based on direction")
+colorD1 = input.color(color.blue, title="D1 Color (when disabled)", group="Stoch1 Settings")
+colorD1Up = input.color(color.green, title="D1 Up Color", group="Stoch1 Settings")
+colorD1Down = input.color(color.red, title="D1 Down Color", group="Stoch1 Settings")
+linewidthD1 = input.int(1, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
+showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
+
+// Stoch2 - Medium Term
+length2 = input.int(19, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
+smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
+periodD2 = input.int(1, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
+colorD2 = input.color(color.aqua, title="D2 Color", group="Stoch2 Settings")
+linewidthD2 = input.int(2, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
+showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+
+// Stoch3
+length3 = input.int(25, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
+smoothK3 = input.int(7, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
+periodD3 = input.int(6, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
+colorD3 = input.color(color.fuchsia, title="D3 Color", group="Stoch3 Settings")
+linewidthD3 = input.int(4, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
+showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
+
+// Function to get Stochastic %K and %D
+getStoch(len, smK, perD) =>
+    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
+    k = ta.sma(st, smK)
+    d = ta.sma(k, perD)
+    [k, d]
+
+// Compute D1-D2 with timeframeD1D2
+[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
+[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+
+[k1_mtf, d1_mtf] = request.security(syminfo.tickerid, timeframeD1D2, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
+[k2_mtf, d2_mtf] = request.security(syminfo.tickerid, timeframeD1D2, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+
+d1 = timeframeD1D2 == "" ? d1_chart : (smoothTF12 ? ta.sma(d1_mtf, smoothLen12) : d1_mtf)
+d2 = timeframeD1D2 == "" ? d2_chart : (smoothTF12 ? ta.sma(d2_mtf, smoothLen12) : d2_mtf)
+
+// Compute D3 with timeframeD3
+[k3_chart, d3_chart] = getStoch(length3, smoothK3, periodD3)
+[k3_mtf, d3_mtf] = request.security(syminfo.tickerid, timeframeD3, getStoch(length3, smoothK3, periodD3), lookahead=barmerge.lookahead_off)
+d3 = timeframeD3 == "" ? d3_chart : (smoothTF3 ? ta.sma(d3_mtf, smoothLen3) : d3_mtf)
+
+// ===== D1 D2 D3 DIRECTION TRACKING VARIABLES =====
+var float prevD1 = na
+var float prevD2 = na
+var float prevD3 = na
+
+// ===== DIRECTION & COLOR HELPER (Dual KD style) =====
+getLineColor(val, isUp, cUp, cDown, cTrendUp, cTrendDown, cBelow20Up, cAbove80Down) =>
+    baseColor = isUp ? cUp : cDown
+    (val < 20 and isUp) ? cBelow20Up : (val > 80 and not isUp) ? cAbove80Down : val > 80 ? cTrendUp : val < 20 ? cTrendDown : baseColor
+
+d1IsUp = d1 >= d1[1]
+d2IsUp = d2 >= d2[1]
+d3IsUp = d3 >= d3[1]
+
+// ===== D1 D2 D3 DIRECTION TRACKING =====
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+
+// ===== D COLOR LOGIC (Direction Colors from Dual KD when useDirectionColors) =====
+d1LineColor = useDirectionColors ? getLineColor(d1, d1IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d1 < 20 ? colorRedBelow20 : useAbove80Color and d1 > 80 ? colorGreen3 : (useD1ColorLogic ? (d1 > prevD1 ? colorD1Up : d1 < prevD1 ? colorD1Down : colorD1) : colorD1))
+d2LineColor = useDirectionColors ? getLineColor(d2, d2IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d2 < 20 ? colorRedBelow20 : useAbove80Color and d2 > 80 ? colorGreen3 : colorD2)
+d3LineColor = useDirectionColors ? getLineColor(d3, d3IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d3 < 20 ? colorRedBelow20 : useAbove80Color and d3 > 80 ? colorGreen3 : colorD3)
+
+// Plot %D lines
+plot(showD1 ? d1 : na, title="%d1", color=d1LineColor, linewidth=linewidthD1, display=display.pane)
+plot(showD2 ? d2 : na, title="%d2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
+plot(showD3 ? d3 : na, title="%d3", color=d3LineColor, linewidth=linewidthD3, display=display.pane)
+
+// Plot Mid line
+plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane)
+
+// ===== ALL 3 D ALIGNMENT SIGNALS =====
+all3Up = d1Direction == "up" and d2Direction == "up" and d3Direction == "up"
+all3Down = d1Direction == "down" and d2Direction == "down" and d3Direction == "down"
+showAll3Signal = input.bool(true, title="Show All 3 D Aligned", group="3D Signal")
+colorAll3Up = input.color(#00ff00, title="All 3 Up Color", group="3D Signal")
+colorAll3Down = input.color(#ff0000, title="All 3 Down Color", group="3D Signal")
+all3Offset = input.float(8.0, title="Circle Offset from 50", group="3D Signal", step=1.0)
+
+float all3UpPlot = na
+float all3DownPlot = na
+if showAll3Signal and all3Up
+    all3UpPlot := 50 + all3Offset
+if showAll3Signal and all3Down
+    all3DownPlot := 50 - all3Offset
+
+plot(all3UpPlot, title="All 3 D Up", color=colorAll3Up, linewidth=6, style=plot.style_circles)
+plot(all3DownPlot, title="All 3 D Down", color=colorAll3Down, linewidth=6, style=plot.style_circles)
+
+// Reference levels
+hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(60, "Level 60", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(40, "Level 40", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
+
+// Strong zones settings
+showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")
+strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Strong Zones")
+strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Strong Zones")
+
+// Plot invisible lines for fill areas
+p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
+p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
+p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
+p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
+
+// Fill strong zones
+fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
+fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
+
+// ===== D1 & D2 CROSSOVER (for webhook/trend logic only) =====
+crossoverD1D2 = ta.crossover(d1, d2)
+crossunderD1D2 = ta.crossunder(d1, d2)
+
+// ===== WEBHOOK ALERT =====
+// Enable/disable webhook
+sendWebhook = input.bool(true, title="Send Webhook Alerts", group="Webhook Settings")
+webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="Webhook Settings")
+
+// Determine alert frequency
+alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : alert.freq_all
+
+// D3 Trend and cross signals
+crossUp20 = ta.crossover(d3, 20)
+crossDown20 = ta.crossunder(d3, 20)
+crossUp50 = ta.crossover(d3, 50)
+crossDown50 = ta.crossunder(d3, 50)
+crossUp80 = ta.crossover(d3, 80)
+crossDown80 = ta.crossunder(d3, 80)
+
+d3Signal = ""
+if crossUp20
+    d3Signal := "D3_Cross_Up_20"
+else if crossDown20
+    d3Signal := "D3_Cross_Down_20"
+else if crossUp50
+    d3Signal := "D3_Cross_Up_50"
+else if crossDown50
+    d3Signal := "D3_Cross_Down_50"
+else if crossUp80
+    d3Signal := "D3_Cross_Up_80"
+else if crossDown80
+    d3Signal := "D3_Cross_Down_80"
+else if d3Direction == "up"
+    d3Signal := "D3_Uptrend"
+else if d3Direction == "down"
+    d3Signal := "D3_Downtrend"
+else
+    d3Signal := "D3_Flat"
+
+// D1 x D2 crossover signals
+d1d2Cross = ""
+if crossoverD1D2
+    d1d2Cross := "D1_Cross_Over_D2"
+else if crossunderD1D2
+    d1d2Cross := "D1_Cross_Under_D2"
+else
+    d1d2Cross := "No_Cross"
+
+// ===== D1 x D3 CROSSOVER DETECTION =====
+var string prevD1Dir = na
+d1SwitchedToUp = prevD1Dir == "down" and d1Direction == "up"
+d1SwitchedToDown = prevD1Dir == "up" and d1Direction == "down"
+
+crossoverD1D3 = ta.crossover(d1, d3)
+crossunderD1D3 = ta.crossunder(d1, d3)
+
+d1CrossD3 = ""
+if crossoverD1D3 and d1Direction == "up" and d3Direction == "up"
+    d1CrossD3 := "bull"
+else if crossunderD1D3 and d1Direction == "down" and d3Direction == "down"
+    d1CrossD3 := "bear"
+else
+    d1CrossD3 := "none"
+
+// ===== TREND CALCULATION (Based on D1 and D3) =====
+// Priority: 1. Dead Long/Short 2. D1 x D3 Cross 3. D3 extremes 4. Try Long/Short 5. Neutral
+
+calculatedTrend = "Neutral"
+ttsMessage = ""
+
+if d3 > 90 and d3Direction == "up" and d2Direction == "up"
+    calculatedTrend := "Dead Long"
+    ttsMessage := "Dead Long"
+else if d3 < 10 and d3Direction == "down" and d2Direction == "down"
+    calculatedTrend := "Dead Short"
+    ttsMessage := "Dead Short"
+else if d3 < 20
+    calculatedTrend := "Very Short"
+    ttsMessage := "Heavy Sell"
+else if d3 > 80 and d2Direction == "up"
+    calculatedTrend := "Heavy Buy"
+    ttsMessage := "Heavy Buy"
+else
+    if d1CrossD3 == "bull"
+        calculatedTrend := "🚀 BULL Cross"
+        ttsMessage := "Small Buy"
+    else if d1CrossD3 == "bear"
+        calculatedTrend := "🔻 BEAR Cross"
+        ttsMessage := "Small sell"
+    else if d3 > 40 and d1Direction == "up"
+        calculatedTrend := "Try Long"
+        ttsMessage := "Medium Buy"
+    else if d3 < 40 and d1Direction == "down"
+        calculatedTrend := "Try Short"
+        ttsMessage := "Medium Sell"
+    else
+        calculatedTrend := "Neutral"
+        ttsMessage := ""
+
+// === Create and send webhook with D1 D2 D3 data ===
+if sendWebhook
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"timestamp": ' + str.tostring(time) + ',' +
+      '"d1": ' + str.tostring(d1) + ',' +
+      '"d2": ' + str.tostring(d2) + ',' +
+      '"d3": ' + str.tostring(d3) + ',' +
+      '"d1Direction": "' + d1Direction + '",' +
+      '"d2Direction": "' + d2Direction + '",' +
+      '"d3Direction": "' + d3Direction + '",' +
+      '"d3Signal": "' + d3Signal + '",' +
+      '"d1d2Cross": "' + d1d2Cross + '",' +
+      '"d1CrossD3": "' + d1CrossD3 + '",' +
+      '"d1SwitchedToUp": ' + str.tostring(d1SwitchedToUp) + ',' +
+      '"d1SwitchedToDown": ' + str.tostring(d1SwitchedToDown) + ',' +
+      '"calculatedTrend": "' + calculatedTrend + '",' +
+      '"ttsMessage": "' + ttsMessage + '",' +
+      '"timeframeD1D2": "' + timeframeD1D2 + '",' +
+      '"timeframeD3": "' + timeframeD3 + '"}'
+    alert(jsonMsg, freq=alertFreq)
+
+// Store previous values for next comparison
+prevD1 := d1
+prevD2 := d2
+prevD3 := d3
+prevD1Dir := d1Direction

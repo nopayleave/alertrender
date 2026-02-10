@@ -4036,19 +4036,19 @@ app.get('/', (req, res) => {
             
                   <div id="stochFilters" class="filter-content">
             
-                  <!-- K Direction -->
+                  <!-- D1 Direction -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑</button>
                       <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
-                  <!-- K Value Slider -->
+                  <!-- D1 Value Slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -4063,19 +4063,19 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- D Direction -->
+                  <!-- D2 Direction -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑</button>
                       <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓</button>
                     </div>
                   </div>
                   
-                  <!-- D Value Slider -->
+                  <!-- D2 Value Slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -4090,18 +4090,18 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- K/D Crossing -->
+                  <!-- D1/D2 Crossing -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="kCross" data-value="cross_over">C↑ Crossover</button>
                       <button onclick="toggleFilterChip('kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="kCross" data-value="cross_under">C↓ Crossunder</button>
                     </div>
                   </div>
                   
-                  <!-- K Level Crossing (90/10) -->
+                  <!-- D1 Level Crossing (90/10) -->
                   <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                       <button onclick="toggleFilterChip('kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="kLevelCross" data-value="c90_up">c90↑</button>
                       <button onclick="toggleFilterChip('kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="kLevelCross" data-value="c90_down">c90↓</button>
@@ -4110,10 +4110,10 @@ app.get('/', (req, res) => {
                     </div>
                   </div>
                   
-                  <!-- Diff - Absolute difference slider -->
+                  <!-- D1-D2 Diff - Absolute difference slider -->
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">Diff <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">75</span></label>
+                      <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">75</span></label>
                       <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
                         <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -4537,10 +4537,11 @@ app.get('/', (req, res) => {
         }
 
         function getStochValues(alert) {
+          // Solo/legacy: k, d. Dual Stoch: d1, d2 (or dualStochD1, dualStochD2)
           const kValueRaw = parseStochValue(alert.k);
           const dValueRaw = parseStochValue(alert.d);
-          const fallbackK = parseStochValue(alert.dualStochD1);
-          const fallbackD = parseStochValue(alert.dualStochD2);
+          const fallbackK = parseStochValue(alert.dualStochD1) || parseStochValue(alert.d1);
+          const fallbackD = parseStochValue(alert.dualStochD2) || parseStochValue(alert.d2);
           const soloD = parseStochValue(alert.soloStochD2);
           const genericD = parseStochValue(alert.d2);
 
@@ -7067,10 +7068,10 @@ Use this to create a new preset filter button that applies these exact filter se
             const d7ArrowColor = getArrowColor(d7DirForArrow);
             
             // Solo Stoch D2 or Dual Stoch D1/D2 calculations
-            // Check for K/D webhook first, then Dual Stoch, then Solo Stoch, then fallback to generic d2
-            const dualStochD1Raw = parseStochValue(alert.k) !== null ? parseStochValue(alert.k) : parseStochValue(alert.dualStochD1);
+            // Sources: legacy K/D, then Dual Stoch d1/d2 (dualStochD1/D2 or alert.d1/d2), then Solo, then generic d2
+            const dualStochD1Raw = parseStochValue(alert.k) ?? parseStochValue(alert.dualStochD1) ?? parseStochValue(alert.d1);
             const dualStochD1 = (dualStochD1Raw !== null && !isNaN(dualStochD1Raw)) ? dualStochD1Raw : null;
-            const dualStochD2Raw = parseStochValue(alert.d) !== null ? parseStochValue(alert.d) : parseStochValue(alert.dualStochD2);
+            const dualStochD2Raw = parseStochValue(alert.d) ?? parseStochValue(alert.dualStochD2) ?? parseStochValue(alert.d2);
             const dualStochD2 = (dualStochD2Raw !== null && !isNaN(dualStochD2Raw)) ? dualStochD2Raw : null;
             const soloD2Raw = alert.soloStochD2 !== null && alert.soloStochD2 !== undefined && alert.soloStochD2 !== '' ? parseFloat(alert.soloStochD2) : null;
             const soloD2 = (soloD2Raw !== null && !isNaN(soloD2Raw)) ? soloD2Raw : null;
