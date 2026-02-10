@@ -4007,11 +4007,19 @@ app.get('/', (req, res) => {
                   </div>
               
                     <!-- Price Direction -->
-                    <div class="mb-0">
+                    <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price Direction</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('priceDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="priceDirection" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('priceDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="priceDirection" data-value="down">↓</button>
+                    </div>
+                  </div>
+                    <!-- Premarket vs 9:30 ORB High/Low -->
+                    <div class="mb-0">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">vs Premarket (9:30 ORB)</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('premarketPrice', 'over_premarket_high', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="premarketPrice" data-value="over_premarket_high">Over premarket high</button>
+                        <button onclick="toggleFilterChip('premarketPrice', 'below_premarket_low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="premarketPrice" data-value="below_premarket_low">Below premarket low</button>
                     </div>
                   </div>
                   </div>
@@ -4362,6 +4370,7 @@ app.get('/', (req, res) => {
         // ORB Filter state
         let orbFilterStatus = []; // ORB Status filter (multiple selections: within_lower, within_upper, outside_below, outside_above)
         let priceFilterDirection = []; // Price Direction filter (multiple selections: up, down)
+        let premarketFilter = []; // Premarket vs 9:30 ORB: over_premarket_high, below_premarket_low
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
@@ -4896,7 +4905,7 @@ app.get('/', (req, res) => {
           }
           
           // Apply ORB Filters
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               const nyOrbStatus = alert.nyOrbStatus || null;
               const londonOrbStatus = alert.londonOrbStatus || null;
@@ -4923,6 +4932,17 @@ app.get('/', (req, res) => {
                 }
                 
                 if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
+              }
+              
+              // Premarket filter: compare current price to 9:30 ORB high/low (NY preferred)
+              if (premarketFilter.length > 0) {
+                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
+                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
+                const price = alert.price != null ? parseFloat(alert.price) : null;
+                let match = false;
+                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
+                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
+                if (!match) return false;
               }
               
               return true;
@@ -5609,6 +5629,7 @@ app.get('/', (req, res) => {
           // ORB Filters
           orbFilterStatus = Array.from(document.querySelectorAll('[data-filter="orbStatus"].active')).map(chip => chip.dataset.value);
           priceFilterDirection = Array.from(document.querySelectorAll('[data-filter="priceDirection"].active')).map(chip => chip.dataset.value);
+          premarketFilter = Array.from(document.querySelectorAll('[data-filter="premarketPrice"].active')).map(chip => chip.dataset.value);
           
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
@@ -5626,7 +5647,7 @@ app.get('/', (req, res) => {
         // Clear ORB filters
         function clearOrbFilters() {
           // Remove active class from all ORB filter chips
-          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="priceDirection"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="priceDirection"], [data-filter="premarketPrice"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
@@ -5634,6 +5655,7 @@ app.get('/', (req, res) => {
           
           orbFilterStatus = [];
           priceFilterDirection = [];
+          premarketFilter = [];
           renderTable();
         }
         
@@ -5879,7 +5901,8 @@ app.get('/', (req, res) => {
               // ORB Filters
               orb: {
                 status: orbFilterStatus.length > 0 ? orbFilterStatus : null,
-                priceDirection: priceFilterDirection.length > 0 ? priceFilterDirection : null
+                priceDirection: priceFilterDirection.length > 0 ? priceFilterDirection : null,
+                premarket: premarketFilter.length > 0 ? premarketFilter : null
               },
               // Stoch Filters
               stoch: {
@@ -6282,7 +6305,7 @@ Use this to create a new preset filter button that applies these exact filter se
           // This ensures preset counts show how many items in the current filtered list match each preset,
           // regardless of which preset is currently active
           let dataForPresetCounts = [...filteredData];
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
             dataForPresetCounts = dataForPresetCounts.filter(alert => {
               const nyOrbStatus = alert.nyOrbStatus || null;
               const londonOrbStatus = alert.londonOrbStatus || null;
@@ -6311,6 +6334,17 @@ Use this to create a new preset filter button that applies these exact filter se
                 if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
               }
               
+              // Premarket filter: compare current price to 9:30 ORB high/low
+              if (premarketFilter.length > 0) {
+                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
+                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
+                const price = alert.price != null ? parseFloat(alert.price) : null;
+                let match = false;
+                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
+                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
+                if (!match) return false;
+              }
+              
               return true;
             });
           }
@@ -6319,7 +6353,7 @@ Use this to create a new preset filter button that applies these exact filter se
           // independent of which preset is currently active
           
           // Apply ORB Filters to filteredData (before Stoch filters, to match dataForPresetCounts structure)
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0) {
+          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
               const nyOrbStatus = alert.nyOrbStatus || null;
               const londonOrbStatus = alert.londonOrbStatus || null;
@@ -6346,6 +6380,17 @@ Use this to create a new preset filter button that applies these exact filter se
                 }
                 
                 if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
+              }
+              
+              // Premarket filter: compare current price to 9:30 ORB high/low
+              if (premarketFilter.length > 0) {
+                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
+                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
+                const price = alert.price != null ? parseFloat(alert.price) : null;
+                let match = false;
+                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
+                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
+                if (!match) return false;
               }
               
               return true;
