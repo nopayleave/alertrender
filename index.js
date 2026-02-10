@@ -5077,8 +5077,8 @@ app.get('/', (req, res) => {
                   const dDisplay = dValue !== null && !isNaN(dValue) ? dValue.toFixed(1) : 'N/A';
                   const kClass = getStochValueClass(kValue);
                   const dClass = getStochValueClass(dValue);
-                  const kArrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '';
-                  const dArrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '';
+                  const d1Arrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '→';
+                  const d2Arrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '→';
                   const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
                   
@@ -5120,11 +5120,11 @@ app.get('/', (req, res) => {
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     \${levelCrossTag ? \`<span class="\${levelCrossClass} font-bold">\${levelCrossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
-                    <span class="text-muted-foreground">K</span>
-                    <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${kArrow}</span>
+                    <span class="text-muted-foreground">D1</span>
+                    <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${d1Arrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
-                    <span class="text-muted-foreground">D</span>
-                    <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${dArrow}</span>
+                    <span class="text-muted-foreground">D2</span>
+                    <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${d2Arrow}</span>
                   </div>
                 </div>
               </div>
@@ -7688,7 +7688,7 @@ Use this to create a new preset filter button that applies these exact filter se
             // Get D1/D2 values for display
             const d1Value = item.eventData.d1Value !== null && item.eventData.d1Value !== undefined ? parseFloat(item.eventData.d1Value).toFixed(1) : 'N/A';
             const d2Value = item.eventData.d2Value !== null && item.eventData.d2Value !== undefined ? parseFloat(item.eventData.d2Value).toFixed(1) : 'N/A';
-            const d1D2Display = \`K:\${d1Value} D:\${d2Value}\`;
+            const d1D2Display = \`D1:\${d1Value} D2:\${d2Value}\`;
             
             switch(item.eventType) {
               case 'direction_change':
@@ -7755,7 +7755,7 @@ Use this to create a new preset filter button that applies these exact filter se
               symbol: symbol,
               eventType: 'direction_change',
               eventData: {
-                description: \`K: \${prevState.d1Direction} → \${d1Direction}, D: \${prevState.d2Direction} → \${d2Direction}\`,
+                description: \`D1: \${prevState.d1Direction} → \${d1Direction}, D2: \${prevState.d2Direction} → \${d2Direction}\`,
                 d1Direction: d1Direction,
                 d2Direction: d2Direction,
                 prevD1Direction: prevState.d1Direction,
