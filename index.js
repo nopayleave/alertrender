@@ -4057,10 +4057,16 @@ app.get('/', (req, res) => {
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                      </label>
+                      <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                          <input type="checkbox" id="d1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('d1Value')">
+                          <span class="text-xs text-muted-foreground">Excluded</span>
+                        </label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
+                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
                     </div>
                     <div class="px-2" id="d1ValueSliderContainer">
                       <div class="mb-2">
@@ -4084,10 +4090,16 @@ app.get('/', (req, res) => {
                   <div class="mb-4">
                     <div class="flex items-center justify-between mb-2 px-1">
                       <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                      </label>
+                      <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                          <input type="checkbox" id="d2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('d2Value')">
+                          <span class="text-xs text-muted-foreground">Excluded</span>
+                        </label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
+                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
                     </div>
                     <div class="px-2" id="d2ValueSliderContainer">
                       <div class="mb-2">
@@ -4358,9 +4370,9 @@ app.get('/', (req, res) => {
         
         // Stoch Filter state (arrays for multiple selections)
         let stochFilterD1Direction = [];
-        let stochFilterD1Value = { min: 0, max: 100, active: false }; // D1 Value slider range
+        let stochFilterD1Value = { min: 0, max: 100, active: false, excluded: false }; // D1 Value: excluded = outside range
         let stochFilterD2Direction = [];
-        let stochFilterD2Value = { min: 0, max: 100, active: false }; // D2 Value slider range
+        let stochFilterD2Value = { min: 0, max: 100, active: false, excluded: false }; // D2 Value: excluded = outside range
         let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
         let stochFilterKCross = []; // K/D Crossing filter
         let stochFilterKLevelCross = []; // K Level Crossing filter (90/10)
@@ -4884,12 +4896,14 @@ app.get('/', (req, res) => {
               
               if (stochFilterD1Value.active) {
                 if (kValue === null || isNaN(kValue)) return false;
-                if (kValue < stochFilterD1Value.min || kValue > stochFilterD1Value.max) return false;
+                const inside = kValue >= stochFilterD1Value.min && kValue <= stochFilterD1Value.max;
+                if (stochFilterD1Value.excluded ? inside : !inside) return false;
               }
               
               if (stochFilterD2Value.active) {
                 if (dValue === null || isNaN(dValue)) return false;
-                if (dValue < stochFilterD2Value.min || dValue > stochFilterD2Value.max) return false;
+                const inside = dValue >= stochFilterD2Value.min && dValue <= stochFilterD2Value.max;
+                if (stochFilterD2Value.excluded ? inside : !inside) return false;
               }
               
               if (stochFilterDiff.active) {
@@ -5566,6 +5580,7 @@ app.get('/', (req, res) => {
         // Update D1 Value filter from noUiSlider values
         function updateD1ValueFilter() {
           const toggle = document.getElementById('d1ValueToggle');
+          const excludedEl = document.getElementById('d1ValueExcluded');
           const slider = sliders.d1Value;
           
           if (slider && slider.noUiSlider) {
@@ -5575,6 +5590,7 @@ app.get('/', (req, res) => {
             
             stochFilterD1Value.min = minVal;
             stochFilterD1Value.max = maxVal;
+            stochFilterD1Value.excluded = excludedEl ? excludedEl.checked : false;
             // Only active if toggle is checked AND range is not default
             stochFilterD1Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
             
@@ -5586,6 +5602,7 @@ app.get('/', (req, res) => {
         // Update D2 Value filter from noUiSlider values
         function updateD2ValueFilter() {
           const toggle = document.getElementById('d2ValueToggle');
+          const excludedEl = document.getElementById('d2ValueExcluded');
           const slider = sliders.d2Value;
           
           if (slider && slider.noUiSlider) {
@@ -5595,6 +5612,7 @@ app.get('/', (req, res) => {
             
             stochFilterD2Value.min = minVal;
             stochFilterD2Value.max = maxVal;
+            stochFilterD2Value.excluded = excludedEl ? excludedEl.checked : false;
             // Only active if toggle is checked AND range is not default
             stochFilterD2Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
             
@@ -5677,16 +5695,20 @@ app.get('/', (req, res) => {
             if (parentGroup) parentGroup.classList.remove('has-active');
           });
           
-          // Reset D1 Value slider (noUiSlider)
+          // Reset D1 Value slider (noUiSlider) and Excluded
           const d1Toggle = document.getElementById('d1ValueToggle');
+          const d1Excluded = document.getElementById('d1ValueExcluded');
           if (d1Toggle) d1Toggle.checked = false;
+          if (d1Excluded) d1Excluded.checked = false;
           if (sliders.d1Value && sliders.d1Value.noUiSlider) {
             sliders.d1Value.noUiSlider.set([0, 100]);
           }
           
-          // Reset D2 Value slider (noUiSlider)
+          // Reset D2 Value slider (noUiSlider) and Excluded
           const d2Toggle = document.getElementById('d2ValueToggle');
+          const d2Excluded = document.getElementById('d2ValueExcluded');
           if (d2Toggle) d2Toggle.checked = false;
+          if (d2Excluded) d2Excluded.checked = false;
           if (sliders.d2Value && sliders.d2Value.noUiSlider) {
             sliders.d2Value.noUiSlider.set([0, 100]);
           }
@@ -5699,9 +5721,9 @@ app.get('/', (req, res) => {
           }
           
           stochFilterD1Direction = [];
-          stochFilterD1Value = { min: 0, max: 100, active: false };
+          stochFilterD1Value = { min: 0, max: 100, active: false, excluded: false };
           stochFilterD2Direction = [];
-          stochFilterD2Value = { min: 0, max: 100, active: false };
+          stochFilterD2Value = { min: 0, max: 100, active: false, excluded: false };
           stochFilterDiff = { min: 0, max: 75, active: false };
           stochFilterKCross = [];
           stochFilterKLevelCross = [];
@@ -5816,14 +5838,17 @@ app.get('/', (req, res) => {
               if (parentGroup) parentGroup.classList.add('has-active');
             }
             
-            // Activate D1 Value slider: 80 to 100
+            // Activate D1 Value slider: 80 to 100 (included range)
             const d1Toggle = document.getElementById('d1ValueToggle');
+            const d1Excluded = document.getElementById('d1ValueExcluded');
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
+              if (d1Excluded) d1Excluded.checked = false;
               sliders.d1Value.noUiSlider.set([80, 100]);
               stochFilterD1Value.min = 80;
               stochFilterD1Value.max = 100;
               stochFilterD1Value.active = true;
+              stochFilterD1Value.excluded = false;
             }
             
           } else if (preset === 'extBear') {
@@ -5843,14 +5868,17 @@ app.get('/', (req, res) => {
               if (parentGroup) parentGroup.classList.add('has-active');
             }
             
-            // Activate D1 Value slider: 0 to 30
+            // Activate D1 Value slider: 0 to 30 (included range)
             const d1Toggle = document.getElementById('d1ValueToggle');
+            const d1Excluded = document.getElementById('d1ValueExcluded');
             if (d1Toggle && sliders.d1Value) {
               d1Toggle.checked = true;
+              if (d1Excluded) d1Excluded.checked = false;
               sliders.d1Value.noUiSlider.set([0, 30]);
               stochFilterD1Value.min = 0;
               stochFilterD1Value.max = 30;
               stochFilterD1Value.active = true;
+              stochFilterD1Value.excluded = false;
             }
           }
           
@@ -5907,9 +5935,9 @@ app.get('/', (req, res) => {
               // Stoch Filters
               stoch: {
                 d1Direction: stochFilterD1Direction,
-                d1Value: stochFilterD1Value.active ? { min: stochFilterD1Value.min, max: stochFilterD1Value.max } : null,
+                d1Value: stochFilterD1Value.active ? { min: stochFilterD1Value.min, max: stochFilterD1Value.max, excluded: stochFilterD1Value.excluded } : null,
                 d2Direction: stochFilterD2Direction,
-                d2Value: stochFilterD2Value.active ? { min: stochFilterD2Value.min, max: stochFilterD2Value.max } : null,
+                d2Value: stochFilterD2Value.active ? { min: stochFilterD2Value.min, max: stochFilterD2Value.max, excluded: stochFilterD2Value.excluded } : null,
                 diff: stochFilterDiff.active ? { min: stochFilterDiff.min, max: stochFilterDiff.max } : null,
                 trendMessage: stochFilterTrendMessage,
                 percentChange: stochFilterPercentChange
@@ -6485,16 +6513,18 @@ Use this to create a new preset filter button that applies these exact filter se
                 }
               }
               
-              // Check D1 value filter using slider range
+              // Check D1 value filter using slider range (excluded = outside range)
               if (stochFilterD1Value.active) {
                 if (kValue === null || isNaN(kValue)) return false;
-                if (kValue < stochFilterD1Value.min || kValue > stochFilterD1Value.max) return false;
+                const inside = kValue >= stochFilterD1Value.min && kValue <= stochFilterD1Value.max;
+                if (stochFilterD1Value.excluded ? inside : !inside) return false;
               }
               
-              // Check D2 value filter using slider range
+              // Check D2 value filter using slider range (excluded = outside range)
               if (stochFilterD2Value.active) {
                 if (dValue === null || isNaN(dValue)) return false;
-                if (dValue < stochFilterD2Value.min || dValue > stochFilterD2Value.max) return false;
+                const inside = dValue >= stochFilterD2Value.min && dValue <= stochFilterD2Value.max;
+                if (stochFilterD2Value.excluded ? inside : !inside) return false;
               }
               
               // Check Diff filter (|D1 - D2|) - Absolute difference using slider range
