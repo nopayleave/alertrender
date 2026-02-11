@@ -4360,6 +4360,9 @@ app.get('/', (req, res) => {
         // View state (table or masonry)
         let currentView = localStorage.getItem('viewMode') || 'table'; // 'table' or 'masonry'
         
+        // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
+        let kanbanD2SortByColumn = {};
+        
         // Sorting state
         let currentSortField = 'symbol'; // Default to alphabetical sorting
         let currentSortDirection = 'asc';
@@ -4835,6 +4838,12 @@ app.get('/', (req, res) => {
         }
         
         // Render masonry layout
+        function sortKanbanByD2(columnId) {
+          const cur = kanbanD2SortByColumn[columnId];
+          kanbanD2SortByColumn[columnId] = cur === null || cur === undefined ? 'asc' : cur === 'asc' ? 'desc' : null;
+          renderMasonry();
+        }
+        
         function renderMasonry() {
           const masonryContainer = document.getElementById('masonryContainer');
           const lastUpdate = document.getElementById('lastUpdate');
@@ -5070,8 +5079,9 @@ app.get('/', (req, res) => {
             columnBuckets[columnId].push(alert);
           });
 
-          // Sort each column: starred first, then crossings, then alphabetical
+          // Sort each column: starred first, then crossings, then by D2 (if sort active) or alphabetical
           Object.keys(columnBuckets).forEach(columnId => {
+            const d2Dir = kanbanD2SortByColumn[columnId];
             columnBuckets[columnId].sort((a, b) => {
               const aStarred = isStarred(a.symbol);
               const bStarred = isStarred(b.symbol);
@@ -5088,7 +5098,15 @@ app.get('/', (req, res) => {
               if (aCross && !bCross) return -1;
               if (!aCross && bCross) return 1;
               
-              // Then sort alphabetically by symbol
+              // Then by D2 value if sort active, else alphabetical
+              if (d2Dir === 'asc' || d2Dir === 'desc') {
+                const aD2 = getStochValues(a).dValue;
+                const bD2 = getStochValues(b).dValue;
+                const aVal = aD2 != null && !isNaN(aD2) ? aD2 : -1;
+                const bVal = bD2 != null && !isNaN(bD2) ? bD2 : -1;
+                const cmp = aVal - bVal;
+                return d2Dir === 'asc' ? cmp : -cmp;
+              }
               return (a.symbol || '').localeCompare(b.symbol || '');
             });
           });
@@ -5128,32 +5146,26 @@ app.get('/', (req, res) => {
                   const crossTag = kCross === 'cross_over' ? 'C↑' : kCross === 'cross_under' ? 'C↓' : '';
                   const crossClass = kCross === 'cross_over' ? 'text-green-400' : kCross === 'cross_under' ? 'text-red-400' : '';
                   
-                  // K crossing 90/10 levels
-                  let levelCrossTag = '';
-                  let levelCrossClass = '';
+                  // D1 crossing 90/10 levels - use bg color instead of tag
+                  let levelCrossBg = '';
                   if (kValue !== null && !isNaN(kValue)) {
                     if (kValue >= 90 && kDirection === 'up') {
-                      levelCrossTag = 'c90↑';
-                      levelCrossClass = 'text-yellow-400';
+                      levelCrossBg = 'bg-yellow-500/20';
                     } else if (kValue > 85 && kValue < 90 && kDirection === 'down') {
-                      levelCrossTag = 'c90↓';
-                      levelCrossClass = 'text-orange-400';
+                      levelCrossBg = 'bg-orange-500/20';
                     } else if (kValue <= 10 && kDirection === 'down') {
-                      levelCrossTag = 'c10↓';
-                      levelCrossClass = 'text-purple-400';
+                      levelCrossBg = 'bg-purple-500/20';
                     } else if (kValue > 10 && kValue <= 15 && kDirection === 'up') {
-                      levelCrossTag = 'c10↑';
-                      levelCrossClass = 'text-cyan-400';
+                      levelCrossBg = 'bg-cyan-500/20';
                     }
                   }
             
             return \`
-              <div class="\${cardClass}" onclick="toggleStar('\${symbol}')">
+              <div class="\${cardClass} \${levelCrossBg}" onclick="toggleStar('\${symbol}')">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : ''}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
-                    \${levelCrossTag ? \`<span class="\${levelCrossClass} font-bold">\${levelCrossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     <span class="text-muted-foreground">D1</span>
                     <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${d1Arrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
@@ -5168,7 +5180,12 @@ app.get('/', (req, res) => {
             return \`
               <div class="kanban-column \${column.bgColor || ''}">
                 <div class="kanban-column-header">
-                  <span>\${column.title}</span>
+                  <span class="flex items-center gap-1.5">
+                    \${column.title}
+                    <button type="button" onclick="event.stopPropagation(); sortKanbanByD2('\${column.id}')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value">
+                      <span class="text-xs text-muted-foreground">\${kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅'}</span>
+                    </button>
+                  </span>
                   <span class="kanban-column-count">\${cards.length}</span>
                   </div>
                 \${cardsHtml}
