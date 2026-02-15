@@ -736,7 +736,12 @@ app.post('/webhook', (req, res) => {
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   const isCciAlert = alert.cciCrossover !== undefined
   const isOrbAlert = alert.orbType !== undefined && alert.orbStatus !== undefined
-  const isSoloStochAlert = alert.d2Signal === 'Solo'
+  // Solo Stoch (stoch副本): d2Signal='Solo' or payload has k,d,kDirection,dDirection (K/D stoch)
+  const isSoloStochAlert = alert.d2Signal === 'Solo' || (
+    parseStochValue(alert.k) !== null && parseStochValue(alert.d) !== null &&
+    alert.kDirection != null && alert.dDirection != null &&
+    alert.d2Signal !== 'Dual'
+  )
   const isDualStochAlert = alert.d2Signal === 'Dual'
   
   // Log alert type detection for debugging
@@ -4876,7 +4881,7 @@ app.get('/', (req, res) => {
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || '';
+              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
               
               if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
               if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
@@ -5160,7 +5165,7 @@ app.get('/', (req, res) => {
                   const crossClass = kCross === 'cross_over' ? 'text-green-400' : kCross === 'cross_under' ? 'text-red-400' : '';
                   
                   // HL/LH pattern (Higher Low / Lower High)
-                  const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || '';
+                  const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
                   const d2PatternTag = d2Pattern === 'Higher Low' ? 'HL' : d2Pattern === 'Lower High' ? 'LH' : '';
                   const d2PatternClass = d2Pattern === 'Higher Low' ? 'text-cyan-400' : d2Pattern === 'Lower High' ? 'text-orange-400' : '';
                   
@@ -6508,7 +6513,7 @@ Use this to create a new preset filter button that applies these exact filter se
           if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || '';
+              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
               
               // Get % change value
               const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -7199,8 +7204,8 @@ Use this to create a new preset filter button that applies these exact filter se
             // Use Dual Stoch if available, otherwise Solo Stoch, otherwise generic d2
             const d2Value = dualStochD2 !== null ? dualStochD2 : (soloD2 !== null ? soloD2 : genericD2);
             const d2Direction = dualStochD2 !== null ? (alert.dDirection || alert.dualStochD2Direction || alert.d2Direction || 'flat') : (alert.soloStochD2Direction || alert.d2Direction || 'flat');
-            const d2Pattern = dualStochD2 !== null ? (alert.dualStochD1Pattern || '') : (alert.soloStochD2Pattern || '');
-            const d2PatternValue = dualStochD2 !== null ? (alert.dualStochD1PatternValue !== null && alert.dualStochD1PatternValue !== undefined ? parseFloat(alert.dualStochD1PatternValue) : null) : (alert.soloStochD2PatternValue !== null && alert.soloStochD2PatternValue !== undefined ? parseFloat(alert.soloStochD2PatternValue) : null);
+            const d2Pattern = dualStochD2 !== null ? (alert.dualStochD1Pattern || '') : (alert.soloStochD2Pattern || alert.d2Pattern || '');
+            const d2PatternValue = dualStochD2 !== null ? (alert.dualStochD1PatternValue != null ? parseFloat(alert.dualStochD1PatternValue) : null) : (parseStochValue(alert.soloStochD2PatternValue) ?? parseStochValue(alert.d2PatternValue));
             
             // Keep soloD2 variables for backward compatibility in display logic
             const soloD2Direction = d2Direction;
