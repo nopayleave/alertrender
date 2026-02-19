@@ -1918,6 +1918,17 @@ app.get('/alerts', (req, res) => {
         d2PatternValue: detailInfo.d2PatternValue
       }
     }
+    // When no Overview from storage but alert has main stoch (Default webhook), show it in Stoch Overview
+    if (!alert.stochOverview && (alert.k != null || alert.d != null || alert.soloStochD2 != null)) {
+      alert.stochOverview = {
+        k: alert.k ?? alert.d,
+        d: alert.d ?? alert.soloStochD2 ?? alert.d2,
+        kDirection: alert.kDirection ?? 'flat',
+        dDirection: alert.dDirection ?? alert.soloStochD2Direction ?? alert.d2Direction ?? 'flat',
+        d2Pattern: alert.d2Pattern ?? alert.soloStochD2Pattern ?? '',
+        d2PatternValue: alert.d2PatternValue ?? alert.soloStochD2PatternValue
+      }
+    }
   })
   
   res.json(result)
@@ -4119,7 +4130,7 @@ app.get('/', (req, res) => {
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'd2', 'stochOverview', 'stochDetail', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'stochOverview', 'stochDetail', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove legacy columns (star, orb) and any not in columnDefs
         columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
@@ -4128,10 +4139,9 @@ app.get('/', (req, res) => {
         const defaultColumnWidths = {
           symbol: 80,
           price: 100,
-          d2: 220,
           highLevelTrend: 64,
-          stochOverview: 140,
-          stochDetail: 140,
+          stochOverview: 220,
+          stochDetail: 220,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4154,18 +4164,9 @@ app.get('/', (req, res) => {
           columnOrder = defaultColumnOrder;
           localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
         }
-        // Ensure d2 column exists
-        if (!columnOrder.includes('d2')) {
-          const priceIndex = columnOrder.indexOf('price');
-          if (priceIndex !== -1) {
-            columnOrder.splice(priceIndex + 1, 0, 'd2');
-          } else {
-            columnOrder.push('d2');
-          }
-        }
         if (!columnOrder.includes('stochOverview')) {
-          const d2Idx = columnOrder.indexOf('d2');
-          if (d2Idx !== -1) columnOrder.splice(d2Idx + 1, 0, 'stochOverview');
+          const priceIdx = columnOrder.indexOf('price');
+          if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'stochOverview');
           else columnOrder.push('stochOverview');
         }
         if (!columnOrder.includes('stochDetail')) {
@@ -4173,14 +4174,14 @@ app.get('/', (req, res) => {
           if (ovIdx !== -1) columnOrder.splice(ovIdx + 1, 0, 'stochDetail');
           else columnOrder.push('stochDetail');
         }
+        columnOrder = columnOrder.filter(colId => colId !== 'd2');
         
         // Column definitions
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
-          d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
-          stochOverview: { id: 'stochOverview', title: 'Stoch Overview', sortable: false, width: 'w-[140px]', tooltip: 'Same stoch alert, higher timeframe' },
-          stochDetail: { id: 'stochDetail', title: 'Stoch Detail', sortable: false, width: 'w-[140px]', tooltip: 'Same stoch alert, lower timeframe' },
+          stochOverview: { id: 'stochOverview', title: 'Stoch Overview', sortable: false, width: 'w-[220px]', tooltip: 'Same stoch alert, higher timeframe' },
+          stochDetail: { id: 'stochDetail', title: 'Stoch Detail', sortable: false, width: 'w-[220px]', tooltip: 'Same stoch alert, lower timeframe' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
@@ -4281,7 +4282,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume'];
+            const indicators = ['symbol', 'price', 'highLevelTrend', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -6860,7 +6861,6 @@ Use this to create a new preset filter button that applies these exact filter se
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
-              d2: d2CellHtml || '',
               highLevelTrend: \`
                 <td class="py-3 px-4 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
@@ -6872,20 +6872,54 @@ Use this to create a new preset filter button that applies these exact filter se
               stochOverview: (() => {
                 const o = alert.stochOverview;
                 if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochOverview') + '">-</td>';
-                const k = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k).toFixed(1) : '-';
-                const d = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d).toFixed(1) : '-';
-                const kDir = o.kDirection === 'up' ? '↑' : o.kDirection === 'down' ? '↓' : '→';
-                const dDir = o.dDirection === 'up' ? '↑' : o.dDirection === 'down' ? '↓' : '→';
-                return '<td class="py-3 px-4 text-xs" style="' + getCellWidthStyle('stochOverview') + '" title="Stoch Overview (higher TF)">K ' + k + ' ' + kDir + ' | D ' + d + ' ' + dDir + '</td>';
+                const kNum = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k) : null;
+                const dNum = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d) : null;
+                const kDir = o.kDirection || 'flat';
+                const dDir = o.dDirection || 'flat';
+                const kArrow = kDir === 'up' ? '↑' : kDir === 'down' ? '↓' : '→';
+                const dArrow = dDir === 'up' ? '↑' : dDir === 'down' ? '↓' : '→';
+                const kClass = kNum !== null ? (kNum > 80 || kNum < 20 ? 'text-white font-bold' : kDir === 'up' ? 'text-green-400 font-semibold' : kDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
+                const dClass = dNum !== null ? (dNum > 80 || dNum < 20 ? 'text-white font-bold' : dDir === 'up' ? 'text-green-400 font-semibold' : dDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
+                let patternPart = '';
+                if (o.d2Pattern === 'Higher Low') patternPart = '<span class="text-xs text-cyan-400 font-semibold">HL</span>';
+                else if (o.d2Pattern === 'Lower High') patternPart = '<span class="text-xs text-orange-400 font-semibold">LH</span>';
+                let trendPart = '';
+                if (kNum !== null && dNum !== null) {
+                  if (kNum < 15 && dNum < 15) trendPart = '<span class="text-xs text-red-500 font-bold">No Long</span>';
+                  else if (kNum > 80) trendPart = '<span class="text-xs text-green-500 font-bold">No Short</span>';
+                  else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
+                  else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
+                }
+                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg">' + dArrow + '</span></div>'];
+                if (patternPart) parts.push(patternPart);
+                if (trendPart) parts.push(trendPart);
+                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochOverview') + '" title="Stoch Overview (higher TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
               })(),
               stochDetail: (() => {
                 const o = alert.stochDetail;
                 if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochDetail') + '">-</td>';
-                const k = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k).toFixed(1) : '-';
-                const d = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d).toFixed(1) : '-';
-                const kDir = o.kDirection === 'up' ? '↑' : o.kDirection === 'down' ? '↓' : '→';
-                const dDir = o.dDirection === 'up' ? '↑' : o.dDirection === 'down' ? '↓' : '→';
-                return '<td class="py-3 px-4 text-xs" style="' + getCellWidthStyle('stochDetail') + '" title="Stoch Detail (lower TF)">K ' + k + ' ' + kDir + ' | D ' + d + ' ' + dDir + '</td>';
+                const kNum = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k) : null;
+                const dNum = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d) : null;
+                const kDir = o.kDirection || 'flat';
+                const dDir = o.dDirection || 'flat';
+                const kArrow = kDir === 'up' ? '↑' : kDir === 'down' ? '↓' : '→';
+                const dArrow = dDir === 'up' ? '↑' : dDir === 'down' ? '↓' : '→';
+                const kClass = kNum !== null ? (kNum > 80 || kNum < 20 ? 'text-white font-bold' : kDir === 'up' ? 'text-green-400 font-semibold' : kDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
+                const dClass = dNum !== null ? (dNum > 80 || dNum < 20 ? 'text-white font-bold' : dDir === 'up' ? 'text-green-400 font-semibold' : dDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
+                let patternPart = '';
+                if (o.d2Pattern === 'Higher Low') patternPart = '<span class="text-xs text-cyan-400 font-semibold">HL</span>';
+                else if (o.d2Pattern === 'Lower High') patternPart = '<span class="text-xs text-orange-400 font-semibold">LH</span>';
+                let trendPart = '';
+                if (kNum !== null && dNum !== null) {
+                  if (kNum < 15 && dNum < 15) trendPart = '<span class="text-xs text-red-500 font-bold">No Long</span>';
+                  else if (kNum > 80) trendPart = '<span class="text-xs text-green-500 font-bold">No Short</span>';
+                  else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
+                  else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
+                }
+                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg">' + dArrow + '</span></div>'];
+                if (patternPart) parts.push(patternPart);
+                if (trendPart) parts.push(trendPart);
+                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochDetail') + '" title="Stoch Detail (lower TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
               })()
             };
             
