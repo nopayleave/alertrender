@@ -3753,7 +3753,7 @@ app.get('/', (req, res) => {
                   </div>
                   <div id="stochOverviewFilters" class="filter-content">
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('ov_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d1Direction" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('ov_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d1Direction" data-value="down">↓</button>
@@ -3761,7 +3761,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="ovD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="ovD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
                             <input type="checkbox" id="ovD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD1Value')">
@@ -3776,7 +3776,7 @@ app.get('/', (req, res) => {
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovD1ValueSlider"></div></div></div></div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('ov_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d2Direction" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('ov_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d2Direction" data-value="down">↓</button>
@@ -3784,7 +3784,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="ovD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="ovD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
                             <input type="checkbox" id="ovD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD2Value')">
@@ -3806,14 +3806,14 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('ov_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_kCross" data-value="cross_over">C↑ Crossover</button>
                         <button onclick="toggleFilterChip('ov_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_kCross" data-value="cross_under">C↓ Crossunder</button>
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="ov_kLevelCross" data-value="c90_up">c90↑</button>
                         <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_kLevelCross" data-value="c90_down">c90↓</button>
@@ -3823,7 +3823,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="ovDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K-D Diff <span class="text-foreground/60">|</span> <span id="ovDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
                         <label class="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" id="ovDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('ovDiff')">
                           <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
@@ -3856,7 +3856,7 @@ app.get('/', (req, res) => {
                   </div>
                   <div id="stochDetailFilters" class="filter-content">
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('dt_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d1Direction" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('dt_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d1Direction" data-value="down">↓</button>
@@ -3864,7 +3864,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="dtD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="dtD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
                             <input type="checkbox" id="dtD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD1Value')">
@@ -3879,7 +3879,7 @@ app.get('/', (req, res) => {
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtD1ValueSlider"></div></div></div></div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('dt_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d2Direction" data-value="up">↑</button>
                         <button onclick="toggleFilterChip('dt_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d2Direction" data-value="down">↓</button>
@@ -3887,7 +3887,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="dtD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="dtD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
                             <input type="checkbox" id="dtD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD2Value')">
@@ -3909,14 +3909,14 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('dt_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_kCross" data-value="cross_over">C↑ Crossover</button>
                         <button onclick="toggleFilterChip('dt_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_kCross" data-value="cross_under">C↓ Crossunder</button>
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="dt_kLevelCross" data-value="c90_up">c90↑</button>
                         <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_kLevelCross" data-value="c90_down">c90↓</button>
@@ -3926,7 +3926,7 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="dtDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K-D Diff <span class="text-foreground/60">|</span> <span id="dtDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
                         <label class="relative inline-flex items-center cursor-pointer">
                           <input type="checkbox" id="dtDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('dtDiff')">
                           <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
