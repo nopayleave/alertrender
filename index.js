@@ -6635,7 +6635,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
                   else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
                 }
-                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg">' + dArrow + '</span></div>'];
+                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + dArrow + '</span></div>'];
                 if (patternPart) parts.push(patternPart);
                 if (trendPart) parts.push(trendPart);
                 return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochOverview') + '" title="Stoch Overview (higher TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
@@ -6661,7 +6661,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
                   else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
                 }
-                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg">' + dArrow + '</span></div>'];
+                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + dArrow + '</span></div>'];
                 if (patternPart) parts.push(patternPart);
                 if (trendPart) parts.push(trendPart);
                 return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochDetail') + '" title="Stoch Detail (lower TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
