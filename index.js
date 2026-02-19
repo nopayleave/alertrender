@@ -118,8 +118,9 @@ let previousDirections = {} // Store previous D1-D8 directions to detect switche
 let previousPrices = {} // Store previous prices to detect price changes
 let macdCrossingData = {} // Store MACD crossing signals by symbol with timestamp
 let cciDataStorage = {} // Store CCI crossover data by symbol with timestamp
-let orbDataStorage = {} // Store ORB data by symbol with timestamp: { symbol: { orbType, orbStatus, orbHigh, orbLow, orbMid, timestamp } }
 let soloStochDataStorage = {} // Store Solo Stoch D2 data by symbol with timestamp
+let stochOverviewDataStorage = {} // Store Stoch Overview (same stoch, higher TF) by symbol
+let stochDetailDataStorage = {} // Store Stoch Detail (same stoch, lower TF) by symbol
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
 let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: { symbol: { date: 'YYYY-MM-DD', isBigTrendDay: true } }
@@ -170,8 +171,9 @@ function saveDataToDatabase() {
         previousPrices,
         macdCrossingData,
         cciDataStorage,
-        orbDataStorage,
         soloStochDataStorage,
+        stochOverviewDataStorage,
+        stochDetailDataStorage,
         dualStochDataStorage,
         dualStochHistory,
         bigTrendDay,
@@ -233,8 +235,9 @@ function loadDataFromDatabase() {
           case 'previousPrices': previousPrices = value; break
           case 'macdCrossingData': macdCrossingData = value; break
           case 'cciDataStorage': cciDataStorage = value; break
-          case 'orbDataStorage': orbDataStorage = value; break
           case 'soloStochDataStorage': soloStochDataStorage = value; break
+          case 'stochOverviewDataStorage': stochOverviewDataStorage = value; break
+          case 'stochDetailDataStorage': stochDetailDataStorage = value; break
           case 'dualStochDataStorage': dualStochDataStorage = value; break
           case 'dualStochHistory': dualStochHistory = value; break
           case 'bigTrendDay': bigTrendDay = value; break
@@ -735,7 +738,6 @@ app.post('/webhook', (req, res) => {
   const isOctoStochAlert = alert.d8Signal !== undefined
   const isMacdCrossingAlert = alert.macdCrossingSignal !== undefined
   const isCciAlert = alert.cciCrossover !== undefined
-  const isOrbAlert = alert.orbType !== undefined && alert.orbStatus !== undefined
   // Solo Stoch (stoch副本): d2Signal='Solo' or payload has k,d,kDirection,dDirection (K/D stoch)
   const isSoloStochAlert = alert.d2Signal === 'Solo' || (
     parseStochValue(alert.k) !== null && parseStochValue(alert.d) !== null &&
@@ -1364,113 +1366,12 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
-  } else if (isOrbAlert) {
-    // ORB alert - store ORB data with timestamp
-    const orbData = {
-      orbType: alert.orbType, // "london" or "ny"
-      orbStatus: alert.orbStatus, // "within_upper", "within_lower", "outside_above", "outside_below"
-      priceDirection: alert.priceDirection || null, // "up", "down", or "flat"
-      orbCrossover: alert.orbCrossover || null, // "cross_high", "cross_low", or "none"
-      orbHigh: alert.orbHigh,
-      orbLow: alert.orbLow,
-      orbMid: alert.orbMid,
-      sector: alert.sector || null, // sector information from webhook
-      timestamp: Date.now()
-    }
-    
-    // Store in a data storage object (similar to cciDataStorage pattern)
-    if (!orbDataStorage) orbDataStorage = {}
-    // Store both London and NY ORB data separately
-    const storageKey = `${alert.symbol}_${alert.orbType}`
-    orbDataStorage[storageKey] = orbData
-    
-    console.log(`✅ ORB data stored for ${alert.symbol} (${alert.orbType}): Status=${alert.orbStatus}, High=${alert.orbHigh}, Low=${alert.orbLow}, Mid=${alert.orbMid}`)
-    
-    // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      // Store both London and NY ORB data
-      if (alert.orbType === 'london') {
-        alerts[existingIndex].londonOrbStatus = orbData.orbStatus
-        alerts[existingIndex].londonPriceDirection = orbData.priceDirection || null
-        alerts[existingIndex].londonOrbCrossover = orbData.orbCrossover || null
-        alerts[existingIndex].londonOrbHigh = orbData.orbHigh
-        alerts[existingIndex].londonOrbLow = orbData.orbLow
-        alerts[existingIndex].londonOrbMid = orbData.orbMid
-      } else if (alert.orbType === 'ny') {
-        alerts[existingIndex].nyOrbStatus = orbData.orbStatus
-        alerts[existingIndex].nyPriceDirection = orbData.priceDirection || null
-        alerts[existingIndex].nyOrbCrossover = orbData.orbCrossover || null
-        alerts[existingIndex].nyOrbHigh = orbData.orbHigh
-        alerts[existingIndex].nyOrbLow = orbData.orbLow
-        alerts[existingIndex].nyOrbMid = orbData.orbMid
-      }
-      // Store volume, price changes from ORB webhook
-      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-      if (alert.intradayChange !== undefined) alerts[existingIndex].intradayChange = alert.intradayChange
-      if (alert.price !== undefined) alerts[existingIndex].price = alert.price
-      // Store sector information if available, or fetch from Yahoo Finance
-      if (alert.sector) {
-        alerts[existingIndex].sector = alert.sector
-        sectorData[alert.symbol] = alert.sector
-      } else {
-        // Try to get sector from Yahoo Finance
-        const existingSector = getSectorForSymbol(alert.symbol)
-        if (existingSector) {
-          alerts[existingIndex].sector = existingSector
-        }
-      }
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with ORB data (${alert.orbType})`)
-    } else {
-      // Create new alert entry if it doesn't exist
-      const newAlert = {
-        symbol: alert.symbol,
-        timeframe: alert.timeframe || null,
-        price: alert.price || null,
-        volume: alert.volume || null,
-        previousClose: alert.previousClose || null,
-        changeFromPrevDay: alert.changeFromPrevDay || null,
-        intradayChange: alert.intradayChange || null,
-        receivedAt: Date.now()
-      }
-      // Add ORB data based on type
-      if (alert.orbType === 'london') {
-        newAlert.londonOrbStatus = orbData.orbStatus
-        newAlert.londonPriceDirection = orbData.priceDirection || null
-        newAlert.londonOrbCrossover = orbData.orbCrossover || null
-        newAlert.londonOrbHigh = orbData.orbHigh
-        newAlert.londonOrbLow = orbData.orbLow
-        newAlert.londonOrbMid = orbData.orbMid
-      } else if (alert.orbType === 'ny') {
-        newAlert.nyOrbStatus = orbData.orbStatus
-        newAlert.nyPriceDirection = orbData.priceDirection || null
-        newAlert.nyOrbCrossover = orbData.orbCrossover || null
-        newAlert.nyOrbHigh = orbData.orbHigh
-        newAlert.nyOrbLow = orbData.orbLow
-        newAlert.nyOrbMid = orbData.orbMid
-      }
-      // Store sector information if available, or fetch from Yahoo Finance
-      if (alert.sector) {
-        newAlert.sector = alert.sector
-        sectorData[alert.symbol] = alert.sector
-      } else {
-        // Try to get sector from Yahoo Finance
-        const existingSector = getSectorForSymbol(alert.symbol)
-        if (existingSector) {
-          newAlert.sector = existingSector
-        }
-      }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with ORB data (${alert.orbType})`)
-    }
   } else if (isSoloStochAlert) {
-    // Solo Stoch alert - store D2 data with timestamp
+    // Stoch Overview / Detail: same stoch alert, different timeframe (payload.stochType: 'overview' | 'detail')
+    const stochType = alert.stochType === 'overview' || alert.stochType === 'detail' ? alert.stochType : null
     const d2Value = alert.d2 !== undefined ? alert.d2 : alert.d
     const d2Direction = alert.d2Direction !== undefined ? alert.d2Direction : alert.dDirection
-    soloStochDataStorage[alert.symbol] = {
+    const stochPayload = {
       d2: d2Value,
       d2Direction: d2Direction,
       k: alert.k || null,
@@ -1484,46 +1385,57 @@ app.post('/webhook', (req, res) => {
       volume: alert.volume || null,
       timestamp: Date.now()
     }
-    console.log(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
-    
-    // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].soloStochD2 = d2Value
-      alerts[existingIndex].soloStochD2Direction = d2Direction
-      alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
-      alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
-      if (alert.k !== undefined) alerts[existingIndex].k = alert.k
-      if (alert.kDirection !== undefined) alerts[existingIndex].kDirection = alert.kDirection
-      if (alert.d !== undefined) alerts[existingIndex].d = alert.d
-      if (alert.dDirection !== undefined) alerts[existingIndex].dDirection = alert.dDirection
-      if (alert.price) alerts[existingIndex].price = alert.price
-      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
+
+    if (stochType === 'overview') {
+      stochOverviewDataStorage[alert.symbol] = stochPayload
+      console.log(`✅ Stoch Overview stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
+      // Don't create/update main alert; overview is merged into alerts when serving
+    } else if (stochType === 'detail') {
+      stochDetailDataStorage[alert.symbol] = stochPayload
+      console.log(`✅ Stoch Detail stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
+      // Don't create/update main alert; detail is merged into alerts when serving
     } else {
-      // Create new alert entry if it doesn't exist
-      const newAlert = {
-        symbol: alert.symbol,
-        timeframe: alert.timeframe || null,
-        price: alert.price || null,
-        previousClose: alert.previousClose || null,
-        changeFromPrevDay: alert.changeFromPrevDay || null,
-        volume: alert.volume || null,
-        soloStochD2: d2Value,
-        soloStochD2Direction: d2Direction,
-        soloStochD2Pattern: alert.d2Pattern || '',
-        soloStochD2PatternValue: alert.d2PatternValue || null,
-        k: alert.k || null,
-        kDirection: alert.kDirection || null,
-        d: alert.d || null,
-        dDirection: alert.dDirection || null,
-        receivedAt: Date.now()
+      // Legacy Solo Stoch (no stochType): store and update/create alert
+      soloStochDataStorage[alert.symbol] = stochPayload
+      console.log(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
+
+      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+      if (existingIndex !== -1) {
+        alerts[existingIndex].soloStochD2 = d2Value
+        alerts[existingIndex].soloStochD2Direction = d2Direction
+        alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
+        alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
+        if (alert.k !== undefined) alerts[existingIndex].k = alert.k
+        if (alert.kDirection !== undefined) alerts[existingIndex].kDirection = alert.kDirection
+        if (alert.d !== undefined) alerts[existingIndex].d = alert.d
+        if (alert.dDirection !== undefined) alerts[existingIndex].dDirection = alert.dDirection
+        if (alert.price) alerts[existingIndex].price = alert.price
+        if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+        if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+        if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+        alerts[existingIndex].receivedAt = Date.now()
+        console.log(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
+      } else {
+        const newAlert = {
+          symbol: alert.symbol,
+          timeframe: alert.timeframe || null,
+          price: alert.price || null,
+          previousClose: alert.previousClose || null,
+          changeFromPrevDay: alert.changeFromPrevDay || null,
+          volume: alert.volume || null,
+          soloStochD2: d2Value,
+          soloStochD2Direction: d2Direction,
+          soloStochD2Pattern: alert.d2Pattern || '',
+          soloStochD2PatternValue: alert.d2PatternValue || null,
+          k: alert.k || null,
+          kDirection: alert.kDirection || null,
+          d: alert.d || null,
+          dDirection: alert.dDirection || null,
+          receivedAt: Date.now()
+        }
+        alerts.unshift(newAlert)
+        console.log(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
     }
   } else if (isDualStochAlert) {
     // Dual Stoch alert - store D1/D2 data with timestamp
@@ -1864,60 +1776,6 @@ app.post('/webhook', (req, res) => {
       }
     }
     
-    // Merge ORB data from storage (both London and NY)
-    const londonOrbInfo = orbDataStorage[`${alert.symbol}_london`]
-    if (londonOrbInfo) {
-      const ageInMinutes = (Date.now() - londonOrbInfo.timestamp) / 60000
-      if (ageInMinutes <= 240) { // ORB data valid for 4 hours
-        alertData.londonOrbStatus = londonOrbInfo.orbStatus
-        alertData.londonPriceDirection = londonOrbInfo.priceDirection || null
-        alertData.londonOrbCrossover = londonOrbInfo.orbCrossover || null
-        alertData.londonOrbHigh = londonOrbInfo.orbHigh
-        alertData.londonOrbLow = londonOrbInfo.orbLow
-        alertData.londonOrbMid = londonOrbInfo.orbMid
-        console.log(`✅ Merged London ORB data for ${alert.symbol}: Status=${londonOrbInfo.orbStatus}, High=${londonOrbInfo.orbHigh}, Low=${londonOrbInfo.orbLow} (age: ${ageInMinutes.toFixed(1)} min)`)
-      } else {
-        delete orbDataStorage[`${alert.symbol}_london`]
-        console.log(`⏰ London ORB data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
-      }
-    }
-    
-    const nyOrbInfo = orbDataStorage[`${alert.symbol}_ny`]
-    if (nyOrbInfo) {
-      const ageInMinutes = (Date.now() - nyOrbInfo.timestamp) / 60000
-      if (ageInMinutes <= 240) { // ORB data valid for 4 hours
-        alertData.nyOrbStatus = nyOrbInfo.orbStatus
-        alertData.nyPriceDirection = nyOrbInfo.priceDirection || null
-        alertData.nyOrbCrossover = nyOrbInfo.orbCrossover || null
-        alertData.nyOrbHigh = nyOrbInfo.orbHigh
-        alertData.nyOrbLow = nyOrbInfo.orbLow
-        alertData.nyOrbMid = nyOrbInfo.orbMid
-        console.log(`✅ Merged NY ORB data for ${alert.symbol}: Status=${nyOrbInfo.orbStatus}, High=${nyOrbInfo.orbHigh}, Low=${nyOrbInfo.orbLow} (age: ${ageInMinutes.toFixed(1)} min)`)
-      } else {
-        delete orbDataStorage[`${alert.symbol}_ny`]
-        console.log(`⏰ NY ORB data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
-      }
-    }
-    
-    // If no stored ORB data, check if this alert has ORB data
-    if (alert.orbType !== undefined && alert.orbStatus !== undefined) {
-      if (alert.orbType === 'london') {
-        alertData.londonOrbStatus = alert.orbStatus
-        alertData.londonPriceDirection = alert.priceDirection || null
-        alertData.londonOrbHigh = alert.orbHigh
-        alertData.londonOrbLow = alert.orbLow
-        alertData.londonOrbMid = alert.orbMid
-        console.log(`✅ Using London ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
-      } else if (alert.orbType === 'ny') {
-        alertData.nyOrbStatus = alert.orbStatus
-        alertData.nyPriceDirection = alert.priceDirection || null
-        alertData.nyOrbHigh = alert.orbHigh
-        alertData.nyOrbLow = alert.orbLow
-        alertData.nyOrbMid = alert.orbMid
-        console.log(`✅ Using NY ORB data from alert for ${alert.symbol}: Status=${alert.orbStatus}`)
-      }
-    }
-    
     // Check and add Solo Stoch data if active (within last 60 minutes)
     const soloStochInfo = soloStochDataStorage[alert.symbol]
     if (soloStochInfo) {
@@ -2089,7 +1947,6 @@ app.post('/webhook', (req, res) => {
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
                isCciAlert ? 'cci' :
-               isOrbAlert ? 'orb' :
                isSoloStochAlert ? 'solo_stoch' : 
                isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
@@ -2167,10 +2024,37 @@ app.get('/alerts', (req, res) => {
   // Convert to array and sort by receivedAt (newest first)
   const result = Object.values(latestAlerts).sort((a, b) => b.receivedAt - a.receivedAt)
   
-  // Inject sector data if missing in alert but present in sectorData
+  const STOCH_STORAGE_MAX_AGE_MINUTES = 60
+  const now = Date.now()
+  
+  // Inject sector data and merge Stoch Overview/Detail from storage
   result.forEach(alert => {
     if (!alert.sector && sectorData[alert.symbol]) {
       alert.sector = sectorData[alert.symbol]
+    }
+    // Merge Stoch Overview (same stoch, higher TF) if recent
+    const overviewInfo = stochOverviewDataStorage[alert.symbol]
+    if (overviewInfo && (now - overviewInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES) {
+      alert.stochOverview = {
+        k: overviewInfo.k,
+        d: overviewInfo.d,
+        kDirection: overviewInfo.kDirection,
+        dDirection: overviewInfo.d2Direction,
+        d2Pattern: overviewInfo.d2Pattern,
+        d2PatternValue: overviewInfo.d2PatternValue
+      }
+    }
+    // Merge Stoch Detail (same stoch, lower TF) if recent
+    const detailInfo = stochDetailDataStorage[alert.symbol]
+    if (detailInfo && (now - detailInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES) {
+      alert.stochDetail = {
+        k: detailInfo.k,
+        d: detailInfo.d,
+        kDirection: detailInfo.kDirection,
+        dDirection: detailInfo.d2Direction,
+        d2Pattern: detailInfo.d2Pattern,
+        d2PatternValue: detailInfo.d2PatternValue
+      }
     }
   })
   
@@ -2212,8 +2096,9 @@ app.post('/reset-alerts', (req, res) => {
   previousPrices = {}
   macdCrossingData = {}
   cciDataStorage = {}
-  orbDataStorage = {}
   soloStochDataStorage = {}
+  stochOverviewDataStorage = {}
+  stochDetailDataStorage = {}
   dualStochDataStorage = {}
   bigTrendDay = {}
   patternData = {}
@@ -3931,10 +3816,6 @@ app.get('/', (req, res) => {
               <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
                 <span id="viewIcon">📋</span>
               </button>
-              <button id="orbHistoryToggle" onclick="toggleOrbHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View ORB crossover history">
-                <span>📊</span>
-                <span>ORB His.</span>
-              </button>
               <button id="stochHistoryToggle" onclick="toggleStochHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View Stochastic history">
                 <span>📈</span>
                 <span>Stoch His.</span>
@@ -3980,54 +3861,6 @@ app.get('/', (req, res) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                   </button>
-                </div>
-                
-                <!-- ORB Filters - iOS chip style -->
-                <div class="mb-4 filter-section">
-                  <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('orbFilters', this)">
-                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                      ORB
-                    </h3>
-                    <button 
-                      onclick="event.stopPropagation(); clearOrbFilters()" 
-                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                  
-                  <div id="orbFilters" class="filter-content">
-                    <!-- ORB Status -->
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB Status</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('orbStatus', 'within_lower', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="orbStatus" data-value="within_lower">Lower Half</button>
-                        <button onclick="toggleFilterChip('orbStatus', 'within_upper', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="orbStatus" data-value="within_upper">Upper Half</button>
-                        <button onclick="toggleFilterChip('orbStatus', 'outside_below', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="orbStatus" data-value="outside_below">Below ORB</button>
-                        <button onclick="toggleFilterChip('orbStatus', 'outside_above', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="orbStatus" data-value="outside_above">Above ORB</button>
-                    </div>
-                  </div>
-              
-                    <!-- Price Direction -->
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price Direction</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('priceDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="priceDirection" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('priceDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="priceDirection" data-value="down">↓</button>
-                    </div>
-                  </div>
-                    <!-- Premarket vs 9:30 ORB High/Low -->
-                    <div class="mb-0">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">vs Premarket (9:30 ORB)</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('premarketPrice', 'over_premarket_high', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="premarketPrice" data-value="over_premarket_high">Over premarket high</button>
-                        <button onclick="toggleFilterChip('premarketPrice', 'below_premarket_low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="premarketPrice" data-value="below_premarket_low">Below premarket low</button>
-                    </div>
-                  </div>
-                  </div>
                 </div>
                 
                 <!-- Stoch Filters - iOS chip style -->
@@ -4172,6 +4005,22 @@ app.get('/', (req, res) => {
                       <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">Try Short</button>
                     </div>
                   </div>
+                  <!-- Stoch Overview (higher TF) Direction -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Stoch Overview</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('stochOverviewDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stochOverviewDirection" data-value="up">↑</button>
+                      <button onclick="toggleFilterChip('stochOverviewDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stochOverviewDirection" data-value="down">↓</button>
+                    </div>
+                  </div>
+                  <!-- Stoch Detail (lower TF) Direction -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Stoch Detail</label>
+                    <div class="filter-group flex flex-wrap gap-1.5">
+                      <button onclick="toggleFilterChip('stochDetailDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stochDetailDirection" data-value="up">↑</button>
+                      <button onclick="toggleFilterChip('stochDetailDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stochDetailDirection" data-value="down">↓</button>
+                    </div>
+                  </div>
                     </div>
                   </div>
                   
@@ -4288,33 +4137,6 @@ app.get('/', (req, res) => {
       <!-- Toast Container -->
       <div id="toastContainer" class="toast-container"></div>
 
-      <!-- ORB History Overlay -->
-      <div id="orbHistoryOverlay" class="orb-history-overlay" onclick="closeOrbHistory()">
-        <div class="orb-history-panel" onclick="event.stopPropagation()">
-          <div class="orb-history-header">
-            <h3>ORB Crossover History</h3>
-            <button class="orb-history-close" onclick="closeOrbHistory()">×</button>
-          </div>
-          <div class="orb-history-filters">
-            <div class="orb-history-filter-group">
-              <label class="orb-history-filter-label">Crossover Type:</label>
-              <div class="orb-history-filter-chips">
-                <button onclick="toggleOrbHistoryFilter('crossover', 'all', this)" class="orb-history-filter-chip orb-filter-all active" data-filter="crossover" data-value="all">All</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="crossover" data-value="cross_high">Crossover High</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_low', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="crossover" data-value="cross_low">Crossunder Low</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_bottom', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="crossover" data-value="cross_bottom">Crossover Bottom</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_high_down', this)" class="orb-history-filter-chip orb-filter-cross-high-down" data-filter="crossover" data-value="cross_high_down">Crossunder High</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_up', this)" class="orb-history-filter-chip orb-filter-cross-mid-up" data-filter="crossover" data-value="cross_mid_up">Crossover Mid</button>
-                <button onclick="toggleOrbHistoryFilter('crossover', 'cross_mid_down', this)" class="orb-history-filter-chip orb-filter-cross-mid-down" data-filter="crossover" data-value="cross_mid_down">Crossunder Mid</button>
-              </div>
-            </div>
-          </div>
-          <div class="orb-history-content" id="orbHistoryContent">
-            <div class="orb-history-empty">No ORB crossovers recorded yet</div>
-          </div>
-        </div>
-      </div>
-
       <!-- Stoch History Overlay -->
       <div id="stochHistoryOverlay" class="orb-history-overlay" onclick="closeStochHistory()">
         <div class="orb-history-panel" onclick="event.stopPropagation()">
@@ -4395,12 +4217,9 @@ app.get('/', (req, res) => {
         let stochFilterKLevelCross = []; // K Level Crossing filter (90/10)
         let stochFilterD2Pattern = []; // HL/LH pattern filter (Higher Low, Lower High)
         let stochFilterTrendMessage = [];
+        let stochFilterOverviewDirection = []; // Stoch Overview (higher TF) K direction
+        let stochFilterDetailDirection = []; // Stoch Detail (lower TF) K direction
         let stochFilterPercentChange = [];
-        
-        // ORB Filter state
-        let orbFilterStatus = []; // ORB Status filter (multiple selections: within_lower, within_upper, outside_below, outside_above)
-        let priceFilterDirection = []; // Price Direction filter (multiple selections: up, down)
-        let premarketFilter = []; // Premarket vs 9:30 ORB: over_premarket_high, below_premarket_low
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
@@ -4423,12 +4242,6 @@ app.get('/', (req, res) => {
         // Track previous prices for price direction calculation (fallback)
         let previousPrices = {};
         
-        // Track previous ORB crossover states to detect new crossovers
-        let previousOrbCrossovers = {}; // { symbol: { ny: 'none'|'cross_high'|'cross_low', london: 'none'|'cross_high'|'cross_low' } }
-        
-        // ORB crossover history
-        let orbCrossoverHistory = []; // Array of { symbol, orbType, crossover, price, orbHigh, orbLow, timestamp }
-        
         // Track previous preset filter matches to detect new matches
         let previousPresetMatches = {}; // { symbol: ['down', 'up', 'trendDownBig'] }
         
@@ -4438,21 +4251,16 @@ app.get('/', (req, res) => {
         // Track previous stochastic states
         let previousStochStates = {}; // { symbol: { d1Direction, d2Direction, trendMessage, presetMatches } }
         
-        // ORB history filter state
-        let orbHistoryFilters = {
-          crossover: 'all' // 'all', 'cross_high', 'cross_low', 'cross_bottom', 'cross_high_down', 'cross_mid_up', 'cross_mid_down'
-        };
-        
         // Stoch history filter state
         let stochHistoryFilters = {
           eventType: 'all' // 'all', 'direction_change', 'preset_match', 'trend_change'
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'd2', 'orb', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'd2', 'stochOverview', 'stochDetail', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
-        // Remove 'star' from columnOrder if it exists (legacy support)
-        columnOrder = columnOrder.filter(colId => colId !== 'star');
+        // Remove legacy columns (star, orb) and any not in columnDefs
+        columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
         
         // Column widths - stored in localStorage (in pixels)
         const defaultColumnWidths = {
@@ -4460,7 +4268,8 @@ app.get('/', (req, res) => {
           price: 100,
           d2: 220,
           highLevelTrend: 64,
-          orb: 180,
+          stochOverview: 140,
+          stochDetail: 140,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4492,14 +4301,15 @@ app.get('/', (req, res) => {
             columnOrder.push('d2');
           }
         }
-        // Ensure orb column exists
-        if (!columnOrder.includes('orb')) {
-          const cciIndex = columnOrder.indexOf('cci');
-          if (cciIndex !== -1) {
-            columnOrder.splice(cciIndex + 1, 0, 'orb');
-          } else {
-            columnOrder.push('orb');
-          }
+        if (!columnOrder.includes('stochOverview')) {
+          const d2Idx = columnOrder.indexOf('d2');
+          if (d2Idx !== -1) columnOrder.splice(d2Idx + 1, 0, 'stochOverview');
+          else columnOrder.push('stochOverview');
+        }
+        if (!columnOrder.includes('stochDetail')) {
+          const ovIdx = columnOrder.indexOf('stochOverview');
+          if (ovIdx !== -1) columnOrder.splice(ovIdx + 1, 0, 'stochDetail');
+          else columnOrder.push('stochDetail');
         }
         
         // Column definitions
@@ -4507,8 +4317,9 @@ app.get('/', (req, res) => {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           d2: { id: 'd2', title: 'Stoch', sortable: true, sortField: 'd2value', width: 'w-[220px]', tooltip: 'Solo Stochastic D2 Value and Direction' },
+          stochOverview: { id: 'stochOverview', title: 'Stoch Overview', sortable: false, width: 'w-[140px]', tooltip: 'Same stoch alert, higher timeframe' },
+          stochDetail: { id: 'stochDetail', title: 'Stoch Detail', sortable: false, width: 'w-[140px]', tooltip: 'Same stoch alert, lower timeframe' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
-          orb: { id: 'orb', title: 'ORB', sortable: true, sortField: 'orbHigh', width: 'w-[180px]', tooltip: 'ORB: High, Low, Mid, Status' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
 
@@ -4608,7 +4419,7 @@ app.get('/', (req, res) => {
 
         function updateSortIndicators() {
             // Reset all indicators
-            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume', 'orbHigh'];
+            const indicators = ['symbol', 'price', 'd2value', 'highLevelTrend', 'priceChange', 'volume'];
           indicators.forEach(field => {
             const elem = document.getElementById('sort-' + field);
             if (elem) elem.textContent = '⇅';
@@ -4878,11 +4689,21 @@ app.get('/', (req, res) => {
           }
           
           // Apply Stoch Filters (same as renderTable)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterOverviewDirection.length > 0 || stochFilterDetailDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
               
+              if (stochFilterOverviewDirection.length > 0) {
+                const ov = alert.stochOverview;
+                const ovDir = ov && (ov.kDirection || ov.dDirection);
+                if (!ovDir || !stochFilterOverviewDirection.includes(ovDir)) return false;
+              }
+              if (stochFilterDetailDirection.length > 0) {
+                const dt = alert.stochDetail;
+                const dtDir = dt && (dt.kDirection || dt.dDirection);
+                if (!dtDir || !stochFilterDetailDirection.includes(dtDir)) return false;
+              }
               if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
               if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
               
@@ -4940,51 +4761,6 @@ app.get('/', (req, res) => {
               if (stochFilterD2Pattern.length > 0 && !stochFilterD2Pattern.includes(d2Pattern)) return false;
               
               if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
-              
-              return true;
-            });
-          }
-          
-          // Apply ORB Filters
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
-            filteredData = filteredData.filter(alert => {
-              const nyOrbStatus = alert.nyOrbStatus || null;
-              const londonOrbStatus = alert.londonOrbStatus || null;
-              const orbStatus = nyOrbStatus || londonOrbStatus;
-              
-              // ORB Status filter
-              if (orbFilterStatus.length > 0) {
-                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
-              }
-              
-              // Price Direction filter
-              if (priceFilterDirection.length > 0) {
-                const nyPriceDirection = alert.nyPriceDirection || null;
-                const londonPriceDirection = alert.londonPriceDirection || null;
-                let priceDirection = nyPriceDirection || londonPriceDirection;
-                
-                // Fallback: Calculate from price movement if not available
-                if (!priceDirection) {
-                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
-                  const prevPrice = previousPrices[alert.symbol];
-                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
-                  }
-                }
-                
-                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
-              }
-              
-              // Premarket filter: compare current price to 9:30 ORB high/low (NY preferred)
-              if (premarketFilter.length > 0) {
-                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
-                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
-                const price = alert.price != null ? parseFloat(alert.price) : null;
-                let match = false;
-                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
-                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
-                if (!match) return false;
-              }
               
               return true;
             });
@@ -5058,43 +4834,12 @@ app.get('/', (req, res) => {
           }
           
           const kanbanColumns = [
-            { id: 'below_orb', title: 'Below ORB', bgColor: 'bg-red-900/20' },
-            { id: 'lower_half', title: 'Lower Half', bgColor: 'bg-red-500/10' },
-            { id: 'upper_half', title: 'Upper Half', bgColor: 'bg-green-500/10' },
-            { id: 'above_orb', title: 'Above ORB', bgColor: 'bg-green-900/20' }
+            { id: 'all', title: 'All', bgColor: 'bg-card' }
           ];
 
-          const columnBuckets = {};
-          kanbanColumns.forEach(column => {
-            columnBuckets[column.id] = [];
-          });
-
+          const columnBuckets = { all: [] };
           filteredData.forEach(alert => {
-            const nyOrbStatus = alert.nyOrbStatus || null;
-            const londonOrbStatus = alert.londonOrbStatus || null;
-            const orbStatus = nyOrbStatus || londonOrbStatus;
-            const orbMidRaw = alert.nyOrbMid !== null && alert.nyOrbMid !== undefined ? parseFloat(alert.nyOrbMid) : (
-              alert.londonOrbMid !== null && alert.londonOrbMid !== undefined ? parseFloat(alert.londonOrbMid) : null
-            );
-            const priceRaw = alert.price !== null && alert.price !== undefined ? parseFloat(alert.price) : null;
-
-            let columnId = 'lower_half';
-            if (orbStatus === 'within_lower') {
-              columnId = 'lower_half';
-            } else if (orbStatus === 'within_upper') {
-              columnId = 'upper_half';
-            } else if (orbStatus === 'outside_below') {
-              columnId = 'below_orb';
-            } else if (orbStatus === 'outside_above') {
-              columnId = 'above_orb';
-            } else if (orbMidRaw !== null && !isNaN(orbMidRaw) && priceRaw !== null && !isNaN(priceRaw)) {
-              columnId = priceRaw >= orbMidRaw ? 'upper_half' : 'lower_half';
-            }
-
-            if (!columnBuckets[columnId]) {
-              columnBuckets[columnId] = [];
-            }
-            columnBuckets[columnId].push(alert);
+            columnBuckets.all.push(alert);
           });
 
           // Sort each column: starred first, then crossings, then by D2 (if sort active) or alphabetical
@@ -5685,11 +5430,6 @@ app.get('/', (req, res) => {
         // Update CCI Value filter from noUiSlider value
         // Update filter arrays from chip states
         function updateFilterArrays() {
-          // ORB Filters
-          orbFilterStatus = Array.from(document.querySelectorAll('[data-filter="orbStatus"].active')).map(chip => chip.dataset.value);
-          priceFilterDirection = Array.from(document.querySelectorAll('[data-filter="priceDirection"].active')).map(chip => chip.dataset.value);
-          premarketFilter = Array.from(document.querySelectorAll('[data-filter="premarketPrice"].active')).map(chip => chip.dataset.value);
-          
           // Stoch Filters
           stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
           // D1/D2 Value and Diff filters are updated via their respective update functions from sliders
@@ -5698,25 +5438,12 @@ app.get('/', (req, res) => {
           stochFilterKLevelCross = Array.from(document.querySelectorAll('[data-filter="kLevelCross"].active')).map(chip => chip.dataset.value);
           stochFilterD2Pattern = Array.from(document.querySelectorAll('[data-filter="d2Pattern"].active')).map(chip => chip.dataset.value);
           stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
+          stochFilterOverviewDirection = Array.from(document.querySelectorAll('[data-filter="stochOverviewDirection"].active')).map(chip => chip.dataset.value);
+          stochFilterDetailDirection = Array.from(document.querySelectorAll('[data-filter="stochDetailDirection"].active')).map(chip => chip.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
           
           // Other Filters
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
-        }
-        
-        // Clear ORB filters
-        function clearOrbFilters() {
-          // Remove active class from all ORB filter chips
-          document.querySelectorAll('[data-filter="orbStatus"], [data-filter="priceDirection"], [data-filter="premarketPrice"]').forEach(chip => {
-            chip.classList.remove('active');
-            const parentGroup = chip.closest('.filter-group');
-            if (parentGroup) parentGroup.classList.remove('has-active');
-          });
-          
-          orbFilterStatus = [];
-          priceFilterDirection = [];
-          premarketFilter = [];
-          renderTable();
         }
         
         function filterAlerts() {
@@ -5730,7 +5457,7 @@ app.get('/', (req, res) => {
         
         function clearStochFilters() {
           // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="d2Pattern"], [data-filter="kCross"], [data-filter="kLevelCross"], [data-filter="trendMessage"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="d2Pattern"], [data-filter="kCross"], [data-filter="kLevelCross"], [data-filter="trendMessage"], [data-filter="stochOverviewDirection"], [data-filter="stochDetailDirection"]').forEach(chip => {
             chip.classList.remove('active');
             // Also remove has-active from parent filter-group
             const parentGroup = chip.closest('.filter-group');
@@ -5771,6 +5498,8 @@ app.get('/', (req, res) => {
           stochFilterKLevelCross = [];
           stochFilterD2Pattern = [];
           stochFilterTrendMessage = [];
+          stochFilterOverviewDirection = [];
+          stochFilterDetailDirection = [];
           renderTable();
         }
         
@@ -5790,7 +5519,6 @@ app.get('/', (req, res) => {
         
         function clearAllFilters() {
           clearStochFilters();
-          clearOrbFilters();
           clearOtherFilters();
           // Clear search
           const searchInput = document.getElementById('searchInput');
@@ -5865,14 +5593,6 @@ app.get('/', (req, res) => {
             }
             
           } else if (preset === 'extBull') {
-            // Activate ORB Status: outside_above
-            const orbOutsideAboveChip = document.querySelector('[data-filter="orbStatus"][data-value="outside_above"]');
-            if (orbOutsideAboveChip) {
-              orbOutsideAboveChip.classList.add('active');
-              const parentGroup = orbOutsideAboveChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
             // Activate D1 Direction: up
             const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
             if (d1UpChip) {
@@ -5895,14 +5615,6 @@ app.get('/', (req, res) => {
             }
             
           } else if (preset === 'extBear') {
-            // Activate ORB Status: outside_below
-            const orbOutsideBelowChip = document.querySelector('[data-filter="orbStatus"][data-value="outside_below"]');
-            if (orbOutsideBelowChip) {
-              orbOutsideBelowChip.classList.add('active');
-              const parentGroup = orbOutsideBelowChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
             // Activate D1 Direction: down
             const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
             if (d1DownChip) {
@@ -5969,12 +5681,6 @@ app.get('/', (req, res) => {
           const settings = {
             name: presetName,
             filters: {
-              // ORB Filters
-              orb: {
-                status: orbFilterStatus.length > 0 ? orbFilterStatus : null,
-                priceDirection: priceFilterDirection.length > 0 ? priceFilterDirection : null,
-                premarket: premarketFilter.length > 0 ? premarketFilter : null
-              },
               // Stoch Filters
               stoch: {
                 d1Direction: stochFilterD1Direction,
@@ -6043,17 +5749,6 @@ Use this to create a new preset filter button that applies these exact filter se
             // Get % change value
             const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
             
-            // Get ORB values (NY takes priority, fallback to London)
-            const nyOrbStatus = alert.nyOrbStatus || null;
-            const londonOrbStatus = alert.londonOrbStatus || null;
-            const orbStatus = nyOrbStatus || londonOrbStatus; // Use NY if available, otherwise London
-            const nyPriceDirection = alert.nyPriceDirection || null;
-            const londonPriceDirection = alert.londonPriceDirection || null;
-            const priceDirection = nyPriceDirection || londonPriceDirection; // Use NY if available, otherwise London
-            const orbHigh = alert.nyOrbHigh || alert.londonOrbHigh || null;
-            const orbLow = alert.nyOrbLow || alert.londonOrbLow || null;
-            const orbMid = alert.nyOrbMid || alert.londonOrbMid || null;
-            
             // Determine trend message
             let trendMessage = '';
             if (d1Value !== null && d2Value !== null) {
@@ -6068,53 +5763,17 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }
             
-            // Check Down criteria
-            // Stoch: D1 and D2 both down
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesDown = true;
-            if (d1Direction !== 'down') matchesDown = false;
-            if (d2Direction !== 'down') matchesDown = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
+            // Check Down criteria: D1 and D2 both down
+            let matchesDown = d1Direction === 'down' && d2Direction === 'down';
             
-            // Check Up criteria
-            // Stoch: D1 and D2 both up
-            // ORB: If ORB data exists, check ORB criteria; if empty, still match
-            let matchesUp = true;
-            if (d1Direction !== 'up') matchesUp = false;
-            if (d2Direction !== 'up') matchesUp = false;
-            // ORB criteria (only if ORB data exists - if empty, still match)
-            if (orbStatus && priceDirection) {
-              // If ORB data exists, can add ORB-specific criteria here
-              // For now, empty ORB = match all, so no additional check needed
-            }
+            // Check Up criteria: D1 and D2 both up
+            let matchesUp = d1Direction === 'up' && d2Direction === 'up';
             
-            // Check Ext. Bull criteria
-            // ORB Status: outside_above
-            // Stoch D1 Direction: up
-            // Stoch D1 Value: 80-100
-            let matchesExtBull = true;
-            // ORB Status must be "outside_above"
-            if (!orbStatus || orbStatus !== 'outside_above') matchesExtBull = false;
-            // D1 Direction must be "up"
-            if (d1Direction !== 'up') matchesExtBull = false;
-            // D1 Value must be between 80 and 100
-            if (d1Value === null || isNaN(d1Value) || d1Value < 80 || d1Value > 100) matchesExtBull = false;
+            // Check Ext. Bull: D1 up, D1 value 80-100
+            let matchesExtBull = d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100;
             
-            // Check Ext. Bear criteria
-            // ORB Status: outside_below
-            // Stoch D1 Direction: down
-            // Stoch D1 Value: 0-30
-            let matchesExtBear = true;
-            // ORB Status must be "outside_below"
-            if (!orbStatus || orbStatus !== 'outside_below') matchesExtBear = false;
-            // D1 Direction must be "down"
-            if (d1Direction !== 'down') matchesExtBear = false;
-            // D1 Value must be between 0 and 30
-            if (d1Value === null || isNaN(d1Value) || d1Value < 0 || d1Value > 30) matchesExtBear = false;
+            // Check Ext. Bear: D1 down, D1 value 0-30
+            let matchesExtBear = d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30;
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
@@ -6373,101 +6032,8 @@ Use this to create a new preset filter button that applies these exact filter se
             );
           }
           
-          // Create dataForPresetCounts: filtered by search and ORB only (NOT by Stoch filters)
-          // This ensures preset counts show how many items in the current filtered list match each preset,
-          // regardless of which preset is currently active
+          // Create dataForPresetCounts: filtered by search only (NOT by Stoch filters)
           let dataForPresetCounts = [...filteredData];
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
-            dataForPresetCounts = dataForPresetCounts.filter(alert => {
-              const nyOrbStatus = alert.nyOrbStatus || null;
-              const londonOrbStatus = alert.londonOrbStatus || null;
-              const orbStatus = nyOrbStatus || londonOrbStatus;
-              
-              // ORB Status filter
-              if (orbFilterStatus.length > 0) {
-                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
-              }
-              
-              // Price Direction filter
-              if (priceFilterDirection.length > 0) {
-                const nyPriceDirection = alert.nyPriceDirection || null;
-                const londonPriceDirection = alert.londonPriceDirection || null;
-                let priceDirection = nyPriceDirection || londonPriceDirection;
-              
-                // Fallback: Calculate from price movement if not available
-                if (!priceDirection) {
-                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
-                  const prevPrice = previousPrices[alert.symbol];
-                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
-                  }
-                }
-                
-                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
-              }
-              
-              // Premarket filter: compare current price to 9:30 ORB high/low
-              if (premarketFilter.length > 0) {
-                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
-                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
-                const price = alert.price != null ? parseFloat(alert.price) : null;
-                let match = false;
-                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
-                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
-                if (!match) return false;
-              }
-              
-              return true;
-            });
-          }
-          // Note: dataForPresetCounts does NOT have Stoch filters applied
-          // This way, preset counts show matches from the current filtered list (search + ORB),
-          // independent of which preset is currently active
-          
-          // Apply ORB Filters to filteredData (before Stoch filters, to match dataForPresetCounts structure)
-          if (orbFilterStatus.length > 0 || priceFilterDirection.length > 0 || premarketFilter.length > 0) {
-            filteredData = filteredData.filter(alert => {
-              const nyOrbStatus = alert.nyOrbStatus || null;
-              const londonOrbStatus = alert.londonOrbStatus || null;
-              const orbStatus = nyOrbStatus || londonOrbStatus;
-              
-              // ORB Status filter
-              if (orbFilterStatus.length > 0) {
-                if (!orbStatus || !orbFilterStatus.includes(orbStatus)) return false;
-              }
-              
-              // Price Direction filter
-              if (priceFilterDirection.length > 0) {
-                const nyPriceDirection = alert.nyPriceDirection || null;
-                const londonPriceDirection = alert.londonPriceDirection || null;
-                let priceDirection = nyPriceDirection || londonPriceDirection;
-              
-                // Fallback: Calculate from price movement if not available
-                if (!priceDirection) {
-                  const currentPrice = alert.price ? parseFloat(alert.price) : null;
-                  const prevPrice = previousPrices[alert.symbol];
-                  if (currentPrice !== null && !isNaN(currentPrice) && prevPrice !== undefined && !isNaN(prevPrice)) {
-                    priceDirection = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : 'flat';
-                  }
-                }
-                
-                if (!priceDirection || !priceFilterDirection.includes(priceDirection)) return false;
-              }
-              
-              // Premarket filter: compare current price to 9:30 ORB high/low
-              if (premarketFilter.length > 0) {
-                const orbHigh = alert.nyOrbHigh != null ? parseFloat(alert.nyOrbHigh) : (alert.londonOrbHigh != null ? parseFloat(alert.londonOrbHigh) : null);
-                const orbLow = alert.nyOrbLow != null ? parseFloat(alert.nyOrbLow) : (alert.londonOrbLow != null ? parseFloat(alert.londonOrbLow) : null);
-                const price = alert.price != null ? parseFloat(alert.price) : null;
-                let match = false;
-                if (premarketFilter.includes('over_premarket_high') && orbHigh != null && !isNaN(orbHigh) && price != null && !isNaN(price) && price > orbHigh) match = true;
-                if (premarketFilter.includes('below_premarket_low') && orbLow != null && !isNaN(orbLow) && price != null && !isNaN(price) && price < orbLow) match = true;
-                if (!match) return false;
-              }
-              
-              return true;
-            });
-          }
           
           // Apply Other Filters (Price %, Volume)
           if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
@@ -6510,10 +6076,21 @@ Use this to create a new preset filter button that applies these exact filter se
           }
           
           // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0) {
+          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterOverviewDirection.length > 0 || stochFilterDetailDirection.length > 0) {
             filteredData = filteredData.filter(alert => {
               const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
               const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
+              
+              if (stochFilterOverviewDirection.length > 0) {
+                const ov = alert.stochOverview;
+                const ovDir = ov && (ov.kDirection || ov.dDirection);
+                if (!ovDir || !stochFilterOverviewDirection.includes(ovDir)) return false;
+              }
+              if (stochFilterDetailDirection.length > 0) {
+                const dt = alert.stochDetail;
+                const dtDir = dt && (dt.kDirection || dt.dDirection);
+                if (!dtDir || !stochFilterDetailDirection.includes(dtDir)) return false;
+              }
               
               // Get % change value
               const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -7310,27 +6887,6 @@ Use this to create a new preset filter button that applies these exact filter se
             const londonOrbMid = alert.londonOrbMid !== null && alert.londonOrbMid !== undefined ? parseFloat(alert.londonOrbMid) : null;
             const londonOrbStatus = alert.londonOrbStatus || null;
             
-            // Determine ORB status display (prefer NY, fallback to London)
-            const orbStatus = nyOrbStatus || londonOrbStatus;
-            let orbStatusDisplay = '-';
-            let orbStatusClass = 'text-muted-foreground';
-            
-            if (orbStatus) {
-              if (orbStatus === 'within_upper') {
-                orbStatusDisplay = 'Upper Half';
-                orbStatusClass = 'text-green-400 font-semibold';
-              } else if (orbStatus === 'within_lower') {
-                orbStatusDisplay = 'Lower Half';
-                orbStatusClass = 'text-red-400 font-semibold';
-              } else if (orbStatus === 'outside_above') {
-                orbStatusDisplay = 'Above ORB';
-                orbStatusClass = 'text-green-300 font-bold';
-              } else if (orbStatus === 'outside_below') {
-                orbStatusDisplay = 'Below ORB';
-                orbStatusClass = 'text-red-300 font-bold';
-              }
-            }
-            
             // Get price direction from alert data (prefer NY, fallback to London)
             const nyPriceDirection = alert.nyPriceDirection || null;
             const londonPriceDirection = alert.londonPriceDirection || null;
@@ -7450,30 +7006,25 @@ Use this to create a new preset filter button that applies these exact filter se
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
-              orb: \`
-                <td class="py-3 px-4 text-xs text-foreground" style="\${getCellWidthStyle('orb')}" title="ORB: NY High=\${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? nyOrbHigh.toFixed(2) : 'N/A'}, Low=\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : 'N/A'}, Status=\${nyOrbStatus || 'N/A'}, Price Dir=\${priceDirection || 'N/A'}, Crossover=\${orbCrossover || 'N/A'}">
-                  <div class="space-y-1">
-                    \${nyOrbHigh !== null && !isNaN(nyOrbHigh) ? \`
-                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${nyOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${nyOrbLow !== null && !isNaN(nyOrbLow) ? nyOrbLow.toFixed(2) : '-'}</span></div>
-                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${nyOrbMid !== null && !isNaN(nyOrbMid) ? nyOrbMid.toFixed(2) : '-'}</span></div>
-                      <div class="flex items-center gap-1 text-xs">
-                        <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
-                        \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
-                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? '↑↑' : '↓↓') + '</span>' : ''}
-                      </div>
-                    \` : londonOrbHigh !== null && !isNaN(londonOrbHigh) ? \`
-                      <div class="font-mono text-foreground text-xs">H: <span class="font-semibold text-green-400">\${londonOrbHigh.toFixed(2)}</span> | L: <span class="font-semibold text-red-400">\${londonOrbLow !== null && !isNaN(londonOrbLow) ? londonOrbLow.toFixed(2) : '-'}</span></div>
-                      <div class="font-mono text-foreground text-xs">Mid: <span class="font-semibold text-yellow-400">\${londonOrbMid !== null && !isNaN(londonOrbMid) ? londonOrbMid.toFixed(2) : '-'}</span></div>
-                      <div class="flex items-center gap-1 text-xs">
-                        <span class="\${orbStatusClass}">\${orbStatusDisplay}</span>
-                        \${priceDirection ? '<span class="' + (priceDirection === 'up' ? 'text-green-400' : priceDirection === 'down' ? 'text-red-400' : 'text-gray-400') + '">' + (priceDirection === 'up' ? '↑' : priceDirection === 'down' ? '↓' : '→') + '</span>' : ''}
-                        \${orbCrossover && orbCrossover !== 'none' ? '<span class="text-xs font-bold ' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? 'text-green-300 animate-pulse' : 'text-red-300 animate-pulse') + '">' + (['cross_high', 'cross_bottom', 'cross_mid_up'].includes(orbCrossover) ? '↑↑' : '↓↓') + '</span>' : ''}
-                      </div>
-                    \` : '<div class="text-xs text-muted-foreground">-</div>'}
-                  </div>
-                </td>
-              \`,
-              volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`
+              volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`,
+              stochOverview: (() => {
+                const o = alert.stochOverview;
+                if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochOverview') + '">-</td>';
+                const k = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k).toFixed(1) : '-';
+                const d = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d).toFixed(1) : '-';
+                const kDir = o.kDirection === 'up' ? '↑' : o.kDirection === 'down' ? '↓' : '→';
+                const dDir = o.dDirection === 'up' ? '↑' : o.dDirection === 'down' ? '↓' : '→';
+                return '<td class="py-3 px-4 text-xs" style="' + getCellWidthStyle('stochOverview') + '" title="Stoch Overview (higher TF)">K ' + k + ' ' + kDir + ' | D ' + d + ' ' + dDir + '</td>';
+              })(),
+              stochDetail: (() => {
+                const o = alert.stochDetail;
+                if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochDetail') + '">-</td>';
+                const k = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k).toFixed(1) : '-';
+                const d = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d).toFixed(1) : '-';
+                const kDir = o.kDirection === 'up' ? '↑' : o.kDirection === 'down' ? '↓' : '→';
+                const dDir = o.dDirection === 'up' ? '↑' : o.dDirection === 'down' ? '↓' : '→';
+                return '<td class="py-3 px-4 text-xs" style="' + getCellWidthStyle('stochDetail') + '" title="Stoch Detail (lower TF)">K ' + k + ' ' + kDir + ' | D ' + d + ' ' + dDir + '</td>';
+              })()
             };
             
             // Render cells in column order
@@ -7512,18 +7063,13 @@ Use this to create a new preset filter button that applies these exact filter se
             matches.push('up');
           }
           
-          // Check Ext. Bull preset
-          // ORB Status: outside_above, D1 Direction: up, D1 Value: 80-100
-          const nyOrbStatus = alert.nyOrbStatus || null;
-          const londonOrbStatus = alert.londonOrbStatus || null;
-          const orbStatus = nyOrbStatus || londonOrbStatus;
-          if (orbStatus === 'outside_above' && d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) {
+          // Check Ext. Bull preset: D1 up, D1 value 80-100
+          if (d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) {
             matches.push('extBull');
           }
           
-          // Check Ext. Bear preset
-          // ORB Status: outside_below, D1 Direction: down, D1 Value: 0-30
-          if (orbStatus === 'outside_below' && d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) {
+          // Check Ext. Bear preset: D1 down, D1 value 0-30
+          if (d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) {
             matches.push('extBear');
           }
           
@@ -7591,146 +7137,6 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }, 300);
           }, 5000);
-        }
-        
-        // Check for ORB crossovers and show toast notifications
-        function checkOrbCrossover(alert) {
-          if (!alert || !alert.symbol) return;
-          
-          const symbol = alert.symbol;
-          const nyCrossover = alert.nyOrbCrossover || null;
-          const londonCrossover = alert.londonOrbCrossover || null;
-          
-          // Initialize previous crossovers for this symbol if not exists
-          if (!previousOrbCrossovers[symbol]) {
-            previousOrbCrossovers[symbol] = { ny: 'none', london: 'none' };
-          }
-          
-          const prevNy = previousOrbCrossovers[symbol].ny;
-          const prevLondon = previousOrbCrossovers[symbol].london;
-          
-          // Check NY ORB crossover
-          if (nyCrossover && nyCrossover !== 'none' && nyCrossover !== prevNy) {
-            showOrbCrossoverToast(symbol, 'NY', nyCrossover, alert.price, alert.nyOrbHigh, alert.nyOrbLow);
-            previousOrbCrossovers[symbol].ny = nyCrossover;
-          } else if (nyCrossover === 'none' && prevNy !== 'none') {
-            // Reset when crossover ends
-            previousOrbCrossovers[symbol].ny = 'none';
-          }
-          
-          // Check London ORB crossover
-          if (londonCrossover && londonCrossover !== 'none' && londonCrossover !== prevLondon) {
-            showOrbCrossoverToast(symbol, 'London', londonCrossover, alert.price, alert.londonOrbHigh, alert.londonOrbLow);
-            previousOrbCrossovers[symbol].london = londonCrossover;
-          } else if (londonCrossover === 'none' && prevLondon !== 'none') {
-            // Reset when crossover ends
-            previousOrbCrossovers[symbol].london = 'none';
-          }
-        }
-        
-        // Show toast notification for ORB crossover
-        function showOrbCrossoverToast(symbol, orbType, crossover, price, orbHigh, orbLow) {
-          // Check if notifications are enabled
-          if (!notificationsEnabled) return;
-          
-          const toastContainer = document.getElementById('toastContainer');
-          if (!toastContainer) return;
-          
-          // Determine if it's a bullish (up) or bearish (down) crossover
-          const isBullish = ['cross_high', 'cross_bottom', 'cross_mid_up'].includes(crossover);
-          const toastClass = isBullish ? 'cross-high' : 'cross-low';
-          const icon = isBullish ? '🚀' : '🔻';
-          
-          // Get title based on crossover type
-          let title = 'ORB Crossover';
-          switch(crossover) {
-            case 'cross_high':
-              title = 'ORB High Breakout';
-              break;
-            case 'cross_low':
-              title = 'ORB Low Breakdown';
-              break;
-            case 'cross_bottom':
-              title = 'ORB Bottom Breakout';
-              break;
-            case 'cross_high_down':
-              title = 'ORB High Breakdown';
-              break;
-            case 'cross_mid_up':
-              title = 'ORB Mid Breakout';
-              break;
-            case 'cross_mid_down':
-              title = 'ORB Mid Breakdown';
-              break;
-          }
-          
-          const message = \`\${symbol} (\${orbType}) - \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
-          
-          const toast = document.createElement('div');
-          toast.className = \`toast \${toastClass}\`;
-          toast.innerHTML = \`
-            <div class="toast-icon">\${icon}</div>
-            <div class="toast-content">
-              <div class="toast-title">\${title}</div>
-              <div class="toast-message">\${message}</div>
-            </div>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-          \`;
-          
-          toastContainer.appendChild(toast);
-          
-          // Auto-remove after 5 seconds
-          setTimeout(() => {
-            toast.classList.add('hiding');
-            setTimeout(() => {
-              if (toast.parentElement) {
-                toast.remove();
-              }
-            }, 300);
-          }, 5000);
-          
-          // Add to history
-          orbCrossoverHistory.unshift({
-            symbol: symbol,
-            orbType: orbType,
-            crossover: crossover,
-            price: price,
-            orbHigh: orbHigh,
-            orbLow: orbLow,
-            timestamp: Date.now()
-          });
-          
-          // Keep only last 100 entries
-          if (orbCrossoverHistory.length > 100) {
-            orbCrossoverHistory = orbCrossoverHistory.slice(0, 100);
-          }
-          
-          // Update history display if open
-          if (document.getElementById('orbHistoryOverlay').classList.contains('open')) {
-            renderOrbHistory();
-          }
-        }
-        
-        // Toggle ORB history overlay
-        function toggleOrbHistory() {
-          const overlay = document.getElementById('orbHistoryOverlay');
-          const panel = overlay.querySelector('.orb-history-panel');
-          
-          if (overlay.classList.contains('open')) {
-            closeOrbHistory();
-          } else {
-            overlay.classList.add('open');
-            panel.classList.add('open');
-            renderOrbHistory();
-          }
-        }
-        
-        // Close ORB history overlay
-        function closeOrbHistory() {
-          const overlay = document.getElementById('orbHistoryOverlay');
-          const panel = overlay.querySelector('.orb-history-panel');
-          overlay.classList.remove('open');
-          panel.classList.remove('open');
         }
         
         // Toggle Stoch history overlay
@@ -7932,114 +7338,14 @@ Use this to create a new preset filter button that applies these exact filter se
           }
         }
         
-        // Toggle ORB history filter chip
-        function toggleOrbHistoryFilter(filterType, value, element) {
-          // Update active state
-          const chips = element.parentElement.querySelectorAll('.orb-history-filter-chip');
-          chips.forEach(chip => chip.classList.remove('active'));
-          element.classList.add('active');
-          
-          // Update filter state
-          orbHistoryFilters[filterType] = value;
-          
-          // Apply filters
-          applyOrbHistoryFilters();
-        }
-        
-        // Apply ORB history filters
-        function applyOrbHistoryFilters() {
-          // Render with filters
-          renderOrbHistory();
-        }
-        
-        // Render ORB history list
-        function renderOrbHistory() {
-          const content = document.getElementById('orbHistoryContent');
-          if (!content) return;
-          
-          if (orbCrossoverHistory.length === 0) {
-            content.innerHTML = '<div class="orb-history-empty">No ORB crossovers recorded yet</div>';
-            return;
-          }
-          
-          // Apply filters
-          let filteredHistory = orbCrossoverHistory.filter(item => {
-            // Crossover type filter
-            if (orbHistoryFilters.crossover !== 'all' && item.crossover !== orbHistoryFilters.crossover) {
-              return false;
-            }
-            
-            return true;
-          });
-          
-          if (filteredHistory.length === 0) {
-            content.innerHTML = '<div class="orb-history-empty">No crossovers match the current filters</div>';
-            return;
-          }
-          
-          content.innerHTML = filteredHistory.map(item => {
-            // Determine crossover text and class based on crossover type
-            let crossoverText = '';
-            let itemClass = 'cross-high';
-            
-            switch(item.crossover) {
-              case 'cross_high':
-                crossoverText = '↑High';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_low':
-                crossoverText = '↓Low';
-                itemClass = 'cross-low';
-                break;
-              case 'cross_bottom':
-                crossoverText = '↑Bottom';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_high_down':
-                crossoverText = '↓High';
-                itemClass = 'cross-low';
-                break;
-              case 'cross_mid_up':
-                crossoverText = '↑Mid';
-                itemClass = 'cross-high';
-                break;
-              case 'cross_mid_down':
-                crossoverText = '↓Mid';
-                itemClass = 'cross-low';
-                break;
-              default:
-                crossoverText = 'Crossover';
-                itemClass = 'cross-high';
-            }
-            
-            const time = new Date(item.timestamp);
-            const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-            const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            
-            return \`
-              <div class="orb-history-item \${itemClass}">
-                <div class="orb-history-item-content">
-                  <span class="orb-history-symbol">\${item.symbol}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-crossover">\${crossoverText}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
-                </div>
-              </div>
-            \`;
-          }).join('');
-        }
-
         async function fetchAlerts() {
           try {
             const response = await fetch('/alerts');
             const data = await response.json();
             
-            // Check for ORB crossovers and preset matches in the fetched data
+            // Check for preset matches in the fetched data
             if (Array.isArray(data)) {
               data.forEach(alert => {
-                checkOrbCrossover(alert);
-                
                 // Check preset filter matches
                 const currentMatches = checkPresetMatches(alert);
                 const symbol = alert.symbol;
@@ -8133,8 +7439,6 @@ Use this to create a new preset filter button that applies these exact filter se
             }
 
             if (update.type === 'alert' && update.data) {
-              checkOrbCrossover(update.data);
-              
               // Check preset filter matches
               const currentMatches = checkPresetMatches(update.data);
               const symbol = update.data.symbol;
