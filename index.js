@@ -1268,6 +1268,7 @@ app.post('/webhook', (req, res) => {
       kDirection: alert.kDirection || null,
       d: alert.d || null,
       dDirection: alert.dDirection || null,
+      kCross: alert.kCross || 'none',
       d2Pattern: alert.d2Pattern || '',
       d2PatternValue: alert.d2PatternValue || null,
       previousClose: alert.previousClose || null,
@@ -1902,6 +1903,7 @@ app.get('/alerts', (req, res) => {
         d: overviewInfo.d,
         kDirection: overviewInfo.kDirection,
         dDirection: overviewInfo.d2Direction,
+        kCross: overviewInfo.kCross || 'none',
         d2Pattern: overviewInfo.d2Pattern,
         d2PatternValue: overviewInfo.d2PatternValue
       }
@@ -1914,6 +1916,7 @@ app.get('/alerts', (req, res) => {
         d: detailInfo.d,
         kDirection: detailInfo.kDirection,
         dDirection: detailInfo.d2Direction,
+        kCross: detailInfo.kCross || 'none',
         d2Pattern: detailInfo.d2Pattern,
         d2PatternValue: detailInfo.d2PatternValue
       }
@@ -1925,6 +1928,7 @@ app.get('/alerts', (req, res) => {
         d: alert.d ?? alert.soloStochD2 ?? alert.d2,
         kDirection: alert.kDirection ?? 'flat',
         dDirection: alert.dDirection ?? alert.soloStochD2Direction ?? alert.d2Direction ?? 'flat',
+        kCross: alert.kCross || 'none',
         d2Pattern: alert.d2Pattern ?? alert.soloStochD2Pattern ?? '',
         d2PatternValue: alert.d2PatternValue ?? alert.soloStochD2PatternValue
       }
@@ -3736,166 +3740,211 @@ app.get('/', (req, res) => {
                   </button>
                 </div>
                 
-                <!-- Stoch Filters - iOS chip style -->
+                <!-- Stoch Overview Filters -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochFilters', this)">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochOverviewFilters', this)">
                       <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
-                      Stochastic
+                      Stoch Overview
                     </h3>
-                  <button 
-                      onclick="event.stopPropagation(); clearStochFilters()" 
-                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
-                  >
-                      Clear
-                  </button>
+                    <button onclick="event.stopPropagation(); clearStochSectionFilters('ov')" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
+                  </div>
+                  <div id="stochOverviewFilters" class="filter-content">
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d1Direction" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('ov_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d1Direction" data-value="down">↓</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="ovD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                            <input type="checkbox" id="ovD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD1Value')">
+                            <span class="text-xs text-muted-foreground">Excluded</span>
+                          </label>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="ovD1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('ovD1Value')">
+                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovD1ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d2Direction" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('ov_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d2Direction" data-value="down">↓</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="ovD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                            <input type="checkbox" id="ovD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD2Value')">
+                            <span class="text-xs text-muted-foreground">Excluded</span>
+                          </label>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="ovD2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('ovD2Value')">
+                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovD2ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">HL/LH Pattern</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_d2Pattern', 'Higher Low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="ov_d2Pattern" data-value="Higher Low">HL</button>
+                        <button onclick="toggleFilterChip('ov_d2Pattern', 'Lower High', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_d2Pattern" data-value="Lower High">LH</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_kCross" data-value="cross_over">C↑ Crossover</button>
+                        <button onclick="toggleFilterChip('ov_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_kCross" data-value="cross_under">C↓ Crossunder</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="ov_kLevelCross" data-value="c90_up">c90↑</button>
+                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_kLevelCross" data-value="c90_down">c90↓</button>
+                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="ov_kLevelCross" data-value="c10_down">c10↓</button>
+                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="ov_kLevelCross" data-value="c10_up">c10↑</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="ovDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" id="ovDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('ovDiff')">
+                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovDiffSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('ov_trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_trendMessage" data-value="No Long">No Long</button>
+                        <button onclick="toggleFilterChip('ov_trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_trendMessage" data-value="No Short">No Short</button>
+                        <button onclick="toggleFilterChip('ov_trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="ov_trendMessage" data-value="Try Long">Try Long</button>
+                        <button onclick="toggleFilterChip('ov_trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_trendMessage" data-value="Try Short">Try Short</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-            
-                  <div id="stochFilters" class="filter-content">
-            
-                  <!-- D1 Direction -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d1Direction" data-value="up">↑</button>
-                      <button onclick="toggleFilterChip('d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d1Direction" data-value="down">↓</button>
-                    </div>
+
+                <!-- Stoch Detail Filters -->
+                <div class="mb-4 filter-section">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochDetailFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      Stoch Detail
+                    </h3>
+                    <button onclick="event.stopPropagation(); clearStochSectionFilters('dt')" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
                   </div>
-                  
-                  <!-- D1 Value Slider -->
-                  <div class="mb-4">
-                    <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="d1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                      <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                          <input type="checkbox" id="d1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('d1Value')">
-                          <span class="text-xs text-muted-foreground">Excluded</span>
-                        </label>
+                  <div id="stochDetailFilters" class="filter-content">
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Direction</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d1Direction" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('dt_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d1Direction" data-value="down">↓</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D1 Value <span class="text-foreground/60">|</span> <span id="dtD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                            <input type="checkbox" id="dtD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD1Value')">
+                            <span class="text-xs text-muted-foreground">Excluded</span>
+                          </label>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="dtD1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('dtD1Value')">
+                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtD1ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d2Direction" data-value="up">↑</button>
+                        <button onclick="toggleFilterChip('dt_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d2Direction" data-value="down">↓</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="dtD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
+                            <input type="checkbox" id="dtD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD2Value')">
+                            <span class="text-xs text-muted-foreground">Excluded</span>
+                          </label>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="dtD2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('dtD2Value')">
+                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                          </label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtD2ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">HL/LH Pattern</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_d2Pattern', 'Higher Low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="dt_d2Pattern" data-value="Higher Low">HL</button>
+                        <button onclick="toggleFilterChip('dt_d2Pattern', 'Lower High', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_d2Pattern" data-value="Lower High">LH</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_kCross" data-value="cross_over">C↑ Crossover</button>
+                        <button onclick="toggleFilterChip('dt_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_kCross" data-value="cross_under">C↓ Crossunder</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="dt_kLevelCross" data-value="c90_up">c90↑</button>
+                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_kLevelCross" data-value="c90_down">c90↓</button>
+                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="dt_kLevelCross" data-value="c10_down">c10↓</button>
+                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="dt_kLevelCross" data-value="c10_up">c10↑</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="dtDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
                         <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="d1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d1Value')">
+                          <input type="checkbox" id="dtDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('dtDiff')">
                           <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
                         </label>
                       </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtDiffSlider"></div></div></div></div>
                     </div>
-                    <div class="px-2" id="d1ValueSliderContainer">
-                      <div class="mb-2">
-                        <div class="py-2">
-                          <div id="d1ValueSlider"></div>
-                        </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('dt_trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_trendMessage" data-value="No Long">No Long</button>
+                        <button onclick="toggleFilterChip('dt_trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_trendMessage" data-value="No Short">No Short</button>
+                        <button onclick="toggleFilterChip('dt_trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="dt_trendMessage" data-value="Try Long">Try Long</button>
+                        <button onclick="toggleFilterChip('dt_trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_trendMessage" data-value="Try Short">Try Short</button>
                       </div>
                     </div>
                   </div>
-                  
-                  <!-- D2 Direction -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D2 Direction</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="d2Direction" data-value="up">↑</button>
-                      <button onclick="toggleFilterChip('d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="d2Direction" data-value="down">↓</button>
-                    </div>
-                  </div>
-                  
-                  <!-- D2 Value Slider -->
-                  <div class="mb-4">
-                    <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D2 Value <span class="text-foreground/60">|</span> <span id="d2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="d2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                      <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                          <input type="checkbox" id="d2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('d2Value')">
-                          <span class="text-xs text-muted-foreground">Excluded</span>
-                        </label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="d2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('d2Value')">
-                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="px-2" id="d2ValueSliderContainer">
-                      <div class="mb-2">
-                        <div class="py-2">
-                          <div id="d2ValueSlider"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- HL/LH Pattern -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">HL/LH Pattern</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('d2Pattern', 'Higher Low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="d2Pattern" data-value="Higher Low">HL</button>
-                      <button onclick="toggleFilterChip('d2Pattern', 'Lower High', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="d2Pattern" data-value="Lower High">LH</button>
-                    </div>
-                  </div>
-                  
-                  <!-- D1/D2 Crossing -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1/D2 Crossing</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="kCross" data-value="cross_over">C↑ Crossover</button>
-                      <button onclick="toggleFilterChip('kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="kCross" data-value="cross_under">C↓ Crossunder</button>
-                    </div>
-                  </div>
-                  
-                  <!-- D1 Level Crossing (90/10) -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D1 Level Crossing</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="kLevelCross" data-value="c90_up">c90↑</button>
-                      <button onclick="toggleFilterChip('kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="kLevelCross" data-value="c90_down">c90↓</button>
-                      <button onclick="toggleFilterChip('kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="kLevelCross" data-value="c10_down">c10↓</button>
-                      <button onclick="toggleFilterChip('kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="kLevelCross" data-value="c10_up">c10↑</button>
-                    </div>
-                  </div>
-                  
-                  <!-- D1-D2 Diff - Absolute difference slider -->
-                  <div class="mb-4">
-                    <div class="flex items-center justify-between mb-2 px-1">
-                      <label class="block text-xs font-medium text-muted-foreground">D1-D2 Diff <span class="text-foreground/60">|</span> <span id="diffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="diffMaxValue" class="text-blue-400 font-semibold">75</span></label>
-                      <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="diffToggle" class="sr-only peer" onchange="toggleSliderFilter('diff')">
-                        <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                      </label>
-                    </div>
-                    <div class="px-2" id="diffSliderContainer">
-                      <div class="mb-2">
-                        <div class="py-2">
-                          <div id="diffSlider"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Trend Message -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="trendMessage" data-value="No Long">No Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="trendMessage" data-value="No Short">No Short</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="trendMessage" data-value="Try Long">Try Long</button>
-                      <button onclick="toggleFilterChip('trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="trendMessage" data-value="Try Short">Try Short</button>
-                    </div>
-                  </div>
-                  <!-- Stoch Overview (higher TF) Direction -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Stoch Overview</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('stochOverviewDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stochOverviewDirection" data-value="up">↑</button>
-                      <button onclick="toggleFilterChip('stochOverviewDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stochOverviewDirection" data-value="down">↓</button>
-                    </div>
-                  </div>
-                  <!-- Stoch Detail (lower TF) Direction -->
-                  <div class="mb-4">
-                    <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Stoch Detail</label>
-                    <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('stochDetailDirection', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stochDetailDirection" data-value="up">↑</button>
-                      <button onclick="toggleFilterChip('stochDetailDirection', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stochDetailDirection" data-value="down">↓</button>
-                    </div>
-                  </div>
-                    </div>
-                  </div>
+                </div>
                   
                 <!-- Other Filters - iOS chip style -->
                 <div class="mb-4 filter-section">
@@ -4080,18 +4129,28 @@ app.get('/', (req, res) => {
         // Search state
         let searchTerm = '';
         
-        // Stoch Filter state (arrays for multiple selections)
-        let stochFilterD1Direction = [];
-        let stochFilterD1Value = { min: 0, max: 100, active: false, excluded: false }; // D1 Value: excluded = outside range
-        let stochFilterD2Direction = [];
-        let stochFilterD2Value = { min: 0, max: 100, active: false, excluded: false }; // D2 Value: excluded = outside range
-        let stochFilterDiff = { min: 0, max: 75, active: false }; // Diff slider range
-        let stochFilterKCross = []; // K/D Crossing filter
-        let stochFilterKLevelCross = []; // K Level Crossing filter (90/10)
-        let stochFilterD2Pattern = []; // HL/LH pattern filter (Higher Low, Lower High)
-        let stochFilterTrendMessage = [];
-        let stochFilterOverviewDirection = []; // Stoch Overview (higher TF) K direction
-        let stochFilterDetailDirection = []; // Stoch Detail (lower TF) K direction
+        // Stoch Overview Filter state
+        let ovD1Direction = [];
+        let ovD1Value = { min: 0, max: 100, active: false, excluded: false };
+        let ovD2Direction = [];
+        let ovD2Value = { min: 0, max: 100, active: false, excluded: false };
+        let ovDiff = { min: 0, max: 75, active: false };
+        let ovKCross = [];
+        let ovKLevelCross = [];
+        let ovD2Pattern = [];
+        let ovTrendMessage = [];
+
+        // Stoch Detail Filter state
+        let dtD1Direction = [];
+        let dtD1Value = { min: 0, max: 100, active: false, excluded: false };
+        let dtD2Direction = [];
+        let dtD2Value = { min: 0, max: 100, active: false, excluded: false };
+        let dtDiff = { min: 0, max: 75, active: false };
+        let dtKCross = [];
+        let dtKLevelCross = [];
+        let dtD2Pattern = [];
+        let dtTrendMessage = [];
+
         let stochFilterPercentChange = [];
         
         // Other Filter state
@@ -4250,21 +4309,80 @@ app.get('/', (req, res) => {
         }
 
         function getStochValues(alert) {
-          // Solo/legacy: k, d. Dual Stoch: d1, d2 (or dualStochD1, dualStochD2)
           const kValueRaw = parseStochValue(alert.k);
           const dValueRaw = parseStochValue(alert.d);
           const fallbackK = parseStochValue(alert.dualStochD1) || parseStochValue(alert.d1);
           const fallbackD = parseStochValue(alert.dualStochD2) || parseStochValue(alert.d2);
           const soloD = parseStochValue(alert.soloStochD2);
           const genericD = parseStochValue(alert.d2);
-
           const kValue = kValueRaw !== null ? kValueRaw : fallbackK;
           const dValue = dValueRaw !== null ? dValueRaw : (fallbackD !== null ? fallbackD : (soloD !== null ? soloD : genericD));
-
           const kDirection = alert.kDirection || alert.dualStochD1Direction || alert.d1Direction || 'flat';
           const dDirection = alert.dDirection || alert.dualStochD2Direction || alert.soloStochD2Direction || alert.d2Direction || 'flat';
-
           return { kValue, dValue, kDirection, dDirection };
+        }
+
+        function hasStochSectionFilters(f) {
+          return f.d1Dir.length > 0 || f.d1Val.active || f.d2Dir.length > 0 || f.d2Val.active || f.diff.active || f.kCross.length > 0 || f.kLevelCross.length > 0 || f.d2Pattern.length > 0 || f.trendMsg.length > 0;
+        }
+
+        function passesStochSectionFilter(dataObj, f) {
+          if (!dataObj) return false;
+          const kV = dataObj.k != null ? parseFloat(dataObj.k) : null;
+          const dV = dataObj.d != null ? parseFloat(dataObj.d) : null;
+          const kDir = dataObj.kDirection || 'flat';
+          const dDir = dataObj.dDirection || 'flat';
+          if (f.d1Dir.length > 0 && !f.d1Dir.includes(kDir)) return false;
+          if (f.d2Dir.length > 0 && !f.d2Dir.includes(dDir)) return false;
+          if (f.kCross.length > 0) {
+            const kc = dataObj.kCross || 'none';
+            if (!f.kCross.includes(kc)) return false;
+          }
+          if (f.kLevelCross.length > 0) {
+            let m = false;
+            if (kV !== null && !isNaN(kV)) {
+              for (const lc of f.kLevelCross) {
+                if (lc === 'c90_up' && kV >= 90 && kDir === 'up') { m = true; break; }
+                if (lc === 'c90_down' && kV > 85 && kV < 90 && kDir === 'down') { m = true; break; }
+                if (lc === 'c10_down' && kV <= 10 && kDir === 'down') { m = true; break; }
+                if (lc === 'c10_up' && kV > 10 && kV <= 15 && kDir === 'up') { m = true; break; }
+              }
+            }
+            if (!m) return false;
+          }
+          if (f.d1Val.active) {
+            if (kV === null || isNaN(kV)) return false;
+            const inside = kV >= f.d1Val.min && kV <= f.d1Val.max;
+            if (f.d1Val.excluded ? inside : !inside) return false;
+          }
+          if (f.d2Val.active) {
+            if (dV === null || isNaN(dV)) return false;
+            const inside = dV >= f.d2Val.min && dV <= f.d2Val.max;
+            if (f.d2Val.excluded ? inside : !inside) return false;
+          }
+          if (f.diff.active) {
+            if (kV === null || isNaN(kV) || dV === null || isNaN(dV)) return false;
+            const absDiff = Math.abs(kV - dV);
+            if (absDiff < f.diff.min || absDiff > f.diff.max) return false;
+          }
+          const pat = dataObj.d2Pattern || '';
+          if (f.d2Pattern.length > 0 && !f.d2Pattern.includes(pat)) return false;
+          let tm = '';
+          if (kV !== null && dV !== null) {
+            if (kV < 15 && dV < 15) tm = 'No Long';
+            else if (kV > 80) tm = 'No Short';
+            else if (kDir === 'up' && kV > 20) tm = 'Try Long';
+            else if (kDir === 'down' && kV < 80) tm = 'Try Short';
+          }
+          if (f.trendMsg.length > 0 && !f.trendMsg.includes(tm)) return false;
+          return true;
+        }
+
+        function getOvFilters() {
+          return { d1Dir: ovD1Direction, d1Val: ovD1Value, d2Dir: ovD2Direction, d2Val: ovD2Value, diff: ovDiff, kCross: ovKCross, kLevelCross: ovKLevelCross, d2Pattern: ovD2Pattern, trendMsg: ovTrendMessage };
+        }
+        function getDtFilters() {
+          return { d1Dir: dtD1Direction, d1Val: dtD1Value, d2Dir: dtD2Direction, d2Val: dtD2Value, diff: dtDiff, kCross: dtKCross, kLevelCross: dtKLevelCross, d2Pattern: dtD2Pattern, trendMsg: dtTrendMessage };
         }
         
 
@@ -4298,184 +4416,59 @@ app.get('/', (req, res) => {
         // noUiSlider instances storage
         const sliders = {};
         
-        // Initialize noUiSlider for all range filters
+        function createValueSlider(sliderKey, elId, minLabelId, maxLabelId, updateFn) {
+          const el = document.getElementById(elId);
+          if (el && !sliders[sliderKey]) {
+            noUiSlider.create(el, { start: [0, 100], connect: true, range: { 'min': 0, 'max': 100 }, step: 1, tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }] });
+            sliders[sliderKey] = el;
+            const conn = el.querySelector('.noUi-connect');
+            if (conn) conn.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 40%, #eab308 40%, #eab308 60%, #22c55e 60%, #22c55e 100%)';
+            el.noUiSlider.on('update', function(values) {
+              const mn = Math.round(values[0]), mx = Math.round(values[1]);
+              const mnEl = document.getElementById(minLabelId), mxEl = document.getElementById(maxLabelId);
+              if (mnEl) { mnEl.textContent = mn; mnEl.className = 'font-semibold ' + (mn < 40 ? 'text-red-400' : mn > 60 ? 'text-green-400' : 'text-yellow-400'); }
+              if (mxEl) { mxEl.textContent = mx; mxEl.className = 'font-semibold ' + (mx < 40 ? 'text-red-400' : mx > 60 ? 'text-green-400' : 'text-yellow-400'); }
+              const c = el.querySelector('.noUi-connect');
+              if (c) {
+                const gc = v => v < 40 ? '#ef4444' : v > 60 ? '#22c55e' : '#eab308';
+                const mc = gc(mn), xc = gc(mx);
+                c.style.background = mc === xc ? mc : ((mn < 40 && mx > 60) ? 'linear-gradient(to right, ' + mc + ' 0%, #eab308 50%, ' + xc + ' 100%)' : 'linear-gradient(to right, ' + mc + ' 0%, ' + xc + ' 100%)');
+              }
+            });
+            el.noUiSlider.on('change', updateFn);
+          }
+        }
+
+        function createDiffSlider(sliderKey, elId, minLabelId, maxLabelId, updateFn) {
+          const el = document.getElementById(elId);
+          if (el && !sliders[sliderKey]) {
+            noUiSlider.create(el, { start: [0, 75], connect: true, range: { 'min': 0, 'max': 75 }, step: 1, tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }] });
+            sliders[sliderKey] = el;
+            const conn = el.querySelector('.noUi-connect');
+            if (conn) conn.style.background = 'linear-gradient(to right, #60a5fa 0%, #60a5fa 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
+            el.noUiSlider.on('update', function(values) {
+              const mn = Math.round(values[0]), mx = Math.round(values[1]);
+              const mnEl = document.getElementById(minLabelId), mxEl = document.getElementById(maxLabelId);
+              if (mnEl) { mnEl.textContent = mn; mnEl.className = 'font-semibold ' + (mn < 10 ? 'text-blue-400' : mn < 25 ? 'text-yellow-400' : 'text-orange-400'); }
+              if (mxEl) { mxEl.textContent = mx; mxEl.className = 'font-semibold ' + (mx < 10 ? 'text-blue-400' : mx < 25 ? 'text-yellow-400' : 'text-orange-400'); }
+              const c = el.querySelector('.noUi-connect');
+              if (c) {
+                const gc = v => v < 10 ? '#60a5fa' : v < 25 ? '#eab308' : '#fb923c';
+                const mc = gc(mn), xc = gc(mx);
+                c.style.background = mc === xc ? mc : 'linear-gradient(to right, ' + mc + ' 0%, ' + xc + ' 100%)';
+              }
+            });
+            el.noUiSlider.on('change', updateFn);
+          }
+        }
+
         function initializeSliders() {
-          // D1 Value Slider (0 to 100)
-          const d1ValueSlider = document.getElementById('d1ValueSlider');
-          if (d1ValueSlider && !sliders.d1Value) {
-            noUiSlider.create(d1ValueSlider, {
-              start: [0, 100],
-              connect: true,
-              range: { 'min': 0, 'max': 100 },
-              step: 1,
-              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
-            });
-            sliders.d1Value = d1ValueSlider;
-            // Initialize gradient
-            const d1Connect = d1ValueSlider.querySelector('.noUi-connect');
-            if (d1Connect) {
-              d1Connect.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 40%, #eab308 40%, #eab308 60%, #22c55e 60%, #22c55e 100%)';
-            }
-            d1ValueSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('d1ValueMinValue');
-              const maxEl = document.getElementById('d1ValueMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              
-              // Get colors for min and max values
-              const getColor = (val) => {
-                if (val < 40) return '#ef4444'; // red-400
-                if (val > 60) return '#22c55e'; // green-400
-                return '#eab308'; // yellow-400
-              };
-              
-              const minColor = getColor(minVal);
-              const maxColor = getColor(maxVal);
-              
-              // Apply color to text
-              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              
-              // Update slider gradient to match value colors
-              const connect = d1ValueSlider.querySelector('.noUi-connect');
-              if (connect) {
-                if (minColor === maxColor) {
-                  connect.style.background = minColor;
-                } else {
-                  // Add midpoint color if crossing the yellow zone
-                  if ((minVal < 40 && maxVal > 60) || (minVal > 60 && maxVal < 40)) {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
-                  } else {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
-                  }
-                }
-              }
-            });
-            d1ValueSlider.noUiSlider.on('change', function() {
-              updateD1ValueFilter();
-            });
-          }
-          
-          // D2 Value Slider (0 to 100)
-          const d2ValueSlider = document.getElementById('d2ValueSlider');
-          if (d2ValueSlider && !sliders.d2Value) {
-            noUiSlider.create(d2ValueSlider, {
-              start: [0, 100],
-              connect: true,
-              range: { 'min': 0, 'max': 100 },
-              step: 1,
-              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
-            });
-            sliders.d2Value = d2ValueSlider;
-            // Initialize gradient
-            const d2Connect = d2ValueSlider.querySelector('.noUi-connect');
-            if (d2Connect) {
-              d2Connect.style.background = 'linear-gradient(to right, #ef4444 0%, #ef4444 40%, #eab308 40%, #eab308 60%, #22c55e 60%, #22c55e 100%)';
-            }
-            d2ValueSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('d2ValueMinValue');
-              const maxEl = document.getElementById('d2ValueMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              
-              // Get colors for min and max values
-              const getColor = (val) => {
-                if (val < 40) return '#ef4444'; // red-400
-                if (val > 60) return '#22c55e'; // green-400
-                return '#eab308'; // yellow-400
-              };
-              
-              const minColor = getColor(minVal);
-              const maxColor = getColor(maxVal);
-              
-              // Apply color to text
-              minEl.className = 'font-semibold ' + (minVal < 40 ? 'text-red-400' : minVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 40 ? 'text-red-400' : maxVal > 60 ? 'text-green-400' : 'text-yellow-400');
-              
-              // Update slider gradient to match value colors
-              const connect = d2ValueSlider.querySelector('.noUi-connect');
-              if (connect) {
-                if (minColor === maxColor) {
-                  connect.style.background = minColor;
-                } else {
-                  // Add midpoint color if crossing the yellow zone
-                  if ((minVal < 40 && maxVal > 60) || (minVal > 60 && maxVal < 40)) {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
-                  } else {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
-                  }
-                }
-              }
-            });
-            d2ValueSlider.noUiSlider.on('change', function() {
-              updateD2ValueFilter();
-            });
-          }
-          
-          // Diff Slider (0 to 50)
-          const diffSlider = document.getElementById('diffSlider');
-          if (diffSlider && !sliders.diff) {
-            noUiSlider.create(diffSlider, {
-              start: [0, 75],
-              connect: true,
-              range: { 'min': 0, 'max': 75 },
-              step: 1,
-              tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }]
-            });
-            sliders.diff = diffSlider;
-            // Initialize gradient
-            const diffConnect = diffSlider.querySelector('.noUi-connect');
-            if (diffConnect) {
-              diffConnect.style.background = 'linear-gradient(to right, #60a5fa 0%, #60a5fa 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
-            }
-            diffSlider.noUiSlider.on('update', function(values) {
-              const minVal = Math.round(values[0]);
-              const maxVal = Math.round(values[1]);
-              const minEl = document.getElementById('diffMinValue');
-              const maxEl = document.getElementById('diffMaxValue');
-              minEl.textContent = minVal;
-              maxEl.textContent = maxVal;
-              
-              // Get colors for min and max values
-              const getColor = (val) => {
-                if (val < 10) return '#60a5fa'; // blue-400
-                if (val < 25) return '#eab308'; // yellow-400
-                return '#fb923c'; // orange-400
-              };
-              
-              const minColor = getColor(minVal);
-              const maxColor = getColor(maxVal);
-              
-              // Apply color to text
-              minEl.className = 'font-semibold ' + (minVal < 10 ? 'text-blue-400' : minVal < 25 ? 'text-yellow-400' : 'text-orange-400');
-              maxEl.className = 'font-semibold ' + (maxVal < 10 ? 'text-blue-400' : maxVal < 25 ? 'text-yellow-400' : 'text-orange-400');
-              
-              // Update slider gradient to match value colors
-              const connect = diffSlider.querySelector('.noUi-connect');
-              if (connect) {
-                if (minColor === maxColor) {
-                  connect.style.background = minColor;
-                } else {
-                  // Add midpoint color if crossing zones
-                  if ((minVal < 10 && maxVal > 25) || (minVal > 25 && maxVal < 10)) {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, #eab308 50%, ' + maxColor + ' 100%)';
-                  } else if ((minVal < 10 && maxVal > 10 && maxVal <= 25) || (minVal > 10 && minVal <= 25 && maxVal > 25)) {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
-                  } else {
-                    connect.style.background = 'linear-gradient(to right, ' + minColor + ' 0%, ' + maxColor + ' 100%)';
-                  }
-                }
-              }
-            });
-            diffSlider.noUiSlider.on('change', function() {
-              updateDiffFilter();
-            });
-          }
-          
+          createValueSlider('ovD1Value', 'ovD1ValueSlider', 'ovD1ValueMinValue', 'ovD1ValueMaxValue', function() { updateGenericValueFilter('ovD1Value', ovD1Value); });
+          createValueSlider('ovD2Value', 'ovD2ValueSlider', 'ovD2ValueMinValue', 'ovD2ValueMaxValue', function() { updateGenericValueFilter('ovD2Value', ovD2Value); });
+          createDiffSlider('ovDiff', 'ovDiffSlider', 'ovDiffMinValue', 'ovDiffMaxValue', function() { updateGenericDiffFilter('ovDiff', ovDiff); });
+          createValueSlider('dtD1Value', 'dtD1ValueSlider', 'dtD1ValueMinValue', 'dtD1ValueMaxValue', function() { updateGenericValueFilter('dtD1Value', dtD1Value); });
+          createValueSlider('dtD2Value', 'dtD2ValueSlider', 'dtD2ValueMinValue', 'dtD2ValueMaxValue', function() { updateGenericValueFilter('dtD2Value', dtD2Value); });
+          createDiffSlider('dtDiff', 'dtDiffSlider', 'dtDiffMinValue', 'dtDiffMaxValue', function() { updateGenericDiffFilter('dtDiff', dtDiff); });
         }
 
         // Initialize sort indicators on page load
@@ -4551,80 +4544,13 @@ app.get('/', (req, res) => {
             );
           }
           
-          // Apply Stoch Filters (same as renderTable)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterOverviewDirection.length > 0 || stochFilterDetailDirection.length > 0) {
+          // Apply Stoch Overview + Detail Filters
+          const mOvF = getOvFilters(), mDtF = getDtFilters();
+          const mOvActive = hasStochSectionFilters(mOvF), mDtActive = hasStochSectionFilters(mDtF);
+          if (mOvActive || mDtActive) {
             filteredData = filteredData.filter(alert => {
-              const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
-              
-              if (stochFilterOverviewDirection.length > 0) {
-                const ov = alert.stochOverview;
-                const ovDir = ov && (ov.kDirection || ov.dDirection);
-                if (!ovDir || !stochFilterOverviewDirection.includes(ovDir)) return false;
-              }
-              if (stochFilterDetailDirection.length > 0) {
-                const dt = alert.stochDetail;
-                const dtDir = dt && (dt.kDirection || dt.dDirection);
-                if (!dtDir || !stochFilterDetailDirection.includes(dtDir)) return false;
-              }
-              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
-              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
-              
-              // Check K/D crossing filter
-              if (stochFilterKCross.length > 0) {
-                const kCross = alert.kCross || 'none';
-                if (!stochFilterKCross.includes(kCross)) return false;
-              }
-              
-              // Check K level crossing filter (90/10)
-              if (stochFilterKLevelCross.length > 0) {
-                let matchesLevelCross = false;
-                if (kValue !== null && !isNaN(kValue)) {
-                  for (const filter of stochFilterKLevelCross) {
-                    if (filter === 'c90_up' && kValue >= 90 && kDirection === 'up') { matchesLevelCross = true; break; }
-                    if (filter === 'c90_down' && kValue > 85 && kValue < 90 && kDirection === 'down') { matchesLevelCross = true; break; }
-                    if (filter === 'c10_down' && kValue <= 10 && kDirection === 'down') { matchesLevelCross = true; break; }
-                    if (filter === 'c10_up' && kValue > 10 && kValue <= 15 && kDirection === 'up') { matchesLevelCross = true; break; }
-                  }
-                }
-                if (!matchesLevelCross) return false;
-              }
-              
-              let trendMessage = '';
-              if (kValue !== null && dValue !== null) {
-                if (kValue < 15 && dValue < 15) {
-                  trendMessage = 'No Long';
-                } else if (kValue > 80) {
-                  trendMessage = 'No Short';
-                } else if (kDirection === 'up' && kValue > 20) {
-                  trendMessage = 'Try Long';
-                } else if (kDirection === 'down' && kValue < 80) {
-                  trendMessage = 'Try Short';
-                }
-              }
-              
-              if (stochFilterD1Value.active) {
-                if (kValue === null || isNaN(kValue)) return false;
-                const inside = kValue >= stochFilterD1Value.min && kValue <= stochFilterD1Value.max;
-                if (stochFilterD1Value.excluded ? inside : !inside) return false;
-              }
-              
-              if (stochFilterD2Value.active) {
-                if (dValue === null || isNaN(dValue)) return false;
-                const inside = dValue >= stochFilterD2Value.min && dValue <= stochFilterD2Value.max;
-                if (stochFilterD2Value.excluded ? inside : !inside) return false;
-              }
-              
-              if (stochFilterDiff.active) {
-                if (kValue === null || isNaN(kValue) || dValue === null || isNaN(dValue)) return false;
-                const absDiff = Math.abs(kValue - dValue);
-                if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
-              }
-              
-              if (stochFilterD2Pattern.length > 0 && !stochFilterD2Pattern.includes(d2Pattern)) return false;
-              
-              if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
-              
+              if (mOvActive && !passesStochSectionFilter(alert.stochOverview, mOvF)) return false;
+              if (mDtActive && !passesStochSectionFilter(alert.stochDetail, mDtF)) return false;
               return true;
             });
           }
@@ -5208,105 +5134,68 @@ app.get('/', (req, res) => {
           filterAlerts();
         }
         
-        // Toggle slider filter on/off (noUiSlider)
         function toggleSliderFilter(sliderType) {
           const toggle = document.getElementById(sliderType + 'Toggle');
           const slider = sliders[sliderType];
-          
           if (toggle && slider) {
-            // Sliders are always enabled - toggle only controls whether filter is active
-            // Call the appropriate update function to set active state correctly
-            if (sliderType === 'd1Value') {
-              updateD1ValueFilter();
-            } else if (sliderType === 'd2Value') {
-              updateD2ValueFilter();
-            } else if (sliderType === 'diff') {
-              updateDiffFilter();
+            if (sliderType.endsWith('Diff')) {
+              const stateObj = sliderType.startsWith('ov') ? ovDiff : dtDiff;
+              updateGenericDiffFilter(sliderType, stateObj);
+            } else {
+              const map = { ovD1Value: ovD1Value, ovD2Value: ovD2Value, dtD1Value: dtD1Value, dtD2Value: dtD2Value };
+              if (map[sliderType]) updateGenericValueFilter(sliderType, map[sliderType]);
             }
           }
         }
-        
-        // Update D1 Value filter from noUiSlider values
-        function updateD1ValueFilter() {
-          const toggle = document.getElementById('d1ValueToggle');
-          const excludedEl = document.getElementById('d1ValueExcluded');
-          const slider = sliders.d1Value;
-          
+
+        function updateGenericValueFilter(key, stateObj) {
+          const toggle = document.getElementById(key + 'Toggle');
+          const excludedEl = document.getElementById(key + 'Excluded');
+          const slider = sliders[key];
           if (slider && slider.noUiSlider) {
             const values = slider.noUiSlider.get();
             const minVal = Math.round(parseFloat(values[0]));
             const maxVal = Math.round(parseFloat(values[1]));
-            
-            stochFilterD1Value.min = minVal;
-            stochFilterD1Value.max = maxVal;
-            stochFilterD1Value.excluded = excludedEl ? excludedEl.checked : false;
-            // Only active if toggle is checked AND range is not default
-            stochFilterD1Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
-            
-            // Apply filters
+            stateObj.min = minVal;
+            stateObj.max = maxVal;
+            stateObj.excluded = excludedEl ? excludedEl.checked : false;
+            stateObj.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
             filterAlerts();
           }
         }
-        
-        // Update D2 Value filter from noUiSlider values
-        function updateD2ValueFilter() {
-          const toggle = document.getElementById('d2ValueToggle');
-          const excludedEl = document.getElementById('d2ValueExcluded');
-          const slider = sliders.d2Value;
-          
+
+        function updateGenericDiffFilter(key, stateObj) {
+          const toggle = document.getElementById(key + 'Toggle');
+          const slider = sliders[key];
           if (slider && slider.noUiSlider) {
             const values = slider.noUiSlider.get();
             const minVal = Math.round(parseFloat(values[0]));
             const maxVal = Math.round(parseFloat(values[1]));
-            
-            stochFilterD2Value.min = minVal;
-            stochFilterD2Value.max = maxVal;
-            stochFilterD2Value.excluded = excludedEl ? excludedEl.checked : false;
-            // Only active if toggle is checked AND range is not default
-            stochFilterD2Value.active = toggle && toggle.checked && (minVal > 0 || maxVal < 100);
-            
-            // Apply filters
+            stateObj.min = minVal;
+            stateObj.max = maxVal;
+            stateObj.active = toggle && toggle.checked && (minVal > 0 || maxVal < 75);
             filterAlerts();
           }
         }
-        
-        // Update diff filter from noUiSlider values
-        function updateDiffFilter() {
-          const toggle = document.getElementById('diffToggle');
-          const slider = sliders.diff;
-          
-          if (slider && slider.noUiSlider) {
-            const values = slider.noUiSlider.get();
-            const minVal = Math.round(parseFloat(values[0]));
-            const maxVal = Math.round(parseFloat(values[1]));
-            
-            stochFilterDiff.min = minVal;
-            stochFilterDiff.max = maxVal;
-            // Only active if toggle is checked AND range is not default
-            stochFilterDiff.active = toggle && toggle.checked && (minVal > 0 || maxVal < 75);
-            
-            // Apply filters
-            filterAlerts();
-          }
-        }
-        
-        // Update CCI Value filter from noUiSlider value
-        // Update filter arrays from chip states
+
         function updateFilterArrays() {
-          // Stoch Filters
-          stochFilterD1Direction = Array.from(document.querySelectorAll('[data-filter="d1Direction"].active')).map(chip => chip.dataset.value);
-          // D1/D2 Value and Diff filters are updated via their respective update functions from sliders
-          stochFilterD2Direction = Array.from(document.querySelectorAll('[data-filter="d2Direction"].active')).map(chip => chip.dataset.value);
-          stochFilterKCross = Array.from(document.querySelectorAll('[data-filter="kCross"].active')).map(chip => chip.dataset.value);
-          stochFilterKLevelCross = Array.from(document.querySelectorAll('[data-filter="kLevelCross"].active')).map(chip => chip.dataset.value);
-          stochFilterD2Pattern = Array.from(document.querySelectorAll('[data-filter="d2Pattern"].active')).map(chip => chip.dataset.value);
-          stochFilterTrendMessage = Array.from(document.querySelectorAll('[data-filter="trendMessage"].active')).map(chip => chip.dataset.value);
-          stochFilterOverviewDirection = Array.from(document.querySelectorAll('[data-filter="stochOverviewDirection"].active')).map(chip => chip.dataset.value);
-          stochFilterDetailDirection = Array.from(document.querySelectorAll('[data-filter="stochDetailDirection"].active')).map(chip => chip.dataset.value);
-          stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(chip => chip.dataset.value);
-          
-          // Other Filters
-          volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(chip => chip.dataset.value);
+          // Overview filters
+          ovD1Direction = Array.from(document.querySelectorAll('[data-filter="ov_d1Direction"].active')).map(c => c.dataset.value);
+          ovD2Direction = Array.from(document.querySelectorAll('[data-filter="ov_d2Direction"].active')).map(c => c.dataset.value);
+          ovKCross = Array.from(document.querySelectorAll('[data-filter="ov_kCross"].active')).map(c => c.dataset.value);
+          ovKLevelCross = Array.from(document.querySelectorAll('[data-filter="ov_kLevelCross"].active')).map(c => c.dataset.value);
+          ovD2Pattern = Array.from(document.querySelectorAll('[data-filter="ov_d2Pattern"].active')).map(c => c.dataset.value);
+          ovTrendMessage = Array.from(document.querySelectorAll('[data-filter="ov_trendMessage"].active')).map(c => c.dataset.value);
+          // Detail filters
+          dtD1Direction = Array.from(document.querySelectorAll('[data-filter="dt_d1Direction"].active')).map(c => c.dataset.value);
+          dtD2Direction = Array.from(document.querySelectorAll('[data-filter="dt_d2Direction"].active')).map(c => c.dataset.value);
+          dtKCross = Array.from(document.querySelectorAll('[data-filter="dt_kCross"].active')).map(c => c.dataset.value);
+          dtKLevelCross = Array.from(document.querySelectorAll('[data-filter="dt_kLevelCross"].active')).map(c => c.dataset.value);
+          dtD2Pattern = Array.from(document.querySelectorAll('[data-filter="dt_d2Pattern"].active')).map(c => c.dataset.value);
+          dtTrendMessage = Array.from(document.querySelectorAll('[data-filter="dt_trendMessage"].active')).map(c => c.dataset.value);
+          // Other
+          stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
+          volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
         }
         
         function filterAlerts() {
@@ -5318,52 +5207,47 @@ app.get('/', (req, res) => {
           renderTable();
         }
         
-        function clearStochFilters() {
-          // Remove active class from all Stoch filter chips
-          document.querySelectorAll('[data-filter="d1Direction"], [data-filter="d2Direction"], [data-filter="d2Pattern"], [data-filter="kCross"], [data-filter="kLevelCross"], [data-filter="trendMessage"], [data-filter="stochOverviewDirection"], [data-filter="stochDetailDirection"]').forEach(chip => {
+        function clearStochSectionFilters(prefix) {
+          const chipSelectors = ['d1Direction', 'd2Direction', 'd2Pattern', 'kCross', 'kLevelCross', 'trendMessage']
+            .map(f => '[data-filter="' + prefix + '_' + f + '"]').join(', ');
+          document.querySelectorAll(chipSelectors).forEach(chip => {
             chip.classList.remove('active');
-            // Also remove has-active from parent filter-group
-            const parentGroup = chip.closest('.filter-group');
-            if (parentGroup) parentGroup.classList.remove('has-active');
+            const pg = chip.closest('.filter-group');
+            if (pg) pg.classList.remove('has-active');
           });
-          
-          // Reset D1 Value slider (noUiSlider) and Excluded
-          const d1Toggle = document.getElementById('d1ValueToggle');
-          const d1Excluded = document.getElementById('d1ValueExcluded');
-          if (d1Toggle) d1Toggle.checked = false;
-          if (d1Excluded) d1Excluded.checked = false;
-          if (sliders.d1Value && sliders.d1Value.noUiSlider) {
-            sliders.d1Value.noUiSlider.set([0, 100]);
+          // Reset value sliders
+          const resetValueSlider = (key) => {
+            const t = document.getElementById(key + 'Toggle');
+            const e = document.getElementById(key + 'Excluded');
+            if (t) t.checked = false;
+            if (e) e.checked = false;
+            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
+          };
+          const resetDiffSlider = (key) => {
+            const t = document.getElementById(key + 'Toggle');
+            if (t) t.checked = false;
+            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 75]);
+          };
+          resetValueSlider(prefix + 'D1Value');
+          resetValueSlider(prefix + 'D2Value');
+          resetDiffSlider(prefix + 'Diff');
+          if (prefix === 'ov') {
+            ovD1Direction = []; ovD1Value = { min: 0, max: 100, active: false, excluded: false };
+            ovD2Direction = []; ovD2Value = { min: 0, max: 100, active: false, excluded: false };
+            ovDiff = { min: 0, max: 75, active: false };
+            ovKCross = []; ovKLevelCross = []; ovD2Pattern = []; ovTrendMessage = [];
+          } else {
+            dtD1Direction = []; dtD1Value = { min: 0, max: 100, active: false, excluded: false };
+            dtD2Direction = []; dtD2Value = { min: 0, max: 100, active: false, excluded: false };
+            dtDiff = { min: 0, max: 75, active: false };
+            dtKCross = []; dtKLevelCross = []; dtD2Pattern = []; dtTrendMessage = [];
           }
-          
-          // Reset D2 Value slider (noUiSlider) and Excluded
-          const d2Toggle = document.getElementById('d2ValueToggle');
-          const d2Excluded = document.getElementById('d2ValueExcluded');
-          if (d2Toggle) d2Toggle.checked = false;
-          if (d2Excluded) d2Excluded.checked = false;
-          if (sliders.d2Value && sliders.d2Value.noUiSlider) {
-            sliders.d2Value.noUiSlider.set([0, 100]);
-          }
-          
-          // Reset diff slider (noUiSlider)
-          const diffToggle = document.getElementById('diffToggle');
-          if (diffToggle) diffToggle.checked = false;
-          if (sliders.diff && sliders.diff.noUiSlider) {
-            sliders.diff.noUiSlider.set([0, 75]);
-          }
-          
-          stochFilterD1Direction = [];
-          stochFilterD1Value = { min: 0, max: 100, active: false, excluded: false };
-          stochFilterD2Direction = [];
-          stochFilterD2Value = { min: 0, max: 100, active: false, excluded: false };
-          stochFilterDiff = { min: 0, max: 75, active: false };
-          stochFilterKCross = [];
-          stochFilterKLevelCross = [];
-          stochFilterD2Pattern = [];
-          stochFilterTrendMessage = [];
-          stochFilterOverviewDirection = [];
-          stochFilterDetailDirection = [];
           renderTable();
+        }
+
+        function clearStochFilters() {
+          clearStochSectionFilters('ov');
+          clearStochSectionFilters('dt');
         }
         
         // Clear Other filters
@@ -5421,82 +5305,36 @@ app.get('/', (req, res) => {
           // Track active preset for CCI-based filtering
           activePreset = preset;
           
+          function activateChip(filterName, value) {
+            const chip = document.querySelector('[data-filter="' + filterName + '"][data-value="' + value + '"]');
+            if (chip) { chip.classList.add('active'); const pg = chip.closest('.filter-group'); if (pg) pg.classList.add('has-active'); }
+          }
+
           if (preset === 'down') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Direction: down
-            const d2DownChip = document.querySelector('[data-filter="d2Direction"][data-value="down"]');
-            if (d2DownChip) {
-              d2DownChip.classList.add('active');
-              const parentGroup = d2DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
+            activateChip('ov_d1Direction', 'down');
+            activateChip('ov_d2Direction', 'down');
           } else if (preset === 'up') {
-            // Activate D1 Direction: up
-            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
-            if (d1UpChip) {
-              d1UpChip.classList.add('active');
-              const parentGroup = d1UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D2 Direction: up
-            const d2UpChip = document.querySelector('[data-filter="d2Direction"][data-value="up"]');
-            if (d2UpChip) {
-              d2UpChip.classList.add('active');
-              const parentGroup = d2UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
+            activateChip('ov_d1Direction', 'up');
+            activateChip('ov_d2Direction', 'up');
           } else if (preset === 'extBull') {
-            // Activate D1 Direction: up
-            const d1UpChip = document.querySelector('[data-filter="d1Direction"][data-value="up"]');
-            if (d1UpChip) {
-              d1UpChip.classList.add('active');
-              const parentGroup = d1UpChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 80 to 100 (included range)
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            const d1Excluded = document.getElementById('d1ValueExcluded');
-            if (d1Toggle && sliders.d1Value) {
+            activateChip('ov_d1Direction', 'up');
+            const d1Toggle = document.getElementById('ovD1ValueToggle');
+            const d1Excluded = document.getElementById('ovD1ValueExcluded');
+            if (d1Toggle && sliders.ovD1Value) {
               d1Toggle.checked = true;
               if (d1Excluded) d1Excluded.checked = false;
-              sliders.d1Value.noUiSlider.set([80, 100]);
-              stochFilterD1Value.min = 80;
-              stochFilterD1Value.max = 100;
-              stochFilterD1Value.active = true;
-              stochFilterD1Value.excluded = false;
+              sliders.ovD1Value.noUiSlider.set([80, 100]);
+              ovD1Value.min = 80; ovD1Value.max = 100; ovD1Value.active = true; ovD1Value.excluded = false;
             }
-            
           } else if (preset === 'extBear') {
-            // Activate D1 Direction: down
-            const d1DownChip = document.querySelector('[data-filter="d1Direction"][data-value="down"]');
-            if (d1DownChip) {
-              d1DownChip.classList.add('active');
-              const parentGroup = d1DownChip.closest('.filter-group');
-              if (parentGroup) parentGroup.classList.add('has-active');
-            }
-            
-            // Activate D1 Value slider: 0 to 30 (included range)
-            const d1Toggle = document.getElementById('d1ValueToggle');
-            const d1Excluded = document.getElementById('d1ValueExcluded');
-            if (d1Toggle && sliders.d1Value) {
+            activateChip('ov_d1Direction', 'down');
+            const d1Toggle = document.getElementById('ovD1ValueToggle');
+            const d1Excluded = document.getElementById('ovD1ValueExcluded');
+            if (d1Toggle && sliders.ovD1Value) {
               d1Toggle.checked = true;
               if (d1Excluded) d1Excluded.checked = false;
-              sliders.d1Value.noUiSlider.set([0, 30]);
-              stochFilterD1Value.min = 0;
-              stochFilterD1Value.max = 30;
-              stochFilterD1Value.active = true;
-              stochFilterD1Value.excluded = false;
+              sliders.ovD1Value.noUiSlider.set([0, 30]);
+              ovD1Value.min = 0; ovD1Value.max = 30; ovD1Value.active = true; ovD1Value.excluded = false;
             }
           }
           
@@ -5545,16 +5383,27 @@ app.get('/', (req, res) => {
             name: presetName,
             filters: {
               // Stoch Filters
-              stoch: {
-                d1Direction: stochFilterD1Direction,
-                d1Value: stochFilterD1Value.active ? { min: stochFilterD1Value.min, max: stochFilterD1Value.max, excluded: stochFilterD1Value.excluded } : null,
-                d2Direction: stochFilterD2Direction,
-                d2Value: stochFilterD2Value.active ? { min: stochFilterD2Value.min, max: stochFilterD2Value.max, excluded: stochFilterD2Value.excluded } : null,
-                diff: stochFilterDiff.active ? { min: stochFilterDiff.min, max: stochFilterDiff.max } : null,
-                d2Pattern: stochFilterD2Pattern.length > 0 ? stochFilterD2Pattern : null,
-                trendMessage: stochFilterTrendMessage,
-                percentChange: stochFilterPercentChange
+              overview: {
+                d1Direction: ovD1Direction,
+                d1Value: ovD1Value.active ? { min: ovD1Value.min, max: ovD1Value.max, excluded: ovD1Value.excluded } : null,
+                d2Direction: ovD2Direction,
+                d2Value: ovD2Value.active ? { min: ovD2Value.min, max: ovD2Value.max, excluded: ovD2Value.excluded } : null,
+                diff: ovDiff.active ? { min: ovDiff.min, max: ovDiff.max } : null,
+                d2Pattern: ovD2Pattern.length > 0 ? ovD2Pattern : null,
+                trendMessage: ovTrendMessage,
+                kCross: ovKCross, kLevelCross: ovKLevelCross
               },
+              detail: {
+                d1Direction: dtD1Direction,
+                d1Value: dtD1Value.active ? { min: dtD1Value.min, max: dtD1Value.max, excluded: dtD1Value.excluded } : null,
+                d2Direction: dtD2Direction,
+                d2Value: dtD2Value.active ? { min: dtD2Value.min, max: dtD2Value.max, excluded: dtD2Value.excluded } : null,
+                diff: dtDiff.active ? { min: dtDiff.min, max: dtDiff.max } : null,
+                d2Pattern: dtD2Pattern.length > 0 ? dtD2Pattern : null,
+                trendMessage: dtTrendMessage,
+                kCross: dtKCross, kLevelCross: dtKLevelCross
+              },
+              percentChange: stochFilterPercentChange,
               // Search term
               search: searchTerm || null
             }
@@ -5603,39 +5452,15 @@ Use this to create a new preset filter button that applies these exact filter se
           let extBearCount = 0;
 
           data.forEach(alert => {
-            const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-            const d1Value = kValue;
-            const d2Value = dValue;
-            const d1Direction = kDirection;
-            const d2Direction = dDirection;
+            const ov = alert.stochOverview;
+            const d1Value = ov && ov.k != null ? parseFloat(ov.k) : null;
+            const d2Value = ov && ov.d != null ? parseFloat(ov.d) : null;
+            const d1Direction = ov ? (ov.kDirection || 'flat') : 'flat';
+            const d2Direction = ov ? (ov.dDirection || 'flat') : 'flat';
             
-            // Get % change value
-            const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
-            
-            // Determine trend message
-            let trendMessage = '';
-            if (d1Value !== null && d2Value !== null) {
-              if (d1Value < 15 && d2Value < 15) {
-                trendMessage = 'No Long';
-              } else if (d1Value > 80) {
-                trendMessage = 'No Short';
-              } else if (d1Direction === 'up' && d1Value > 20) {
-                trendMessage = 'Try Long';
-              } else if (d1Direction === 'down' && d1Value < 80) {
-                trendMessage = 'Try Short';
-              }
-            }
-            
-            // Check Down criteria: D1 and D2 both down
             let matchesDown = d1Direction === 'down' && d2Direction === 'down';
-            
-            // Check Up criteria: D1 and D2 both up
             let matchesUp = d1Direction === 'up' && d2Direction === 'up';
-            
-            // Check Ext. Bull: D1 up, D1 value 80-100
             let matchesExtBull = d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100;
-            
-            // Check Ext. Bear: D1 down, D1 value 0-30
             let matchesExtBear = d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30;
             
             if (matchesDown) downCount++;
@@ -5938,93 +5763,13 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply Stoch Filters (this affects filteredData but NOT dataForPresetCounts)
-          if (stochFilterD1Direction.length > 0 || stochFilterD1Value.active || stochFilterD2Direction.length > 0 || stochFilterD2Value.active || stochFilterDiff.active || stochFilterKCross.length > 0 || stochFilterKLevelCross.length > 0 || stochFilterD2Pattern.length > 0 || stochFilterTrendMessage.length > 0 || stochFilterOverviewDirection.length > 0 || stochFilterDetailDirection.length > 0) {
+          // Apply Stoch Overview + Detail Filters (this affects filteredData but NOT dataForPresetCounts)
+          const tOvF = getOvFilters(), tDtF = getDtFilters();
+          const tOvActive = hasStochSectionFilters(tOvF), tDtActive = hasStochSectionFilters(tDtF);
+          if (tOvActive || tDtActive) {
             filteredData = filteredData.filter(alert => {
-              const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-              const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
-              
-              if (stochFilterOverviewDirection.length > 0) {
-                const ov = alert.stochOverview;
-                const ovDir = ov && (ov.kDirection || ov.dDirection);
-                if (!ovDir || !stochFilterOverviewDirection.includes(ovDir)) return false;
-              }
-              if (stochFilterDetailDirection.length > 0) {
-                const dt = alert.stochDetail;
-                const dtDir = dt && (dt.kDirection || dt.dDirection);
-                if (!dtDir || !stochFilterDetailDirection.includes(dtDir)) return false;
-              }
-              
-              // Get % change value
-              const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
-              
-              // Check D1 direction filter
-              if (stochFilterD1Direction.length > 0 && !stochFilterD1Direction.includes(kDirection)) return false;
-              
-              // Check D2 direction filter
-              if (stochFilterD2Direction.length > 0 && !stochFilterD2Direction.includes(dDirection)) return false;
-              
-              // Check K/D crossing filter
-              if (stochFilterKCross.length > 0) {
-                const kCross = alert.kCross || 'none';
-                if (!stochFilterKCross.includes(kCross)) return false;
-              }
-              
-              // Check K level crossing filter (90/10)
-              if (stochFilterKLevelCross.length > 0) {
-                let matchesLevelCross = false;
-                if (kValue !== null && !isNaN(kValue)) {
-                  for (const filter of stochFilterKLevelCross) {
-                    if (filter === 'c90_up' && kValue >= 90 && kDirection === 'up') { matchesLevelCross = true; break; }
-                    if (filter === 'c90_down' && kValue > 85 && kValue < 90 && kDirection === 'down') { matchesLevelCross = true; break; }
-                    if (filter === 'c10_down' && kValue <= 10 && kDirection === 'down') { matchesLevelCross = true; break; }
-                    if (filter === 'c10_up' && kValue > 10 && kValue <= 15 && kDirection === 'up') { matchesLevelCross = true; break; }
-                  }
-                }
-                if (!matchesLevelCross) return false;
-              }
-              
-              // Determine trend message from alert data
-              let trendMessage = '';
-              if (kValue !== null && dValue !== null) {
-                if (kValue < 15 && dValue < 15) {
-                  trendMessage = 'No Long';
-                } else if (kValue > 80) {
-                  trendMessage = 'No Short';
-                } else if (kDirection === 'up' && kValue > 20) {
-                  trendMessage = 'Try Long';
-                } else if (kDirection === 'down' && kValue < 80) {
-                  trendMessage = 'Try Short';
-                }
-              }
-              
-              // Check D1 value filter using slider range (excluded = outside range)
-              if (stochFilterD1Value.active) {
-                if (kValue === null || isNaN(kValue)) return false;
-                const inside = kValue >= stochFilterD1Value.min && kValue <= stochFilterD1Value.max;
-                if (stochFilterD1Value.excluded ? inside : !inside) return false;
-              }
-              
-              // Check D2 value filter using slider range (excluded = outside range)
-              if (stochFilterD2Value.active) {
-                if (dValue === null || isNaN(dValue)) return false;
-                const inside = dValue >= stochFilterD2Value.min && dValue <= stochFilterD2Value.max;
-                if (stochFilterD2Value.excluded ? inside : !inside) return false;
-              }
-              
-              // Check Diff filter (|D1 - D2|) - Absolute difference using slider range
-              if (stochFilterDiff.active) {
-                if (kValue === null || isNaN(kValue) || dValue === null || isNaN(dValue)) return false;
-                const absDiff = Math.abs(kValue - dValue);
-                if (absDiff < stochFilterDiff.min || absDiff > stochFilterDiff.max) return false;
-              }
-              
-              // Check HL/LH pattern filter
-              if (stochFilterD2Pattern.length > 0 && !stochFilterD2Pattern.includes(d2Pattern)) return false;
-              
-              // Check trend message filter (multiple selections)
-              if (stochFilterTrendMessage.length > 0 && !stochFilterTrendMessage.includes(trendMessage)) return false;
-              
+              if (tOvActive && !passesStochSectionFilter(alert.stochOverview, tOvF)) return false;
+              if (tDtActive && !passesStochSectionFilter(alert.stochDetail, tDtF)) return false;
               return true;
             });
           }
@@ -6940,34 +6685,17 @@ Use this to create a new preset filter button that applies these exact filter se
         function checkPresetMatches(alert) {
           if (!alert || !alert.symbol) return [];
           
-          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-          const d1Value = kValue;
-          const d2Value = dValue;
-          const d1Direction = kDirection;
-          const d2Direction = dDirection;
-          const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
+          const ov = alert.stochOverview;
+          const d1Value = ov && ov.k != null ? parseFloat(ov.k) : null;
+          const d1Direction = ov ? (ov.kDirection || 'flat') : 'flat';
+          const d2Direction = ov ? (ov.dDirection || 'flat') : 'flat';
           
           const matches = [];
           
-          // Check Down preset
-          if (d1Direction === 'down' && d2Direction === 'down') {
-            matches.push('down');
-          }
-          
-          // Check Up preset
-          if (d1Direction === 'up' && d2Direction === 'up') {
-            matches.push('up');
-          }
-          
-          // Check Ext. Bull preset: D1 up, D1 value 80-100
-          if (d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) {
-            matches.push('extBull');
-          }
-          
-          // Check Ext. Bear preset: D1 down, D1 value 0-30
-          if (d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) {
-            matches.push('extBear');
-          }
+          if (d1Direction === 'down' && d2Direction === 'down') matches.push('down');
+          if (d1Direction === 'up' && d2Direction === 'up') matches.push('up');
+          if (d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) matches.push('extBull');
+          if (d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) matches.push('extBear');
           
           return matches;
         }

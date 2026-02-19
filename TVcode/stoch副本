@@ -128,8 +128,8 @@ hline(10, "Base Band", color=color.new(#ffffff, 0))
 h1 = hline(20, "Lower Band", color=#787B86)
 fill(h0, h1, color=color.rgb(33, 150, 243, 90), title="Background")
 
-// ===== WEBHOOK ALERT (only when LH or HL happens) =====
-if barstate.isconfirmed and (kCrossOver or kCrossUnder) and d2Pattern != ""
+// ===== WEBHOOK ALERT (every bar close) =====
+if barstate.isconfirmed
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","
