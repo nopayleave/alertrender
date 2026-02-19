@@ -4,6 +4,9 @@ indicator(title="Stochastic", shorttitle="Stoch", format=format.price, precision
 // Timeframe: leave empty for chart timeframe
 stochTimeframe = input.timeframe("", title="Timeframe", group="Timeframe", tooltip="Leave empty to use chart timeframe")
 
+// Webhook: how dashboard should treat this alert (Overview = higher TF column, Detail = lower TF column)
+stochTypeForWebhook = input.string("Default", title="Stoch type for dashboard", group="Webhook", options=["Default", "Overview", "Detail"], tooltip="Overview = higher timeframe (Stoch Overview column). Detail = lower timeframe (Stoch Detail column). Default = main stoch only.")
+
 periodK = input.int(25, title="%K Length", minval=1)
 smoothK = input.int(7, title="%K Smoothing", minval=1)
 periodD = input.int(6, title="%D Smoothing", minval=1)
@@ -137,6 +140,10 @@ if barstate.isconfirmed and (kCrossOver or kCrossUnder) and d2Pattern != ""
     alertStr += "\"kDirection\":\"" + kDirection + "\","
     alertStr += "\"dDirection\":\"" + dDirection + "\","
     alertStr += "\"kCross\":\"" + kCross + "\","
+    if stochTypeForWebhook == "Overview"
+        alertStr += "\"stochType\":\"overview\","
+    else if stochTypeForWebhook == "Detail"
+        alertStr += "\"stochType\":\"detail\","
     alertStr += "\"d2Signal\":\"Solo\","
     alertStr += "\"d2Pattern\":\"" + d2Pattern + "\","
     alertStr += "\"d2PatternValue\":\"" + str.tostring(d2PatternValue) + "\""
