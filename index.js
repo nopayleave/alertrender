@@ -1279,11 +1279,41 @@ app.post('/webhook', (req, res) => {
     if (stochType === 'overview') {
       stochOverviewDataStorage[alert.symbol] = stochPayload
       console.log(`✅ Stoch Overview stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
-      // Don't create/update main alert; overview is merged into alerts when serving
+      // Ensure symbol has an alert row so it appears in the list (Overview/Detail merged on GET /alerts)
+      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+      if (existingIndex !== -1) {
+        alerts[existingIndex].receivedAt = Date.now()
+      } else {
+        alerts.unshift({
+          symbol: alert.symbol,
+          timeframe: alert.timeframe || null,
+          price: alert.price || null,
+          previousClose: alert.previousClose || null,
+          changeFromPrevDay: alert.changeFromPrevDay || null,
+          volume: alert.volume || null,
+          receivedAt: Date.now()
+        })
+        console.log(`✅ Created alert row for ${alert.symbol} (Stoch Overview)`)
+      }
     } else if (stochType === 'detail') {
       stochDetailDataStorage[alert.symbol] = stochPayload
       console.log(`✅ Stoch Detail stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
-      // Don't create/update main alert; detail is merged into alerts when serving
+      // Ensure symbol has an alert row so it appears in the list (Overview/Detail merged on GET /alerts)
+      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+      if (existingIndex !== -1) {
+        alerts[existingIndex].receivedAt = Date.now()
+      } else {
+        alerts.unshift({
+          symbol: alert.symbol,
+          timeframe: alert.timeframe || null,
+          price: alert.price || null,
+          previousClose: alert.previousClose || null,
+          changeFromPrevDay: alert.changeFromPrevDay || null,
+          volume: alert.volume || null,
+          receivedAt: Date.now()
+        })
+        console.log(`✅ Created alert row for ${alert.symbol} (Stoch Detail)`)
+      }
     } else {
       // Legacy Solo Stoch (no stochType): store and update/create alert
       soloStochDataStorage[alert.symbol] = stochPayload
