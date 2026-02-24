@@ -635,6 +635,7 @@ app.post('/webhook', (req, res) => {
     alert.d2Signal !== 'Dual'
   )
   const isDualStochAlert = alert.d2Signal === 'Dual'
+  const isTriStochAlert = alert.d2Signal === 'Tri'
   
   // Log alert type detection for debugging
   console.log('📊 Alert type detected:', {
@@ -647,6 +648,7 @@ app.post('/webhook', (req, res) => {
     isCciAlert,
     isSoloStochAlert,
     isDualStochAlert,
+    isTriStochAlert,
     symbol: alert.symbol
   })
   
@@ -1256,6 +1258,61 @@ app.post('/webhook', (req, res) => {
       alerts.unshift(newAlert)
       console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
+  } else if (isTriStochAlert) {
+    // Tri Stoch: single webhook carries k1/k2/k3 values + ov/dt mapped data
+    const triStoch = {
+      k1: alert.k1 || null,
+      k2: alert.k2 || null,
+      k3: alert.k3 || null,
+      ovK: alert.ovK || null,
+      ovD: alert.ovD || null,
+      ovKDirection: alert.ovKDirection || null,
+      ovDDirection: alert.ovDDirection || null,
+      ovD2Pattern: alert.ovD2Pattern || '',
+      ovD2PatternValue: alert.ovD2PatternValue || null,
+      dtK: alert.dtK || null,
+      dtD: alert.dtD || null,
+      dtKDirection: alert.dtKDirection || null,
+      dtDDirection: alert.dtDDirection || null,
+      dtD2Pattern: alert.dtD2Pattern || '',
+      dtD2PatternValue: alert.dtD2PatternValue || null,
+      timestamp: Date.now()
+    }
+    stochOverviewDataStorage[alert.symbol] = {
+      k: alert.ovK || null, d: alert.ovD || null, d2: alert.ovD || null,
+      kDirection: alert.ovKDirection || null, dDirection: alert.ovDDirection || null, d2Direction: alert.ovDDirection || null,
+      d2Pattern: alert.ovD2Pattern || '', d2PatternValue: alert.ovD2PatternValue || null,
+      timestamp: Date.now()
+    }
+    stochDetailDataStorage[alert.symbol] = {
+      k: alert.dtK || null, d: alert.dtD || null, d2: alert.dtD || null,
+      kDirection: alert.dtKDirection || null, dDirection: alert.dtDDirection || null, d2Direction: alert.dtDDirection || null,
+      d2Pattern: alert.dtD2Pattern || '', d2PatternValue: alert.dtD2PatternValue || null,
+      timestamp: Date.now()
+    }
+    console.log(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
+
+    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
+    if (existingIndex !== -1) {
+      alerts[existingIndex].triStoch = triStoch
+      if (alert.price) alerts[existingIndex].price = alert.price
+      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      alerts[existingIndex].receivedAt = Date.now()
+    } else {
+      alerts.unshift({
+        symbol: alert.symbol,
+        timeframe: alert.timeframe || null,
+        price: alert.price || null,
+        previousClose: alert.previousClose || null,
+        changeFromPrevDay: alert.changeFromPrevDay || null,
+        volume: alert.volume || null,
+        triStoch,
+        receivedAt: Date.now()
+      })
+      console.log(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
+    }
   } else if (isSoloStochAlert) {
     // Stoch Overview / Detail: same stoch alert, different timeframe (payload.stochType: 'overview' | 'detail')
     const stochType = alert.stochType === 'overview' || alert.stochType === 'detail' ? alert.stochType : null
@@ -1861,6 +1918,7 @@ app.post('/webhook', (req, res) => {
                isOctoStochAlert ? 'octo_stoch' :
                isMacdCrossingAlert ? 'macd_crossing' :
                isCciAlert ? 'cci' :
+               isTriStochAlert ? 'tri_stoch' :
                isSoloStochAlert ? 'solo_stoch' : 
                isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
@@ -1890,47 +1948,32 @@ app.get('/alerts', (req, res) => {
   const STOCH_STORAGE_MAX_AGE_MINUTES = 60
   const now = Date.now()
   
-  // Inject sector data and merge Stoch Overview/Detail from storage
+  // Inject sector data and merge triStoch from storage
   result.forEach(alert => {
     if (!alert.sector && sectorData[alert.symbol]) {
       alert.sector = sectorData[alert.symbol]
     }
-    // Merge Stoch Overview (same stoch, higher TF) if recent
-    const overviewInfo = stochOverviewDataStorage[alert.symbol]
-    if (overviewInfo && (now - overviewInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES) {
-      alert.stochOverview = {
-        k: overviewInfo.k,
-        d: overviewInfo.d,
-        kDirection: overviewInfo.kDirection,
-        dDirection: overviewInfo.d2Direction,
-        kCross: overviewInfo.kCross || 'none',
-        d2Pattern: overviewInfo.d2Pattern,
-        d2PatternValue: overviewInfo.d2PatternValue
-      }
-    }
-    // Merge Stoch Detail (same stoch, lower TF) if recent
-    const detailInfo = stochDetailDataStorage[alert.symbol]
-    if (detailInfo && (now - detailInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES) {
-      alert.stochDetail = {
-        k: detailInfo.k,
-        d: detailInfo.d,
-        kDirection: detailInfo.kDirection,
-        dDirection: detailInfo.d2Direction,
-        kCross: detailInfo.kCross || 'none',
-        d2Pattern: detailInfo.d2Pattern,
-        d2PatternValue: detailInfo.d2PatternValue
-      }
-    }
-    // When no Overview from storage but alert has main stoch (Default webhook), show it in Stoch Overview
-    if (!alert.stochOverview && (alert.k != null || alert.d != null || alert.soloStochD2 != null)) {
-      alert.stochOverview = {
-        k: alert.k ?? alert.d,
-        d: alert.d ?? alert.soloStochD2 ?? alert.d2,
-        kDirection: alert.kDirection ?? 'flat',
-        dDirection: alert.dDirection ?? alert.soloStochD2Direction ?? alert.d2Direction ?? 'flat',
-        kCross: alert.kCross || 'none',
-        d2Pattern: alert.d2Pattern ?? alert.soloStochD2Pattern ?? '',
-        d2PatternValue: alert.d2PatternValue ?? alert.soloStochD2PatternValue
+    // Reconstruct triStoch from stoch data storages if not already present
+    if (!alert.triStoch) {
+      const ovInfo = stochOverviewDataStorage[alert.symbol]
+      const dtInfo = stochDetailDataStorage[alert.symbol]
+      const ovRecent = ovInfo && (now - ovInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES
+      const dtRecent = dtInfo && (now - dtInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES
+      if (ovRecent || dtRecent) {
+        alert.triStoch = {
+          k1: ovRecent && ovInfo.k1 ? ovInfo.k1 : null,
+          k2: dtRecent && dtInfo.k2 ? dtInfo.k2 : null,
+          k3: ovRecent && ovInfo.k3 ? ovInfo.k3 : (dtRecent && dtInfo.k3 ? dtInfo.k3 : null),
+          ovK: ovRecent ? ovInfo.k : null,
+          ovD: ovRecent ? ovInfo.d : null,
+          ovKDirection: ovRecent ? ovInfo.kDirection : null,
+          ovDDirection: ovRecent ? (ovInfo.d2Direction || ovInfo.dDirection) : null,
+          dtK: dtRecent ? dtInfo.k : null,
+          dtD: dtRecent ? dtInfo.d : null,
+          dtKDirection: dtRecent ? dtInfo.kDirection : null,
+          dtDDirection: dtRecent ? (dtInfo.d2Direction || dtInfo.dDirection) : null,
+          timestamp: Math.max(ovRecent ? ovInfo.timestamp : 0, dtRecent ? dtInfo.timestamp : 0)
+        }
       }
     }
   })
@@ -3740,207 +3783,37 @@ app.get('/', (req, res) => {
                   </button>
                 </div>
                 
-                <!-- Stoch Overview Filters -->
+                <!-- Stoch Direction Filter -->
                 <div class="mb-4 filter-section">
                   <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochOverviewFilters', this)">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochDirFilters', this)">
                       <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
-                      Stoch Overview
+                      Stoch
                     </h3>
-                    <button onclick="event.stopPropagation(); clearStochSectionFilters('ov')" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
+                    <button onclick="event.stopPropagation(); clearStochDirFilters()" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
                   </div>
-                  <div id="stochOverviewFilters" class="filter-content">
+                  <div id="stochDirFilters" class="filter-content">
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K1 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d1Direction" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('ov_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d1Direction" data-value="down">↓</button>
+                        <button onclick="toggleFilterChip('stoch_k1Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k1Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k1Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k1Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                     <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="ovD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                        <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                            <input type="checkbox" id="ovD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD1Value')">
-                            <span class="text-xs text-muted-foreground">Excluded</span>
-                          </label>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="ovD1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('ovD1Value')">
-                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                          </label>
-                        </div>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovD1ValueSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K2 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_d2Direction" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('ov_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_d2Direction" data-value="down">↓</button>
+                        <button onclick="toggleFilterChip('stoch_k2Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k2Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k2Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k2Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                     <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="ovD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                        <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                            <input type="checkbox" id="ovD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('ovD2Value')">
-                            <span class="text-xs text-muted-foreground">Excluded</span>
-                          </label>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="ovD2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('ovD2Value')">
-                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                          </label>
-                        </div>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovD2ValueSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">HL/LH Pattern</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K3 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_d2Pattern', 'Higher Low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="ov_d2Pattern" data-value="Higher Low">HL</button>
-                        <button onclick="toggleFilterChip('ov_d2Pattern', 'Lower High', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_d2Pattern" data-value="Lower High">LH</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_kCross" data-value="cross_over">C↑ Crossover</button>
-                        <button onclick="toggleFilterChip('ov_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_kCross" data-value="cross_under">C↓ Crossunder</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="ov_kLevelCross" data-value="c90_up">c90↑</button>
-                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_kLevelCross" data-value="c90_down">c90↓</button>
-                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="ov_kLevelCross" data-value="c10_down">c10↓</button>
-                        <button onclick="toggleFilterChip('ov_kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="ov_kLevelCross" data-value="c10_up">c10↑</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K-D Diff <span class="text-foreground/60">|</span> <span id="ovDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="ovDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="ovDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('ovDiff')">
-                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="ovDiffSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('ov_trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="ov_trendMessage" data-value="No Long">No Long</button>
-                        <button onclick="toggleFilterChip('ov_trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="ov_trendMessage" data-value="No Short">No Short</button>
-                        <button onclick="toggleFilterChip('ov_trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="ov_trendMessage" data-value="Try Long">Try Long</button>
-                        <button onclick="toggleFilterChip('ov_trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="ov_trendMessage" data-value="Try Short">Try Short</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Stoch Detail Filters -->
-                <div class="mb-4 filter-section">
-                  <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochDetailFilters', this)">
-                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                      Stoch Detail
-                    </h3>
-                    <button onclick="event.stopPropagation(); clearStochSectionFilters('dt')" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
-                  </div>
-                  <div id="stochDetailFilters" class="filter-content">
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Direction</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_d1Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d1Direction" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('dt_d1Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d1Direction" data-value="down">↓</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K Value <span class="text-foreground/60">|</span> <span id="dtD1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                        <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                            <input type="checkbox" id="dtD1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD1Value')">
-                            <span class="text-xs text-muted-foreground">Excluded</span>
-                          </label>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="dtD1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('dtD1Value')">
-                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                          </label>
-                        </div>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtD1ValueSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">D Direction</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_d2Direction', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_d2Direction" data-value="up">↑</button>
-                        <button onclick="toggleFilterChip('dt_d2Direction', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_d2Direction" data-value="down">↓</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">D Value <span class="text-foreground/60">|</span> <span id="dtD2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtD2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
-                        <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range instead of include">
-                            <input type="checkbox" id="dtD2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('dtD2Value')">
-                            <span class="text-xs text-muted-foreground">Excluded</span>
-                          </label>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="dtD2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('dtD2Value')">
-                            <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                          </label>
-                        </div>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtD2ValueSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">HL/LH Pattern</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_d2Pattern', 'Higher Low', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="dt_d2Pattern" data-value="Higher Low">HL</button>
-                        <button onclick="toggleFilterChip('dt_d2Pattern', 'Lower High', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_d2Pattern" data-value="Lower High">LH</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K/D Crossing</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_kCross', 'cross_over', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_kCross" data-value="cross_over">C↑ Crossover</button>
-                        <button onclick="toggleFilterChip('dt_kCross', 'cross_under', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_kCross" data-value="cross_under">C↓ Crossunder</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K Level Crossing</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="dt_kLevelCross" data-value="c90_up">c90↑</button>
-                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c90_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_kLevelCross" data-value="c90_down">c90↓</button>
-                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c10_down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="dt_kLevelCross" data-value="c10_down">c10↓</button>
-                        <button onclick="toggleFilterChip('dt_kLevelCross', 'c10_up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="dt_kLevelCross" data-value="c10_up">c10↑</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K-D Diff <span class="text-foreground/60">|</span> <span id="dtDiffMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="dtDiffMaxValue" class="text-blue-400 font-semibold">75</span></label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" id="dtDiffToggle" class="sr-only peer" onchange="toggleSliderFilter('dtDiff')">
-                          <div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-                        </label>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="dtDiffSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Trend</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('dt_trendMessage', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="dt_trendMessage" data-value="No Long">No Long</button>
-                        <button onclick="toggleFilterChip('dt_trendMessage', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="dt_trendMessage" data-value="No Short">No Short</button>
-                        <button onclick="toggleFilterChip('dt_trendMessage', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="dt_trendMessage" data-value="Try Long">Try Long</button>
-                        <button onclick="toggleFilterChip('dt_trendMessage', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="dt_trendMessage" data-value="Try Short">Try Short</button>
+                        <button onclick="toggleFilterChip('stoch_k3Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k3Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k3Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k3Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                   </div>
@@ -4129,27 +4002,10 @@ app.get('/', (req, res) => {
         // Search state
         let searchTerm = '';
         
-        // Stoch Overview Filter state
-        let ovD1Direction = [];
-        let ovD1Value = { min: 0, max: 100, active: false, excluded: false };
-        let ovD2Direction = [];
-        let ovD2Value = { min: 0, max: 100, active: false, excluded: false };
-        let ovDiff = { min: 0, max: 75, active: false };
-        let ovKCross = [];
-        let ovKLevelCross = [];
-        let ovD2Pattern = [];
-        let ovTrendMessage = [];
-
-        // Stoch Detail Filter state
-        let dtD1Direction = [];
-        let dtD1Value = { min: 0, max: 100, active: false, excluded: false };
-        let dtD2Direction = [];
-        let dtD2Value = { min: 0, max: 100, active: false, excluded: false };
-        let dtDiff = { min: 0, max: 75, active: false };
-        let dtKCross = [];
-        let dtKLevelCross = [];
-        let dtD2Pattern = [];
-        let dtTrendMessage = [];
+        // Stoch K direction filter state
+        let stochK1Dir = [];
+        let stochK2Dir = [];
+        let stochK3Dir = [];
 
         let stochFilterPercentChange = [];
         
@@ -4189,7 +4045,7 @@ app.get('/', (req, res) => {
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'stochOverview', 'stochDetail', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'stoch', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove legacy columns (star, orb) and any not in columnDefs
         columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
@@ -4199,8 +4055,7 @@ app.get('/', (req, res) => {
           symbol: 80,
           price: 100,
           highLevelTrend: 64,
-          stochOverview: 220,
-          stochDetail: 220,
+          stoch: 200,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4223,24 +4078,18 @@ app.get('/', (req, res) => {
           columnOrder = defaultColumnOrder;
           localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
         }
-        if (!columnOrder.includes('stochOverview')) {
+        columnOrder = columnOrder.filter(colId => colId !== 'd2' && colId !== 'stochOverview' && colId !== 'stochDetail');
+        if (!columnOrder.includes('stoch')) {
           const priceIdx = columnOrder.indexOf('price');
-          if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'stochOverview');
-          else columnOrder.push('stochOverview');
+          if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'stoch');
+          else columnOrder.push('stoch');
         }
-        if (!columnOrder.includes('stochDetail')) {
-          const ovIdx = columnOrder.indexOf('stochOverview');
-          if (ovIdx !== -1) columnOrder.splice(ovIdx + 1, 0, 'stochDetail');
-          else columnOrder.push('stochDetail');
-        }
-        columnOrder = columnOrder.filter(colId => colId !== 'd2');
         
         // Column definitions
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
-          stochOverview: { id: 'stochOverview', title: 'Stoch Overview', sortable: false, width: 'w-[220px]', tooltip: 'Same stoch alert, higher timeframe' },
-          stochDetail: { id: 'stochDetail', title: 'Stoch Detail', sortable: false, width: 'w-[220px]', tooltip: 'Same stoch alert, lower timeframe' },
+          stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[200px]', tooltip: 'Tri K direction: K1 | K2 | K3' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
@@ -4322,67 +4171,31 @@ app.get('/', (req, res) => {
           return { kValue, dValue, kDirection, dDirection };
         }
 
-        function hasStochSectionFilters(f) {
-          return f.d1Dir.length > 0 || f.d1Val.active || f.d2Dir.length > 0 || f.d2Val.active || f.diff.active || f.kCross.length > 0 || f.kLevelCross.length > 0 || f.d2Pattern.length > 0 || f.trendMsg.length > 0;
+        function hasStochDirFilters() {
+          return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0;
         }
 
-        function passesStochSectionFilter(dataObj, f) {
-          if (!dataObj) return false;
-          const kV = dataObj.k != null ? parseFloat(dataObj.k) : null;
-          const dV = dataObj.d != null ? parseFloat(dataObj.d) : null;
-          const kDir = dataObj.kDirection || 'flat';
-          const dDir = dataObj.dDirection || 'flat';
-          if (f.d1Dir.length > 0 && !f.d1Dir.includes(kDir)) return false;
-          if (f.d2Dir.length > 0 && !f.d2Dir.includes(dDir)) return false;
-          if (f.kCross.length > 0) {
-            const kc = dataObj.kCross || 'none';
-            if (!f.kCross.includes(kc)) return false;
+        function passesStochDirFilter(alert) {
+          const t = alert.triStoch;
+          if (stochK1Dir.length > 0) {
+            const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
+            if (!stochK1Dir.includes(dir)) return false;
           }
-          if (f.kLevelCross.length > 0) {
-            let m = false;
-            if (kV !== null && !isNaN(kV)) {
-              for (const lc of f.kLevelCross) {
-                if (lc === 'c90_up' && kV >= 90 && kDir === 'up') { m = true; break; }
-                if (lc === 'c90_down' && kV > 85 && kV < 90 && kDir === 'down') { m = true; break; }
-                if (lc === 'c10_down' && kV <= 10 && kDir === 'down') { m = true; break; }
-                if (lc === 'c10_up' && kV > 10 && kV <= 15 && kDir === 'up') { m = true; break; }
-              }
-            }
-            if (!m) return false;
+          if (stochK2Dir.length > 0) {
+            const dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
+            if (!stochK2Dir.includes(dir)) return false;
           }
-          if (f.d1Val.active) {
-            if (kV === null || isNaN(kV)) return false;
-            const inside = kV >= f.d1Val.min && kV <= f.d1Val.max;
-            if (f.d1Val.excluded ? inside : !inside) return false;
+          if (stochK3Dir.length > 0) {
+            if (!t || !t.k3) return false;
+            return true;
           }
-          if (f.d2Val.active) {
-            if (dV === null || isNaN(dV)) return false;
-            const inside = dV >= f.d2Val.min && dV <= f.d2Val.max;
-            if (f.d2Val.excluded ? inside : !inside) return false;
-          }
-          if (f.diff.active) {
-            if (kV === null || isNaN(kV) || dV === null || isNaN(dV)) return false;
-            const absDiff = Math.abs(kV - dV);
-            if (absDiff < f.diff.min || absDiff > f.diff.max) return false;
-          }
-          const pat = dataObj.d2Pattern || '';
-          if (f.d2Pattern.length > 0 && !f.d2Pattern.includes(pat)) return false;
-          let tm = '';
-          if (kV !== null && dV !== null) {
-            if (kV < 15 && dV < 15) tm = 'No Long';
-            else if (kV > 80) tm = 'No Short';
-            else if (kDir === 'up' && kV > 20) tm = 'Try Long';
-            else if (kDir === 'down' && kV < 80) tm = 'Try Short';
-          }
-          if (f.trendMsg.length > 0 && !f.trendMsg.includes(tm)) return false;
           return true;
         }
 
-        function getOvFilters() {
-          return { d1Dir: ovD1Direction, d1Val: ovD1Value, d2Dir: ovD2Direction, d2Val: ovD2Value, diff: ovDiff, kCross: ovKCross, kLevelCross: ovKLevelCross, d2Pattern: ovD2Pattern, trendMsg: ovTrendMessage };
-        }
-        function getDtFilters() {
-          return { d1Dir: dtD1Direction, d1Val: dtD1Value, d2Dir: dtD2Direction, d2Val: dtD2Value, diff: dtDiff, kCross: dtKCross, kLevelCross: dtKLevelCross, d2Pattern: dtD2Pattern, trendMsg: dtTrendMessage };
+        function clearStochDirFilters() {
+          document.querySelectorAll('[data-filter^="stoch_k"]').forEach(c => c.classList.remove('active'));
+          stochK1Dir = []; stochK2Dir = []; stochK3Dir = [];
+          renderTable();
         }
         
 
@@ -4463,12 +4276,6 @@ app.get('/', (req, res) => {
         }
 
         function initializeSliders() {
-          createValueSlider('ovD1Value', 'ovD1ValueSlider', 'ovD1ValueMinValue', 'ovD1ValueMaxValue', function() { updateGenericValueFilter('ovD1Value', ovD1Value); });
-          createValueSlider('ovD2Value', 'ovD2ValueSlider', 'ovD2ValueMinValue', 'ovD2ValueMaxValue', function() { updateGenericValueFilter('ovD2Value', ovD2Value); });
-          createDiffSlider('ovDiff', 'ovDiffSlider', 'ovDiffMinValue', 'ovDiffMaxValue', function() { updateGenericDiffFilter('ovDiff', ovDiff); });
-          createValueSlider('dtD1Value', 'dtD1ValueSlider', 'dtD1ValueMinValue', 'dtD1ValueMaxValue', function() { updateGenericValueFilter('dtD1Value', dtD1Value); });
-          createValueSlider('dtD2Value', 'dtD2ValueSlider', 'dtD2ValueMinValue', 'dtD2ValueMaxValue', function() { updateGenericValueFilter('dtD2Value', dtD2Value); });
-          createDiffSlider('dtDiff', 'dtDiffSlider', 'dtDiffMinValue', 'dtDiffMaxValue', function() { updateGenericDiffFilter('dtDiff', dtDiff); });
         }
 
         // Initialize sort indicators on page load
@@ -4544,14 +4351,10 @@ app.get('/', (req, res) => {
             );
           }
           
-          // Apply Stoch Overview + Detail Filters
-          const mOvF = getOvFilters(), mDtF = getDtFilters();
-          const mOvActive = hasStochSectionFilters(mOvF), mDtActive = hasStochSectionFilters(mDtF);
-          if (mOvActive || mDtActive) {
+          // Apply Stoch K direction filters
+          if (hasStochDirFilters()) {
             filteredData = filteredData.filter(alert => {
-              if (mOvActive && !passesStochSectionFilter(alert.stochOverview, mOvF)) return false;
-              if (mDtActive && !passesStochSectionFilter(alert.stochDetail, mDtF)) return false;
-              return true;
+              return passesStochDirFilter(alert);
             });
           }
           
@@ -5135,17 +4938,6 @@ app.get('/', (req, res) => {
         }
         
         function toggleSliderFilter(sliderType) {
-          const toggle = document.getElementById(sliderType + 'Toggle');
-          const slider = sliders[sliderType];
-          if (toggle && slider) {
-            if (sliderType.endsWith('Diff')) {
-              const stateObj = sliderType.startsWith('ov') ? ovDiff : dtDiff;
-              updateGenericDiffFilter(sliderType, stateObj);
-            } else {
-              const map = { ovD1Value: ovD1Value, ovD2Value: ovD2Value, dtD1Value: dtD1Value, dtD2Value: dtD2Value };
-              if (map[sliderType]) updateGenericValueFilter(sliderType, map[sliderType]);
-            }
-          }
         }
 
         function updateGenericValueFilter(key, stateObj) {
@@ -5179,21 +4971,9 @@ app.get('/', (req, res) => {
         }
 
         function updateFilterArrays() {
-          // Overview filters
-          ovD1Direction = Array.from(document.querySelectorAll('[data-filter="ov_d1Direction"].active')).map(c => c.dataset.value);
-          ovD2Direction = Array.from(document.querySelectorAll('[data-filter="ov_d2Direction"].active')).map(c => c.dataset.value);
-          ovKCross = Array.from(document.querySelectorAll('[data-filter="ov_kCross"].active')).map(c => c.dataset.value);
-          ovKLevelCross = Array.from(document.querySelectorAll('[data-filter="ov_kLevelCross"].active')).map(c => c.dataset.value);
-          ovD2Pattern = Array.from(document.querySelectorAll('[data-filter="ov_d2Pattern"].active')).map(c => c.dataset.value);
-          ovTrendMessage = Array.from(document.querySelectorAll('[data-filter="ov_trendMessage"].active')).map(c => c.dataset.value);
-          // Detail filters
-          dtD1Direction = Array.from(document.querySelectorAll('[data-filter="dt_d1Direction"].active')).map(c => c.dataset.value);
-          dtD2Direction = Array.from(document.querySelectorAll('[data-filter="dt_d2Direction"].active')).map(c => c.dataset.value);
-          dtKCross = Array.from(document.querySelectorAll('[data-filter="dt_kCross"].active')).map(c => c.dataset.value);
-          dtKLevelCross = Array.from(document.querySelectorAll('[data-filter="dt_kLevelCross"].active')).map(c => c.dataset.value);
-          dtD2Pattern = Array.from(document.querySelectorAll('[data-filter="dt_d2Pattern"].active')).map(c => c.dataset.value);
-          dtTrendMessage = Array.from(document.querySelectorAll('[data-filter="dt_trendMessage"].active')).map(c => c.dataset.value);
-          // Other
+          stochK1Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k1Dir"].active')).map(c => c.dataset.value);
+          stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
+          stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
         }
@@ -5207,47 +4987,8 @@ app.get('/', (req, res) => {
           renderTable();
         }
         
-        function clearStochSectionFilters(prefix) {
-          const chipSelectors = ['d1Direction', 'd2Direction', 'd2Pattern', 'kCross', 'kLevelCross', 'trendMessage']
-            .map(f => '[data-filter="' + prefix + '_' + f + '"]').join(', ');
-          document.querySelectorAll(chipSelectors).forEach(chip => {
-            chip.classList.remove('active');
-            const pg = chip.closest('.filter-group');
-            if (pg) pg.classList.remove('has-active');
-          });
-          // Reset value sliders
-          const resetValueSlider = (key) => {
-            const t = document.getElementById(key + 'Toggle');
-            const e = document.getElementById(key + 'Excluded');
-            if (t) t.checked = false;
-            if (e) e.checked = false;
-            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
-          };
-          const resetDiffSlider = (key) => {
-            const t = document.getElementById(key + 'Toggle');
-            if (t) t.checked = false;
-            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 75]);
-          };
-          resetValueSlider(prefix + 'D1Value');
-          resetValueSlider(prefix + 'D2Value');
-          resetDiffSlider(prefix + 'Diff');
-          if (prefix === 'ov') {
-            ovD1Direction = []; ovD1Value = { min: 0, max: 100, active: false, excluded: false };
-            ovD2Direction = []; ovD2Value = { min: 0, max: 100, active: false, excluded: false };
-            ovDiff = { min: 0, max: 75, active: false };
-            ovKCross = []; ovKLevelCross = []; ovD2Pattern = []; ovTrendMessage = [];
-          } else {
-            dtD1Direction = []; dtD1Value = { min: 0, max: 100, active: false, excluded: false };
-            dtD2Direction = []; dtD2Value = { min: 0, max: 100, active: false, excluded: false };
-            dtDiff = { min: 0, max: 75, active: false };
-            dtKCross = []; dtKLevelCross = []; dtD2Pattern = []; dtTrendMessage = [];
-          }
-          renderTable();
-        }
-
         function clearStochFilters() {
-          clearStochSectionFilters('ov');
-          clearStochSectionFilters('dt');
+          clearStochDirFilters();
         }
         
         // Clear Other filters
@@ -5311,31 +5052,15 @@ app.get('/', (req, res) => {
           }
 
           if (preset === 'down') {
-            activateChip('ov_d1Direction', 'down');
-            activateChip('ov_d2Direction', 'down');
+            activateChip('stoch_k1Dir', 'down');
+            activateChip('stoch_k2Dir', 'down');
           } else if (preset === 'up') {
-            activateChip('ov_d1Direction', 'up');
-            activateChip('ov_d2Direction', 'up');
+            activateChip('stoch_k1Dir', 'up');
+            activateChip('stoch_k2Dir', 'up');
           } else if (preset === 'extBull') {
-            activateChip('ov_d1Direction', 'up');
-            const d1Toggle = document.getElementById('ovD1ValueToggle');
-            const d1Excluded = document.getElementById('ovD1ValueExcluded');
-            if (d1Toggle && sliders.ovD1Value) {
-              d1Toggle.checked = true;
-              if (d1Excluded) d1Excluded.checked = false;
-              sliders.ovD1Value.noUiSlider.set([80, 100]);
-              ovD1Value.min = 80; ovD1Value.max = 100; ovD1Value.active = true; ovD1Value.excluded = false;
-            }
+            activateChip('stoch_k1Dir', 'up');
           } else if (preset === 'extBear') {
-            activateChip('ov_d1Direction', 'down');
-            const d1Toggle = document.getElementById('ovD1ValueToggle');
-            const d1Excluded = document.getElementById('ovD1ValueExcluded');
-            if (d1Toggle && sliders.ovD1Value) {
-              d1Toggle.checked = true;
-              if (d1Excluded) d1Excluded.checked = false;
-              sliders.ovD1Value.noUiSlider.set([0, 30]);
-              ovD1Value.min = 0; ovD1Value.max = 30; ovD1Value.active = true; ovD1Value.excluded = false;
-            }
+            activateChip('stoch_k1Dir', 'down');
           }
           
           // Update filter arrays from chip states
@@ -5382,29 +5107,12 @@ app.get('/', (req, res) => {
           const settings = {
             name: presetName,
             filters: {
-              // Stoch Filters
-              overview: {
-                d1Direction: ovD1Direction,
-                d1Value: ovD1Value.active ? { min: ovD1Value.min, max: ovD1Value.max, excluded: ovD1Value.excluded } : null,
-                d2Direction: ovD2Direction,
-                d2Value: ovD2Value.active ? { min: ovD2Value.min, max: ovD2Value.max, excluded: ovD2Value.excluded } : null,
-                diff: ovDiff.active ? { min: ovDiff.min, max: ovDiff.max } : null,
-                d2Pattern: ovD2Pattern.length > 0 ? ovD2Pattern : null,
-                trendMessage: ovTrendMessage,
-                kCross: ovKCross, kLevelCross: ovKLevelCross
-              },
-              detail: {
-                d1Direction: dtD1Direction,
-                d1Value: dtD1Value.active ? { min: dtD1Value.min, max: dtD1Value.max, excluded: dtD1Value.excluded } : null,
-                d2Direction: dtD2Direction,
-                d2Value: dtD2Value.active ? { min: dtD2Value.min, max: dtD2Value.max, excluded: dtD2Value.excluded } : null,
-                diff: dtDiff.active ? { min: dtDiff.min, max: dtDiff.max } : null,
-                d2Pattern: dtD2Pattern.length > 0 ? dtD2Pattern : null,
-                trendMessage: dtTrendMessage,
-                kCross: dtKCross, kLevelCross: dtKLevelCross
+              stoch: {
+                k1Dir: stochK1Dir,
+                k2Dir: stochK2Dir,
+                k3Dir: stochK3Dir
               },
               percentChange: stochFilterPercentChange,
-              // Search term
               search: searchTerm || null
             }
           };
@@ -5452,16 +5160,15 @@ Use this to create a new preset filter button that applies these exact filter se
           let extBearCount = 0;
 
           data.forEach(alert => {
-            const ov = alert.stochOverview;
-            const d1Value = ov && ov.k != null ? parseFloat(ov.k) : null;
-            const d2Value = ov && ov.d != null ? parseFloat(ov.d) : null;
-            const d1Direction = ov ? (ov.kDirection || 'flat') : 'flat';
-            const d2Direction = ov ? (ov.dDirection || 'flat') : 'flat';
+            const t = alert.triStoch;
+            const k1Dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
+            const k2Dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
+            const k1Val = t && t.ovK != null ? parseFloat(t.ovK) : null;
             
-            let matchesDown = d1Direction === 'down' && d2Direction === 'down';
-            let matchesUp = d1Direction === 'up' && d2Direction === 'up';
-            let matchesExtBull = d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100;
-            let matchesExtBear = d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30;
+            let matchesDown = k1Dir === 'down' && k2Dir === 'down';
+            let matchesUp = k1Dir === 'up' && k2Dir === 'up';
+            let matchesExtBull = k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100;
+            let matchesExtBear = k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30;
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
@@ -5763,15 +5470,9 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
           
-          // Apply Stoch Overview + Detail Filters (this affects filteredData but NOT dataForPresetCounts)
-          const tOvF = getOvFilters(), tDtF = getDtFilters();
-          const tOvActive = hasStochSectionFilters(tOvF), tDtActive = hasStochSectionFilters(tDtF);
-          if (tOvActive || tDtActive) {
-            filteredData = filteredData.filter(alert => {
-              if (tOvActive && !passesStochSectionFilter(alert.stochOverview, tOvF)) return false;
-              if (tDtActive && !passesStochSectionFilter(alert.stochDetail, tDtF)) return false;
-              return true;
-            });
+          // Apply Stoch K direction filters
+          if (hasStochDirFilters()) {
+            filteredData = filteredData.filter(alert => passesStochDirFilter(alert));
           }
           // Note: dataForPresetCounts is already set correctly above (after search and ORB filters, before Stoch filters)
           // Do NOT overwrite it here, as filteredData now has Stoch filters applied
@@ -6614,57 +6315,18 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`,
-              stochOverview: (() => {
-                const o = alert.stochOverview;
-                if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochOverview') + '">-</td>';
-                const kNum = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k) : null;
-                const dNum = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d) : null;
-                const kDir = o.kDirection || 'flat';
-                const dDir = o.dDirection || 'flat';
-                const kArrow = kDir === 'up' ? '↑' : kDir === 'down' ? '↓' : '→';
-                const dArrow = dDir === 'up' ? '↑' : dDir === 'down' ? '↓' : '→';
-                const kClass = kNum !== null ? (kNum > 80 || kNum < 20 ? 'text-white font-bold' : kDir === 'up' ? 'text-green-400 font-semibold' : kDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
-                const dClass = dNum !== null ? (dNum > 80 || dNum < 20 ? 'text-white font-bold' : dDir === 'up' ? 'text-green-400 font-semibold' : dDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
-                let patternPart = '';
-                if (o.d2Pattern === 'Higher Low') patternPart = '<span class="text-xs text-cyan-400 font-semibold">HL</span>';
-                else if (o.d2Pattern === 'Lower High') patternPart = '<span class="text-xs text-orange-400 font-semibold">LH</span>';
-                let trendPart = '';
-                if (kNum !== null && dNum !== null) {
-                  if (kNum < 15 && dNum < 15) trendPart = '<span class="text-xs text-red-500 font-bold">No Long</span>';
-                  else if (kNum > 80) trendPart = '<span class="text-xs text-green-500 font-bold">No Short</span>';
-                  else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
-                  else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
+              stoch: (() => {
+                const t = alert.triStoch;
+                if (!t) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stoch') + '">-</td>';
+                function kCell(label, kVal, kDir) {
+                  const v = kVal != null && !isNaN(parseFloat(kVal)) ? parseFloat(kVal) : null;
+                  const dir = kDir || 'flat';
+                  const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–';
+                  const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-blue-400' : 'text-muted-foreground') : 'text-muted-foreground';
+                  return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + (v !== null ? v.toFixed(1) : '-') + ' ' + dir + '">' + label + ' ' + arrow + '</span>';
                 }
-                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + dArrow + '</span></div>'];
-                if (patternPart) parts.push(patternPart);
-                if (trendPart) parts.push(trendPart);
-                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochOverview') + '" title="Stoch Overview (higher TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
-              })(),
-              stochDetail: (() => {
-                const o = alert.stochDetail;
-                if (!o || (o.k == null && o.d == null)) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochDetail') + '">-</td>';
-                const kNum = o.k != null && !isNaN(parseFloat(o.k)) ? parseFloat(o.k) : null;
-                const dNum = o.d != null && !isNaN(parseFloat(o.d)) ? parseFloat(o.d) : null;
-                const kDir = o.kDirection || 'flat';
-                const dDir = o.dDirection || 'flat';
-                const kArrow = kDir === 'up' ? '↑' : kDir === 'down' ? '↓' : '→';
-                const dArrow = dDir === 'up' ? '↑' : dDir === 'down' ? '↓' : '→';
-                const kClass = kNum !== null ? (kNum > 80 || kNum < 20 ? 'text-white font-bold' : kDir === 'up' ? 'text-green-400 font-semibold' : kDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
-                const dClass = dNum !== null ? (dNum > 80 || dNum < 20 ? 'text-white font-bold' : dDir === 'up' ? 'text-green-400 font-semibold' : dDir === 'down' ? 'text-blue-500 font-semibold' : 'text-foreground') : 'text-muted-foreground';
-                let patternPart = '';
-                if (o.d2Pattern === 'Higher Low') patternPart = '<span class="text-xs text-cyan-400 font-semibold">HL</span>';
-                else if (o.d2Pattern === 'Lower High') patternPart = '<span class="text-xs text-orange-400 font-semibold">LH</span>';
-                let trendPart = '';
-                if (kNum !== null && dNum !== null) {
-                  if (kNum < 15 && dNum < 15) trendPart = '<span class="text-xs text-red-500 font-bold">No Long</span>';
-                  else if (kNum > 80) trendPart = '<span class="text-xs text-green-500 font-bold">No Short</span>';
-                  else if (kDir === 'up' && kNum > 20) trendPart = '<span class="text-xs text-green-400 font-semibold">Try Long</span>';
-                  else if (kDir === 'down' && kNum < 80) trendPart = '<span class="text-xs text-red-400 font-semibold">Try Short</span>';
-                }
-                const parts = ['<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + kClass + '">K: ' + (kNum !== null ? kNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + kArrow + '</span></div>', '<div class="flex flex-row items-center gap-1"><span class="font-mono text-lg ' + dClass + '">D: ' + (dNum !== null ? dNum.toFixed(1) : '-') + '</span><span class="text-lg text-white">' + dArrow + '</span></div>'];
-                if (patternPart) parts.push(patternPart);
-                if (trendPart) parts.push(trendPart);
-                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stochDetail') + '" title="Stoch Detail (lower TF)"><div class="flex flex-row items-center gap-2 flex-wrap">' + parts.join('<span class="text-muted-foreground mx-1">|</span>') + '</div></td>';
+                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
+                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3">' + parts.join('<span class="text-muted-foreground">|</span>') + '</div></td>';
               })()
             };
             
@@ -6685,17 +6347,17 @@ Use this to create a new preset filter button that applies these exact filter se
         function checkPresetMatches(alert) {
           if (!alert || !alert.symbol) return [];
           
-          const ov = alert.stochOverview;
-          const d1Value = ov && ov.k != null ? parseFloat(ov.k) : null;
-          const d1Direction = ov ? (ov.kDirection || 'flat') : 'flat';
-          const d2Direction = ov ? (ov.dDirection || 'flat') : 'flat';
+          const t = alert.triStoch;
+          const k1Dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
+          const k2Dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
+          const k1Val = t && t.ovK != null ? parseFloat(t.ovK) : null;
           
           const matches = [];
           
-          if (d1Direction === 'down' && d2Direction === 'down') matches.push('down');
-          if (d1Direction === 'up' && d2Direction === 'up') matches.push('up');
-          if (d1Direction === 'up' && d1Value !== null && !isNaN(d1Value) && d1Value >= 80 && d1Value <= 100) matches.push('extBull');
-          if (d1Direction === 'down' && d1Value !== null && !isNaN(d1Value) && d1Value >= 0 && d1Value <= 30) matches.push('extBear');
+          if (k1Dir === 'down' && k2Dir === 'down') matches.push('down');
+          if (k1Dir === 'up' && k2Dir === 'up') matches.push('up');
+          if (k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100) matches.push('extBull');
+          if (k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30) matches.push('extBear');
           
           return matches;
         }

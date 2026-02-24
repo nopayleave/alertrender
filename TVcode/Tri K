@@ -1,276 +1,302 @@
 //@version=6
-indicator(title="Tri K", shorttitle="Tri K", overlay=false, explicit_plot_zorder=true)
+indicator(title="Tri Stochastic", shorttitle="Tri K", format=format.price, precision=2)
 
-// ===== TIMEFRAME SETTINGS =====
-timeframeD1D2 = input.timeframe("", title="Timeframe for D1-D2", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
-timeframeD3 = input.timeframe("", title="Timeframe for D3", group="Timeframe Settings", tooltip="Leave empty for chart timeframe")
-smoothTF12 = input.bool(false, title="Smooth D1-D2 Lines", group="TF Smoothing")
-smoothLen12 = input.int(3, minval=1, title="D1-D2 Smoothing Length", group="TF Smoothing")
-smoothTF3 = input.bool(false, title="Smooth D3 Lines", group="TF Smoothing")
-smoothLen3 = input.int(10, minval=1, title="D3 Smoothing Length", group="TF Smoothing")
+// ===== TIMEFRAME INPUTS =====
+tf1 = input.timeframe("", title="D1 Timeframe", group="Timeframes", tooltip="Leave empty for chart timeframe")
+tf2 = input.timeframe("", title="D2 Timeframe", group="Timeframes", tooltip="Leave empty for chart timeframe")
+tf3 = input.timeframe("", title="D3 Timeframe", group="Timeframes", tooltip="Leave empty for chart timeframe")
 
-// ===== GLOBAL COLOR SETTINGS =====
-useDirectionColors = input.bool(true, title="Use Direction Colors (Dual KD style)", group="Global Color Settings", tooltip="Apply full direction-based color logic to all D lines")
-useAbove80Color = input.bool(true, title="Use Green#3 Above 80", group="Global Color Settings", tooltip="Apply Green#3 color when direction colors OFF")
-colorGreen3 = input.color(color.new(#00ff00, 0), title="Green#3 Color (Above 80)", group="Global Color Settings")
-useBelow20Color = input.bool(true, title="Use Red Below 20", group="Global Color Settings", tooltip="Apply red color when direction colors OFF")
-colorRedBelow20 = input.color(color.new(#ff0000, 0), title="Red Color (Below 20)", group="Global Color Settings")
+// Which pair goes to Overview / Detail columns on the dashboard
+ovSource = input.string("D1", title="Overview source", group="Webhook", options=["D1", "D2", "D3"], tooltip="Which stoch pair populates the Stoch Overview column")
+dtSource = input.string("D2", title="Detail source", group="Webhook", options=["D1", "D2", "D3"], tooltip="Which stoch pair populates the Stoch Detail column")
 
-// ===== DIRECTION COLORS (Dual KD style - shared by all D lines when useDirectionColors) =====
-colorUp = input.color(#00FF00, title="Up Color", group="Direction Colors")
-colorDown = input.color(#ff0000, title="Down Color", group="Direction Colors")
-colorTrendUp = input.color(#00FF00, title="Trend Up Color (>80)", group="Direction Colors")
-colorTrendDown = input.color(#ff0000, title="Trend Down Color (<20)", group="Direction Colors")
-colorBelow20TrendUp = input.color(#ffffff, title="Below 20 Trend Up Color", group="Direction Colors")
-colorAbove80TrendDown = input.color(#ffffff, title="Above 80 Trend Down Color", group="Direction Colors")
+// ===== SHARED STOCHASTIC PARAMETERS =====
+periodK = input.int(39, title="%K Length", minval=1, group="Stochastic")
+smoothK = input.int(5, title="%K Smoothing", minval=1, group="Stochastic")
+periodD = input.int(4, title="%D Smoothing", minval=1, group="Stochastic")
 
-// Stoch1 - Short Term
-length1 = input.int(10, minval=1, title="Stoch1 Length (periodK)", group="Stoch1 Settings")
-smoothK1 = input.int(3, minval=1, title="Stoch1 %K Smoothing (smoothK)", group="Stoch1 Settings")
-periodD1 = input.int(3, minval=1, title="Stoch1 %D Smoothing (periodD)", group="Stoch1 Settings")
-useD1ColorLogic = input.bool(false, title="Use Up/Down Color Logic", group="Stoch1 Settings", tooltip="Enable to color D1 based on direction")
-colorD1 = input.color(color.blue, title="D1 Color (when disabled)", group="Stoch1 Settings")
-colorD1Up = input.color(color.green, title="D1 Up Color", group="Stoch1 Settings")
-colorD1Down = input.color(color.red, title="D1 Down Color", group="Stoch1 Settings")
-linewidthD1 = input.int(1, minval=1, maxval=5, title="D1 Line Width", group="Stoch1 Settings")
-showD1 = input.bool(true, title="Show D1", group="Stoch1 Settings")
+// D1 extra smoothing
+smooth1 = input.bool(false, title="D1 Smooth", group="D1 Smoothing")
+smoothLen1 = input.int(3, minval=1, title="D1 Smooth Length", group="D1 Smoothing")
+smoothOffset1 = input.int(-1, title="D1 Offset Left", group="D1 Smoothing", minval=-5, maxval=0)
 
-// Stoch2 - Medium Term
-length2 = input.int(19, minval=1, title="Stoch2 Length (periodK)", group="Stoch2 Settings")
-smoothK2 = input.int(1, minval=1, title="Stoch2 %K Smoothing (smoothK)", group="Stoch2 Settings")
-periodD2 = input.int(1, minval=1, title="Stoch2 %D Smoothing (periodD)", group="Stoch2 Settings")
-colorD2 = input.color(color.aqua, title="D2 Color", group="Stoch2 Settings")
-linewidthD2 = input.int(2, minval=1, maxval=5, title="D2 Line Width", group="Stoch2 Settings")
-showD2 = input.bool(true, title="Show D2", group="Stoch2 Settings")
+// D2 extra smoothing
+smooth2 = input.bool(false, title="D2 Smooth", group="D2 Smoothing")
+smoothLen2 = input.int(3, minval=1, title="D2 Smooth Length", group="D2 Smoothing")
+smoothOffset2 = input.int(-1, title="D2 Offset Left", group="D2 Smoothing", minval=-5, maxval=0)
 
-// Stoch3
-length3 = input.int(25, minval=1, title="Stoch3 Length (periodK)", group="Stoch3 Settings")
-smoothK3 = input.int(7, minval=1, title="Stoch3 %K Smoothing (smoothK)", group="Stoch3 Settings")
-periodD3 = input.int(6, minval=1, title="Stoch3 %D Smoothing (periodD)", group="Stoch3 Settings")
-colorD3 = input.color(color.fuchsia, title="D3 Color", group="Stoch3 Settings")
-linewidthD3 = input.int(4, minval=1, maxval=5, title="D3 Line Width", group="Stoch3 Settings")
-showD3 = input.bool(true, title="Show D3", group="Stoch3 Settings")
+// D3 extra smoothing
+smooth3 = input.bool(false, title="D3 Smooth", group="D3 Smoothing")
+smoothLen3 = input.int(3, minval=1, title="D3 Smooth Length", group="D3 Smoothing")
+smoothOffset3 = input.int(-1, title="D3 Offset Left", group="D3 Smoothing", minval=-5, maxval=0)
 
-// Function to get Stochastic %K and %D
-getStoch(len, smK, perD) =>
-    st = 100 * (close - ta.lowest(low, len)) / (ta.highest(high, len) - ta.lowest(low, len))
-    k = ta.sma(st, smK)
-    d = ta.sma(k, perD)
-    [k, d]
+// ===== STOCHASTIC FUNCTION =====
+f_stoch() =>
+    k_ = ta.sma(ta.stoch(close, high, low, periodK), smoothK)
+    d_ = ta.sma(k_, periodD)
+    [k_, d_]
 
-// Compute D1-D2 with timeframeD1D2
-[k1_chart, d1_chart] = getStoch(length1, smoothK1, periodD1)
-[k2_chart, d2_chart] = getStoch(length2, smoothK2, periodD2)
+// ===== D1 CALCULATION =====
+[k1_chart, d1_chart] = f_stoch()
+[k1_tf, d1_tf] = request.security(syminfo.tickerid, tf1, f_stoch(), lookahead=barmerge.lookahead_off)
+k1_raw = tf1 == "" ? k1_chart : k1_tf
+d1_raw = tf1 == "" ? d1_chart : d1_tf
+k1 = smooth1 ? ta.sma(k1_raw, smoothLen1) : k1_raw
+d1 = smooth1 ? ta.sma(d1_raw, smoothLen1) : d1_raw
 
-[k1_mtf, d1_mtf] = request.security(syminfo.tickerid, timeframeD1D2, getStoch(length1, smoothK1, periodD1), lookahead=barmerge.lookahead_off)
-[k2_mtf, d2_mtf] = request.security(syminfo.tickerid, timeframeD1D2, getStoch(length2, smoothK2, periodD2), lookahead=barmerge.lookahead_off)
+// ===== D2 CALCULATION =====
+[k2_chart, d2_chart] = f_stoch()
+[k2_tf, d2_tf] = request.security(syminfo.tickerid, tf2, f_stoch(), lookahead=barmerge.lookahead_off)
+k2_raw = tf2 == "" ? k2_chart : k2_tf
+d2_raw = tf2 == "" ? d2_chart : d2_tf
+k2 = smooth2 ? ta.sma(k2_raw, smoothLen2) : k2_raw
+d2 = smooth2 ? ta.sma(d2_raw, smoothLen2) : d2_raw
 
-d1 = timeframeD1D2 == "" ? d1_chart : (smoothTF12 ? ta.sma(d1_mtf, smoothLen12) : d1_mtf)
-d2 = timeframeD1D2 == "" ? d2_chart : (smoothTF12 ? ta.sma(d2_mtf, smoothLen12) : d2_mtf)
+// ===== D3 CALCULATION =====
+[k3_chart, d3_chart] = f_stoch()
+[k3_tf, d3_tf] = request.security(syminfo.tickerid, tf3, f_stoch(), lookahead=barmerge.lookahead_off)
+k3_raw = tf3 == "" ? k3_chart : k3_tf
+d3_raw = tf3 == "" ? d3_chart : d3_tf
+k3 = smooth3 ? ta.sma(k3_raw, smoothLen3) : k3_raw
+d3 = smooth3 ? ta.sma(d3_raw, smoothLen3) : d3_raw
 
-// Compute D3 with timeframeD3
-[k3_chart, d3_chart] = getStoch(length3, smoothK3, periodD3)
-[k3_mtf, d3_mtf] = request.security(syminfo.tickerid, timeframeD3, getStoch(length3, smoothK3, periodD3), lookahead=barmerge.lookahead_off)
-d3 = timeframeD3 == "" ? d3_chart : (smoothTF3 ? ta.sma(d3_mtf, smoothLen3) : d3_mtf)
+// ===== COLOR SETTINGS (mono theme per pair) =====
+// D1: green family
+color1Up   = input.color(#00e676, title="Up", group="D1 Colors")
+color1Down = input.color(#004d25, title="Down", group="D1 Colors")
+// D2: blue family
+color2Up   = input.color(#42a5f5, title="Up", group="D2 Colors")
+color2Down = input.color(#0d47a1, title="Down", group="D2 Colors")
+// D3: purple family
+color3Up   = input.color(#ce93d8, title="Up", group="D3 Colors")
+color3Down = input.color(#4a148c, title="Down", group="D3 Colors")
 
-// ===== D1 D2 D3 DIRECTION TRACKING VARIABLES =====
-var float prevD1 = na
-var float prevD2 = na
-var float prevD3 = na
+// Extreme-zone overrides (shared)
+colorExHigh    = input.color(#ffffff, title="Overbought (>80)", group="Extreme Colors")
+colorExLow     = input.color(#ff1744, title="Oversold (<20)", group="Extreme Colors")
+colorWarnHigh  = input.color(#ff9100, title=">80 turning down", group="Extreme Colors")
+colorWarnLow   = input.color(#ffea00, title="<20 turning up", group="Extreme Colors")
 
-// ===== DIRECTION & COLOR HELPER (Dual KD style) =====
-getLineColor(val, isUp, cUp, cDown, cTrendUp, cTrendDown, cBelow20Up, cAbove80Down) =>
-    baseColor = isUp ? cUp : cDown
-    (val < 20 and isUp) ? cBelow20Up : (val > 80 and not isUp) ? cAbove80Down : val > 80 ? cTrendUp : val < 20 ? cTrendDown : baseColor
+// Direction color helper: extreme zones override, otherwise use pair's mono up/down
+f_lineColor(val, isUp, colUp, colDown) =>
+    (val < 20 and isUp) ? colorWarnLow : (val > 80 and not isUp) ? colorWarnHigh : val > 80 ? colorExHigh : val < 20 ? colorExLow : isUp ? colUp : colDown
 
+// ===== LINE COLORS =====
+k1IsUp = k1 >= k1[1]
 d1IsUp = d1 >= d1[1]
+k1Color = f_lineColor(k1, k1IsUp, color1Up, color1Down)
+d1Color = f_lineColor(d1, d1IsUp, color1Up, color1Down)
+
+k2IsUp = k2 >= k2[1]
 d2IsUp = d2 >= d2[1]
+k2Color = f_lineColor(k2, k2IsUp, color2Up, color2Down)
+d2Color = f_lineColor(d2, d2IsUp, color2Up, color2Down)
+
+k3IsUp = k3 >= k3[1]
 d3IsUp = d3 >= d3[1]
+k3Color = f_lineColor(k3, k3IsUp, color3Up, color3Down)
+d3Color = f_lineColor(d3, d3IsUp, color3Up, color3Down)
 
-// ===== D1 D2 D3 DIRECTION TRACKING =====
+// ===== DIRECTION TRACKING =====
+var float prevK1 = na
+var float prevD1 = na
+k1Direction = na(prevK1) ? "flat" : k1 > prevK1 ? "up" : k1 < prevK1 ? "down" : "flat"
 d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
-d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
-d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
-
-// ===== D COLOR LOGIC (Direction Colors from Dual KD when useDirectionColors) =====
-d1LineColor = useDirectionColors ? getLineColor(d1, d1IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d1 < 20 ? colorRedBelow20 : useAbove80Color and d1 > 80 ? colorGreen3 : (useD1ColorLogic ? (d1 > prevD1 ? colorD1Up : d1 < prevD1 ? colorD1Down : colorD1) : colorD1))
-d2LineColor = useDirectionColors ? getLineColor(d2, d2IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d2 < 20 ? colorRedBelow20 : useAbove80Color and d2 > 80 ? colorGreen3 : colorD2)
-d3LineColor = useDirectionColors ? getLineColor(d3, d3IsUp, colorUp, colorDown, colorTrendUp, colorTrendDown, colorBelow20TrendUp, colorAbove80TrendDown) : (useBelow20Color and d3 < 20 ? colorRedBelow20 : useAbove80Color and d3 > 80 ? colorGreen3 : colorD3)
-
-// Plot %D lines
-plot(showD1 ? d1 : na, title="%d1", color=d1LineColor, linewidth=linewidthD1, display=display.pane)
-plot(showD2 ? d2 : na, title="%d2", color=d2LineColor, linewidth=linewidthD2, display=display.pane)
-plot(showD3 ? d3 : na, title="%d3", color=d3LineColor, linewidth=linewidthD3, display=display.pane)
-
-// Plot Mid line
-plot(50, title="Mid", color=color.yellow, linewidth=2, style=plot.style_line, display=display.pane)
-
-// ===== ALL 3 D ALIGNMENT SIGNALS =====
-all3Up = d1Direction == "up" and d2Direction == "up" and d3Direction == "up"
-all3Down = d1Direction == "down" and d2Direction == "down" and d3Direction == "down"
-showAll3Signal = input.bool(true, title="Show All 3 D Aligned", group="3D Signal")
-colorAll3Up = input.color(#00ff00, title="All 3 Up Color", group="3D Signal")
-colorAll3Down = input.color(#ff0000, title="All 3 Down Color", group="3D Signal")
-all3Offset = input.float(8.0, title="Circle Offset from 50", group="3D Signal", step=1.0)
-
-float all3UpPlot = na
-float all3DownPlot = na
-if showAll3Signal and all3Up
-    all3UpPlot := 50 + all3Offset
-if showAll3Signal and all3Down
-    all3DownPlot := 50 - all3Offset
-
-plot(all3UpPlot, title="All 3 D Up", color=colorAll3Up, linewidth=6, style=plot.style_circles)
-plot(all3DownPlot, title="All 3 D Down", color=colorAll3Down, linewidth=6, style=plot.style_circles)
-
-// Reference levels
-hline(90, "Level 90", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-hline(80, "Overbought", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-hline(60, "Level 60", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-hline(40, "Level 40", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-hline(20, "Oversold", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-hline(10, "Level 10", color=color.white, linestyle=hline.style_dashed, linewidth=1, editable=true)
-
-// Strong zones settings
-showStrongZones = input.bool(true, title="Show Strong Zones", group="Strong Zones")
-strongBullColor = input.color(color.new(color.green, 85), title="Strong Bull Zone Color (80-100)", group="Strong Zones")
-strongBearColor = input.color(color.new(color.red, 85), title="Strong Bear Zone Color (0-20)", group="Strong Zones")
-
-// Plot invisible lines for fill areas
-p_100 = plot(100, title="Level 100", color=color.new(color.white, 100), display=display.none, editable=false)
-p_80 = plot(80, title="Level 80", color=color.new(color.white, 100), display=display.none, editable=false)
-p_20 = plot(20, title="Level 20", color=color.new(color.white, 100), display=display.none, editable=false)
-p_0 = plot(0, title="Level 0", color=color.new(color.white, 100), display=display.none, editable=false)
-
-// Fill strong zones
-fill(p_80, p_100, color=showStrongZones ? strongBullColor : na, title="Strong Bull Zone")
-fill(p_0, p_20, color=showStrongZones ? strongBearColor : na, title="Strong Bear Zone")
-
-// ===== D1 & D2 CROSSOVER (for webhook/trend logic only) =====
-crossoverD1D2 = ta.crossover(d1, d2)
-crossunderD1D2 = ta.crossunder(d1, d2)
-
-// ===== WEBHOOK ALERT =====
-// Enable/disable webhook
-sendWebhook = input.bool(true, title="Send Webhook Alerts", group="Webhook Settings")
-webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="Webhook Settings")
-
-// Determine alert frequency
-alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : alert.freq_all
-
-// D3 Trend and cross signals
-crossUp20 = ta.crossover(d3, 20)
-crossDown20 = ta.crossunder(d3, 20)
-crossUp50 = ta.crossover(d3, 50)
-crossDown50 = ta.crossunder(d3, 50)
-crossUp80 = ta.crossover(d3, 80)
-crossDown80 = ta.crossunder(d3, 80)
-
-d3Signal = ""
-if crossUp20
-    d3Signal := "D3_Cross_Up_20"
-else if crossDown20
-    d3Signal := "D3_Cross_Down_20"
-else if crossUp50
-    d3Signal := "D3_Cross_Up_50"
-else if crossDown50
-    d3Signal := "D3_Cross_Down_50"
-else if crossUp80
-    d3Signal := "D3_Cross_Up_80"
-else if crossDown80
-    d3Signal := "D3_Cross_Down_80"
-else if d3Direction == "up"
-    d3Signal := "D3_Uptrend"
-else if d3Direction == "down"
-    d3Signal := "D3_Downtrend"
-else
-    d3Signal := "D3_Flat"
-
-// D1 x D2 crossover signals
-d1d2Cross = ""
-if crossoverD1D2
-    d1d2Cross := "D1_Cross_Over_D2"
-else if crossunderD1D2
-    d1d2Cross := "D1_Cross_Under_D2"
-else
-    d1d2Cross := "No_Cross"
-
-// ===== D1 x D3 CROSSOVER DETECTION =====
-var string prevD1Dir = na
-d1SwitchedToUp = prevD1Dir == "down" and d1Direction == "up"
-d1SwitchedToDown = prevD1Dir == "up" and d1Direction == "down"
-
-crossoverD1D3 = ta.crossover(d1, d3)
-crossunderD1D3 = ta.crossunder(d1, d3)
-
-d1CrossD3 = ""
-if crossoverD1D3 and d1Direction == "up" and d3Direction == "up"
-    d1CrossD3 := "bull"
-else if crossunderD1D3 and d1Direction == "down" and d3Direction == "down"
-    d1CrossD3 := "bear"
-else
-    d1CrossD3 := "none"
-
-// ===== TREND CALCULATION (Based on D1 and D3) =====
-// Priority: 1. Dead Long/Short 2. D1 x D3 Cross 3. D3 extremes 4. Try Long/Short 5. Neutral
-
-calculatedTrend = "Neutral"
-ttsMessage = ""
-
-if d3 > 90 and d3Direction == "up" and d2Direction == "up"
-    calculatedTrend := "Dead Long"
-    ttsMessage := "Dead Long"
-else if d3 < 10 and d3Direction == "down" and d2Direction == "down"
-    calculatedTrend := "Dead Short"
-    ttsMessage := "Dead Short"
-else if d3 < 20
-    calculatedTrend := "Very Short"
-    ttsMessage := "Heavy Sell"
-else if d3 > 80 and d2Direction == "up"
-    calculatedTrend := "Heavy Buy"
-    ttsMessage := "Heavy Buy"
-else
-    if d1CrossD3 == "bull"
-        calculatedTrend := "🚀 BULL Cross"
-        ttsMessage := "Small Buy"
-    else if d1CrossD3 == "bear"
-        calculatedTrend := "🔻 BEAR Cross"
-        ttsMessage := "Small sell"
-    else if d3 > 40 and d1Direction == "up"
-        calculatedTrend := "Try Long"
-        ttsMessage := "Medium Buy"
-    else if d3 < 40 and d1Direction == "down"
-        calculatedTrend := "Try Short"
-        ttsMessage := "Medium Sell"
-    else
-        calculatedTrend := "Neutral"
-        ttsMessage := ""
-
-// === Create and send webhook with D1 D2 D3 data ===
-if sendWebhook
-    jsonMsg = '{' +
-      '"symbol": "' + syminfo.ticker + '",' +
-      '"timeframe": "' + timeframe.period + '",' +
-      '"timestamp": ' + str.tostring(time) + ',' +
-      '"d1": ' + str.tostring(d1) + ',' +
-      '"d2": ' + str.tostring(d2) + ',' +
-      '"d3": ' + str.tostring(d3) + ',' +
-      '"d1Direction": "' + d1Direction + '",' +
-      '"d2Direction": "' + d2Direction + '",' +
-      '"d3Direction": "' + d3Direction + '",' +
-      '"d3Signal": "' + d3Signal + '",' +
-      '"d1d2Cross": "' + d1d2Cross + '",' +
-      '"d1CrossD3": "' + d1CrossD3 + '",' +
-      '"d1SwitchedToUp": ' + str.tostring(d1SwitchedToUp) + ',' +
-      '"d1SwitchedToDown": ' + str.tostring(d1SwitchedToDown) + ',' +
-      '"calculatedTrend": "' + calculatedTrend + '",' +
-      '"ttsMessage": "' + ttsMessage + '",' +
-      '"timeframeD1D2": "' + timeframeD1D2 + '",' +
-      '"timeframeD3": "' + timeframeD3 + '"}'
-    alert(jsonMsg, freq=alertFreq)
-
-// Store previous values for next comparison
+prevK1 := k1
 prevD1 := d1
+
+var float prevK2 = na
+var float prevD2 = na
+k2Direction = na(prevK2) ? "flat" : k2 > prevK2 ? "up" : k2 < prevK2 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+prevK2 := k2
 prevD2 := d2
+
+var float prevK3 = na
+var float prevD3 = na
+k3Direction = na(prevK3) ? "flat" : k3 > prevK3 ? "up" : k3 < prevK3 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+prevK3 := k3
 prevD3 := d3
-prevD1Dir := d1Direction
+
+// ===== CROSSING DETECTION =====
+k1CrossOver = ta.crossover(k1, d1)
+k1CrossUnder = ta.crossunder(k1, d1)
+k1Cross = k1CrossOver ? "cross_over" : k1CrossUnder ? "cross_under" : "none"
+
+k2CrossOver = ta.crossover(k2, d2)
+k2CrossUnder = ta.crossunder(k2, d2)
+k2Cross = k2CrossOver ? "cross_over" : k2CrossUnder ? "cross_under" : "none"
+
+k3CrossOver = ta.crossover(k3, d3)
+k3CrossUnder = ta.crossunder(k3, d3)
+k3Cross = k3CrossOver ? "cross_over" : k3CrossUnder ? "cross_under" : "none"
+
+// ===== HL/LH PATTERN HELPER =====
+f_hllh(isCrossOver, isCrossUnder, kVal, lastOverK, lastUnderK) =>
+    string pat = ""
+    float patVal = na
+    float newOverK = lastOverK
+    float newUnderK = lastUnderK
+    if isCrossOver
+        pat := na(lastOverK) ? "" : kVal > lastOverK ? "Higher Low" : ""
+        patVal := kVal
+        newOverK := kVal
+    else if isCrossUnder
+        pat := na(lastUnderK) ? "" : kVal < lastUnderK ? "Lower High" : ""
+        patVal := kVal
+        newUnderK := kVal
+    [pat, patVal, newOverK, newUnderK]
+
+// D1 HL/LH
+var float lastCOK1 = na
+var float lastCUK1 = na
+[d1Pat, d1PatVal, newCOK1, newCUK1] = f_hllh(k1CrossOver, k1CrossUnder, k1, lastCOK1, lastCUK1)
+lastCOK1 := newCOK1
+lastCUK1 := newCUK1
+
+// D2 HL/LH
+var float lastCOK2 = na
+var float lastCUK2 = na
+[d2Pat, d2PatVal, newCOK2, newCUK2] = f_hllh(k2CrossOver, k2CrossUnder, k2, lastCOK2, lastCUK2)
+lastCOK2 := newCOK2
+lastCUK2 := newCUK2
+
+// D3 HL/LH
+var float lastCOK3 = na
+var float lastCUK3 = na
+[d3Pat, d3PatVal, newCOK3, newCUK3] = f_hllh(k3CrossOver, k3CrossUnder, k3, lastCOK3, lastCUK3)
+lastCOK3 := newCOK3
+lastCUK3 := newCUK3
+
+// ===== CROSSING DISPLAY SETTINGS =====
+showCrossOver = input.bool(true, title="Show K Cross Over D", group="Crossing Settings")
+showCrossUnder = input.bool(true, title="Show K Cross Under D", group="Crossing Settings")
+colorCrossOver = input.color(color.new(#00ff00, 0), title="Cross Over Color", group="Crossing Settings")
+colorCrossUnder = input.color(color.new(#ff0000, 0), title="Cross Under Color", group="Crossing Settings")
+int crossingSize = input.int(4, minval=1, maxval=5, title="Crossing Marker Size", group="Crossing Settings")
+float crossingOffset = input.float(5.0, title="Crossing Marker Offset", group="Crossing Settings", step=1.0)
+showHLLH = input.bool(true, title="Show HL/LH Label", group="Crossing Settings")
+labelColorHL = color.new(#00ff00, 0)
+labelColorLH = color.new(#ff6600, 0)
+
+// ===== PLOTS =====
+plot(k1, title="D1 %K", color=k1Color, linewidth=2, offset=smooth1 ? smoothOffset1 : 0)
+plot(d1, title="D1 %D", color=d1Color, linewidth=2, offset=smooth1 ? smoothOffset1 : 0)
+plot(k2, title="D2 %K", color=k2Color, linewidth=1, offset=smooth2 ? smoothOffset2 : 0)
+plot(d2, title="D2 %D", color=d2Color, linewidth=1, offset=smooth2 ? smoothOffset2 : 0)
+plot(k3, title="D3 %K", color=k3Color, linewidth=1, offset=smooth3 ? smoothOffset3 : 0)
+plot(d3, title="D3 %D", color=d3Color, linewidth=1, offset=smooth3 ? smoothOffset3 : 0)
+
+// ===== D1 CROSSING MARKERS =====
+float d1COPlot = na
+if showCrossOver and k1CrossOver
+    d1COPlot := k1 + crossingOffset
+float d1CUPlot = na
+if showCrossUnder and k1CrossUnder
+    d1CUPlot := k1 - crossingOffset
+plot(d1COPlot, title="D1 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles, offset=smooth1 ? smoothOffset1 : 0)
+plot(d1CUPlot, title="D1 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles, offset=smooth1 ? smoothOffset1 : 0)
+
+// ===== D2 CROSSING MARKERS =====
+float d2COPlot = na
+if showCrossOver and k2CrossOver
+    d2COPlot := k2 + crossingOffset
+float d2CUPlot = na
+if showCrossUnder and k2CrossUnder
+    d2CUPlot := k2 - crossingOffset
+plot(d2COPlot, title="D2 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles, offset=smooth2 ? smoothOffset2 : 0)
+plot(d2CUPlot, title="D2 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles, offset=smooth2 ? smoothOffset2 : 0)
+
+// ===== D3 CROSSING MARKERS =====
+float d3COPlot = na
+if showCrossOver and k3CrossOver
+    d3COPlot := k3 + crossingOffset
+float d3CUPlot = na
+if showCrossUnder and k3CrossUnder
+    d3CUPlot := k3 - crossingOffset
+plot(d3COPlot, title="D3 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles, offset=smooth3 ? smoothOffset3 : 0)
+plot(d3CUPlot, title="D3 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles, offset=smooth3 ? smoothOffset3 : 0)
+
+// ===== HL/LH LABELS =====
+if showHLLH and (k1CrossOver or k1CrossUnder) and d1Pat != ""
+    label.new(bar_index, k1 + (k1CrossOver ? crossingOffset : -crossingOffset), d1Pat == "Higher Low" ? "HL" : "LH", style=d1Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d1Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+if showHLLH and (k2CrossOver or k2CrossUnder) and d2Pat != ""
+    label.new(bar_index, k2 + (k2CrossOver ? crossingOffset : -crossingOffset), d2Pat == "Higher Low" ? "HL" : "LH", style=d2Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d2Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+if showHLLH and (k3CrossOver or k3CrossUnder) and d3Pat != ""
+    label.new(bar_index, k3 + (k3CrossOver ? crossingOffset : -crossingOffset), d3Pat == "Higher Low" ? "HL" : "LH", style=d3Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d3Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+
+// ===== DIRECTION TABLE =====
+showTable = input.bool(true, title="Show Direction Table", group="Table")
+tablePos  = input.string("top_right", title="Position", group="Table", options=["top_right", "top_left", "bottom_right", "bottom_left", "top_center", "bottom_center"])
+
+tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : position.bottom_center
+
+if showTable and barstate.islast
+    var tbl = table.new(tblPosition, 2, 3, bgcolor=color.new(#000000, 60), border_width=1, border_color=color.new(#ffffff, 80))
+    k1Arr = k1IsUp ? "▲" : "▼"
+    k2Arr = k2IsUp ? "▲" : "▼"
+    k3Arr = k3IsUp ? "▲" : "▼"
+    k1Clr = k1IsUp ? color1Up : color1Down
+    k2Clr = k2IsUp ? color2Up : color2Down
+    k3Clr = k3IsUp ? color3Up : color3Down
+    table.cell(tbl, 0, 0, "D1", text_color=#aaaaaa, text_size=size.small)
+    table.cell(tbl, 1, 0, k1Arr, text_color=k1Clr, text_size=size.normal)
+    table.cell(tbl, 0, 1, "D2", text_color=#aaaaaa, text_size=size.small)
+    table.cell(tbl, 1, 1, k2Arr, text_color=k2Clr, text_size=size.normal)
+    table.cell(tbl, 0, 2, "D3", text_color=#aaaaaa, text_size=size.small)
+    table.cell(tbl, 1, 2, k3Arr, text_color=k3Clr, text_size=size.normal)
+
+// ===== HORIZONTAL BANDS =====
+h0 = hline(80, "Upper Band", color=#787B86)
+hline(50, "Middle Band", color=color.new(#e5ff00, 0))
+hline(60, "Middle top Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(40, "Middle base Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(90, "Top top Band", color=color.new(#ffffff, 0))
+hline(10, "Base Band", color=color.new(#ffffff, 0))
+h1 = hline(20, "Lower Band", color=#787B86)
+fill(h0, h1, color=color.rgb(33, 150, 243, 90), title="Background")
+
+// ===== WEBHOOK: map selected sources to ov/dt =====
+ovK     = ovSource == "D1" ? k1 : ovSource == "D2" ? k2 : k3
+ovD     = ovSource == "D1" ? d1 : ovSource == "D2" ? d2 : d3
+ovKDir  = ovSource == "D1" ? k1Direction : ovSource == "D2" ? k2Direction : k3Direction
+ovDDir  = ovSource == "D1" ? d1Direction : ovSource == "D2" ? d2Direction : d3Direction
+ovPat   = ovSource == "D1" ? d1Pat : ovSource == "D2" ? d2Pat : d3Pat
+ovPatV  = ovSource == "D1" ? d1PatVal : ovSource == "D2" ? d2PatVal : d3PatVal
+
+dtK     = dtSource == "D1" ? k1 : dtSource == "D2" ? k2 : k3
+dtD     = dtSource == "D1" ? d1 : dtSource == "D2" ? d2 : d3
+dtKDir  = dtSource == "D1" ? k1Direction : dtSource == "D2" ? k2Direction : k3Direction
+dtDDir  = dtSource == "D1" ? d1Direction : dtSource == "D2" ? d2Direction : d3Direction
+dtPat   = dtSource == "D1" ? d1Pat : dtSource == "D2" ? d2Pat : d3Pat
+dtPatV  = dtSource == "D1" ? d1PatVal : dtSource == "D2" ? d2PatVal : d3PatVal
+
+if barstate.isconfirmed
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    // Overview
+    alertStr += "\"ovK\":\"" + str.tostring(ovK) + "\","
+    alertStr += "\"ovD\":\"" + str.tostring(ovD) + "\","
+    alertStr += "\"ovKDirection\":\"" + ovKDir + "\","
+    alertStr += "\"ovDDirection\":\"" + ovDDir + "\","
+    alertStr += "\"ovD2Pattern\":\"" + ovPat + "\","
+    alertStr += "\"ovD2PatternValue\":\"" + str.tostring(ovPatV) + "\","
+    // Detail
+    alertStr += "\"dtK\":\"" + str.tostring(dtK) + "\","
+    alertStr += "\"dtD\":\"" + str.tostring(dtD) + "\","
+    alertStr += "\"dtKDirection\":\"" + dtKDir + "\","
+    alertStr += "\"dtDDirection\":\"" + dtDDir + "\","
+    alertStr += "\"dtD2Pattern\":\"" + dtPat + "\","
+    alertStr += "\"dtD2PatternValue\":\"" + str.tostring(dtPatV) + "\","
+    // All three K values
+    alertStr += "\"k1\":\"" + str.tostring(k1) + "\","
+    alertStr += "\"k2\":\"" + str.tostring(k2) + "\","
+    alertStr += "\"k3\":\"" + str.tostring(k3) + "\","
+    // Signal type
+    alertStr += "\"d2Signal\":\"Tri\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
