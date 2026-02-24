@@ -2697,6 +2697,11 @@ app.get('/calculator', (req, res) => {
   `)
 })
 
+// Avoid 404 when browser requests favicon
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end()
+})
+
 // Render default homepage (可改)
 app.get('/', (req, res) => {
   res.send(`
@@ -4202,6 +4207,33 @@ app.get('/', (req, res) => {
           document.querySelectorAll('[data-filter^="stoch_k"]').forEach(c => c.classList.remove('active'));
           stochK1Dir = []; stochK2Dir = []; stochK3Dir = [];
           renderTable();
+        }
+
+        // High win-rate long/short suggestion from Tri K (K1=ov, K2=dt, K3=value)
+        function getTriStochSuggestion(t) {
+          if (!t) return null;
+          const k1 = t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+          const k2 = t.dtK != null && !isNaN(parseFloat(t.dtK)) ? parseFloat(t.dtK) : null;
+          const k3 = t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
+          const d1 = (t.ovKDirection || '').toLowerCase();
+          const d2 = (t.dtKDirection || '').toLowerCase();
+          const up = (d) => d === 'up';
+          const down = (d) => d === 'down';
+          const allUp = up(d1) && up(d2) && k3 !== null && k3 < 30;
+          const allDown = down(d1) && down(d2) && k3 !== null && k3 > 70;
+          if (k3 !== null && k3 < 10 && down(d1) && down(d2)) return { text: 'Strong Short', type: 'short' };   // Oversold, both down = trend down
+          if (k3 !== null && k3 > 90 && up(d1) && up(d2)) return { text: 'Strong Long', type: 'long' };         // Overbought, both up = trend up
+          if (k3 !== null && k3 < 10 && (up(d1) || up(d2))) return { text: 'Try Long', type: 'long' };        // Oversold + one turning up
+          if (k3 !== null && k3 > 90 && (down(d1) || down(d2))) return { text: 'Try Short', type: 'short' }; // Overbought + one turning down
+          if (allUp || (k3 !== null && k3 < 20 && up(d1) && up(d2))) return { text: 'Strong Long', type: 'long' };
+          if (allDown || (k3 !== null && k3 > 80 && down(d1) && down(d2))) return { text: 'Strong Short', type: 'short' };
+          if (up(d1) && up(d2)) return { text: 'Try Long', type: 'long' };
+          if (down(d1) && down(d2)) return { text: 'Try Short', type: 'short' };
+          if (k3 !== null && k3 < 20 && (up(d1) || up(d2))) return { text: 'Try Long', type: 'long' };
+          if (k3 !== null && k3 > 80 && (down(d1) || down(d2))) return { text: 'Try Short', type: 'short' };
+          if (k3 !== null && k3 > 80 && up(d1) && up(d2)) return { text: 'No Short', type: 'neutral' };        // Overbought but bullish
+          if (k3 !== null && k3 < 20 && down(d1) && down(d2)) return { text: 'No Long', type: 'neutral' };     // Oversold but bearish
+          return null;
         }
         
 
@@ -6328,11 +6360,18 @@ Use this to create a new preset filter button that applies these exact filter se
                   const v = kVal != null && !isNaN(parseFloat(kVal)) ? parseFloat(kVal) : null;
                   const dir = kDir || 'flat';
                   const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–';
+                  const valStr = v !== null ? v.toFixed(1) : '–';
                   const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-blue-400' : 'text-muted-foreground') : 'text-muted-foreground';
-                  return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + (v !== null ? v.toFixed(1) : '-') + ' ' + dir + '">' + label + ' ' + arrow + '</span>';
+                  return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
                 const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
-                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3">' + parts.join('<span class="text-muted-foreground">|</span>') + '</div></td>';
+                const suggestion = getTriStochSuggestion(t);
+                let suggestionHtml = '';
+                if (suggestion) {
+                  const sugClr = suggestion.type === 'long' ? 'text-green-400 font-semibold' : suggestion.type === 'short' ? 'text-red-400 font-semibold' : 'text-amber-400';
+                  suggestionHtml = '<div class="text-xs mt-0.5 ' + sugClr + '">' + suggestion.text + '</div>';
+                }
+                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-col"><div class="flex flex-row items-center gap-3">' + parts.join('<span class="text-muted-foreground">|</span>') + '</div>' + suggestionHtml + '</div></td>';
               })()
             };
             
