@@ -583,6 +583,12 @@ function updateAlertData(symbol, newData) {
   }
 }
 
+function parseStochValue(value) {
+  if (value == null || value === '' || value === 'NaN') return null
+  const num = parseFloat(value)
+  return isNaN(num) ? null : num
+}
+
 // Webhook for TradingView POST
 app.post('/webhook', (req, res) => {
   const alert = req.body
