@@ -3827,6 +3827,36 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('stoch_k3Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k3Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">K1 Value <span class="text-foreground/60">|</span> <span id="stochK1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK1Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK1ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">K2 Value <span class="text-foreground/60">|</span> <span id="stochK2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK2ValueSlider"></div></div></div></div>
+                    </div>
+                    <div class="mb-4">
+                      <div class="flex items-center justify-between mb-2 px-1">
+                        <label class="block text-xs font-medium text-muted-foreground">K3 Value <span class="text-foreground/60">|</span> <span id="stochK3ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                        </div>
+                      </div>
+                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK3ValueSlider"></div></div></div></div>
+                    </div>
                   </div>
                 </div>
                   
@@ -4017,6 +4047,9 @@ app.get('/', (req, res) => {
         let stochK1Dir = [];
         let stochK2Dir = [];
         let stochK3Dir = [];
+        let stochK1Value = { min: 0, max: 100, active: false, excluded: false };
+        let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
+        let stochK3Value = { min: 0, max: 100, active: false, excluded: false };
 
         let stochFilterPercentChange = [];
         
@@ -4183,7 +4216,8 @@ app.get('/', (req, res) => {
         }
 
         function hasStochDirFilters() {
-          return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0;
+          return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0 ||
+            stochK1Value.active || stochK2Value.active || stochK3Value.active;
         }
 
         function passesStochDirFilter(alert) {
@@ -4198,7 +4232,24 @@ app.get('/', (req, res) => {
           }
           if (stochK3Dir.length > 0) {
             if (!t || !t.k3) return false;
-            return true;
+          }
+          if (stochK1Value.active) {
+            const v = t && t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+            if (v === null) return false;
+            const inside = v >= stochK1Value.min && v <= stochK1Value.max;
+            if (stochK1Value.excluded ? inside : !inside) return false;
+          }
+          if (stochK2Value.active) {
+            const v = t && t.dtK != null && !isNaN(parseFloat(t.dtK)) ? parseFloat(t.dtK) : null;
+            if (v === null) return false;
+            const inside = v >= stochK2Value.min && v <= stochK2Value.max;
+            if (stochK2Value.excluded ? inside : !inside) return false;
+          }
+          if (stochK3Value.active) {
+            const v = t && t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
+            if (v === null) return false;
+            const inside = v >= stochK3Value.min && v <= stochK3Value.max;
+            if (stochK3Value.excluded ? inside : !inside) return false;
           }
           return true;
         }
@@ -4206,6 +4257,16 @@ app.get('/', (req, res) => {
         function clearStochDirFilters() {
           document.querySelectorAll('[data-filter^="stoch_k"]').forEach(c => c.classList.remove('active'));
           stochK1Dir = []; stochK2Dir = []; stochK3Dir = [];
+          stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
+          stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
+          stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
+          ['stochK1Value', 'stochK2Value', 'stochK3Value'].forEach(key => {
+            const t = document.getElementById(key + 'Toggle');
+            const e = document.getElementById(key + 'Excluded');
+            if (t) t.checked = false;
+            if (e) e.checked = false;
+            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
+          });
           renderTable();
         }
 
@@ -4314,6 +4375,9 @@ app.get('/', (req, res) => {
         }
 
         function initializeSliders() {
+          createValueSlider('stochK1Value', 'stochK1ValueSlider', 'stochK1ValueMinValue', 'stochK1ValueMaxValue', function() { updateGenericValueFilter('stochK1Value', stochK1Value); });
+          createValueSlider('stochK2Value', 'stochK2ValueSlider', 'stochK2ValueMinValue', 'stochK2ValueMaxValue', function() { updateGenericValueFilter('stochK2Value', stochK2Value); });
+          createValueSlider('stochK3Value', 'stochK3ValueSlider', 'stochK3ValueMinValue', 'stochK3ValueMaxValue', function() { updateGenericValueFilter('stochK3Value', stochK3Value); });
         }
 
         // Initialize sort indicators on page load
@@ -4976,6 +5040,8 @@ app.get('/', (req, res) => {
         }
         
         function toggleSliderFilter(sliderType) {
+          const map = { stochK1Value: stochK1Value, stochK2Value: stochK2Value, stochK3Value: stochK3Value };
+          if (map[sliderType]) updateGenericValueFilter(sliderType, map[sliderType]);
         }
 
         function updateGenericValueFilter(key, stateObj) {
@@ -6369,9 +6435,9 @@ Use this to create a new preset filter button that applies these exact filter se
                 let suggestionHtml = '';
                 if (suggestion) {
                   const sugClr = suggestion.type === 'long' ? 'text-green-400 font-semibold' : suggestion.type === 'short' ? 'text-red-400 font-semibold' : 'text-amber-400';
-                  suggestionHtml = '<div class="text-xs mt-0.5 ' + sugClr + '">' + suggestion.text + '</div>';
+                  suggestionHtml = '<span class="text-xs ' + sugClr + ' ml-2">' + suggestion.text + '</span>';
                 }
-                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-col"><div class="flex flex-row items-center gap-3">' + parts.join('<span class="text-muted-foreground">|</span>') + '</div>' + suggestionHtml + '</div></td>';
+                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3 flex-wrap">' + parts.join('<span class="text-muted-foreground">|</span>') + suggestionHtml + '</div></td>';
               })()
             };
             
