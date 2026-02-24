@@ -3857,6 +3857,17 @@ app.get('/', (req, res) => {
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK3ValueSlider"></div></div></div></div>
                     </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Suggestion</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long">Try Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
                   
@@ -4050,6 +4061,7 @@ app.get('/', (req, res) => {
         let stochK1Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK3Value = { min: 0, max: 100, active: false, excluded: false };
+        let stochSuggestion = [];
 
         let stochFilterPercentChange = [];
         
@@ -4217,11 +4229,15 @@ app.get('/', (req, res) => {
 
         function hasStochDirFilters() {
           return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0 ||
-            stochK1Value.active || stochK2Value.active || stochK3Value.active;
+            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0;
         }
 
         function passesStochDirFilter(alert) {
           const t = alert.triStoch;
+          if (stochSuggestion.length > 0) {
+            const sug = getTriStochSuggestion(t);
+            if (!sug || !stochSuggestion.includes(sug.text)) return false;
+          }
           if (stochK1Dir.length > 0) {
             const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
             if (!stochK1Dir.includes(dir)) return false;
@@ -4255,8 +4271,8 @@ app.get('/', (req, res) => {
         }
 
         function clearStochDirFilters() {
-          document.querySelectorAll('[data-filter^="stoch_k"]').forEach(c => c.classList.remove('active'));
-          stochK1Dir = []; stochK2Dir = []; stochK3Dir = [];
+          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
+          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
           stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
           stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
           stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
@@ -5078,6 +5094,7 @@ app.get('/', (req, res) => {
           stochK1Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k1Dir"].active')).map(c => c.dataset.value);
           stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
           stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
+          stochSuggestion = Array.from(document.querySelectorAll('[data-filter="stoch_suggestion"].active')).map(c => c.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
         }
