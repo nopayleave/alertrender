@@ -3869,15 +3869,42 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K3 vs K2 vs K1</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_orderOp', '>', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value=">">&gt;</button>
-                        <button onclick="toggleFilterChip('stoch_orderOp', '<', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="<">&lt;</button>
-                        <button onclick="toggleFilterChip('stoch_orderOp', '>=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value=">=">&gt;=</button>
-                        <button onclick="toggleFilterChip('stoch_orderOp', '<=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="<=">&lt;=</button>
-                        <button onclick="toggleFilterChip('stoch_orderOp', '=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="=">=</button>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K order</label>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" id="stochOrderApply" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <span class="text-xs text-muted-foreground">Apply</span>
+                        </label>
+                        <select id="stochOrderLeft" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value="K1">K1</option>
+                          <option value="K2">K2</option>
+                          <option value="K3" selected>K3</option>
+                        </select>
+                        <select id="stochOrderOp1" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value=">">&gt;</option>
+                          <option value="<">&lt;</option>
+                          <option value=">=">&gt;=</option>
+                          <option value="<=">&lt;=</option>
+                          <option value="=">=</option>
+                        </select>
+                        <select id="stochOrderMid" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value="K1">K1</option>
+                          <option value="K2" selected>K2</option>
+                          <option value="K3">K3</option>
+                        </select>
+                        <select id="stochOrderOp2" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value=">">&gt;</option>
+                          <option value="<">&lt;</option>
+                          <option value=">=">&gt;=</option>
+                          <option value="<=">&lt;=</option>
+                          <option value="=">=</option>
+                        </select>
+                        <select id="stochOrderRight" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value="K1" selected>K1</option>
+                          <option value="K2">K2</option>
+                          <option value="K3">K3</option>
+                        </select>
                       </div>
-                      <p class="text-xs text-muted-foreground mt-1 px-1">Filter where K3 op K2 and K2 op K1</p>
                     </div>
                   </div>
                 </div>
@@ -4073,7 +4100,12 @@ app.get('/', (req, res) => {
         let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK3Value = { min: 0, max: 100, active: false, excluded: false };
         let stochSuggestion = [];
-        let stochOrderOp = []; // K3 op K2 op K1: selected operators '>', '<', '<=', '>=', '='
+        let stochOrderActive = false;
+        let stochOrderLeft = 'K3';
+        let stochOrderOp1 = '>';
+        let stochOrderMid = 'K2';
+        let stochOrderOp2 = '>';
+        let stochOrderRight = 'K1';
 
         let stochFilterPercentChange = [];
         
@@ -4241,7 +4273,22 @@ app.get('/', (req, res) => {
 
         function hasStochDirFilters() {
           return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0 ||
-            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0 || stochOrderOp.length > 0;
+            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0 || stochOrderActive;
+        }
+
+        function updateStochOrderFromDom() {
+          const applyEl = document.getElementById('stochOrderApply');
+          const leftEl = document.getElementById('stochOrderLeft');
+          const op1El = document.getElementById('stochOrderOp1');
+          const midEl = document.getElementById('stochOrderMid');
+          const op2El = document.getElementById('stochOrderOp2');
+          const rightEl = document.getElementById('stochOrderRight');
+          stochOrderActive = applyEl ? applyEl.checked : false;
+          stochOrderLeft = leftEl ? leftEl.value : 'K3';
+          stochOrderOp1 = op1El ? op1El.value : '>';
+          stochOrderMid = midEl ? midEl.value : 'K2';
+          stochOrderOp2 = op2El ? op2El.value : '>';
+          stochOrderRight = rightEl ? rightEl.value : 'K1';
         }
 
         function stochOrderCompare(a, op, b) {
@@ -4255,13 +4302,16 @@ app.get('/', (req, res) => {
 
         function passesStochDirFilter(alert) {
           const t = alert.triStoch;
-          if (stochOrderOp.length > 0) {
+          if (stochOrderActive) {
             const k1 = t && t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
             const k2 = t && t.dtK != null && !isNaN(parseFloat(t.dtK)) ? parseFloat(t.dtK) : null;
             const k3 = t && t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
-            if (k1 == null || k2 == null || k3 == null) return false;
-            const match = stochOrderOp.some(op => stochOrderCompare(k3, op, k2) && stochOrderCompare(k2, op, k1));
-            if (!match) return false;
+            const vals = { K1: k1, K2: k2, K3: k3 };
+            const leftVal = vals[stochOrderLeft];
+            const midVal = vals[stochOrderMid];
+            const rightVal = vals[stochOrderRight];
+            if (leftVal == null || midVal == null || rightVal == null) return false;
+            if (!stochOrderCompare(leftVal, stochOrderOp1, midVal) || !stochOrderCompare(midVal, stochOrderOp2, rightVal)) return false;
           }
           if (stochSuggestion.length > 0) {
             const sug = getTriStochSuggestion(t);
@@ -4300,8 +4350,22 @@ app.get('/', (req, res) => {
         }
 
         function clearStochDirFilters() {
-          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"], [data-filter="stoch_orderOp"]').forEach(c => c.classList.remove('active'));
-          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = []; stochOrderOp = [];
+          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
+          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
+          stochOrderActive = false;
+          stochOrderLeft = 'K3'; stochOrderOp1 = '>'; stochOrderMid = 'K2'; stochOrderOp2 = '>'; stochOrderRight = 'K1';
+          const applyEl = document.getElementById('stochOrderApply');
+          if (applyEl) applyEl.checked = false;
+          const leftEl = document.getElementById('stochOrderLeft');
+          if (leftEl) leftEl.value = 'K3';
+          const op1El = document.getElementById('stochOrderOp1');
+          if (op1El) op1El.value = '>';
+          const midEl = document.getElementById('stochOrderMid');
+          if (midEl) midEl.value = 'K2';
+          const op2El = document.getElementById('stochOrderOp2');
+          if (op2El) op2El.value = '>';
+          const rightEl = document.getElementById('stochOrderRight');
+          if (rightEl) rightEl.value = 'K1';
           stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
           stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
           stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
@@ -5124,7 +5188,7 @@ app.get('/', (req, res) => {
           stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
           stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
           stochSuggestion = Array.from(document.querySelectorAll('[data-filter="stoch_suggestion"].active')).map(c => c.dataset.value);
-          stochOrderOp = Array.from(document.querySelectorAll('[data-filter="stoch_orderOp"].active')).map(c => c.dataset.value);
+          updateStochOrderFromDom();
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
         }
