@@ -3868,6 +3868,17 @@ app.get('/', (req, res) => {
                         <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
                       </div>
                     </div>
+                    <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K3 vs K2 vs K1</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button onclick="toggleFilterChip('stoch_orderOp', '>', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value=">">&gt;</button>
+                        <button onclick="toggleFilterChip('stoch_orderOp', '<', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="<">&lt;</button>
+                        <button onclick="toggleFilterChip('stoch_orderOp', '>=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value=">=">&gt;=</button>
+                        <button onclick="toggleFilterChip('stoch_orderOp', '<=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="<=">&lt;=</button>
+                        <button onclick="toggleFilterChip('stoch_orderOp', '=', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="stoch_orderOp" data-value="=">=</button>
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-1 px-1">Filter where K3 op K2 and K2 op K1</p>
+                    </div>
                   </div>
                 </div>
                   
@@ -4062,6 +4073,7 @@ app.get('/', (req, res) => {
         let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK3Value = { min: 0, max: 100, active: false, excluded: false };
         let stochSuggestion = [];
+        let stochOrderOp = []; // K3 op K2 op K1: selected operators '>', '<', '<=', '>=', '='
 
         let stochFilterPercentChange = [];
         
@@ -4229,11 +4241,28 @@ app.get('/', (req, res) => {
 
         function hasStochDirFilters() {
           return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0 ||
-            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0;
+            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0 || stochOrderOp.length > 0;
+        }
+
+        function stochOrderCompare(a, op, b) {
+          if (op === '=') return Math.abs(a - b) < 1e-6;
+          if (op === '>') return a > b;
+          if (op === '<') return a < b;
+          if (op === '>=') return a >= b;
+          if (op === '<=') return a <= b;
+          return false;
         }
 
         function passesStochDirFilter(alert) {
           const t = alert.triStoch;
+          if (stochOrderOp.length > 0) {
+            const k1 = t && t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+            const k2 = t && t.dtK != null && !isNaN(parseFloat(t.dtK)) ? parseFloat(t.dtK) : null;
+            const k3 = t && t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
+            if (k1 == null || k2 == null || k3 == null) return false;
+            const match = stochOrderOp.some(op => stochOrderCompare(k3, op, k2) && stochOrderCompare(k2, op, k1));
+            if (!match) return false;
+          }
           if (stochSuggestion.length > 0) {
             const sug = getTriStochSuggestion(t);
             if (!sug || !stochSuggestion.includes(sug.text)) return false;
@@ -4271,8 +4300,8 @@ app.get('/', (req, res) => {
         }
 
         function clearStochDirFilters() {
-          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
-          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
+          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"], [data-filter="stoch_orderOp"]').forEach(c => c.classList.remove('active'));
+          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = []; stochOrderOp = [];
           stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
           stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
           stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
@@ -5095,6 +5124,7 @@ app.get('/', (req, res) => {
           stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
           stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
           stochSuggestion = Array.from(document.querySelectorAll('[data-filter="stoch_suggestion"].active')).map(c => c.dataset.value);
+          stochOrderOp = Array.from(document.querySelectorAll('[data-filter="stoch_orderOp"].active')).map(c => c.dataset.value);
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
         }
