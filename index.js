@@ -4321,9 +4321,9 @@ app.get('/', (req, res) => {
               first = stochOrderCompare(leftVal, stochOrderOp2, rightVal);   // A cond2 C
               second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
             } else if (stochOrderOp2 === 'and') {
-              // & in cond2: C not compare to B; C compare to A with cond1
+              // & in cond2: A cond1 B and A cond1 C  (e.g. K3 > K2 and K3 > K1)
               first = stochOrderCompare(leftVal, stochOrderOp1, midVal);    // A cond1 B
-              second = stochOrderCompare(rightVal, stochOrderOp1, leftVal);   // C cond1 A
+              second = stochOrderCompare(leftVal, stochOrderOp1, rightVal);  // A cond1 C
             } else {
               first = stochOrderCompare(leftVal, stochOrderOp1, midVal);     // A cond1 B
               second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
