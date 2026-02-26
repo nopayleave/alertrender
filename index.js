@@ -3883,10 +3883,10 @@ app.get('/', (req, res) => {
                           <option value="K3" selected>K3</option>
                         </select>
                         <select id="stochOrderOp1" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
-                          <option value=">">&gt;</option>
-                          <option value="<">&lt;</option>
-                          <option value=">=">&gt;=</option>
-                          <option value="<=">&lt;=</option>
+                          <option value="&gt;">&gt;</option>
+                          <option value="&lt;">&lt;</option>
+                          <option value="&gt;=">&gt;=</option>
+                          <option value="&lt;=">&lt;=</option>
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
@@ -3896,10 +3896,10 @@ app.get('/', (req, res) => {
                           <option value="K3">K3</option>
                         </select>
                         <select id="stochOrderOp2" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
-                          <option value=">">&gt;</option>
-                          <option value="<">&lt;</option>
-                          <option value=">=">&gt;=</option>
-                          <option value="<=">&lt;=</option>
+                          <option value="&gt;">&gt;</option>
+                          <option value="&lt;">&lt;</option>
+                          <option value="&gt;=">&gt;=</option>
+                          <option value="&lt;=">&lt;=</option>
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
