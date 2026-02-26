@@ -4315,7 +4315,11 @@ app.get('/', (req, res) => {
             const midVal = vals[stochOrderMid];
             const rightVal = vals[stochOrderRight];
             if (leftVal == null || midVal == null || rightVal == null) return false;
-            if (!stochOrderCompare(leftVal, stochOrderOp1, midVal) || !stochOrderCompare(midVal, stochOrderOp2, rightVal)) return false;
+            const first = stochOrderCompare(leftVal, stochOrderOp1, midVal); // A cond1 B
+            const second = (stochOrderOp2 === 'and')
+              ? stochOrderCompare(rightVal, stochOrderOp1, leftVal)   // & in cond2: C compare to A with cond1
+              : stochOrderCompare(midVal, stochOrderOp2, rightVal);   // else: B cond2 C
+            if (!first || !second) return false;
           }
           if (stochSuggestion.length > 0) {
             const sug = getTriStochSuggestion(t);
