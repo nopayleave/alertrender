@@ -3895,10 +3895,6 @@ app.get('/', (req, res) => {
                           <option value="K2" selected>K2</option>
                           <option value="K3">K3</option>
                         </select>
-                        <select id="stochOrderConnector" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
-                          <option value="&" selected>&amp;</option>
-                          <option value="|">|</option>
-                        </select>
                         <select id="stochOrderOp2" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value=">">&gt;</option>
                           <option value="<">&lt;</option>
@@ -4114,7 +4110,6 @@ app.get('/', (req, res) => {
         let stochOrderMid = 'K2';
         let stochOrderOp2 = '>';
         let stochOrderRight = 'K1';
-        let stochOrderConnector = '&'; // '&' = AND, '|' = OR
 
         let stochFilterPercentChange = [];
         
@@ -4292,12 +4287,10 @@ app.get('/', (req, res) => {
           const midEl = document.getElementById('stochOrderMid');
           const op2El = document.getElementById('stochOrderOp2');
           const rightEl = document.getElementById('stochOrderRight');
-          const connEl = document.getElementById('stochOrderConnector');
           stochOrderActive = applyEl ? applyEl.checked : false;
           stochOrderLeft = leftEl ? leftEl.value : 'K3';
           stochOrderOp1 = op1El ? op1El.value : '>';
           stochOrderMid = midEl ? midEl.value : 'K2';
-          stochOrderConnector = connEl ? connEl.value : '&';
           stochOrderOp2 = op2El ? op2El.value : '>';
           stochOrderRight = rightEl ? rightEl.value : 'K1';
         }
@@ -4322,13 +4315,7 @@ app.get('/', (req, res) => {
             const midVal = vals[stochOrderMid];
             const rightVal = vals[stochOrderRight];
             if (leftVal == null || midVal == null || rightVal == null) return false;
-            const first = stochOrderCompare(leftVal, stochOrderOp1, midVal);
-            const second = stochOrderCompare(midVal, stochOrderOp2, rightVal);
-            if (stochOrderConnector === '|') {
-              if (!first && !second) return false;
-            } else {
-              if (!first || !second) return false;
-            }
+            if (!stochOrderCompare(leftVal, stochOrderOp1, midVal) || !stochOrderCompare(midVal, stochOrderOp2, rightVal)) return false;
           }
           if (stochSuggestion.length > 0) {
             const sug = getTriStochSuggestion(t);
@@ -4370,7 +4357,7 @@ app.get('/', (req, res) => {
           document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
           stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
           stochOrderActive = false;
-          stochOrderLeft = 'K3'; stochOrderOp1 = '>'; stochOrderMid = 'K2'; stochOrderConnector = '&'; stochOrderOp2 = '>'; stochOrderRight = 'K1';
+          stochOrderLeft = 'K3'; stochOrderOp1 = '>'; stochOrderMid = 'K2'; stochOrderOp2 = '>'; stochOrderRight = 'K1';
           const applyEl = document.getElementById('stochOrderApply');
           if (applyEl) applyEl.checked = false;
           const leftEl = document.getElementById('stochOrderLeft');
@@ -4379,8 +4366,6 @@ app.get('/', (req, res) => {
           if (op1El) op1El.value = '>';
           const midEl = document.getElementById('stochOrderMid');
           if (midEl) midEl.value = 'K2';
-          const connEl = document.getElementById('stochOrderConnector');
-          if (connEl) connEl.value = '&';
           const op2El = document.getElementById('stochOrderOp2');
           if (op2El) op2El.value = '>';
           const rightEl = document.getElementById('stochOrderRight');
