@@ -3888,7 +3888,7 @@ app.get('/', (req, res) => {
                           <option value=">=">&gt;=</option>
                           <option value="<=">&lt;=</option>
                           <option value="=">=</option>
-                          <option value="&">&amp;</option>
+                          <option value="and">&amp;</option>
                         </select>
                         <select id="stochOrderMid" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1">K1</option>
@@ -3901,7 +3901,7 @@ app.get('/', (req, res) => {
                           <option value=">=">&gt;=</option>
                           <option value="<=">&lt;=</option>
                           <option value="=">=</option>
-                          <option value="&">&amp;</option>
+                          <option value="and">&amp;</option>
                         </select>
                         <select id="stochOrderRight" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1" selected>K1</option>
@@ -4296,7 +4296,7 @@ app.get('/', (req, res) => {
         }
 
         function stochOrderCompare(a, op, b) {
-          if (op === '=' || op === '&') return Math.abs(a - b) < 1e-6;
+          if (op === '=' || op === 'and') return Math.abs(a - b) < 1e-6;
           if (op === '>') return a > b;
           if (op === '<') return a < b;
           if (op === '>=') return a >= b;
