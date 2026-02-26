@@ -3877,12 +3877,12 @@ app.get('/', (req, res) => {
                         </label>
                       </div>
                       <div class="flex flex-wrap items-center gap-2">
-                        <select id="stochOrderLeft" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderLeft" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1">K1</option>
                           <option value="K2">K2</option>
                           <option value="K3" selected>K3</option>
                         </select>
-                        <select id="stochOrderOp1" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
                           <option value="&gt;=">&gt;=</option>
@@ -3890,12 +3890,12 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderMid" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderMid" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1">K1</option>
                           <option value="K2" selected>K2</option>
                           <option value="K3">K3</option>
                         </select>
-                        <select id="stochOrderOp2" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
                           <option value="&gt;=">&gt;=</option>
@@ -3903,7 +3903,7 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderRight" class="text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderRight" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1" selected>K1</option>
                           <option value="K2">K2</option>
                           <option value="K3">K3</option>
