@@ -4315,10 +4315,19 @@ app.get('/', (req, res) => {
             const midVal = vals[stochOrderMid];
             const rightVal = vals[stochOrderRight];
             if (leftVal == null || midVal == null || rightVal == null) return false;
-            const first = stochOrderCompare(leftVal, stochOrderOp1, midVal); // A cond1 B
-            const second = (stochOrderOp2 === 'and')
-              ? stochOrderCompare(rightVal, stochOrderOp1, leftVal)   // & in cond2: C compare to A with cond1
-              : stochOrderCompare(midVal, stochOrderOp2, rightVal);   // else: B cond2 C
+            let first, second;
+            if (stochOrderOp1 === 'and') {
+              // & in cond1: A not compare to B; A compare to C with cond2
+              first = stochOrderCompare(leftVal, stochOrderOp2, rightVal);   // A cond2 C
+              second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
+            } else if (stochOrderOp2 === 'and') {
+              // & in cond2: C not compare to B; C compare to A with cond1
+              first = stochOrderCompare(leftVal, stochOrderOp1, midVal);    // A cond1 B
+              second = stochOrderCompare(rightVal, stochOrderOp1, leftVal);   // C cond1 A
+            } else {
+              first = stochOrderCompare(leftVal, stochOrderOp1, midVal);     // A cond1 B
+              second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
+            }
             if (!first || !second) return false;
           }
           if (stochSuggestion.length > 0) {
