@@ -3282,7 +3282,7 @@ app.get('/', (req, res) => {
           top: -6px;
           border-radius: 2px;
           background: hsl(40 10% 85%);
-          border: 2px solid rgb(245, 158, 11);
+          border: 1px solid hsl(0 0% 28%);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
           cursor: pointer;
         }
