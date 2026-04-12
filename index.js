@@ -3276,11 +3276,11 @@ app.get('/', (req, res) => {
           height: 8px;
         }
         .noUi-horizontal .noUi-handle {
-          width: 20px;
+          width: 11px;
           height: 20px;
-          right: -10px;
+          right: -5.5px;
           top: -6px;
-          border-radius: 50%;
+          border-radius: 2px;
           background: hsl(40 10% 85%);
           border: 2px solid rgb(245, 158, 11);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
