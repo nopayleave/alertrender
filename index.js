@@ -255,6 +255,7 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   const upLine = '#4ade80'
   const downLine = '#f87171'
   const flatLine = '#9ca3af'
+  const strokeOpts = ' vector-effect="non-scaling-stroke" shape-rendering="geometricPrecision"'
   const coords = []
   pts.forEach((pt, index) => {
     let xRatio
@@ -287,7 +288,6 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
     extra = '<circle vector-effect="non-scaling-stroke" cx="' + x + '" cy="' + y + '" r="2.5" fill="' + strokeHex + '"/>'
   }
   const vb = '0 0 ' + chartWidth + ' ' + chartHeight
-  const strokeOpts = ' vector-effect="non-scaling-stroke" shape-rendering="geometricPrecision"'
   const xMidNy = padding + 0.5 * plotWidth
   return '<svg viewBox="' + vb + '" width="100%" height="' + chartHeight + '" preserveAspectRatio="none" style="display:block;max-width:100%;min-width:0" xmlns="http://www.w3.org/2000/svg">' +
     (useTimeAxis ? '<line x1="' + xMidNy + '" y1="' + padding + '" x2="' + xMidNy + '" y2="' + (chartHeight - padding) + '" stroke="#666" stroke-width="0.4" opacity="0.2"' + strokeOpts + '/>' : '') +
