@@ -252,7 +252,10 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   const y20 = yForStoch(20)
   const y50 = yForStoch(50)
   const y80 = yForStoch(80)
-  let pathD = ''
+  const upLine = '#4ade80'
+  const downLine = '#f87171'
+  const flatLine = '#9ca3af'
+  const coords = []
   pts.forEach((pt, index) => {
     let xRatio
     if (useTimeAxis) {
@@ -261,10 +264,15 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
     } else {
       xRatio = pts.length === 1 ? 0.5 : index / (pts.length - 1)
     }
-    const x = padding + xRatio * plotWidth
-    const y = yForStoch(pt.v)
-    pathD += (index === 0 ? 'M ' : ' L ') + x + ' ' + y
+    coords.push({ x: padding + xRatio * plotWidth, y: yForStoch(pt.v), v: pt.v })
   })
+  let pathSegments = ''
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = coords[i]
+    const b = coords[i + 1]
+    const segStroke = b.v > a.v ? upLine : b.v < a.v ? downLine : flatLine
+    pathSegments += '<path d="M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y + '" stroke="' + segStroke + '" stroke-width="1.25" fill="none" stroke-linecap="round" stroke-linejoin="round"' + strokeOpts + '/>'
+  }
   let extra = ''
   if (pts.length === 1) {
     let xRatio
@@ -286,7 +294,7 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
     '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#888" stroke-width="0.75" opacity="0.45" stroke-dasharray="2 1"' + strokeOpts + '/>' +
     '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#aaa" stroke-width="0.9" opacity="0.55"' + strokeOpts + '/>' +
     '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#888" stroke-width="0.75" opacity="0.45" stroke-dasharray="2 1"' + strokeOpts + '/>' +
-    '<path d="' + pathD + '" stroke="' + strokeHex + '" stroke-width="1.25" fill="none"' + strokeOpts + '/>' +
+    pathSegments +
     extra +
     '</svg>'
 }
@@ -3036,10 +3044,11 @@ app.get('/', (req, res) => {
         th:hover .column-resize-handle {
           background: rgba(245, 158, 11, 0.2);
         }
-        /* iOS-style filter chips */
+        /* Filter chips — rectangular (terminal-style), not pills */
         .filter-chip {
           user-select: none;
           -webkit-tap-highlight-color: transparent;
+          border-radius: 2px;
         }
         .filter-chip.active {
           opacity: 1 !important;
@@ -4034,22 +4043,22 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K1 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_k1Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k1Dir" data-value="up">▲ Up</button>
-                        <button onclick="toggleFilterChip('stoch_k1Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k1Dir" data-value="down">▼ Down</button>
+                        <button onclick="toggleFilterChip('stoch_k1Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k1Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k1Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k1Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K2 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_k2Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k2Dir" data-value="up">▲ Up</button>
-                        <button onclick="toggleFilterChip('stoch_k2Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k2Dir" data-value="down">▼ Down</button>
+                        <button onclick="toggleFilterChip('stoch_k2Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k2Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k2Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k2Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K3 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_k3Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k3Dir" data-value="up">▲ Up</button>
-                        <button onclick="toggleFilterChip('stoch_k3Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k3Dir" data-value="down">▼ Down</button>
+                        <button onclick="toggleFilterChip('stoch_k3Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k3Dir" data-value="up">▲ Up</button>
+                        <button onclick="toggleFilterChip('stoch_k3Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k3Dir" data-value="down">▼ Down</button>
                       </div>
                     </div>
                     <div class="mb-4">
@@ -4085,22 +4094,22 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Suggestion</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin.">Long Contin.</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin.">Short Contin.</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal">Long Reversal</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal">Short Reversal</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long">Try Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias">Long Bias</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias">Short Bias</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long">Lean Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short">Lean Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought">Overbought</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold">Oversold</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin.">Long Contin.</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin.">Short Contin.</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal">Long Reversal</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal">Short Reversal</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long">Try Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias">Long Bias</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias">Short Bias</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long">Lean Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short">Lean Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought">Overbought</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold">Oversold</button>
                       </div>
                     </div>
                     <div class="mb-4">
@@ -4172,14 +4181,14 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                     <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price %</label>
                     <div class="filter-group flex flex-wrap gap-1.5">
-                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
-                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium rounded-md border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '<-10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-300" data-filter="percentChange" data-value="<-10" id="pricePercentLessThanMinus10">&lt;-10% <span id="pricePercentLessThanMinus10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-700/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '<-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-red-400/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="percentChange" data-value="<-5" id="pricePercentLessThan5">&lt;-5% <span id="pricePercentLessThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '-5--2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-500" data-filter="percentChange" data-value="-5--2" id="pricePercentMinus5ToMinus2">-5~-2% <span id="pricePercentMinus5ToMinus2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '-2-0', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/15 hover:bg-orange-500/25 active:scale-95 transition-all text-orange-400" data-filter="percentChange" data-value="-2-0" id="pricePercentMinus2To0">-2~0% <span id="pricePercentMinus2To0Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-orange-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '0-2', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/15 hover:bg-lime-500/25 active:scale-95 transition-all text-lime-400" data-filter="percentChange" data-value="0-2" id="pricePercent0To2">0~2% <span id="pricePercent0To2Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-lime-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '2-5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-500" data-filter="percentChange" data-value="2-5" id="pricePercent2To5">2~5% <span id="pricePercent2To5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '>5', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-green-400/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="percentChange" data-value=">5" id="pricePercentGreaterThan5">&gt;5% <span id="pricePercentGreaterThan5Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span></button>
+                      <button onclick="toggleFilterChip('percentChange', '>10', this)" class="filter-chip pl-2.5 pr-1.5 py-1.5 text-xs font-medium border border-green-300/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="percentChange" data-value=">10" id="pricePercentGreaterThan10">&gt;10% <span id="pricePercentGreaterThan10Count" class="ml-1 px-1 py-0.5 rounded text-xs font-bold bg-green-500/50 text-white">0</span></button>
                     </div>
                   </div>
                     
@@ -4187,11 +4196,11 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Vol</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('volume', '<100K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="volume" data-value="<100K">&lt;100K</button>
-                        <button onclick="toggleFilterChip('volume', '100K-500K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="volume" data-value="100K-500K">100K-500K</button>
-                        <button onclick="toggleFilterChip('volume', '500K-1M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="volume" data-value="500K-1M">500K-1M</button>
-                        <button onclick="toggleFilterChip('volume', '1M-5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="volume" data-value="1M-5M">1M-5M</button>
-                        <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
+                        <button onclick="toggleFilterChip('volume', '<100K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="volume" data-value="<100K">&lt;100K</button>
+                        <button onclick="toggleFilterChip('volume', '100K-500K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="volume" data-value="100K-500K">100K-500K</button>
+                        <button onclick="toggleFilterChip('volume', '500K-1M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="volume" data-value="500K-1M">500K-1M</button>
+                        <button onclick="toggleFilterChip('volume', '1M-5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="volume" data-value="1M-5M">1M-5M</button>
+                        <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
                     </div>
                   </div>
                   </div>
@@ -4611,11 +4620,9 @@ app.get('/', (req, res) => {
             }
           }
           if (stochSuggestion.length > 0) {
-            const kdSug = getKDTrendMessage(alert);
-            const triSug = getTriStochSuggestion(t);
+            const sug = getUnifiedStochSuggestion(alert);
             const matchFn = (sugText) => stochSuggestion.some(f => sugText === f || sugText.startsWith(f));
-            const matched = (kdSug && matchFn(kdSug.text)) || (triSug && matchFn(triSug.text));
-            if (!matched) return false;
+            if (!sug || !matchFn(sug.text)) return false;
           }
           if (stochK1Dir.length > 0) {
             const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
@@ -4856,7 +4863,13 @@ app.get('/', (req, res) => {
           if (k3 !== null && k3 < 20 && down(d1) && down(d2)) return { text: 'No Long', type: 'neutral' };     // Oversold but bearish
           return null;
         }
-        
+
+        /** One suggestion for table/masonry display and Suggestion chips: session K/D logic first, Tri-K fallback (matches what you see vs what you filter). */
+        function getUnifiedStochSuggestion(alert) {
+          const kd = getKDTrendMessage(alert);
+          if (kd) return kd;
+          return getTriStochSuggestion(alert && alert.triStoch);
+        }
 
         function sortTable(field) {
           if (currentSortField === field) {
@@ -5710,6 +5723,17 @@ app.get('/', (req, res) => {
           });
           activePreset = null;
         }
+
+        /** Align EXT.BULL / EXT.BEAR presets with K1 value strip (counts already required K1 80–100 / 0–30). */
+        function setStochK1ValueFilterFromPreset(min, max) {
+          const excludedEl = document.getElementById('stochK1ValueExcluded');
+          if (excludedEl) excludedEl.checked = false;
+          const toggle = document.getElementById('stochK1ValueToggle');
+          if (toggle) toggle.checked = true;
+          const el = sliders['stochK1Value'];
+          if (el && el.noUiSlider) el.noUiSlider.set([min, max]);
+          updateGenericValueFilter('stochK1Value', stochK1Value);
+        }
         
         function applyPresetFilter(preset) {
           const presetGroup = document.querySelector('.preset-filter-group');
@@ -5746,8 +5770,10 @@ app.get('/', (req, res) => {
             activateChip('stoch_k2Dir', 'up');
           } else if (preset === 'extBull') {
             activateChip('stoch_k1Dir', 'up');
+            setStochK1ValueFilterFromPreset(80, 100);
           } else if (preset === 'extBear') {
             activateChip('stoch_k1Dir', 'down');
+            setStochK1ValueFilterFromPreset(0, 30);
           }
           
           // Update filter arrays from chip states
@@ -6832,7 +6858,7 @@ Use this to create a new preset filter button that applies these exact filter se
             // Enhanced trend messages — unified K/D + K1 + K3 scene
             let trendMessage = '';
             let trendMessageClass = '';
-            const kdTrend = getKDTrendMessage(alert);
+            const kdTrend = getUnifiedStochSuggestion(alert);
             if (kdTrend) {
               trendMessage = kdTrend.text;
               const txt = kdTrend.text;
@@ -7095,7 +7121,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
                 const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
-                const unified = getKDTrendMessage(alert);
+                const unified = getUnifiedStochSuggestion(alert);
                 let suggestionHtml = '';
                 if (unified) {
                   const txt = unified.text;
@@ -7391,7 +7417,7 @@ Use this to create a new preset filter button that applies these exact filter se
           });
           
           // Check for K/D trend message changes
-          const kdTrend = getKDTrendMessage(alert);
+          const kdTrend = getUnifiedStochSuggestion(alert);
           const currentTrendText = kdTrend ? kdTrend.text : '';
           if (currentTrendText && currentTrendText !== prevState.trendMessage) {
             const isBullish = kdTrend.type === 'long';
