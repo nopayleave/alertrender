@@ -4245,7 +4245,8 @@ app.get('/', (req, res) => {
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
             <div class="h-full overflow-auto scrollbar-thin">
-              <table class="w-full table-auto border-collapse font-terminal text-sm">
+              <!-- table-fixed + min-w-full w-max: resize changes one column’s px width; table grows past viewport → scroll (see dev.to/sohrabzia/resizable-table) -->
+              <table class="table-fixed border-collapse font-terminal text-sm min-w-full w-max">
                 <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(10, 10, 10, 0.98);">
                   <tr class="border-b border-border/50">
                     <!-- Headers will be dynamically generated -->
