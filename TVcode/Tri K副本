@@ -36,6 +36,7 @@ smoothK3 = input.int(5, title="S3 %K Smoothing", minval=1, group="S3 Smoothing")
 periodD3 = input.int(4, title="S3 %D Smoothing", minval=1, group="S3 Smoothing")
 smooth3 = input.bool(true, title="S3 Extra Smooth", group="S3 Smoothing")
 smoothLen3 = input.int(8, minval=1, title="S3 Extra Smooth Length", group="S3 Smoothing")
+s3HistKOnly = input.bool(true, title="S3 Histogram: %K only", group="S3 Smoothing", tooltip="On (default): histogram shows %K. Off: K−D when “%K only” is off.")
 s3Opacity = input.int(50, title="S3 Opacity", minval=0, maxval=100, group="S3 Smoothing", tooltip="0=transparent, 100=solid")
 
 // ===== SCALED-PERIOD STOCHASTIC (no request.security, no stair-steps) =====
@@ -82,6 +83,11 @@ colorExLow     = input.color(#f48fb1, title="Oversold (<20)", group="Extreme Col
 colorWarnHigh  = input.color(#f06292, title=">80 turning down", group="Extreme Colors")
 colorWarnLow   = input.color(#4dd0e1, title="<20 turning up", group="Extreme Colors")
 
+// Color Setting 2: ignore direction/extreme line theme; use K vs D only (needs %K only off)
+colorSetting2 = input.bool(false, title="K>D green / D>K red", group="Color Setting 2", tooltip="When on, all %K/%D line colors follow K vs D. Disabled while “%K only” is on.")
+colorKdBull = input.color(#089981, title="K > D", group="Color Setting 2")
+colorKdBear = input.color(#f23645, title="D > K (incl. K=D)", group="Color Setting 2")
+
 // Direction color helper: extreme zones override, otherwise use pair's mono up/down
 f_lineColor(val, isUp, colUp, colDown) =>
     (val < 20 and isUp) ? colorWarnLow : (val > 80 and not isUp) ? colorWarnHigh : val > 80 ? colorExHigh : val < 20 ? colorExLow : isUp ? colUp : colDown
@@ -89,18 +95,33 @@ f_lineColor(val, isUp, colUp, colDown) =>
 // ===== LINE COLORS =====
 k1IsUp = k1 >= k1[1]
 d1IsUp = d1 >= d1[1]
-k1Color = (k1 < 5 or k1 > 95) ? color.white : f_lineColor(k1, k1IsUp, colorUp, colorDown)
-d1Color = f_lineColor(d1, d1IsUp, colorUp, colorDown)
+k1ColorBase = (k1 < 5 or k1 > 95) ? color.white : f_lineColor(k1, k1IsUp, colorUp, colorDown)
+d1ColorBase = f_lineColor(d1, d1IsUp, colorUp, colorDown)
+k1ColorKd2 = k1 > d1 ? colorKdBull : colorKdBear
+d1ColorKd2 = k1ColorKd2
+k1Color = colorSetting2 and not kOnly ? k1ColorKd2 : k1ColorBase
+d1Color = colorSetting2 and not kOnly ? d1ColorKd2 : d1ColorBase
 
 k2IsUp = k2 >= k2[1]
 d2IsUp = d2 >= d2[1]
-k2Color = (k2 < 5 or k2 > 95) ? color.white : f_lineColor(k2, k2IsUp, colorUp, colorDown)
-d2Color = f_lineColor(d2, d2IsUp, colorUp, colorDown)
+k2ColorBase = (k2 < 5 or k2 > 95) ? color.white : f_lineColor(k2, k2IsUp, colorUp, colorDown)
+d2ColorBase = f_lineColor(d2, d2IsUp, colorUp, colorDown)
+k2ColorKd2 = k2 > d2 ? colorKdBull : colorKdBear
+d2ColorKd2 = k2ColorKd2
+k2Color = colorSetting2 and not kOnly ? k2ColorKd2 : k2ColorBase
+d2Color = colorSetting2 and not kOnly ? d2ColorKd2 : d2ColorBase
 
 k3IsUp = k3 >= k3[1]
 d3IsUp = d3 >= d3[1]
-k3Color = (k3 < 5 or k3 > 95) ? color.white : f_lineColor(k3, k3IsUp, colorUp, colorDown)
-d3Color = f_lineColor(d3, d3IsUp, colorUp, colorDown)
+k3ColorBase = (k3 < 5 or k3 > 95) ? color.white : f_lineColor(k3, k3IsUp, colorUp, colorDown)
+d3ColorBase = f_lineColor(d3, d3IsUp, colorUp, colorDown)
+k3ColorKd2 = k3 > d3 ? colorKdBull : colorKdBear
+d3ColorKd2 = k3ColorKd2
+k3Color = colorSetting2 and not kOnly ? k3ColorKd2 : k3ColorBase
+d3Color = colorSetting2 and not kOnly ? d3ColorKd2 : d3ColorBase
+
+hist3ColorKd2 = k3 > d3 ? colorKdBull : colorKdBear
+hist3Color = colorSetting2 and not kOnly ? color.new(hist3ColorKd2, 100 - s3Opacity) : color.new(k3Color, 100 - s3Opacity)
 
 // ===== SIGNAL TABLE SETTINGS =====
 showSignalTable = input.bool(true, title="Show Signal Table", group="Signal Table")
@@ -200,7 +221,7 @@ labelColorHL = color.new(#00ff00, 0)
 labelColorLH = color.new(#ff6600, 0)
 
 // ===== PLOTS (S3 first so it draws behind S1/S2) =====
-plot(kOnly ? k3 : (k3 - d3), title="S3 Histogram", style=plot.style_columns, color=color.new(k3Color, 100 - s3Opacity), linewidth=4)
+plot((kOnly or s3HistKOnly) ? k3 : (k3 - d3), title="S3 Histogram", style=plot.style_columns, color=hist3Color, linewidth=4)
 plot(k3, title="S3 %K", color=color.new(k3Color, 100 - s3Opacity), linewidth=1)
 plot(kOnly ? na : d3, title="S3 %D", color=color.new(d3Color, 100 - s3Opacity), linewidth=1)
 plot(k1, title="S1 %K", color=k1Color, linewidth=4, linestyle=plot.linestyle_dotted)

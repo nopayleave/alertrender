@@ -3883,6 +3883,7 @@ app.get('/', (req, res) => {
                           <option value="K3" selected>K3</option>
                         </select>
                         <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
                           <option value="&gt;=">&gt;=</option>
@@ -3896,6 +3897,7 @@ app.get('/', (req, res) => {
                           <option value="K3">K3</option>
                         </select>
                         <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
                           <option value="&gt;=">&gt;=</option>
@@ -4296,6 +4298,7 @@ app.get('/', (req, res) => {
         }
 
         function stochOrderCompare(a, op, b) {
+          if (op === '-') return true; // ignore/empty
           if (op === '=' || op === 'and') return Math.abs(a - b) < 1e-6;
           if (op === '>') return a > b;
           if (op === '<') return a < b;
@@ -4315,20 +4318,30 @@ app.get('/', (req, res) => {
             const midVal = vals[stochOrderMid];
             const rightVal = vals[stochOrderRight];
             if (leftVal == null || midVal == null || rightVal == null) return false;
-            let first, second;
-            if (stochOrderOp1 === 'and') {
-              // & in cond1: A not compare to B; A compare to C with cond2
-              first = stochOrderCompare(leftVal, stochOrderOp2, rightVal);   // A cond2 C
-              second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
-            } else if (stochOrderOp2 === 'and') {
-              // & in cond2: A cond1 B and A cond1 C  (e.g. K3 > K2 and K3 > K1)
-              first = stochOrderCompare(leftVal, stochOrderOp1, midVal);    // A cond1 B
-              second = stochOrderCompare(leftVal, stochOrderOp1, rightVal);  // A cond1 C
-            } else {
-              first = stochOrderCompare(leftVal, stochOrderOp1, midVal);     // A cond1 B
-              second = stochOrderCompare(midVal, stochOrderOp2, rightVal);   // B cond2 C
+            const skip1 = (stochOrderOp1 === '-');
+            const skip2 = (stochOrderOp2 === '-');
+            if (skip1 && skip2) { /* both ignore: pass */ } else {
+              let first = true, second = true;
+              if (!skip1 && !skip2) {
+                if (stochOrderOp1 === 'and') {
+                  first = stochOrderCompare(leftVal, stochOrderOp2, rightVal);
+                  second = stochOrderCompare(midVal, stochOrderOp2, rightVal);
+                } else if (stochOrderOp2 === 'and') {
+                  first = stochOrderCompare(leftVal, stochOrderOp1, midVal);
+                  second = stochOrderCompare(leftVal, stochOrderOp1, rightVal);
+                } else {
+                  first = stochOrderCompare(leftVal, stochOrderOp1, midVal);
+                  second = stochOrderCompare(midVal, stochOrderOp2, rightVal);
+                }
+              } else if (skip1) {
+                if (stochOrderOp2 === 'and') second = stochOrderCompare(leftVal, stochOrderOp1, rightVal); // op1 is '-' so compare returns true
+                else second = stochOrderCompare(midVal, stochOrderOp2, rightVal);
+              } else {
+                if (stochOrderOp1 === 'and') first = stochOrderCompare(leftVal, stochOrderOp2, rightVal);
+                else first = stochOrderCompare(leftVal, stochOrderOp1, midVal);
+              }
+              if (!first || !second) return false;
             }
-            if (!first || !second) return false;
           }
           if (stochSuggestion.length > 0) {
             const sug = getTriStochSuggestion(t);
