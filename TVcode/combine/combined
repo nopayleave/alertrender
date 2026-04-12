@@ -315,10 +315,15 @@ is_first = na(t[1]) and not na(t) or t[1] < t
 
 var float day_high = na
 var float day_low = na
+// First bar of session only (9:30 / session open) — frozen high/low for "opening range" fallback
+var float openingRangeHigh = na
+var float openingRangeLow = na
 
 if is_first and barstate.isnew
     day_high := high
     day_low := low
+    openingRangeHigh := high
+    openingRangeLow := low
 else
     day_high := nz(day_high[1], high)
     day_low := nz(day_low[1], low)
@@ -350,6 +355,12 @@ vwapRemark = close > upperBandValue3 ? "UP3+" :
      close < lowerBandValue2 ? "DN3" :
      close < lowerBandValue1 ? "DN2" :
      close < vwapValue ? "DN1" : "VWAP"
+
+// Range column: NY ORB (9:30–9:45) when enabled; else first-bar opening range
+sessionRangeLabel = show_ny_orb and in_ny_session and not na(ny_high) and not na(ny_low) ? (in_ny ? "ORB forming" : close > ny_high ? "Break D.High" : close < ny_low ? "Break D.Low" : "Within Range") : not na(openingRangeHigh) and not na(openingRangeLow) ? (close > openingRangeHigh ? "Break D.High" : close < openingRangeLow ? "Break D.Low" : "Within Range") : "—"
+
+// Compact tips for dashboard tooltip (also see trend, vwapRemark, rangeStatus on feed)
+sessionTips = "ORB:" + ny_orb_status + " | vsDayMid:" + rangeStatus + " | Trend:" + trend + " | VWAP:" + vwapRemark + " | EMA:" + trendIndicator
 
 // =============================================================================
 // List: webhook JSON
@@ -386,6 +397,12 @@ if enableListAlerts and barstate.isconfirmed
       '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
       '"dayRange": ' + str.tostring(dayRange, "#.##") + ',' +
       '"rangeStatus": "' + rangeStatus + '",' +
+      '"sessionRangeLabel": "' + sessionRangeLabel + '",' +
+      '"sessionTips": "' + sessionTips + '",' +
+      '"nyOrbHigh": ' + (na(ny_high) ? "null" : str.tostring(ny_high)) + ',' +
+      '"nyOrbLow": ' + (na(ny_low) ? "null" : str.tostring(ny_low)) + ',' +
+      '"openingRangeHigh": ' + (na(openingRangeHigh) ? "null" : str.tostring(openingRangeHigh)) + ',' +
+      '"openingRangeLow": ' + (na(openingRangeLow) ? "null" : str.tostring(openingRangeLow)) + ',' +
       '"volume": ' + str.tostring(currentDayVolume) + ',' +
       '"prevDayVolume": ' + str.tostring(prevDayVolume) + '}'
 

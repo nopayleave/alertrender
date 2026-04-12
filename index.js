@@ -4340,7 +4340,7 @@ app.get('/', (req, res) => {
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'stochK1', 'stochK3', 'stoch', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'sessionRange', 'stochK1', 'stochK3', 'stoch', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove legacy columns (star, orb) and any not in columnDefs
         columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
@@ -4353,6 +4353,7 @@ app.get('/', (req, res) => {
           stochK1: 96,
           stochK3: 96,
           stoch: 200,
+          sessionRange: 120,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4376,6 +4377,12 @@ app.get('/', (req, res) => {
           localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
         }
         columnOrder = columnOrder.filter(colId => colId !== 'd2' && colId !== 'stochOverview' && colId !== 'stochDetail');
+        if (!columnOrder.includes('sessionRange')) {
+          const priceIdx = columnOrder.indexOf('price');
+          if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'sessionRange');
+          else columnOrder.unshift('sessionRange');
+          localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
+        }
         if (!columnOrder.includes('stoch')) {
           const priceIdx = columnOrder.indexOf('price');
           if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'stoch');
@@ -4406,6 +4413,7 @@ app.get('/', (req, res) => {
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
+          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[120px]', tooltip: 'NY ORB (9:30–9:45) vs price, or first-bar range. From List webhook (combined script).' },
           stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 overview — mini chart from tri-stoch history' },
           stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 higher timeframe — mini chart from tri-stoch history' },
           stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[200px]', tooltip: 'Tri K direction: K1 | K2 | K3' },
@@ -5465,6 +5473,12 @@ app.get('/', (req, res) => {
               const t3 = alert.triStoch;
               if (t3 && t3.k3 != null && !isNaN(parseFloat(t3.k3))) return parseFloat(t3.k3);
               return null;
+            }
+            case 'sessionRange': {
+              const order = { 'Break D.High': 4, 'Within Range': 3, 'ORB forming': 2, 'Break D.Low': 1, '—': 0 }
+              const lbl = alert.sessionRangeLabel
+              if (lbl && order[lbl] !== undefined) return order[lbl]
+              return null
             }
             default:
               return '';
@@ -6887,6 +6901,25 @@ Use this to create a new preset filter button that applies these exact filter se
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
+              sessionRange: (() => {
+                const lbl = alert.sessionRangeLabel || '—'
+                let cls = 'text-muted-foreground text-[10px] font-terminal'
+                if (lbl === 'Break D.High') cls = 'text-green-400 text-[10px] font-terminal font-semibold'
+                else if (lbl === 'Break D.Low') cls = 'text-red-400 text-[10px] font-terminal font-semibold'
+                else if (lbl === 'Within Range') cls = 'text-cyan-400 text-[10px] font-terminal'
+                else if (lbl === 'ORB forming') cls = 'text-amber-400 text-[10px] font-terminal'
+                const tips = alert.sessionTips ? String(alert.sessionTips).replace(/"/g, '&quot;') : ''
+                const nyH = alert.nyOrbHigh != null && !isNaN(parseFloat(alert.nyOrbHigh)) ? parseFloat(alert.nyOrbHigh).toFixed(2) : ''
+                const nyL = alert.nyOrbLow != null && !isNaN(parseFloat(alert.nyOrbLow)) ? parseFloat(alert.nyOrbLow).toFixed(2) : ''
+                const oH = alert.openingRangeHigh != null && !isNaN(parseFloat(alert.openingRangeHigh)) ? parseFloat(alert.openingRangeHigh).toFixed(2) : ''
+                const oL = alert.openingRangeLow != null && !isNaN(parseFloat(alert.openingRangeLow)) ? parseFloat(alert.openingRangeLow).toFixed(2) : ''
+                let title = 'Range vs NY ORB (show_ny_orb) or first session bar. '
+                if (nyH || nyL) title += 'ORB H/L: ' + nyH + ' / ' + nyL + '. '
+                if (oH || oL) title += 'Open bar H/L: ' + oH + ' / ' + oL + '. '
+                if (tips) title += 'Tips: ' + tips
+                title = title.replace(/"/g, '&quot;')
+                return '<td class="py-1.5 px-2" style="' + getCellWidthStyle('sessionRange') + '" title="' + title + '"><span class="' + cls + '">' + lbl + '</span></td>'
+              })(),
               highLevelTrend: \`
                 <td class="py-1.5 px-2 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
