@@ -201,7 +201,31 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
   if (s.samples.length > 30) s.samples = s.samples.slice(-30)
 }
 
-/** Mini line chart for one stochastic series — fixed 0–100 scale so 20/50/80 reference lines always align */
+/** NY local minutes since midnight (0–1439+) for epoch ms */
+function nyMinutesSinceMidnight(ms) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hour12: false
+  }).formatToParts(new Date(ms))
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10)
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10)
+  const s = parseInt(parts.find(p => p.type === 'second').value, 10)
+  return h * 60 + m + s / 60
+}
+
+/** X position 0–1 in fixed window 4:00 PM – 7:00 PM America/New_York (clamped) */
+function nyFourPmToSevenPmRatio(ms) {
+  if (ms == null || typeof ms !== 'number' || isNaN(ms)) return null
+  const mins = nyMinutesSinceMidnight(ms)
+  const start = 16 * 60
+  const end = 19 * 60
+  return Math.max(0, Math.min(1, (mins - start) / (end - start)))
+}
+
+/** Mini line chart: Y = 0–100 stoch; X = time in 4pm–7pm NY (or index fallback if no timestamps) */
 function buildTriStochSeriesSvg(history, field, strokeHex) {
   const chartWidth = 88
   const chartHeight = 36
@@ -209,14 +233,18 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   const plotWidth = chartWidth - padding * 2
   const plotHeight = chartHeight - padding * 2
   if (!history || !history.length) return ''
-  const pts = []
+  const rawPts = []
   history.forEach(p => {
-    const raw = p[field]
-    if (raw === null || raw === undefined) return
-    const v = parseFloat(raw)
-    if (!isNaN(v)) pts.push(v)
+    const val = p[field]
+    if (val === null || val === undefined) return
+    const v = parseFloat(val)
+    if (isNaN(v)) return
+    const ts = p.timestamp
+    rawPts.push({ v, ts: ts != null && !isNaN(Number(ts)) ? Number(ts) : null })
   })
-  if (pts.length === 0) return ''
+  if (rawPts.length === 0) return ''
+  const useTimeAxis = rawPts.some(p => p.ts != null)
+  const pts = useTimeAxis ? [...rawPts].sort((a, b) => (a.ts || 0) - (b.ts || 0)) : rawPts
   const yForStoch = (stochVal) => {
     const clamped = Math.max(0, Math.min(100, stochVal))
     return padding + plotHeight - (clamped / 100) * plotHeight
@@ -225,20 +253,36 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   const y50 = yForStoch(50)
   const y80 = yForStoch(80)
   let pathD = ''
-  pts.forEach((v, index) => {
-    const x = padding + (pts.length === 1 ? plotWidth / 2 : (index / (pts.length - 1)) * plotWidth)
-    const y = yForStoch(v)
+  pts.forEach((pt, index) => {
+    let xRatio
+    if (useTimeAxis) {
+      const r = pt.ts != null ? nyFourPmToSevenPmRatio(pt.ts) : null
+      xRatio = r !== null ? r : index / Math.max(1, pts.length - 1)
+    } else {
+      xRatio = pts.length === 1 ? 0.5 : index / (pts.length - 1)
+    }
+    const x = padding + xRatio * plotWidth
+    const y = yForStoch(pt.v)
     pathD += (index === 0 ? 'M ' : ' L ') + x + ' ' + y
   })
   let extra = ''
   if (pts.length === 1) {
-    const x = padding + plotWidth / 2
-    const y = yForStoch(pts[0])
+    let xRatio
+    if (useTimeAxis && pts[0].ts != null) {
+      const r = nyFourPmToSevenPmRatio(pts[0].ts)
+      xRatio = r !== null ? r : 0.5
+    } else {
+      xRatio = 0.5
+    }
+    const x = padding + xRatio * plotWidth
+    const y = yForStoch(pts[0].v)
     extra = '<circle vector-effect="non-scaling-stroke" cx="' + x + '" cy="' + y + '" r="2.5" fill="' + strokeHex + '"/>'
   }
   const vb = '0 0 ' + chartWidth + ' ' + chartHeight
   const strokeOpts = ' vector-effect="non-scaling-stroke" shape-rendering="geometricPrecision"'
+  const xMidNy = padding + 0.5 * plotWidth
   return '<svg viewBox="' + vb + '" width="100%" height="' + chartHeight + '" preserveAspectRatio="none" style="display:block;max-width:100%;min-width:0" xmlns="http://www.w3.org/2000/svg">' +
+    (useTimeAxis ? '<line x1="' + xMidNy + '" y1="' + padding + '" x2="' + xMidNy + '" y2="' + (chartHeight - padding) + '" stroke="#666" stroke-width="0.4" opacity="0.2"' + strokeOpts + '/>' : '') +
     '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#888" stroke-width="0.75" opacity="0.45" stroke-dasharray="2 1"' + strokeOpts + '/>' +
     '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#aaa" stroke-width="0.9" opacity="0.55"' + strokeOpts + '/>' +
     '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#888" stroke-width="0.75" opacity="0.45" stroke-dasharray="2 1"' + strokeOpts + '/>' +
@@ -4355,7 +4399,7 @@ app.get('/', (req, res) => {
           stochK1: 96,
           stochK3: 96,
           stoch: 200,
-          sessionRange: 120,
+          sessionRange: 150,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4415,9 +4459,9 @@ app.get('/', (req, res) => {
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
-          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[120px]', tooltip: 'NY ORB (9:30–9:45) vs price, or first-bar range. From List webhook (combined script).' },
-          stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 overview — mini chart from tri-stoch history' },
-          stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 higher timeframe — mini chart from tri-stoch history' },
+          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[150px]', tooltip: 'ORB / opening range, VWAP above|below, VWAP bands UB#1–3 / LB#1–3. List webhook (combined script).' },
+          stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 4:00–7:00 PM NY (sample time); Y 0–100 stoch' },
+          stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 4:00–7:00 PM NY (sample time); Y 0–100 stoch' },
           stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[200px]', tooltip: 'Tri K direction: K1 | K2 | K3' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
@@ -4633,6 +4677,65 @@ app.get('/', (req, res) => {
             if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
           });
           renderTable();
+        }
+
+        /** Range column: VWAP side + band # from List feed (vwap, vwapUpper1–3, vwapLower1–3, price) */
+        function getRangeColumnVwapHtml(alert) {
+          const p = parseFloat(alert.price)
+          const vwap = parseFloat(alert.vwap)
+          let vwapText = ''
+          let vwapClass = 'text-muted-foreground text-[9px] font-terminal leading-tight'
+          if (!isNaN(p) && !isNaN(vwap)) {
+            if (p > vwap) {
+              vwapText = 'Above VWAP'
+              vwapClass = 'text-green-400/90 text-[9px] font-terminal leading-tight'
+            } else if (p < vwap) {
+              vwapText = 'Below VWAP'
+              vwapClass = 'text-red-400/90 text-[9px] font-terminal leading-tight'
+            } else {
+              vwapText = 'At VWAP'
+              vwapClass = 'text-amber-400/90 text-[9px] font-terminal leading-tight'
+            }
+          } else if (!isNaN(p)) {
+            const va = alert.vwapAbove === true || alert.vwapAbove === 'true'
+            const vb = alert.vwapAbove === false || alert.vwapAbove === 'false'
+            if (va) {
+              vwapText = 'Above VWAP'
+              vwapClass = 'text-green-400/90 text-[9px] font-terminal leading-tight'
+            } else if (vb) {
+              vwapText = 'Below VWAP'
+              vwapClass = 'text-red-400/90 text-[9px] font-terminal leading-tight'
+            }
+          }
+          let bandText = ''
+          let bandClass = 'text-muted-foreground text-[9px] font-terminal leading-tight'
+          if (!isNaN(p)) {
+            const u1 = parseFloat(alert.vwapUpper1), u2 = parseFloat(alert.vwapUpper2), u3 = parseFloat(alert.vwapUpper3)
+            const l1 = parseFloat(alert.vwapLower1), l2 = parseFloat(alert.vwapLower2), l3 = parseFloat(alert.vwapLower3)
+            if (!isNaN(u3) && p > u3) {
+              bandText = 'Above UB #3'
+              bandClass = 'text-green-300 text-[9px] font-terminal font-semibold leading-tight'
+            } else if (!isNaN(u2) && p > u2) {
+              bandText = 'Above UB #2'
+              bandClass = 'text-green-400/90 text-[9px] font-terminal leading-tight'
+            } else if (!isNaN(u1) && p > u1) {
+              bandText = 'Above UB #1'
+              bandClass = 'text-lime-400/90 text-[9px] font-terminal leading-tight'
+            } else if (!isNaN(l3) && p < l3) {
+              bandText = 'Below LB #3'
+              bandClass = 'text-red-300 text-[9px] font-terminal font-semibold leading-tight'
+            } else if (!isNaN(l2) && p < l2) {
+              bandText = 'Below LB #2'
+              bandClass = 'text-red-400/90 text-[9px] font-terminal leading-tight'
+            } else if (!isNaN(l1) && p < l1) {
+              bandText = 'Below LB #1'
+              bandClass = 'text-rose-400/90 text-[9px] font-terminal leading-tight'
+            } else if (!isNaN(u1) && !isNaN(l1)) {
+              bandText = 'Inside bands'
+              bandClass = 'text-cyan-400/80 text-[9px] font-terminal leading-tight'
+            }
+          }
+          return { vwapText, vwapClass, bandText, bandClass }
         }
 
         // High win-rate long/short suggestion from Tri K (K1=ov, K2=dt, K3=value)
@@ -6910,17 +7013,29 @@ Use this to create a new preset filter button that applies these exact filter se
                 else if (lbl === 'Break D.Low') cls = 'text-red-400 text-[10px] font-terminal font-semibold'
                 else if (lbl === 'Within Range') cls = 'text-cyan-400 text-[10px] font-terminal'
                 else if (lbl === 'ORB forming') cls = 'text-amber-400 text-[10px] font-terminal'
+                const vw = getRangeColumnVwapHtml(alert)
                 const tips = alert.sessionTips ? String(alert.sessionTips).replace(/"/g, '&quot;') : ''
                 const nyH = alert.nyOrbHigh != null && !isNaN(parseFloat(alert.nyOrbHigh)) ? parseFloat(alert.nyOrbHigh).toFixed(2) : ''
                 const nyL = alert.nyOrbLow != null && !isNaN(parseFloat(alert.nyOrbLow)) ? parseFloat(alert.nyOrbLow).toFixed(2) : ''
                 const oH = alert.openingRangeHigh != null && !isNaN(parseFloat(alert.openingRangeHigh)) ? parseFloat(alert.openingRangeHigh).toFixed(2) : ''
                 const oL = alert.openingRangeLow != null && !isNaN(parseFloat(alert.openingRangeLow)) ? parseFloat(alert.openingRangeLow).toFixed(2) : ''
+                const vwapN = alert.vwap != null && !isNaN(parseFloat(alert.vwap)) ? parseFloat(alert.vwap).toFixed(2) : ''
+                const remark = alert.vwapRemark ? String(alert.vwapRemark).replace(/"/g, '&quot;') : ''
                 let title = 'Range vs NY ORB (show_ny_orb) or first session bar. '
                 if (nyH || nyL) title += 'ORB H/L: ' + nyH + ' / ' + nyL + '. '
                 if (oH || oL) title += 'Open bar H/L: ' + oH + ' / ' + oL + '. '
+                if (vwapN) title += 'VWAP: ' + vwapN + '. '
+                if (remark) title += 'Remark: ' + remark + '. '
                 if (tips) title += 'Tips: ' + tips
                 title = title.replace(/"/g, '&quot;')
-                return '<td class="py-1.5 px-2" style="' + getCellWidthStyle('sessionRange') + '" title="' + title + '"><span class="' + cls + '">' + lbl + '</span></td>'
+                let vwapBlock = ''
+                if (vw.vwapText) vwapBlock += '<div class="' + vw.vwapClass + '">' + vw.vwapText + '</div>'
+                if (vw.bandText) vwapBlock += '<div class="' + vw.bandClass + '">' + vw.bandText + '</div>'
+                return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('sessionRange') + '" title="' + title + '">' +
+                  '<div class="flex flex-col gap-0.5">' +
+                  '<span class="' + cls + ' leading-tight">' + lbl + '</span>' +
+                  vwapBlock +
+                  '</div></td>'
               })(),
               highLevelTrend: \`
                 <td class="py-1.5 px-2 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
@@ -6944,7 +7059,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 (overview) — recent tri-stoch samples">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[10px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
@@ -6962,7 +7077,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = 'text-amber-400';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 (higher TF) — recent tri-stoch samples">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[10px] px-0.5 ' + valCls + '">' + valStr + '</span>' +
