@@ -201,13 +201,17 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
   if (s.samples.length > 30) s.samples = s.samples.slice(-30)
 }
 
-/** Mini line chart for one stochastic series — fixed 0–100 scale so 20/50/80 reference lines always align */
+/** Mini line chart for one stochastic series — fixed 0–100 scale; grid full column width, series in a narrow horizontal band for clearer pattern */
 function buildTriStochSeriesSvg(history, field, strokeHex) {
-  const chartWidth = 88
+  const chartWidth = 120
   const chartHeight = 36
-  const padding = 2
+  const padding = 3
   const plotWidth = chartWidth - padding * 2
   const plotHeight = chartHeight - padding * 2
+  // Fraction of plot width used for the K line (centered); rest is empty margin so swings read taller vs time
+  const lineBandFrac = 0.38
+  const innerW = plotWidth * lineBandFrac
+  const innerX0 = padding + (plotWidth - innerW) / 2
   if (!history || !history.length) return ''
   const pts = []
   history.forEach(p => {
@@ -226,21 +230,22 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   const y80 = yForStoch(80)
   let pathD = ''
   pts.forEach((v, index) => {
-    const x = padding + (pts.length === 1 ? plotWidth / 2 : (index / (pts.length - 1)) * plotWidth)
+    const x = innerX0 + (pts.length === 1 ? innerW / 2 : (index / (pts.length - 1)) * innerW)
     const y = yForStoch(v)
     pathD += (index === 0 ? 'M ' : ' L ') + x + ' ' + y
   })
   let extra = ''
   if (pts.length === 1) {
-    const x = padding + plotWidth / 2
+    const x = innerX0 + innerW / 2
     const y = yForStoch(pts[0])
-    extra = '<circle cx="' + x + '" cy="' + y + '" r="2.5" fill="' + strokeHex + '"/>'
+    extra = '<circle cx="' + x + '" cy="' + y + '" r="2.2" fill="' + strokeHex + '"/>'
   }
-  return '<svg width="' + chartWidth + '" height="' + chartHeight + '" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
-    '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1"/>' +
-    '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#aaa" stroke-width="0.6" opacity="0.55"/>' +
-    '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1"/>' +
-    '<path d="' + pathD + '" stroke="' + strokeHex + '" stroke-width="1.5" fill="none"/>' +
+  // Full column width; non-uniform scale: stretch X only so Y stays accurate at fixed pixel height
+  return '<svg width="100%" height="' + chartHeight + '" viewBox="0 0 ' + chartWidth + ' ' + chartHeight + '" preserveAspectRatio="none" style="display:block;min-width:0" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1" vector-effect="non-scaling-stroke"/>' +
+    '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#aaa" stroke-width="0.6" opacity="0.55" vector-effect="non-scaling-stroke"/>' +
+    '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1" vector-effect="non-scaling-stroke"/>' +
+    '<path d="' + pathD + '" stroke="' + strokeHex + '" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>' +
     extra +
     '</svg>'
 }
@@ -6944,7 +6949,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 }
                 return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 (overview) — recent tri-stoch samples">' +
                   '<div class="flex flex-col gap-0.5">' +
-                  (svg ? '<div class="leading-none">' + svg + '</div>' : '') +
+                  (svg ? '<div class="leading-none w-full min-w-0">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[10px] ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
                   '</div></td>';
               })(),
@@ -6962,7 +6967,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 }
                 return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 (higher TF) — recent tri-stoch samples">' +
                   '<div class="flex flex-col gap-0.5">' +
-                  (svg ? '<div class="leading-none">' + svg + '</div>' : '') +
+                  (svg ? '<div class="leading-none w-full min-w-0">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[10px] ' + valCls + '">' + valStr + '</span>' +
                   '</div></td>';
               })(),
