@@ -127,6 +127,78 @@ let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
 let patternData = {} // Store latest HL/LH pattern per symbol
 let sectorData = {} // Store sector information by symbol (from webhook only)
+let stochSessionTracker = {}
+// stochSessionTracker[symbol] = {
+//   date: 'YYYY-MM-DD',          — NY trading date
+//   samples: [{ k, d, kDir, dDir, ts }],  — rolling window (last 30)
+//   sessionHigh: number,          — highest K seen today
+//   sessionLow: number,           — lowest K seen today
+//   openK: number|null,           — first K value of the session
+//   prevKDir: string,             — previous K direction
+//   bounced50: boolean,           — K dipped toward 50 from above and turned up
+//   rejected50: boolean,          — K rose toward 50 from below and turned down
+//   wasBelow20: boolean,          — K was below 20 at some point today
+//   wasAbove80: boolean,          — K was above 80 at some point today
+//   kCrossedAboveD: boolean,      — K crossed above D this session
+//   kCrossedBelowD: boolean,      — K crossed below D this session
+// }
+
+function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
+  const today = getCurrentDateString()
+  const now = Date.now()
+  const k = parseFloat(kVal)
+  const d = parseFloat(dVal)
+  if (isNaN(k)) return
+
+  let s = stochSessionTracker[symbol]
+  if (!s || s.date !== today) {
+    s = {
+      date: today,
+      samples: [],
+      sessionHigh: k,
+      sessionLow: k,
+      openK: k,
+      prevKDir: kDir || 'flat',
+      bounced50: false,
+      rejected50: false,
+      wasBelow20: k < 20,
+      wasAbove80: k > 80,
+      kCrossedAboveD: false,
+      kCrossedBelowD: false,
+      prevK: null,
+      prevD: null
+    }
+    stochSessionTracker[symbol] = s
+  }
+
+  if (k > s.sessionHigh) s.sessionHigh = k
+  if (k < s.sessionLow) s.sessionLow = k
+  if (k < 20) s.wasBelow20 = true
+  if (k > 80) s.wasAbove80 = true
+
+  // K/D crossover detection
+  if (s.prevK !== null && s.prevD !== null && !isNaN(d)) {
+    if (s.prevK <= s.prevD && k > d) s.kCrossedAboveD = true
+    if (s.prevK >= s.prevD && k < d) s.kCrossedBelowD = true
+  }
+
+  // 50-level bounce / rejection detection
+  // Bounce above 50: K dipped toward 50 from above (low between 45-55), then turned back up
+  // Rejection below 50: K rose toward 50 from below (high between 45-55), then turned back down
+  const prevDir = s.prevKDir || 'flat'
+  if (kDir === 'up' && prevDir === 'down' && s.sessionLow >= 40 && s.sessionLow <= 58 && k > 50) {
+    s.bounced50 = true
+  }
+  if (kDir === 'down' && prevDir === 'up' && s.sessionHigh >= 42 && s.sessionHigh <= 60 && k < 50) {
+    s.rejected50 = true
+  }
+
+  s.prevKDir = kDir || 'flat'
+  s.prevK = k
+  s.prevD = isNaN(d) ? s.prevD : d
+  s.samples.push({ k, d: isNaN(d) ? null : d, kDir: kDir || 'flat', dDir: dDir || 'flat', ts: now })
+  if (s.samples.length > 30) s.samples = s.samples.slice(-30)
+}
 
 // Data persistence functions using SQLite
 function saveDataToDatabase() {
@@ -177,7 +249,8 @@ function saveDataToDatabase() {
         starredSymbols,
         previousTrends,
         patternData,
-        sectorData
+        sectorData,
+        stochSessionTracker
       }
       
       const upsertState = db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
@@ -241,6 +314,7 @@ function loadDataFromDatabase() {
           case 'previousTrends': previousTrends = value; break
           case 'patternData': patternData = value; break
           case 'sectorData': sectorData = value; break
+          case 'stochSessionTracker': stochSessionTracker = value; break
         }
       } catch (e) {
         console.warn(`⚠️  Failed to parse state key ${row.key}:`, e.message)
@@ -1381,6 +1455,7 @@ app.post('/webhook', (req, res) => {
     } else {
       // Legacy Solo Stoch (no stochType): store and update/create alert
       soloStochDataStorage[alert.symbol] = stochPayload
+      updateStochSession(alert.symbol, alert.k, d2Value, alert.kDirection, d2Direction)
       console.log(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
 
       const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
@@ -1475,6 +1550,7 @@ app.post('/webhook', (req, res) => {
         console.log(`📊 Big Trend Day detected for ${alert.symbol} on ${today}: D1=${d1Value.toFixed(2)}, D2=${d2Value.toFixed(2)}`)
       }
     }
+    updateStochSession(alert.symbol, alert.d1, alert.d2, alert.d1Direction, alert.d2Direction)
     console.log(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
@@ -1982,6 +2058,22 @@ app.get('/alerts', (req, res) => {
         }
       }
     }
+    // Inject stoch session tracker data
+    const sess = stochSessionTracker[alert.symbol]
+    if (sess && sess.date === getCurrentDateString()) {
+      alert.stochSession = {
+        sessionHigh: sess.sessionHigh,
+        sessionLow: sess.sessionLow,
+        openK: sess.openK,
+        bounced50: sess.bounced50,
+        rejected50: sess.rejected50,
+        wasBelow20: sess.wasBelow20,
+        wasAbove80: sess.wasAbove80,
+        kCrossedAboveD: sess.kCrossedAboveD,
+        kCrossedBelowD: sess.kCrossedBelowD,
+        sampleCount: sess.samples.length
+      }
+    }
   })
   
   res.json(result)
@@ -2028,6 +2120,7 @@ app.post('/reset-alerts', (req, res) => {
   dualStochDataStorage = {}
   bigTrendDay = {}
   patternData = {}
+  stochSessionTracker = {}
   saveDataToDatabase() // Save after clearing
   res.json({ status: 'ok', message: 'All alerts cleared and saved' })
 })
@@ -2775,11 +2868,12 @@ app.get('/', (req, res) => {
             max-width: 1700px;
           }
         }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(0 0% 20%); border-radius: 2px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: hsl(38 95% 50% / 0.5); }
         .mx-auto {
           margin: auto;
-        }
-        .p-4 {
-          padding-bottom: 2rem;
         }
         .draggable-header {
           user-select: none;
@@ -2893,8 +2987,8 @@ app.get('/', (req, res) => {
         .filter-section {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 16px;
-          padding: 16px;
+          border-radius: 4px;
+          padding: 8px;
         }
         /* Collapsible filter content */
         .filter-content {
@@ -3743,61 +3837,60 @@ app.get('/', (req, res) => {
         }
       </style>
     </head>
-    <body class="bg-background min-h-screen pb-20 md:pb-0 antialiased" style="padding-top: 40px;">
-      <div class="container mx-auto" style="max-width:1700px;">
-        <div class="mb-8">
-          <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div class="flex-1">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:gap-4 gap-2">
-                <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground">Trading Alert Dashboard</h1>
-                <div class="flex flex-col gap-1 text-sm">
-                  <p class="text-muted-foreground" id="lastUpdate">Last updated: Never <span id="countdown"></span></p>
-                  <div id="connectionStatus" class="flex items-center gap-2">
-                    <div id="connectionIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-                    <span id="connectionText" class="text-muted-foreground">Connecting...</span>
-                  <div id="realtimeIndicator" class="text-green-400 hidden">
-                    <span class="animate-pulse">🔄 Real-time updates active</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="flex gap-3 items-center">
-              <button id="viewToggle" onclick="toggleView()" class="inline-flex items-center gap-2 px-4 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-semibold rounded-lg transition-colors shadow-lg" title="Switch between table and masonry view">
-                <span id="viewIcon">📋</span>
-              </button>
-              <button id="stochHistoryToggle" onclick="toggleStochHistory()" class="inline-flex items-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors shadow-lg" title="View Stochastic history">
-                <span>📈</span>
-                <span>Stoch His.</span>
-              </button>
-              <button id="notificationToggle" onclick="toggleNotifications()" class="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
-                <span id="notificationIcon">🔔</span>
-                <span id="notificationText">Unmute</span>
-              </button>
-              <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
-                📊 Cal.
-              </button>
-              <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
-                🚪 Exit Log
-              </button>
-            </div>
+    <body class="bg-background h-screen overflow-hidden antialiased">
+      <!-- === TOP BAR (36px) — Bloomberg-style edge-to-edge === -->
+      <header class="flex items-center h-9 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
+        <div class="flex items-center gap-2 px-3 h-full border-r border-border bg-[hsl(38,95%,50%)] min-w-[130px]">
+          <span class="font-terminal text-xs font-bold tracking-widest text-black">ALERTS</span>
+        </div>
+        <div class="flex items-center gap-1.5 px-2.5 h-full border-r border-border">
+          <div id="connectionIndicator" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
+          <span id="connectionText" class="font-terminal text-[9px] tracking-widest text-muted-foreground">CONNECTING</span>
+          <div id="realtimeIndicator" class="text-green-400 hidden">
+            <span class="font-terminal text-[9px] animate-pulse">LIVE</span>
           </div>
         </div>
-        
-        <!-- Main content area: Filters on left, Table on right when width > 1280px -->
-        <div class="flex flex-col xl:flex-row xl:gap-6 xl:items-start">
-          <!-- Filters sidebar (left on xl, top on smaller screens) -->
-          <div class="w-full xl:w-80 xl:flex-shrink-0 xl:sticky xl:top-4 xl:self-start">
-            <!-- Search bar - sticky on top for desktop, bottom for mobile -->
-            <div class="fixed md:sticky xl:static top-auto md:top-0 xl:top-auto bottom-0 md:bottom-auto xl:bottom-auto left-0 right-0 xl:left-auto xl:right-auto z-50 xl:z-auto bg-background/95 backdrop-blur-xl border-t md:border-t-0 xl:border-t-0 md:border-b xl:border-b-0 border-border/50 xl:pr-3 py-4 xl:py-0">
-              <div class="container mx-auto xl:mx-0 px-4 xl:px-0" style="max-width:1700px;padding-bottom:1rem;">
+        <div class="flex items-center px-2.5 h-full border-r border-border">
+          <span class="font-terminal text-[9px] text-muted-foreground" id="lastUpdate">—</span>
+          <span id="countdown" class="font-terminal text-[9px] text-muted-foreground ml-1"></span>
+        </div>
+        <div class="flex items-center h-full border-r border-border">
+          <span id="tickerCount" class="font-terminal text-[10px] font-bold text-amber-400 px-2.5">0</span>
+        </div>
+        <div class="flex-1"></div>
+        <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Toggle view">
+          <span id="viewIcon" class="text-sm">📋</span>
+        </button>
+        <button onclick="toggleStochHistory()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Stoch History">
+          <span class="text-sm">📈</span>
+        </button>
+        <button id="notificationToggle" onclick="toggleNotifications()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Notifications">
+          <span id="notificationIcon" class="text-sm">🔔</span>
+          <span id="notificationText" class="hidden">Unmute</span>
+        </button>
+        <button onclick="openCalculator()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Calculator">
+          <span class="text-sm">📊</span>
+        </button>
+        <button onclick="openExitLogic()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Exit Logic">
+          <span class="text-sm">🚪</span>
+        </button>
+        <div class="flex items-center px-3 h-full font-terminal">
+          <span id="topBarClock" class="text-[10px] text-foreground tabular-nums"></span>
+        </div>
+      </header>
+
+      <!-- === MAIN LAYOUT: sidebar filters + table fill remaining height === -->
+      <div class="flex flex-1 overflow-hidden" style="height: calc(100vh - 36px);">
+        <!-- Filters sidebar — fixed width, scrollable -->
+        <aside id="filterSidebar" class="w-64 bg-[hsl(0,0%,4%)] border-r border-border flex flex-col shrink-0 overflow-y-auto scrollbar-thin">
+          <div class="p-2">
                 <!-- Search input - iOS style -->
-                <div class="relative mb-4">
+                <div class="relative mb-2">
                   <input 
                     type="text" 
                     id="searchInput" 
-                    placeholder="Search tickers..." 
-                    class="w-full pl-3 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all shadow-sm"
+                    placeholder="SEARCH TICKER..." 
+                    class="w-full pl-2 pr-8 py-1.5 bg-background border border-border text-xs font-terminal text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
                     onkeyup="filterAlerts()"
                     oninput="toggleClearButton()"
                   />
@@ -3814,7 +3907,7 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <!-- Stoch Direction Filter -->
-                <div class="mb-4 filter-section">
+                <div class="mb-2 filter-section">
                   <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('stochDirFilters', this)">
                       <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3879,12 +3972,22 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Suggestion</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin.">Long Contin.</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin.">Short Contin.</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal">Long Reversal</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal">Short Reversal</button>
                         <button onclick="toggleFilterChip('stoch_suggestion', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long">Try Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias">Long Bias</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias">Short Bias</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long">Lean Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short">Lean Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought">Overbought</button>
+                        <button onclick="toggleFilterChip('stoch_suggestion', 'Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold">Oversold</button>
                       </div>
                     </div>
                     <div class="mb-4">
@@ -3935,7 +4038,7 @@ app.get('/', (req, res) => {
                 </div>
                   
                 <!-- Other Filters - iOS chip style -->
-                <div class="mb-4 filter-section">
+                <div class="mb-2 filter-section">
                   <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('otherFilters', this)">
                       <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3982,66 +4085,66 @@ app.get('/', (req, res) => {
                 </div>
                 
                 <!-- Export Settings Button -->
-                <div class="mt-4">
-                  <button onclick="openExportModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400 flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-2">
+                  <button onclick="openExportModal()" class="w-full px-3 py-1.5 text-xs font-medium border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-400 flex items-center justify-center gap-1.5">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+        </aside>
 
-          <!-- Table area (right on xl, below filters on smaller screens) -->
-          <div class="w-full xl:flex-1 xl:min-w-0">
-            <!-- Preset Filter Buttons -->
-            <div class="mb-4 flex gap-2 flex-wrap preset-filter-group">
-              <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-white">
-                Down <span id="presetDownCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-red-600/50 text-white">0</span>
-              </button>
-              <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-white">
-                Up <span id="presetUpCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-green-600/50 text-white">0</span>
-              </button>
-              <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-white">
-                Ext. Bull <span id="presetExtBullCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-yellow-600/50 text-white">0</span>
-              </button>
-              <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip pl-3 pr-1.5 py-1.5 text-sm font-medium rounded-lg border border-pink-500/50 bg-pink-500/20 hover:bg-pink-500/30 active:scale-95 transition-all text-white">
-                Ext. Bear <span id="presetExtBearCount" class="ml-1 px-1.5 py-0.5 rounded text-xs font-bold bg-pink-600/50 text-white">0</span>
-              </button>
-              <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400">
-                Clear All
-              </button>
-            </div>
-            <!-- Table View -->
-            <div id="tableView" class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
-              <div>
-                <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
-                  <table class="w-full table-auto border-collapse font-terminal text-sm">
-                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(18, 18, 18, 0.97);">
-                      <tr class="border-b border-border/50">
-                        <!-- Headers will be dynamically generated -->
-                      </tr>
-                    </thead>
-                    <tbody id="alertTable">
-                      <tr>
-                        <td colspan="9" class="text-center text-muted-foreground py-12 relative">Loading alerts...</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Kanban View -->
-            <div id="masonryView" class="hidden">
-              <div id="masonryContainer" class="kanban-board">
-                <!-- Kanban columns will be dynamically generated -->
-              </div>
+        <!-- Main content area — fills remaining space -->
+        <main class="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <!-- Preset filter strip (compact) -->
+          <div class="flex items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
+            <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
+              DOWN <span id="presetDownCount" class="ml-0.5 text-red-300 font-bold">0</span>
+            </button>
+            <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
+              UP <span id="presetUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
+            </button>
+            <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
+              EXT.BULL <span id="presetExtBullCount" class="ml-0.5 text-yellow-300 font-bold">0</span>
+            </button>
+            <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 transition-all text-pink-400">
+              EXT.BEAR <span id="presetExtBearCount" class="ml-0.5 text-pink-300 font-bold">0</span>
+            </button>
+            <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
+              CLEAR
+            </button>
+            <div class="flex-1"></div>
+            <button onclick="document.getElementById('filterSidebar').classList.toggle('hidden')" class="px-2 py-0.5 text-[10px] font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
+              ☰ FILTERS
+            </button>
+          </div>
+          <!-- Table View — fills all remaining space -->
+          <div id="tableView" class="flex-1 overflow-hidden">
+            <div class="h-full overflow-auto scrollbar-thin">
+              <table class="w-full table-auto border-collapse font-terminal text-sm">
+                <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(10, 10, 10, 0.98);">
+                  <tr class="border-b border-border/50">
+                    <!-- Headers will be dynamically generated -->
+                  </tr>
+                </thead>
+                <tbody id="alertTable">
+                  <tr>
+                    <td colspan="9" class="text-center text-muted-foreground py-8 relative font-terminal text-xs">Loading alerts...</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
+          
+          <!-- Kanban View -->
+          <div id="masonryView" class="hidden flex-1 overflow-auto scrollbar-thin p-2">
+            <div id="masonryContainer" class="kanban-board">
+              <!-- Kanban columns will be dynamically generated -->
+            </div>
+          </div>
+        </main>
       </div>
 
       <!-- Toast Container -->
@@ -4363,8 +4466,11 @@ app.get('/', (req, res) => {
             }
           }
           if (stochSuggestion.length > 0) {
-            const sug = getTriStochSuggestion(t);
-            if (!sug || !stochSuggestion.includes(sug.text)) return false;
+            const kdSug = getKDTrendMessage(alert);
+            const triSug = getTriStochSuggestion(t);
+            const matchFn = (sugText) => stochSuggestion.some(f => sugText === f || sugText.startsWith(f));
+            const matched = (kdSug && matchFn(kdSug.text)) || (triSug && matchFn(triSug.text));
+            if (!matched) return false;
           }
           if (stochK1Dir.length > 0) {
             const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
@@ -4429,6 +4535,98 @@ app.get('/', (req, res) => {
         }
 
         // High win-rate long/short suggestion from Tri K (K1=ov, K2=dt, K3=value)
+        function getKDTrendMessage(alert) {
+          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+          const ss = alert.stochSession || {};
+          if (kValue === null || dValue === null) return null;
+
+          // Pull K1 (overview / medium TF) and K3 (higher TF / macro trend)
+          const t = alert.triStoch;
+          const k1 = t && t.ovK != null ? parseFloat(t.ovK) : null;
+          const k3 = t && t.k3 != null ? parseFloat(t.k3) : null;
+          const k1Dir = t ? (t.ovKDirection || '').toLowerCase() : '';
+          const k1Up = k1Dir === 'up';
+          const k1Down = k1Dir === 'down';
+          const k3High = k3 !== null && k3 > 70;   // macro bullish territory
+          const k3Low  = k3 !== null && k3 < 30;    // macro bearish territory
+          const k3Mid  = k3 !== null && k3 >= 30 && k3 <= 70;
+
+          // === EXTREME ZONES — hard warnings ===
+          if (kValue < 15 && dValue < 15) {
+            if (k3Low) return { text: 'No Long ⚠', type: 'short' };
+            return { text: 'No Long', type: 'short' };
+          }
+          if (kValue > 85 && dValue > 85) {
+            if (k3High) return { text: 'No Short ⚠', type: 'long' };
+            return { text: 'No Short', type: 'long' };
+          }
+
+          // === ALL TIMEFRAMES ALIGNED — strongest signals ===
+          if (k3High && k1Up && kDirection === 'up' && kValue > 50) {
+            return { text: 'Strong Long', type: 'long' };
+          }
+          if (k3Low && k1Down && kDirection === 'down' && kValue < 50) {
+            return { text: 'Strong Short', type: 'short' };
+          }
+
+          // === CONTINUATION SETUPS (session 50-bounce/reject + macro alignment) ===
+          if (ss.bounced50 && kDirection === 'up' && kValue > 50 && kValue <= 80) {
+            if (k3High || k1Up) return { text: 'Long Contin. ✦', type: 'long' };
+            return { text: 'Long Contin.', type: 'long' };
+          }
+          if (ss.rejected50 && kDirection === 'down' && kValue < 50 && kValue >= 20) {
+            if (k3Low || k1Down) return { text: 'Short Contin. ✦', type: 'short' };
+            return { text: 'Short Contin.', type: 'short' };
+          }
+
+          // === REVERSAL SETUPS (came from extreme + K/D cross + check macro context) ===
+          if (ss.wasBelow20 && kDirection === 'up' && kValue >= 20 && kValue < 50 && ss.kCrossedAboveD) {
+            if (k3High || k1Up) return { text: 'Long Reversal ✦', type: 'long' };
+            if (k3Low) return { text: 'Bounce (↓Macro)', type: 'neutral' };
+            return { text: 'Long Reversal', type: 'long' };
+          }
+          if (ss.wasAbove80 && kDirection === 'down' && kValue <= 80 && kValue > 50 && ss.kCrossedBelowD) {
+            if (k3Low || k1Down) return { text: 'Short Reversal ✦', type: 'short' };
+            if (k3High) return { text: 'Pullback (↑Macro)', type: 'neutral' };
+            return { text: 'Short Reversal', type: 'short' };
+          }
+
+          // === K/D + K1 ALIGNED but K3 opposing — counter-trend warning ===
+          if (kDirection === 'up' && k1Up && k3Low) {
+            return { text: 'Long vs Macro↓', type: 'neutral' };
+          }
+          if (kDirection === 'down' && k1Down && k3High) {
+            return { text: 'Short vs Macro↑', type: 'neutral' };
+          }
+
+          // === K/D + K1 ALIGNED — standard directional bias ===
+          if (kDirection === 'up' && k1Up && kValue > 20 && kValue <= 50) {
+            return { text: 'Try Long', type: 'long' };
+          }
+          if (kDirection === 'up' && k1Up && kValue > 50 && kValue <= 80) {
+            return { text: 'Long Bias', type: 'long' };
+          }
+          if (kDirection === 'down' && k1Down && kValue < 80 && kValue >= 50) {
+            return { text: 'Try Short', type: 'short' };
+          }
+          if (kDirection === 'down' && k1Down && kValue < 50 && kValue >= 20) {
+            return { text: 'Short Bias', type: 'short' };
+          }
+
+          // === K/D only (K1 not aligned or unavailable) — weaker signals ===
+          if (kDirection === 'up' && kValue > 20 && kValue <= 80) {
+            return { text: 'Lean Long', type: 'long' };
+          }
+          if (kDirection === 'down' && kValue >= 20 && kValue < 80) {
+            return { text: 'Lean Short', type: 'short' };
+          }
+
+          // === OVERBOUGHT / OVERSOLD ===
+          if (kValue > 80 && kDirection === 'up') return { text: 'Overbought', type: 'neutral' };
+          if (kValue < 20 && kDirection === 'down') return { text: 'Oversold', type: 'neutral' };
+          return null;
+        }
+
         function getTriStochSuggestion(t) {
           if (!t) return null;
           const k1 = t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
@@ -4816,7 +5014,7 @@ app.get('/', (req, res) => {
           
           // Update last update time
           const now = new Date();
-          lastUpdate.innerHTML = \`Last updated: \${now.toLocaleTimeString()} <span id="countdown"></span>\`;
+          lastUpdate.innerHTML = \`UPD \${now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})} <span id="countdown"></span>\`;
         }
 
         // Render table headers dynamically based on column order
@@ -4841,10 +5039,10 @@ app.get('/', (req, res) => {
             const widthStyle = 'width: ' + width + 'px; min-width: ' + width + 'px; max-width: ' + width + 'px;';
             
             // Add ticker count badge for symbol column
-            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30">0</span>' : '';
+            const tickerCountBadge = '';
             
             return '<th ' +
-              'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + sortableClass + ' draggable-header" ' +
+              'class="text-left py-1.5 ' + paddingClass + ' font-bold text-muted-foreground text-[10px] font-terminal tracking-wider uppercase ' + sortableClass + ' draggable-header" ' +
               'style="' + widthStyle + '" ' +
               'data-column-id="' + colId + '" ' +
               onclickAttr + ' ' +
@@ -6401,25 +6599,32 @@ Use this to create a new preset filter button that applies these exact filter se
             let miniChartSvg = alert.dualStochMiniChart || ''
             let d2CellHtml = ''
             
-            // Trend messages based on K/D values and directions
+            // Enhanced trend messages — unified K/D + K1 + K3 scene
             let trendMessage = '';
             let trendMessageClass = '';
-            const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-            if (kValue !== null && dValue !== null) {
-              if (kValue < 15 && dValue < 15) {
-                trendMessage = 'No Long';
-                trendMessageClass = 'text-red-500 font-bold';
-              } else if (kValue > 80) {
-                trendMessage = 'No Short';
-                trendMessageClass = 'text-green-500 font-bold';
-              } else if (kDirection === 'up' && kValue > 20) {
-                trendMessage = 'Try Long';
-                trendMessageClass = 'text-green-400 font-semibold';
-              } else if (kDirection === 'down' && kValue < 80) {
-                trendMessage = 'Try Short';
-                trendMessageClass = 'text-red-400 font-semibold';
-              }
+            const kdTrend = getKDTrendMessage(alert);
+            if (kdTrend) {
+              trendMessage = kdTrend.text;
+              const txt = kdTrend.text;
+              if (txt.startsWith('No Long'))          trendMessageClass = 'text-red-500 font-bold';
+              else if (txt.startsWith('No Short'))     trendMessageClass = 'text-green-500 font-bold';
+              else if (txt === 'Strong Long')          trendMessageClass = 'text-green-300 font-bold animate-pulse';
+              else if (txt === 'Strong Short')         trendMessageClass = 'text-red-300 font-bold animate-pulse';
+              else if (txt.startsWith('Long Contin'))   trendMessageClass = 'text-cyan-400 font-bold';
+              else if (txt.startsWith('Short Contin'))  trendMessageClass = 'text-orange-400 font-bold';
+              else if (txt.startsWith('Long Reversal')) trendMessageClass = 'text-green-400 font-bold';
+              else if (txt.startsWith('Short Reversal'))trendMessageClass = 'text-red-400 font-bold';
+              else if (txt === 'Try Long')             trendMessageClass = 'text-green-400 font-semibold';
+              else if (txt === 'Long Bias')            trendMessageClass = 'text-green-300 font-semibold';
+              else if (txt === 'Try Short')            trendMessageClass = 'text-red-400 font-semibold';
+              else if (txt === 'Short Bias')           trendMessageClass = 'text-red-300 font-semibold';
+              else if (txt === 'Lean Long')            trendMessageClass = 'text-green-400/70';
+              else if (txt === 'Lean Short')           trendMessageClass = 'text-red-400/70';
+              else if (txt === 'Overbought')           trendMessageClass = 'text-yellow-400 font-semibold';
+              else if (txt === 'Oversold')             trendMessageClass = 'text-purple-400 font-semibold';
+              else                                     trendMessageClass = 'text-amber-400/80 font-semibold';
             }
+            const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
             
             // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
             let d2ValueClass = 'text-foreground';
@@ -6545,7 +6750,7 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             const flashClass = shouldFlash ? ' stoch-flash' : '';
-            d2CellHtml = '<td class="py-3 px-4 text-left' + flashClass + '" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + '">' +
+            d2CellHtml = '<td class="py-1.5 px-2 text-left' + flashClass + '" style="' + getCellWidthStyle('d2') + '" title="' + d2TitleEscaped + '">' +
               '<div class="flex flex-row items-center gap-2 flex-wrap">' +
               parts.join('<span class="text-muted-foreground mx-1">|</span>') +
               '</div></td>'
@@ -6566,22 +6771,22 @@ Use this to create a new preset filter button that applies these exact filter se
                 </div>
               </td>\`,
               price: \`
-                <td class="py-3 px-4 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
+                <td class="py-1.5 px-2 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   \${alert.price ? formatCurrency(alert.price) : 'N/A'}
                   <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
                 </td>
               \`,
               highLevelTrend: \`
-                <td class="py-3 px-4 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
+                <td class="py-1.5 px-2 text-left" style="\${getCellWidthStyle('highLevelTrend')}" title="High Level Trend: \${alert.dualStochHighLevelTrendType || 'None'}\${alert.dualStochHighLevelTrendDiff !== null && alert.dualStochHighLevelTrendDiff !== undefined && !isNaN(alert.dualStochHighLevelTrendDiff) ? ', Diff=' + alert.dualStochHighLevelTrendDiff.toFixed(1) : ''}">
                   \${alert.dualStochHighLevelTrend && alert.dualStochHighLevelTrendType ? 
                     '<div class="text-sm font-semibold ' + (alert.dualStochHighLevelTrendType === 'Bull' ? 'text-green-400' : 'text-red-400') + '">' + alert.dualStochHighLevelTrendType + '</div>' : 
                     '<div class="text-sm text-gray-400">-</div>'}
                 </td>
               \`,
-              volume: \`<td class="py-3 px-4 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`,
+              volume: \`<td class="py-1.5 px-2 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`,
               stoch: (() => {
                 const t = alert.triStoch;
-                if (!t) return '<td class="py-3 px-4 text-muted-foreground text-xs" style="' + getCellWidthStyle('stoch') + '">-</td>';
+                if (!t) return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('stoch') + '">-</td>';
                 function kCell(label, kVal, kDir) {
                   const v = kVal != null && !isNaN(parseFloat(kVal)) ? parseFloat(kVal) : null;
                   const dir = kDir || 'flat';
@@ -6591,13 +6796,23 @@ Use this to create a new preset filter button that applies these exact filter se
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
                 const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
-                const suggestion = getTriStochSuggestion(t);
+                const unified = getKDTrendMessage(alert);
                 let suggestionHtml = '';
-                if (suggestion) {
-                  const sugClr = suggestion.type === 'long' ? 'text-green-400 font-semibold' : suggestion.type === 'short' ? 'text-red-400 font-semibold' : 'text-amber-400';
-                  suggestionHtml = '<span class="text-xs ' + sugClr + ' ml-2">' + suggestion.text + '</span>';
+                if (unified) {
+                  const txt = unified.text;
+                  let sugClr = 'text-amber-400';
+                  if (txt === 'Strong Long')                sugClr = 'text-green-300 font-bold';
+                  else if (txt === 'Strong Short')          sugClr = 'text-red-300 font-bold';
+                  else if (txt.startsWith('Long Contin'))   sugClr = 'text-cyan-400 font-bold';
+                  else if (txt.startsWith('Short Contin'))  sugClr = 'text-orange-400 font-bold';
+                  else if (txt.startsWith('Long Reversal')) sugClr = 'text-green-400 font-bold';
+                  else if (txt.startsWith('Short Reversal'))sugClr = 'text-red-400 font-bold';
+                  else if (unified.type === 'long')         sugClr = 'text-green-400 font-semibold';
+                  else if (unified.type === 'short')        sugClr = 'text-red-400 font-semibold';
+                  else                                      sugClr = 'text-amber-400/80 font-semibold';
+                  suggestionHtml = '<span class="text-xs ' + sugClr + ' ml-2">' + txt + '</span>';
                 }
-                return '<td class="py-3 px-4 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3 flex-wrap">' + parts.join('<span class="text-muted-foreground">|</span>') + suggestionHtml + '</div></td>';
+                return '<td class="py-1.5 px-2 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3 flex-wrap">' + parts.join('<span class="text-muted-foreground">|</span>') + suggestionHtml + '</div></td>';
               })()
             };
             
@@ -6876,11 +7091,31 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           });
           
+          // Check for K/D trend message changes
+          const kdTrend = getKDTrendMessage(alert);
+          const currentTrendText = kdTrend ? kdTrend.text : '';
+          if (currentTrendText && currentTrendText !== prevState.trendMessage) {
+            const isBullish = kdTrend.type === 'long';
+            stochHistory.unshift({
+              symbol: symbol,
+              eventType: 'trend_change',
+              eventData: {
+                trendMessage: currentTrendText,
+                prevTrendMessage: prevState.trendMessage,
+                d1Value: d1Value,
+                d2Value: d2Value,
+                isBullish: isBullish
+              },
+              price: alert.price,
+              timestamp: Date.now()
+            });
+          }
+
           // Update previous state
           previousStochStates[symbol] = {
             d1Direction: d1Direction,
             d2Direction: d2Direction,
-            trendMessage: prevState.trendMessage,
+            trendMessage: currentTrendText,
             presetMatches: currentPresetMatches
           };
           
@@ -6952,6 +7187,18 @@ Use this to create a new preset filter button that applies these exact filter se
           }
         }
 
+        // Top bar clock
+        (function initClock() {
+          const el = document.getElementById('topBarClock');
+          if (!el) return;
+          function tick() {
+            const now = new Date();
+            el.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+          }
+          tick();
+          setInterval(tick, 1000);
+        })();
+
         // Fetch alerts once on page load
         fetchAlerts();
         
@@ -6966,9 +7213,9 @@ Use this to create a new preset filter button that applies these exact filter se
         
         eventSource.onopen = function(event) {
           console.log('📡 SSE connection opened');
-          connectionIndicator.className = 'w-2 h-2 rounded-full bg-green-500';
-          connectionText.textContent = 'Connected';
-          connectionText.className = 'text-green-400';
+          connectionIndicator.className = 'w-1.5 h-1.5 rounded-full bg-green-500';
+          connectionText.textContent = 'LIVE';
+          connectionText.className = 'font-terminal text-[9px] tracking-widest text-green-400';
           realtimeIndicator.classList.remove('hidden');
           realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Real-time updates active</span>';
         };
@@ -7040,9 +7287,9 @@ Use this to create a new preset filter button that applies these exact filter se
         
         eventSource.onerror = function(event) {
           console.log('⚠️ SSE connection error, falling back to polling');
-          connectionIndicator.className = 'w-2 h-2 rounded-full bg-red-500';
-          connectionText.textContent = 'Disconnected';
-          connectionText.className = 'text-red-400';
+          connectionIndicator.className = 'w-1.5 h-1.5 rounded-full bg-red-500';
+          connectionText.textContent = 'OFFLINE';
+          connectionText.className = 'font-terminal text-[9px] tracking-widest text-red-400';
           realtimeIndicator.classList.add('hidden');
           // SSE failed, rely on interval polling
         };
