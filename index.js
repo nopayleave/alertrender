@@ -122,6 +122,7 @@ let stochOverviewDataStorage = {} // Store Stoch Overview (same stoch, higher TF
 let stochDetailDataStorage = {} // Store Stoch Detail (same stoch, lower TF) by symbol
 let dualStochDataStorage = {} // Store Dual Stoch D1/D2 data by symbol with timestamp
 let dualStochHistory = {} // Store historical D1/D2 values for mini charts: { symbol: [{ d1, d2, timestamp }, ...] }
+let triStochK1K3History = {} // Tri-stoch K1/K3 samples for mini charts: { symbol: [{ k1, k3, timestamp }, ...] }
 let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: { symbol: { date: 'YYYY-MM-DD', isBigTrendDay: true } }
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
@@ -200,6 +201,60 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
   if (s.samples.length > 30) s.samples = s.samples.slice(-30)
 }
 
+/** Mini line chart for one stochastic series (0–100), same spirit as dualStoch mini chart */
+function buildTriStochSeriesSvg(history, field, strokeHex) {
+  const chartWidth = 88
+  const chartHeight = 36
+  const padding = 2
+  const plotWidth = chartWidth - padding * 2
+  const plotHeight = chartHeight - padding * 2
+  if (!history || !history.length) return ''
+  const pts = []
+  history.forEach(p => {
+    const raw = p[field]
+    if (raw === null || raw === undefined) return
+    const v = parseFloat(raw)
+    if (!isNaN(v)) pts.push(v)
+  })
+  if (pts.length === 0) return ''
+  let minVal = 100
+  let maxVal = 0
+  pts.forEach(v => {
+    minVal = Math.min(minVal, v)
+    maxVal = Math.max(maxVal, v)
+  })
+  if (pts.length === 1) {
+    minVal = Math.max(0, pts[0] - 12)
+    maxVal = Math.min(100, pts[0] + 12)
+  }
+  const range = maxVal - minVal || 1
+  minVal = Math.max(0, minVal - range * 0.08)
+  maxVal = Math.min(100, maxVal + range * 0.08)
+  const scale = (maxVal - minVal) || 1
+  let pathD = ''
+  pts.forEach((v, index) => {
+    const x = padding + (pts.length === 1 ? plotWidth / 2 : (index / (pts.length - 1)) * plotWidth)
+    const y = padding + plotHeight - ((v - minVal) / scale) * plotHeight
+    pathD += (index === 0 ? 'M ' : ' L ') + x + ' ' + y
+  })
+  const y20 = padding + plotHeight - ((20 - minVal) / scale) * plotHeight
+  const y50 = padding + plotHeight - ((50 - minVal) / scale) * plotHeight
+  const y80 = padding + plotHeight - ((80 - minVal) / scale) * plotHeight
+  let extra = ''
+  if (pts.length === 1) {
+    const x = padding + plotWidth / 2
+    const y = padding + plotHeight - ((pts[0] - minVal) / scale) * plotHeight
+    extra = '<circle cx="' + x + '" cy="' + y + '" r="2.5" fill="' + strokeHex + '"/>'
+  }
+  return '<svg width="' + chartWidth + '" height="' + chartHeight + '" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
+    '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+    '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#666" stroke-width="0.5" opacity="0.2"/>' +
+    '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+    '<path d="' + pathD + '" stroke="' + strokeHex + '" stroke-width="1.5" fill="none"/>' +
+    extra +
+    '</svg>'
+}
+
 // Data persistence functions using SQLite
 function saveDataToDatabase() {
   if (!db) {
@@ -245,6 +300,7 @@ function saveDataToDatabase() {
         stochDetailDataStorage,
         dualStochDataStorage,
         dualStochHistory,
+        triStochK1K3History,
         bigTrendDay,
         starredSymbols,
         previousTrends,
@@ -309,6 +365,7 @@ function loadDataFromDatabase() {
           case 'stochDetailDataStorage': stochDetailDataStorage = value; break
           case 'dualStochDataStorage': dualStochDataStorage = value; break
           case 'dualStochHistory': dualStochHistory = value; break
+          case 'triStochK1K3History': triStochK1K3History = value; break
           case 'bigTrendDay': bigTrendDay = value; break
           case 'starredSymbols': starredSymbols = value; break
           case 'previousTrends': previousTrends = value; break
@@ -1372,6 +1429,21 @@ app.post('/webhook', (req, res) => {
     }
     console.log(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
 
+    const tsTri = Date.now()
+    const k1Hist = parseFloat(alert.ovK != null ? alert.ovK : alert.k1)
+    const k3Hist = parseFloat(alert.k3)
+    if (!isNaN(k1Hist) || !isNaN(k3Hist)) {
+      if (!triStochK1K3History[alert.symbol]) triStochK1K3History[alert.symbol] = []
+      triStochK1K3History[alert.symbol].push({
+        k1: !isNaN(k1Hist) ? k1Hist : null,
+        k3: !isNaN(k3Hist) ? k3Hist : null,
+        timestamp: tsTri
+      })
+      if (triStochK1K3History[alert.symbol].length > 50) {
+        triStochK1K3History[alert.symbol] = triStochK1K3History[alert.symbol].slice(-50)
+      }
+    }
+
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].triStoch = triStoch
@@ -2074,6 +2146,9 @@ app.get('/alerts', (req, res) => {
         sampleCount: sess.samples.length
       }
     }
+    const triHist = triStochK1K3History[alert.symbol] || []
+    alert.triStochK1MiniChart = buildTriStochSeriesSvg(triHist, 'k1', '#22c55e')
+    alert.triStochK3MiniChart = buildTriStochSeriesSvg(triHist, 'k3', '#f59e0b')
   })
   
   res.json(result)
@@ -2118,6 +2193,7 @@ app.post('/reset-alerts', (req, res) => {
   stochOverviewDataStorage = {}
   stochDetailDataStorage = {}
   dualStochDataStorage = {}
+  triStochK1K3History = {}
   bigTrendDay = {}
   patternData = {}
   stochSessionTracker = {}
@@ -2182,6 +2258,7 @@ app.get('/export/json', (req, res) => {
       soloStochDataStorage,
       dualStochDataStorage,
       dualStochHistory,
+      triStochK1K3History,
       bigTrendDay,
       starredSymbols,
       previousTrends,
@@ -4273,7 +4350,7 @@ app.get('/', (req, res) => {
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'stoch', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'stochK1', 'stochK3', 'stoch', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove legacy columns (star, orb) and any not in columnDefs
         columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
@@ -4283,6 +4360,8 @@ app.get('/', (req, res) => {
           symbol: 80,
           price: 100,
           highLevelTrend: 64,
+          stochK1: 96,
+          stochK3: 96,
           stoch: 200,
           volume: 80
         };
@@ -4312,11 +4391,33 @@ app.get('/', (req, res) => {
           if (priceIdx !== -1) columnOrder.splice(priceIdx + 1, 0, 'stoch');
           else columnOrder.push('stoch');
         }
+        if (!columnOrder.includes('stochK1') || !columnOrder.includes('stochK3')) {
+          const stochIdx = columnOrder.indexOf('stoch');
+          if (stochIdx !== -1) {
+            if (!columnOrder.includes('stochK1')) columnOrder.splice(stochIdx, 0, 'stochK1');
+            const stochIdx2 = columnOrder.indexOf('stoch');
+            if (!columnOrder.includes('stochK3')) columnOrder.splice(stochIdx2, 0, 'stochK3');
+          } else {
+            const volIdx = columnOrder.indexOf('volume');
+            if (!columnOrder.includes('stochK1')) {
+              if (volIdx !== -1) columnOrder.splice(volIdx, 0, 'stochK1');
+              else columnOrder.push('stochK1');
+            }
+            if (!columnOrder.includes('stochK3')) {
+              const volIdx2 = columnOrder.indexOf('volume');
+              if (volIdx2 !== -1) columnOrder.splice(volIdx2, 0, 'stochK3');
+              else columnOrder.push('stochK3');
+            }
+          }
+          localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
+        }
         
         // Column definitions
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
+          stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 overview — mini chart from tri-stoch history' },
+          stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 higher timeframe — mini chart from tri-stoch history' },
           stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[200px]', tooltip: 'Tri K direction: K1 | K2 | K3' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
@@ -4872,6 +4973,11 @@ app.get('/', (req, res) => {
                 const result = aVal.localeCompare(bVal);
                 return currentSortDirection === 'asc' ? result : -result;
               } else {
+                const aNull = aVal === null || aVal === undefined || (typeof aVal === 'number' && isNaN(aVal));
+                const bNull = bVal === null || bVal === undefined || (typeof bVal === 'number' && isNaN(bVal));
+                if (aNull && bNull) return 0;
+                if (aNull) return 1;
+                if (bNull) return -1;
                 const result = aVal - bVal;
                 return currentSortDirection === 'asc' ? result : -result;
               }
@@ -5360,6 +5466,16 @@ app.get('/', (req, res) => {
               return 0;
             case 'volume':
               return parseInt(alert.volume) || 0;
+            case 'stochK1': {
+              const t = alert.triStoch;
+              if (t && t.ovK != null && !isNaN(parseFloat(t.ovK))) return parseFloat(t.ovK);
+              return null;
+            }
+            case 'stochK3': {
+              const t3 = alert.triStoch;
+              if (t3 && t3.k3 != null && !isNaN(parseFloat(t3.k3))) return parseFloat(t3.k3);
+              return null;
+            }
             default:
               return '';
           }
@@ -5957,6 +6073,11 @@ Use this to create a new preset filter button that applies these exact filter se
                 const result = aVal.localeCompare(bVal);
                 return currentSortDirection === 'asc' ? result : -result;
               } else {
+                const aNull = aVal === null || aVal === undefined || (typeof aVal === 'number' && isNaN(aVal));
+                const bNull = bVal === null || bVal === undefined || (typeof bVal === 'number' && isNaN(bVal));
+                if (aNull && bNull) return 0;
+                if (aNull) return 1;
+                if (bNull) return -1;
                 const result = aVal - bVal;
                 return currentSortDirection === 'asc' ? result : -result;
               }
@@ -6784,6 +6905,44 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               volume: \`<td class="py-1.5 px-2 text-muted-foreground" style="\${getCellWidthStyle('volume')}" title="Volume since 9:30 AM: \${alert.volume ? parseInt(alert.volume).toLocaleString() : 'N/A'}">\${formatVolume(alert.volume)}</td>\`,
+              stochK1: (() => {
+                const t = alert.triStoch;
+                const svg = alert.triStochK1MiniChart || '';
+                if (!t && !svg) return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochK1') + '">–</td>';
+                const v = t && t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+                const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
+                const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–';
+                const valStr = v !== null ? v.toFixed(1) : '–';
+                let valCls = 'text-muted-foreground';
+                if (v !== null) {
+                  if (v > 80) valCls = 'text-white font-semibold';
+                  else if (v < 20) valCls = 'text-red-400 font-semibold';
+                  else valCls = dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground';
+                }
+                return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 (overview) — recent tri-stoch samples">' +
+                  '<div class="flex flex-col gap-0.5">' +
+                  (svg ? '<div class="leading-none">' + svg + '</div>' : '') +
+                  '<span class="font-mono text-[10px] ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
+                  '</div></td>';
+              })(),
+              stochK3: (() => {
+                const t = alert.triStoch;
+                const svg = alert.triStochK3MiniChart || '';
+                if (!t && !svg) return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochK3') + '">–</td>';
+                const v = t && t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
+                const valStr = v !== null ? v.toFixed(1) : '–';
+                let valCls = 'text-muted-foreground';
+                if (v !== null) {
+                  if (v > 80) valCls = 'text-white font-semibold';
+                  else if (v < 20) valCls = 'text-red-400 font-semibold';
+                  else valCls = 'text-amber-400';
+                }
+                return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 (higher TF) — recent tri-stoch samples">' +
+                  '<div class="flex flex-col gap-0.5">' +
+                  (svg ? '<div class="leading-none">' + svg + '</div>' : '') +
+                  '<span class="font-mono text-[10px] ' + valCls + '">' + valStr + '</span>' +
+                  '</div></td>';
+              })(),
               stoch: (() => {
                 const t = alert.triStoch;
                 if (!t) return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('stoch') + '">-</td>';
@@ -7217,7 +7376,7 @@ Use this to create a new preset filter button that applies these exact filter se
           connectionText.textContent = 'LIVE';
           connectionText.className = 'font-terminal text-[9px] tracking-widest text-green-400';
           realtimeIndicator.classList.remove('hidden');
-          realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Real-time updates active</span>';
+          realtimeIndicator.innerHTML = '<span class="font-terminal text-[9px] animate-pulse">🔄 Real-time updates active</span>';
         };
         
         eventSource.onmessage = function(event) {
@@ -7279,9 +7438,9 @@ Use this to create a new preset filter button that applies these exact filter se
           fetchAlerts(); // Refresh immediately when new data arrives
           
           // Show brief update indicator
-          realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Updated just now</span>';
+          realtimeIndicator.innerHTML = '<span class="font-terminal text-[9px] animate-pulse">🔄 Updated just now</span>';
           setTimeout(() => {
-            realtimeIndicator.innerHTML = '<span class="animate-pulse">🔄 Real-time updates active</span>';
+            realtimeIndicator.innerHTML = '<span class="font-terminal text-[9px] animate-pulse">🔄 Real-time updates active</span>';
           }, 2000);
         };
         

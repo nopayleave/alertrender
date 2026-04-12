@@ -1,0 +1,196 @@
+//@version=6
+indicator('OBR', overlay = true)
+
+// === Display Toggles ===
+inputMax = input(15, title = 'ORB Duration (minutes)', group='📦 Session ORB Settings 📦')
+show_ny_orb   = input.bool(true,  title = "Show New York ORB")
+nyORB         = input.session('0930-0945', title = 'New York ORB Time')
+nySession     = input.session('0930-1600', title = 'New York Session Time')
+show_50pct_line = input.bool(true, title = "Show 50% ORB Midline", group='📦 Session ORB Settings 📦')
+ny_fill_color     = input.color(color.rgb(128, 128, 128, 50), title="New York ORB Color")
+
+// === Webhook Alerts ===
+enableWebhook = input.bool(false, title="Enable Webhook Alerts", group="🔔 Webhook Alerts")
+webhookFrequency = input.string("Once Per Bar Close", title="Alert Frequency", options=["Once Per Bar Close", "Once Per Bar", "All"], group="🔔 Webhook Alerts")
+
+// Determine alert frequency
+alertFreq = webhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close : 
+           webhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar : 
+           alert.freq_all
+// Convert timeframe to minutes for comparison (timeframe.in_seconds() returns seconds, divide by 60 to get minutes)
+timeframeMinutes = timeframe.in_seconds() / 60.0
+hide = timeframe.isintraday and timeframeMinutes <= inputMax
+
+// === Session Time Checks ===
+t_ny            = time(timeframe.period, nyORB + ':1234567')
+t_ny_session    = time(timeframe.period, nySession + ':1234567')
+
+in_ny             = not na(t_ny)
+in_ny_session     = not na(t_ny_session)
+
+is_first_ny     = in_ny and not in_ny[1]
+
+var float ny_high     = na
+var float ny_low      = na
+
+if is_first_ny
+    ny_high := high
+    ny_low  := low
+else
+    ny_high := ny_high[1]
+    ny_low  := ny_low[1]
+if high > ny_high and in_ny
+    ny_high := high
+if low < ny_low and in_ny
+    ny_low := low
+
+plot(hide and in_ny_session     and show_ny_orb     ? ny_high     : na, style=plot.style_line, color=ny_high[1]     != ny_high     ? na : #00ff6a00, title='New York ORB High', linewidth=2)
+plot(hide and in_ny_session     and show_ny_orb     ? ny_low      : na, style=plot.style_line, color=ny_low[1]      != ny_low      ? na : #00ff6a00, title='New York ORB Low', linewidth=2)
+
+alertcondition(ta.crossover(high, ny_high) and in_ny_session and not in_ny, title="New York ORB High Break", message="Price crossed above New York ORB High: {{ticker}} at {{close}}")
+alertcondition(ta.crossunder(low, ny_low) and in_ny_session and not in_ny, title="New York ORB Low Break", message="Price crossed below New York ORB Low: {{ticker}} at {{close}}")
+
+show_prev_daily = input.bool(true,  title = "Show Previous Daily High/Low/Open", group='🔙 Previous Levels 🔙')
+show_prev_4h    = input.bool(true,  title = "Show Previous 4H High/Low")
+
+// === Previous Day + Previous 4H Data ===
+// Day data for webhook
+previousClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
+changeFromPrevDay = previousClose != 0 ? ((close - previousClose) / previousClose) * 100 : 0
+currentDayVolume = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+prev_daily_high = request.security(syminfo.tickerid, "D", high[1])
+prev_daily_low  = request.security(syminfo.tickerid, "D", low[1])
+prev_daily_open = request.security(syminfo.tickerid, "D", open[1])
+
+prev_4h_high = request.security(syminfo.tickerid, "240", high[1])
+prev_4h_low  = request.security(syminfo.tickerid, "240", low[1])
+
+// === Line/Label Handles ===
+var line prevD_hi_ln = na
+var line prevD_lo_ln = na
+var line prevD_op_ln = na
+var label prevD_hi_lbl = na
+var label prevD_lo_lbl = na
+var label prevD_op_lbl = na
+
+var line prev4h_hi_ln = na
+var line prev4h_lo_ln = na
+var label prev4h_hi_lbl = na
+var label prev4h_lo_lbl = na
+
+len = 5
+
+if barstate.islast
+    // --- Prev Daily ---
+    if not na(prevD_hi_ln)
+        line.delete(prevD_hi_ln)
+    if not na(prevD_lo_ln)
+        line.delete(prevD_lo_ln)
+    if not na(prevD_op_ln)
+        line.delete(prevD_op_ln)
+    if not na(prevD_hi_lbl)
+        label.delete(prevD_hi_lbl)
+    if not na(prevD_lo_lbl)
+        label.delete(prevD_lo_lbl)
+    if not na(prevD_op_lbl)
+        label.delete(prevD_op_lbl)
+
+    prevD_hi_ln := show_prev_daily ? line.new(bar_index - len, prev_daily_high, bar_index, prev_daily_high, color=color.rgb(255,255,255), width=2) : na
+    prevD_lo_ln := show_prev_daily ? line.new(bar_index - len, prev_daily_low,  bar_index, prev_daily_low,  color=color.rgb(255,255,255), width=2) : na
+    prevD_op_ln := show_prev_daily ? line.new(bar_index - len, prev_daily_open, bar_index, prev_daily_open, color=color.rgb(255,255,255), width=2) : na
+
+    prevD_hi_lbl := show_prev_daily ? label.new(bar_index, prev_daily_high, "Prev D High", style=label.style_label_left, textcolor=color.white, color=color.new(color.white, 100), size=size.small) : na
+    prevD_lo_lbl := show_prev_daily ? label.new(bar_index, prev_daily_low,  "Prev D Low",  style=label.style_label_left, textcolor=color.white, color=color.new(color.white, 100), size=size.small) : na
+    prevD_op_lbl := show_prev_daily ? label.new(bar_index, prev_daily_open, "Prev D Open", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(0,128,255), 100), size=size.small) : na
+
+    // --- Prev 4H ---
+    if not na(prev4h_hi_ln)
+        line.delete(prev4h_hi_ln)
+    if not na(prev4h_lo_ln)
+        line.delete(prev4h_lo_ln)
+    if not na(prev4h_hi_lbl)
+        label.delete(prev4h_hi_lbl)
+    if not na(prev4h_lo_lbl)
+        label.delete(prev4h_lo_lbl)
+
+    prev4h_hi_ln := show_prev_4h ? line.new(bar_index - len, prev_4h_high, bar_index, prev_4h_high, color=#ffffff, width=2) : na
+    prev4h_lo_ln := show_prev_4h ? line.new(bar_index - len, prev_4h_low,  bar_index, prev_4h_low,  color=#ffffff, width=2) : na
+
+    prev4h_hi_lbl := show_prev_4h ? label.new(bar_index, prev_4h_high, "Prev 4H High", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(0,255,0), 100), size=size.small) : na
+    prev4h_lo_lbl := show_prev_4h ? label.new(bar_index, prev_4h_low,  "Prev 4H Low",  style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(255,166,0), 100), size=size.small) : na
+
+// === Fill ORBs ===
+pNyHigh     = plot(hide and in_ny_session     and show_ny_orb     ? ny_high     : na, style=plot.style_line, color=ny_high[1]!=ny_high       ? na : #00bfff00, title='New York ORB High', linewidth=2)
+pNyLow      = plot(hide and in_ny_session     and show_ny_orb     ? ny_low      : na, style=plot.style_line, color=ny_low[1]!=ny_low         ? na : #00bfff00, title='New York ORB Low',  linewidth=2)
+
+fill(pNyHigh, pNyLow, color=ny_fill_color)
+
+// === 50% ORB Midline ===
+ny_mid = (ny_high + ny_low) / 2.0
+
+plot(hide and in_ny_session and show_ny_orb and show_50pct_line ? ny_mid : na, style=plot.style_line, color=color.new(color.white, 30), title='New York ORB 50%', linewidth=1, linestyle=plot.linestyle_dashed)
+
+// === ORB Position Detection ===
+// New York ORB position
+ny_within = not na(ny_high) and not na(ny_low) and close >= ny_low and close <= ny_high
+ny_outside_above = not na(ny_high) and close > ny_high
+ny_outside_below = not na(ny_low) and close < ny_low
+ny_upper_half = ny_within and not na(ny_mid) and close >= ny_mid
+ny_lower_half = ny_within and not na(ny_mid) and close < ny_mid
+
+// Determine New York ORB status
+ny_orb_status = ny_outside_above ? "outside_above" : ny_outside_below ? "outside_below" : ny_upper_half ? "within_upper" : ny_lower_half ? "within_lower" : "unknown"
+
+// Track previous states to detect changes
+var string prev_ny_status = na
+
+// Detect status changes
+ny_status_changed = prev_ny_status != ny_orb_status and not na(ny_orb_status) and not na(prev_ny_status)
+
+// Update previous states
+if not na(ny_orb_status)
+    prev_ny_status := ny_orb_status
+
+// === Webhook Alerts ===
+// New York ORB alerts (only during session, after ORB period)
+// Send alerts every bar during session to monitor all symbols continuously
+shouldSendAlert = enableWebhook and (webhookFrequency == "Once Per Bar Close" ? barstate.isconfirmed : true)
+if shouldSendAlert and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
+    // Calculate price direction (price movement relative to previous bar)
+    price_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
+    
+    // Detect crossovers/crossunders of ORB high/low/mid
+    orb_cross_high = ta.crossover(high, ny_high)
+    orb_cross_low = ta.crossunder(low, ny_low)
+    orb_cross_mid_up = ta.crossover(close, ny_mid)
+    orb_cross_mid_down = ta.crossunder(close, ny_mid)
+    orb_cross_bottom = ta.crossover(close, ny_low)
+    orb_cross_high_down = ta.crossunder(close, ny_high)
+    
+    // Determine which crossover occurred (priority: high/low > mid > bottom/high_down)
+    orb_crossover = orb_cross_high ? "cross_high" : orb_cross_low ? "cross_low" : orb_cross_mid_up ? "cross_mid_up" : orb_cross_mid_down ? "cross_mid_down" : orb_cross_bottom ? "cross_bottom" : orb_cross_high_down ? "cross_high_down" : "none"
+    
+    jsonMsg = '{' +
+      '"symbol": "' + syminfo.ticker + '",' +
+      '"sector": "' + syminfo.sector + '",' +
+      '"timeframe": "' + timeframe.period + '",' +
+      '"time": ' + str.tostring(time) + ',' +
+      '"price": ' + str.tostring(close) + ',' +
+      '"previousClose": ' + str.tostring(previousClose, "#.##") + ',' +
+      '"changeFromPrevDay": ' + str.tostring(changeFromPrevDay, "#.##") + ',' +
+      '"volume": ' + str.tostring(currentDayVolume) + ',' +
+      '"orbType": "ny",' +
+      '"orbStatus": "' + ny_orb_status + '",' +
+      '"priceDirection": "' + price_direction + '",' +
+      '"orbCrossover": "' + orb_crossover + '",' +
+      '"orbHigh": ' + str.tostring(ny_high) + ',' +
+      '"orbLow": ' + str.tostring(ny_low) + ',' +
+      '"orbMid": ' + str.tostring(ny_mid) + '}'
+    alert(jsonMsg, freq = alertFreq)
+
+
+
+
+
+
