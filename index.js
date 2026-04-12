@@ -4019,7 +4019,7 @@ app.get('/', (req, res) => {
                   <button 
                     id="clearButton" 
                     onclick="clearSearch()" 
-                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-muted-foreground/20 hover:bg-muted-foreground/30 text-muted-foreground hover:text-foreground transition-all hidden"
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 min-w-[22px] min-h-[22px] w-5 h-5 flex items-center justify-center rounded-sm bg-muted-foreground/20 hover:bg-muted-foreground/30 text-muted-foreground hover:text-foreground transition-all hidden"
                     aria-label="Clear search"
                   >
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4066,7 +4066,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K1 Value <span class="text-foreground/60">|</span> <span id="stochK1ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK1ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK1Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK1ValueSlider"></div></div></div></div>
@@ -4076,7 +4076,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K2 Value <span class="text-foreground/60">|</span> <span id="stochK2ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK2ValueSlider"></div></div></div></div>
@@ -4086,7 +4086,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K3 Value <span class="text-foreground/60">|</span> <span id="stochK3ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK3ValueSlider"></div></div></div></div>
@@ -4094,22 +4094,22 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Suggestion</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long">Strong Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short">Strong Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin.">Long Contin.</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin.">Short Contin.</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal">Long Reversal</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal">Short Reversal</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long">Try Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias">Long Bias</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short">Try Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias">Short Bias</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long">Lean Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short">Lean Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long">No Long</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short">No Short</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought">Overbought</button>
-                        <button onclick="toggleFilterChip('stoch_suggestion', 'Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold">Oversold</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long" title="K1↑ K2↑ K3 71–100">Strong Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short" title="K1↓ K2↓ K3 0–29">Strong Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin." title="K1↑ K2↑ K2 value 51–80">Long Contin.</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin." title="K1↓ K2↓ K2 value 20–49">Short Contin.</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal" title="K1↑ K2↑ K2 value 20–49">Long Reversal</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal" title="K1↓ K2↓ K2 value 51–79">Short Reversal</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long" title="K1↑ K2↑ K2 value 21–50">Try Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias" title="K1↑ K2↑ K2 value 51–80">Long Bias</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short" title="K1↓ K2↓ K2 value 50–79">Try Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias" title="K1↓ K2↓ K2 value 20–49">Short Bias</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long" title="K1↑ only (weaker / K2 any)">Lean Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short" title="K1↓ only (weaker / K2 any)">Lean Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long" title="K2 value 0–15 (extreme low)">No Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short" title="K2 value 85–100 (extreme high)">No Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought" title="K2↑ K2 value 81–100">Overbought</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold" title="K2↓ K2 value 0–19">Oversold</button>
                       </div>
                     </div>
                     <div class="mb-4">
@@ -4245,8 +4245,9 @@ app.get('/', (req, res) => {
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
             <div class="h-full overflow-auto scrollbar-thin">
-              <!-- table-fixed + min-w-full w-max: resize changes one column’s px width; table grows past viewport → scroll (see dev.to/sohrabzia/resizable-table) -->
-              <table class="table-fixed border-collapse font-terminal text-sm min-w-full w-max">
+              <!-- table-fixed + w-max: no min-w-full — that forced 100% width and the browser redistributed slack across *all* columns. colgroup locks per-column px. -->
+              <table id="alertDataTable" class="table-fixed border-collapse font-terminal text-sm w-max max-w-none">
+                <colgroup id="alertTableColGroup"></colgroup>
                 <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(10, 10, 10, 0.98);">
                   <tr class="border-b border-border/50">
                     <!-- Headers will be dynamically generated -->
@@ -4657,6 +4658,120 @@ app.get('/', (req, res) => {
           return true;
         }
 
+        function resetStochValueSliders() {
+          stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
+          stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
+          stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
+          ['stochK1Value', 'stochK2Value', 'stochK3Value'].forEach(key => {
+            const t = document.getElementById(key + 'Toggle');
+            const e = document.getElementById(key + 'Excluded');
+            if (t) t.checked = false;
+            if (e) e.checked = false;
+            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
+          });
+        }
+
+        function refreshDirFilterGroupHasActive(filterAttr) {
+          const first = document.querySelector('[data-filter="' + filterAttr + '"]');
+          if (!first) return;
+          const pg = first.closest('.filter-group');
+          if (pg) pg.classList.toggle('has-active', !!pg.querySelector('.filter-chip.active'));
+        }
+
+        function clearDirectionGroup(filterAttr) {
+          document.querySelectorAll('[data-filter="' + filterAttr + '"]').forEach(c => c.classList.remove('active'));
+          refreshDirFilterGroupHasActive(filterAttr);
+        }
+
+        function activateDirectionChips(filterAttr, values) {
+          document.querySelectorAll('[data-filter="' + filterAttr + '"]').forEach(c => c.classList.remove('active'));
+          (values || []).forEach(v => {
+            const chip = document.querySelector('[data-filter="' + filterAttr + '"][data-value="' + v + '"]');
+            if (chip) chip.classList.add('active');
+          });
+          refreshDirFilterGroupHasActive(filterAttr);
+        }
+
+        /** Aligns Tri K filters with getKDTrendMessage / getTriStochSuggestion semantics (direction + optional value bands). */
+        const SUGGESTION_FILTER_PRESETS = {
+          'Strong Long':   { k1: ['up'], k2: ['up'], k3v: [71, 100] },
+          'Strong Short':  { k1: ['down'], k2: ['down'], k3v: [0, 29] },
+          'Long Contin.':  { k1: ['up'], k2: ['up'], k2v: [51, 80] },
+          'Short Contin.': { k1: ['down'], k2: ['down'], k2v: [20, 49] },
+          'Long Reversal': { k1: ['up'], k2: ['up'], k2v: [20, 49] },
+          'Short Reversal':{ k1: ['down'], k2: ['down'], k2v: [51, 79] },
+          'Try Long':      { k1: ['up'], k2: ['up'], k2v: [21, 50] },
+          'Long Bias':     { k1: ['up'], k2: ['up'], k2v: [51, 80] },
+          'Try Short':     { k1: ['down'], k2: ['down'], k2v: [50, 79] },
+          'Short Bias':    { k1: ['down'], k2: ['down'], k2v: [20, 49] },
+          'Lean Long':     { k1: ['up'] },
+          'Lean Short':    { k1: ['down'] },
+          'No Long':       { k2v: [0, 15] },
+          'No Short':      { k2v: [85, 100] },
+          'Overbought':    { k2: ['up'], k2v: [81, 100] },
+          'Oversold':      { k2: ['down'], k2v: [0, 19] }
+        };
+
+        function applyStochValueSliderRange(key, min, max) {
+          const map = { stochK1Value: stochK1Value, stochK2Value: stochK2Value, stochK3Value: stochK3Value };
+          const excludedEl = document.getElementById(key + 'Excluded');
+          if (excludedEl) excludedEl.checked = false;
+          const toggle = document.getElementById(key + 'Toggle');
+          if (toggle) toggle.checked = true;
+          const el = sliders[key];
+          if (el && el.noUiSlider) el.noUiSlider.set([min, max]);
+          updateGenericValueFilter(key, map[key]);
+        }
+
+        /** One suggestion at a time; applies paired K1/K2/K3 value filters so text match is not blocked by stale chips. */
+        function applySuggestionFilterPreset(suggestionValue, el) {
+          const wasActive = el.classList.contains('active');
+          const sugGroup = el.closest('.filter-group');
+
+          document.querySelectorAll('[data-filter="stoch_suggestion"]').forEach(b => b.classList.remove('active'));
+          if (sugGroup) sugGroup.classList.remove('has-active');
+
+          if (wasActive) {
+            resetStochValueSliders();
+            clearDirectionGroup('stoch_k1Dir');
+            clearDirectionGroup('stoch_k2Dir');
+            clearDirectionGroup('stoch_k3Dir');
+            stochOrderActive = false;
+            const applyEl = document.getElementById('stochOrderApply');
+            if (applyEl) applyEl.checked = false;
+            updateStochOrderFromDom();
+            updateFilterArrays();
+            filterAlerts();
+            return;
+          }
+
+          el.classList.add('active');
+          if (sugGroup) sugGroup.classList.add('has-active');
+
+          stochOrderActive = false;
+          const applyOrd = document.getElementById('stochOrderApply');
+          if (applyOrd) applyOrd.checked = false;
+          updateStochOrderFromDom();
+
+          resetStochValueSliders();
+          clearDirectionGroup('stoch_k1Dir');
+          clearDirectionGroup('stoch_k2Dir');
+          clearDirectionGroup('stoch_k3Dir');
+
+          const preset = SUGGESTION_FILTER_PRESETS[suggestionValue];
+          if (preset) {
+            if (preset.k1 && preset.k1.length) activateDirectionChips('stoch_k1Dir', preset.k1);
+            if (preset.k2 && preset.k2.length) activateDirectionChips('stoch_k2Dir', preset.k2);
+            if (preset.k3 && preset.k3.length) activateDirectionChips('stoch_k3Dir', preset.k3);
+            if (preset.k1v) applyStochValueSliderRange('stochK1Value', preset.k1v[0], preset.k1v[1]);
+            if (preset.k2v) applyStochValueSliderRange('stochK2Value', preset.k2v[0], preset.k2v[1]);
+            if (preset.k3v) applyStochValueSliderRange('stochK3Value', preset.k3v[0], preset.k3v[1]);
+          }
+
+          updateFilterArrays();
+          filterAlerts();
+        }
+
         function clearStochDirFilters() {
           document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
           stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
@@ -4674,15 +4789,11 @@ app.get('/', (req, res) => {
           if (op2El) op2El.value = '>';
           const rightEl = document.getElementById('stochOrderRight');
           if (rightEl) rightEl.value = 'K1';
-          stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
-          stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
-          stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
-          ['stochK1Value', 'stochK2Value', 'stochK3Value'].forEach(key => {
-            const t = document.getElementById(key + 'Toggle');
-            const e = document.getElementById(key + 'Excluded');
-            if (t) t.checked = false;
-            if (e) e.checked = false;
-            if (sliders[key] && sliders[key].noUiSlider) sliders[key].noUiSlider.set([0, 100]);
+          resetStochValueSliders();
+          document.querySelectorAll('.filter-group').forEach(pg => {
+            if (pg.querySelector('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]')) {
+              pg.classList.toggle('has-active', !!pg.querySelector('.filter-chip.active'));
+            }
           });
           renderTable();
         }
@@ -5240,6 +5351,40 @@ app.get('/', (req, res) => {
           lastUpdate.innerHTML = \`UPD \${now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})} <span id="countdown"></span>\`;
         }
 
+        /** Sync <col> widths with columnOrder + columnWidths (stops fixed-layout from redistributing across columns). */
+        function syncAlertTableColGroup() {
+          const cg = document.getElementById('alertTableColGroup');
+          if (!cg) return;
+          cg.innerHTML = columnOrder.map(colId => {
+            const w = getColumnWidth(colId);
+            return '<col data-column-id="' + colId + '" span="1" style="width: ' + w + 'px; min-width: ' + w + 'px;">';
+          }).join('');
+        }
+
+        /** Apply width to one column’s col + th + td (skips placeholder rows with colspan / wrong cell count). */
+        function applyColumnWidthToDom(columnId, widthPx) {
+          const columnIndex = columnOrder.indexOf(columnId);
+          if (columnIndex === -1) return;
+          const colEl = document.querySelector('#alertTableColGroup col[data-column-id="' + columnId + '"]');
+          if (colEl) {
+            colEl.style.width = widthPx + 'px';
+            colEl.style.minWidth = widthPx + 'px';
+          }
+          document.querySelectorAll('th[data-column-id="' + columnId + '"]').forEach(h => {
+            h.style.width = widthPx + 'px';
+            h.style.minWidth = widthPx + 'px';
+            h.style.maxWidth = widthPx + 'px';
+          });
+          document.querySelectorAll('#alertTable tr').forEach(row => {
+            if (row.children.length !== columnOrder.length) return;
+            const cell = row.children[columnIndex];
+            if (!cell || cell.colSpan > 1) return;
+            cell.style.width = widthPx + 'px';
+            cell.style.minWidth = widthPx + 'px';
+            cell.style.maxWidth = widthPx + 'px';
+          });
+        }
+
         // Render table headers dynamically based on column order
         function renderTableHeaders() {
           const headerRow = document.querySelector('#tableHeader tr');
@@ -5281,6 +5426,7 @@ app.get('/', (req, res) => {
           }).join('');
           
           updateSortIndicators();
+          syncAlertTableColGroup();
           
           // Attach resize handlers after headers are rendered
           attachResizeHandlers();
@@ -5454,26 +5600,7 @@ app.get('/', (req, res) => {
           const diff = e.clientX - resizeState.startX;
           const newWidth = Math.max(30, Math.min(1000, resizeState.startWidth + diff));
           
-          // Update width in real-time
-          if (resizeState.header) {
-            resizeState.header.style.width = newWidth + 'px';
-            resizeState.header.style.minWidth = newWidth + 'px';
-            resizeState.header.style.maxWidth = newWidth + 'px';
-          }
-          
-          // Update all cells in this column
-          const columnIndex = columnOrder.indexOf(resizeState.columnId);
-          if (columnIndex !== -1) {
-            const rows = document.querySelectorAll('#alertTable tr');
-            rows.forEach(row => {
-              const cell = row.children[columnIndex];
-              if (cell) {
-                cell.style.width = newWidth + 'px';
-                cell.style.minWidth = newWidth + 'px';
-                cell.style.maxWidth = newWidth + 'px';
-              }
-            });
-          }
+          applyColumnWidthToDom(resizeState.columnId, newWidth);
         }
 
         function handleColumnResizeEnd(e) {
@@ -5487,30 +5614,12 @@ app.get('/', (req, res) => {
           
           // Save the new width
           setColumnWidth(resizeState.columnId, newWidth);
+          syncAlertTableColGroup();
+          applyColumnWidthToDom(resizeState.columnId, newWidth);
           
-          // Update all headers and cells
-          const columnIndex = columnOrder.indexOf(resizeState.columnId);
-          if (columnIndex !== -1) {
-            // Update all headers
-            const headers = document.querySelectorAll('th[data-column-id="' + resizeState.columnId + '"]');
-            headers.forEach(header => {
-              header.style.width = newWidth + 'px';
-              header.style.minWidth = newWidth + 'px';
-              header.style.maxWidth = newWidth + 'px';
-                header.setAttribute('draggable', 'true');
-            });
-            
-            // Update all cells
-            const rows = document.querySelectorAll('#alertTable tr');
-            rows.forEach(row => {
-              const cell = row.children[columnIndex];
-              if (cell) {
-                cell.style.width = newWidth + 'px';
-                cell.style.minWidth = newWidth + 'px';
-                cell.style.maxWidth = newWidth + 'px';
-              }
-            });
-          }
+          document.querySelectorAll('th[data-column-id="' + resizeState.columnId + '"]').forEach(header => {
+            header.setAttribute('draggable', 'true');
+          });
           
           // Clean up
           const resizeHandle = document.querySelector('.column-resize-handle.resizing');
