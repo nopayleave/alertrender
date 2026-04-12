@@ -2316,48 +2316,55 @@ app.get('/calculator', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Share Calculator</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
       <script src="https://cdn.tailwindcss.com"></script>
       <script>
         tailwind.config = {
           theme: {
             extend: {
               colors: {
-                border: "hsl(217.2 32.6% 17.5%)",
-                input: "hsl(217.2 32.6% 17.5%)",
-                ring: "hsl(212.7 26.8% 83.9%)",
-                background: "hsl(222.2 84% 4.9%)",
-                foreground: "hsl(210 40% 98%)",
+                border: "hsl(0 0% 13%)",
+                input: "hsl(0 0% 18%)",
+                ring: "hsl(38 95% 50%)",
+                background: "hsl(0 0% 5%)",
+                foreground: "hsl(40 10% 85%)",
                 primary: {
-                  DEFAULT: "hsl(210 40% 98%)",
-                  foreground: "hsl(222.2 47.4% 11.2%)",
+                  DEFAULT: "hsl(38 95% 50%)",
+                  foreground: "hsl(0 0% 5%)",
                 },
                 secondary: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 11%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
                 muted: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(215 20.2% 65.1%)",
+                  DEFAULT: "hsl(0 0% 10%)",
+                  foreground: "hsl(0 0% 50%)",
                 },
                 accent: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 12%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
                 card: {
-                  DEFAULT: "hsl(222.2 84% 4.9%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 7%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
               }
             }
           }
         }
       </script>
+      <style>
+        html { color-scheme: dark; }
+        body { font-family: 'Inter', system-ui, sans-serif; font-feature-settings: "tnum" 1, "kern" 1; }
+      </style>
     </head>
-    <body class="bg-background min-h-screen py-8">
+    <body class="bg-background min-h-screen py-8 antialiased">
       <div class="container mx-auto max-w-4xl px-4">
         <!-- Navigation -->
         <div class="mb-6">
-          <a href="/" class="text-blue-400 hover:text-blue-300 transition-colors">← Back to Dashboard</a>
+          <a href="/" class="text-amber-400 hover:text-amber-200 transition-colors">← Back to Dashboard</a>
         </div>
 
         <!-- Header -->
@@ -2464,7 +2471,7 @@ app.get('/calculator', (req, res) => {
               </div>
               <div class="flex-1 min-w-[120px]">
                 <label class="block text-xs font-medium text-muted-foreground mb-1">Shares Needed</label>
-                <div id="customResult" class="px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 font-semibold text-sm text-center">
+                <div id="customResult" class="px-2 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded text-amber-400 font-semibold text-sm text-center">
                   -
                 </div>
               </div>
@@ -2576,9 +2583,9 @@ app.get('/calculator', (req, res) => {
             const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
 
             return \`
-              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-amber-500 transition-colors">
                 <div class="flex items-baseline gap-2">
-                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-2xl font-bold text-amber-400">\${numShares.toLocaleString()}</span>
                   <span class="text-sm text-muted-foreground">shares</span>
                   <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
@@ -2711,6 +2718,9 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Alert Dashboard</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
       <script src="https://cdn.tailwindcss.com"></script>
       <!-- noUiSlider for range sliders -->
       <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
@@ -2720,30 +2730,30 @@ app.get('/', (req, res) => {
           theme: {
             extend: {
               colors: {
-                border: "hsl(217.2 32.6% 17.5%)",
-                input: "hsl(217.2 32.6% 17.5%)",
-                ring: "hsl(212.7 26.8% 83.9%)",
-                background: "hsl(222.2 84% 4.9%)",
-                foreground: "hsl(210 40% 98%)",
+                border: "hsl(0 0% 13%)",
+                input: "hsl(0 0% 18%)",
+                ring: "hsl(38 95% 50%)",
+                background: "hsl(0 0% 5%)",
+                foreground: "hsl(40 10% 85%)",
                 primary: {
-                  DEFAULT: "hsl(210 40% 98%)",
-                  foreground: "hsl(222.2 47.4% 11.2%)",
+                  DEFAULT: "hsl(38 95% 50%)",
+                  foreground: "hsl(0 0% 5%)",
                 },
                 secondary: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 11%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
                 muted: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(215 20.2% 65.1%)",
+                  DEFAULT: "hsl(0 0% 10%)",
+                  foreground: "hsl(0 0% 50%)",
                 },
                 accent: {
-                  DEFAULT: "hsl(217.2 32.6% 17.5%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 12%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
                 card: {
-                  DEFAULT: "hsl(222.2 84% 4.9%)",
-                  foreground: "hsl(210 40% 98%)",
+                  DEFAULT: "hsl(0 0% 7%)",
+                  foreground: "hsl(40 10% 85%)",
                 },
               }
             }
@@ -2751,6 +2761,15 @@ app.get('/', (req, res) => {
         }
       </script>
       <style>
+        html { color-scheme: dark; }
+        body {
+          font-family: 'Inter', system-ui, sans-serif;
+          font-feature-settings: "tnum" 1, "kern" 1;
+        }
+        .font-terminal, table td.tabular-nums, .tabular-nums {
+          font-family: 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+          font-variant-numeric: tabular-nums lining-nums;
+        }
         @media (min-width: 1370px) {
           .container {
             max-width: 1700px;
@@ -2774,7 +2793,7 @@ app.get('/', (req, res) => {
           cursor: grabbing;
         }
         .draggable-header.drag-over {
-          border-left: 2px solid #3b82f6;
+          border-left: 2px solid #f59e0b;
         }
         /* Column resize handle */
         .column-resize-handle {
@@ -2791,10 +2810,10 @@ app.get('/', (req, res) => {
           margin-right: -3px;
         }
         .column-resize-handle:hover {
-          background: rgba(59, 130, 246, 0.5);
+          background: rgba(245, 158, 11, 0.5);
         }
         .column-resize-handle.resizing {
-          background: rgba(59, 130, 246, 0.9);
+          background: rgba(245, 158, 11, 0.9);
         }
         th {
           position: relative;
@@ -2808,7 +2827,7 @@ app.get('/', (req, res) => {
         }
         /* Show resize indicator on header hover */
         th:hover .column-resize-handle {
-          background: rgba(59, 130, 246, 0.2);
+          background: rgba(245, 158, 11, 0.2);
         }
         /* iOS-style filter chips */
         .filter-chip {
@@ -2914,7 +2933,7 @@ app.get('/', (req, res) => {
         }
         /* iOS-style search input focus */
         input:focus {
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
         }
         /* iOS-style range slider */
         .diff-slider {
@@ -2923,7 +2942,7 @@ app.get('/', (req, res) => {
           background: transparent;
         }
         .diff-slider::-webkit-slider-track {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           height: 4px;
           border-radius: 2px;
         }
@@ -2933,18 +2952,18 @@ app.get('/', (req, res) => {
           width: 18px;
           height: 18px;
           border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          background: hsl(40 10% 85%);
+          border: 2px solid rgb(245, 158, 11);
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           transition: all 0.2s;
         }
         .diff-slider::-webkit-slider-thumb:hover {
           transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
         }
         .diff-slider::-moz-range-track {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           height: 4px;
           border-radius: 2px;
         }
@@ -2952,15 +2971,15 @@ app.get('/', (req, res) => {
           width: 18px;
           height: 18px;
           border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          background: hsl(40 10% 85%);
+          border: 2px solid rgb(245, 158, 11);
           cursor: pointer;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
           transition: all 0.2s;
         }
         .diff-slider::-moz-range-thumb:hover {
           transform: scale(1.1);
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
         }
         /* Material UI-inspired range slider styles */
         .range-track {
@@ -2976,38 +2995,38 @@ app.get('/', (req, res) => {
           width: 20px;
           height: 20px;
           border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          background: hsl(40 10% 85%);
+          border: 2px solid rgb(245, 158, 11);
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(59, 130, 246, 0);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(245, 158, 11, 0);
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
         }
         .range-slider-handle::-webkit-slider-thumb:hover {
           transform: scale(1.15);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5), 0 0 0 4px rgba(245, 158, 11, 0.1);
         }
         .range-slider-handle::-webkit-slider-thumb:active {
           transform: scale(1.2);
-          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6), 0 0 0 6px rgba(245, 158, 11, 0.15);
         }
         .range-slider-handle::-moz-range-thumb {
           width: 20px;
           height: 20px;
           border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          background: hsl(40 10% 85%);
+          border: 2px solid rgb(245, 158, 11);
           cursor: pointer;
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .range-slider-handle::-moz-range-thumb:hover {
           transform: scale(1.15);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
         }
         .range-slider-handle::-moz-range-thumb:active {
           transform: scale(1.2);
-          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6);
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6);
         }
         .range-slider-handle::-webkit-slider-runnable-track {
           height: 2px;
@@ -3028,13 +3047,13 @@ app.get('/', (req, res) => {
         }
         /* noUiSlider custom dark theme */
         .noUi-target {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border-radius: 4px;
           border: none;
           box-shadow: none;
         }
         .noUi-connect {
-          background: rgb(59, 130, 246);
+          background: rgb(245, 158, 11);
           border-radius: 4px;
         }
         .noUi-horizontal {
@@ -3046,8 +3065,8 @@ app.get('/', (req, res) => {
           right: -10px;
           top: -6px;
           border-radius: 50%;
-          background: hsl(210 40% 98%);
-          border: 2px solid rgb(59, 130, 246);
+          background: hsl(40 10% 85%);
+          border: 2px solid rgb(245, 158, 11);
           box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
           cursor: pointer;
         }
@@ -3057,14 +3076,14 @@ app.get('/', (req, res) => {
         }
         .noUi-handle:hover {
           transform: scale(1.1);
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(59, 130, 246, 0.1);
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5), 0 0 0 4px rgba(245, 158, 11, 0.1);
         }
         .noUi-handle:active {
           transform: scale(1.15);
-          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.6), 0 0 0 6px rgba(59, 130, 246, 0.15);
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6), 0 0 0 6px rgba(245, 158, 11, 0.15);
         }
         .noUi-target[disabled] .noUi-connect {
-          background: hsl(217.2 32.6% 25%);
+          background: hsl(0 0% 18%);
         }
         .noUi-target[disabled] .noUi-handle {
           background: #9ca3af !important;
@@ -3079,10 +3098,10 @@ app.get('/', (req, res) => {
         }
         .noUi-tooltip {
           display: none;
-          background: hsl(222.2 84% 4.9%);
-          border: 1px solid hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 5%);
+          border: 1px solid hsl(0 0% 11%);
           border-radius: 4px;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           font-size: 11px;
           padding: 2px 6px;
         }
@@ -3091,8 +3110,8 @@ app.get('/', (req, res) => {
         }
         /* Flash animation for direction changes */
         @keyframes flash {
-          0% { background-color: rgba(59, 130, 246, 0.3); }
-          50% { background-color: rgba(59, 130, 246, 0.6); }
+          0% { background-color: rgba(245, 158, 11, 0.3); }
+          50% { background-color: rgba(245, 158, 11, 0.6); }
           100% { background-color: transparent; }
         }
         .stoch-flash {
@@ -3122,7 +3141,7 @@ app.get('/', (req, res) => {
           width: 100%;
           max-width: 600px;
           height: 100vh;
-          background: hsl(222.2 84% 4.9%);
+          background: hsl(0 0% 5%);
           box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
           z-index: 1001;
           transform: translateX(100%);
@@ -3156,7 +3175,7 @@ app.get('/', (req, res) => {
           width: 100%;
           max-width: 700px;
           height: 100vh;
-          background: hsl(222.2 84% 4.9%);
+          background: hsl(0 0% 5%);
           box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
           z-index: 1001;
           transform: translateX(100%);
@@ -3167,7 +3186,7 @@ app.get('/', (req, res) => {
           transform: translateX(0);
         }
         .strategy-card {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 12px;
           padding: 1.5rem;
@@ -3175,7 +3194,7 @@ app.get('/', (req, res) => {
           transition: all 0.2s;
         }
         .strategy-card:hover {
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -3183,19 +3202,19 @@ app.get('/', (req, res) => {
         .strategy-title {
           font-size: 1.25rem;
           font-weight: 600;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           margin-bottom: 0.75rem;
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
         .strategy-description {
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           font-size: 0.875rem;
           margin-bottom: 1rem;
         }
         .exit-rules {
-          background: hsl(217.2 32.6% 12%);
+          background: hsl(0 0% 9%);
           border-radius: 8px;
           padding: 1rem;
           border-left: 4px solid;
@@ -3207,7 +3226,7 @@ app.get('/', (req, res) => {
           border-left-color: #ef4444;
         }
         .exit-rules h4 {
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           font-weight: 600;
           margin-bottom: 0.5rem;
           font-size: 0.875rem;
@@ -3215,7 +3234,7 @@ app.get('/', (req, res) => {
         .exit-rules ol {
           list-style: decimal;
           margin-left: 1.25rem;
-          color: hsl(215 20.2% 75%);
+          color: hsl(0 0% 60%);
           font-size: 0.875rem;
         }
         .exit-rules li {
@@ -3232,7 +3251,7 @@ app.get('/', (req, res) => {
           padding: 0.75rem 1.5rem;
           background: transparent;
           border: none;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           font-weight: 500;
           font-size: 0.875rem;
           cursor: pointer;
@@ -3241,13 +3260,13 @@ app.get('/', (req, res) => {
           position: relative;
         }
         .exit-logic-tab:hover {
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           background: rgba(255, 255, 255, 0.05);
         }
         .exit-logic-tab.active {
-          color: hsl(210 40% 98%);
-          border-bottom-color: #3b82f6;
-          background: rgba(59, 130, 246, 0.1);
+          color: hsl(40 10% 85%);
+          border-bottom-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.1);
         }
         .exit-logic-tab-content {
           display: none;
@@ -3256,7 +3275,7 @@ app.get('/', (req, res) => {
           display: block;
         }
         .exit-strategy-container {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 12px;
           padding: 1.5rem;
@@ -3264,7 +3283,7 @@ app.get('/', (req, res) => {
           transition: all 0.2s;
         }
         .exit-strategy-container:hover {
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -3303,7 +3322,7 @@ app.get('/', (req, res) => {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%) scale(0.9);
-          background: hsl(222.2 84% 4.9%);
+          background: hsl(0 0% 5%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 16px;
           padding: 24px;
@@ -3327,7 +3346,7 @@ app.get('/', (req, res) => {
           align-items: start;
         }
         .kanban-column {
-          background: hsl(217.2 32.6% 14.5%);
+          background: hsl(0 0% 10%);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
           padding: 12px;
@@ -3342,7 +3361,7 @@ app.get('/', (req, res) => {
           justify-content: space-between;
           font-size: 12px;
           font-weight: 600;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           text-transform: uppercase;
           letter-spacing: 0.04em;
         }
@@ -3350,31 +3369,31 @@ app.get('/', (req, res) => {
           font-size: 11px;
           padding: 2px 6px;
           border-radius: 999px;
-          background: rgba(59, 130, 246, 0.2);
-          color: #60a5fa;
-          border: 1px solid rgba(59, 130, 246, 0.4);
+          background: rgba(245, 158, 11, 0.2);
+          color: #fbbf24;
+          border: 1px solid rgba(245, 158, 11, 0.4);
         }
         .kanban-card {
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 10px;
           padding: 10px 12px;
           transition: all 0.2s;
         }
         .kanban-card:hover {
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
         .kanban-card.starred {
           border-color: rgba(251, 191, 36, 0.5);
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
         }
         .kanban-card-empty {
           text-align: center;
           font-size: 12px;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           padding: 12px 0 8px;
         }
         /* Toast notification styles */
@@ -3393,7 +3412,7 @@ app.get('/', (req, res) => {
           min-width: 300px;
           max-width: 400px;
           padding: 16px;
-          background: hsl(222.2 84% 4.9%);
+          background: hsl(0 0% 5%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 12px;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -3444,23 +3463,23 @@ app.get('/', (req, res) => {
         .toast-title {
           font-weight: 600;
           font-size: 14px;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           margin-bottom: 4px;
         }
         .toast-message {
           font-size: 12px;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
         }
         .toast-close {
           cursor: pointer;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           font-size: 18px;
           line-height: 1;
           padding: 4px;
           transition: color 0.2s;
         }
         .toast-close:hover {
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
         }
         /* ORB History Overlay */
         .orb-history-overlay {
@@ -3486,7 +3505,7 @@ app.get('/', (req, res) => {
           width: 100%;
           max-width: 600px;
           height: 100vh;
-          background: hsl(222.2 84% 4.9%);
+          background: hsl(0 0% 5%);
           border-left: 1px solid rgba(255, 255, 255, 0.1);
           box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
           z-index: 10001;
@@ -3509,18 +3528,18 @@ app.get('/', (req, res) => {
         .orb-history-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
         }
         .orb-history-close {
           cursor: pointer;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           font-size: 24px;
           line-height: 1;
           padding: 4px;
           transition: color 0.2s;
         }
         .orb-history-close:hover {
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
         }
         .orb-history-content {
           flex: 1;
@@ -3530,14 +3549,14 @@ app.get('/', (req, res) => {
         .orb-history-item {
           padding: 12px 16px;
           margin-bottom: 8px;
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           border-left: 4px solid;
           transition: background 0.2s;
         }
         .orb-history-item:hover {
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
         }
         .orb-history-item.cross-high {
           border-left-color: #22c55e;
@@ -3554,29 +3573,29 @@ app.get('/', (req, res) => {
         .orb-history-symbol {
           font-weight: 600;
           font-size: 14px;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
         }
         .orb-history-separator {
-          color: hsl(215 20.2% 50%);
+          color: hsl(0 0% 45%);
           font-size: 12px;
         }
         .orb-history-crossover {
           font-size: 13px;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
         }
         .orb-history-time {
           font-size: 12px;
-          color: hsl(215 20.2% 50%);
+          color: hsl(0 0% 45%);
         }
         .orb-history-empty {
           text-align: center;
           padding: 48px 24px;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
         }
         .orb-history-filters {
           padding: 16px 24px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          background: hsl(217.2 32.6% 15%);
+          background: hsl(0 0% 9%);
         }
         .orb-history-filter-group {
           margin-bottom: 12px;
@@ -3588,7 +3607,7 @@ app.get('/', (req, res) => {
           display: block;
           font-size: 12px;
           font-weight: 500;
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
           margin-bottom: 8px;
         }
         .orb-history-filter-chips {
@@ -3602,24 +3621,24 @@ app.get('/', (req, res) => {
           font-weight: 500;
           border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 6px;
-          background: hsl(217.2 32.6% 17.5%);
-          color: hsl(215 20.2% 65.1%);
+          background: hsl(0 0% 11%);
+          color: hsl(0 0% 50%);
           cursor: pointer;
           transition: all 0.2s;
         }
         .orb-history-filter-chip:hover {
-          background: hsl(217.2 32.6% 20%);
+          background: hsl(0 0% 14%);
           border-color: rgba(255, 255, 255, 0.3);
         }
         .orb-history-filter-chip.active {
-          background: rgba(59, 130, 246, 0.3);
-          border-color: rgba(59, 130, 246, 0.6);
-          color: #60a5fa;
+          background: rgba(245, 158, 11, 0.3);
+          border-color: rgba(245, 158, 11, 0.6);
+          color: #fbbf24;
         }
         /* Filter chip colors for different crossover types */
         .orb-filter-all {
           border-color: rgba(156, 163, 175, 0.3);
-          color: hsl(215 20.2% 65.1%);
+          color: hsl(0 0% 50%);
         }
         .orb-filter-all.active {
           background: rgba(156, 163, 175, 0.2);
@@ -3708,23 +3727,23 @@ app.get('/', (req, res) => {
           width: 100%;
           padding: 8px 12px;
           font-size: 13px;
-          background: hsl(217.2 32.6% 17.5%);
+          background: hsl(0 0% 11%);
           border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 6px;
-          color: hsl(210 40% 98%);
+          color: hsl(40 10% 85%);
           outline: none;
           transition: border-color 0.2s;
         }
         .orb-history-search-input:focus {
-          border-color: rgba(59, 130, 246, 0.6);
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          border-color: rgba(245, 158, 11, 0.6);
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
         }
         .orb-history-search-input::placeholder {
-          color: hsl(215 20.2% 50%);
+          color: hsl(0 0% 45%);
         }
       </style>
     </head>
-    <body class="bg-background min-h-screen pb-20 md:pb-0" style="padding-top: 40px;">
+    <body class="bg-background min-h-screen pb-20 md:pb-0 antialiased" style="padding-top: 40px;">
       <div class="container mx-auto" style="max-width:1700px;">
         <div class="mb-8">
           <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -3755,7 +3774,7 @@ app.get('/', (req, res) => {
                 <span id="notificationIcon">🔔</span>
                 <span id="notificationText">Unmute</span>
               </button>
-              <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
+              <button onclick="openCalculator()" class="inline-flex items-center gap-2 px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
                 📊 Cal.
               </button>
               <button onclick="openExitLogic()" class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-colors shadow-lg">
@@ -3778,7 +3797,7 @@ app.get('/', (req, res) => {
                     type="text" 
                     id="searchInput" 
                     placeholder="Search tickers..." 
-                    class="w-full pl-3 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all shadow-sm"
+                    class="w-full pl-3 pr-10 py-2.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all shadow-sm"
                     onkeyup="filterAlerts()"
                     oninput="toggleClearButton()"
                   />
@@ -3803,7 +3822,7 @@ app.get('/', (req, res) => {
                       </svg>
                       Stoch
                     </h3>
-                    <button onclick="event.stopPropagation(); clearStochDirFilters()" class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70">Clear</button>
+                    <button onclick="event.stopPropagation(); clearStochDirFilters()" class="text-xs text-amber-500 hover:text-amber-300 font-medium transition-colors active:opacity-70">Clear</button>
                   </div>
                   <div id="stochDirFilters" class="filter-content">
                     <div class="mb-4">
@@ -3829,30 +3848,30 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K1 Value <span class="text-foreground/60">|</span> <span id="stochK1ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K1 Value <span class="text-foreground/60">|</span> <span id="stochK1ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK1ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK1Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK1ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK1Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK1ValueSlider"></div></div></div></div>
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K2 Value <span class="text-foreground/60">|</span> <span id="stochK2ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K2 Value <span class="text-foreground/60">|</span> <span id="stochK2ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK2ValueSlider"></div></div></div></div>
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K3 Value <span class="text-foreground/60">|</span> <span id="stochK3ValueMinValue" class="text-blue-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-blue-400 font-semibold">100</span></label>
+                        <label class="block text-xs font-medium text-muted-foreground">K3 Value <span class="text-foreground/60">|</span> <span id="stochK3ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div></label>
+                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
+                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK3ValueSlider"></div></div></div></div>
@@ -3872,17 +3891,17 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K order</label>
                       <div class="flex flex-wrap items-center gap-2 mb-2">
                         <label class="flex items-center gap-1.5 cursor-pointer">
-                          <input type="checkbox" id="stochOrderApply" class="rounded border-border bg-secondary text-blue-500 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <input type="checkbox" id="stochOrderApply" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <span class="text-xs text-muted-foreground">Apply</span>
                         </label>
                       </div>
                       <div class="flex flex-wrap items-center gap-2">
-                        <select id="stochOrderLeft" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderLeft" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1">K1</option>
                           <option value="K2">K2</option>
                           <option value="K3" selected>K3</option>
                         </select>
-                        <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
@@ -3891,12 +3910,12 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderMid" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderMid" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1">K1</option>
                           <option value="K2" selected>K2</option>
                           <option value="K3">K3</option>
                         </select>
-                        <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
@@ -3905,7 +3924,7 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderRight" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-blue-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderRight" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
                           <option value="K1" selected>K1</option>
                           <option value="K2">K2</option>
                           <option value="K3">K3</option>
@@ -3926,7 +3945,7 @@ app.get('/', (req, res) => {
                     </h3>
                     <button 
                       onclick="event.stopPropagation(); clearOtherFilters()" 
-                      class="text-xs text-blue-500 hover:text-blue-400 font-medium transition-colors active:opacity-70"
+                      class="text-xs text-amber-500 hover:text-amber-300 font-medium transition-colors active:opacity-70"
                     >
                       Clear
                     </button>
@@ -3953,7 +3972,7 @@ app.get('/', (req, res) => {
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Vol</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('volume', '<100K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-gray-500/50 bg-gray-500/20 hover:bg-gray-500/30 active:scale-95 transition-all text-gray-400" data-filter="volume" data-value="<100K">&lt;100K</button>
-                        <button onclick="toggleFilterChip('volume', '100K-500K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400" data-filter="volume" data-value="100K-500K">100K-500K</button>
+                        <button onclick="toggleFilterChip('volume', '100K-500K', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400" data-filter="volume" data-value="100K-500K">100K-500K</button>
                         <button onclick="toggleFilterChip('volume', '500K-1M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="volume" data-value="500K-1M">500K-1M</button>
                         <button onclick="toggleFilterChip('volume', '1M-5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="volume" data-value="1M-5M">1M-5M</button>
                         <button onclick="toggleFilterChip('volume', '>5M', this)" class="filter-chip px-3 py-1.5 text-xs font-medium rounded-full border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="volume" data-value=">5M">&gt;5M</button>
@@ -3964,7 +3983,7 @@ app.get('/', (req, res) => {
                 
                 <!-- Export Settings Button -->
                 <div class="mt-4">
-                  <button onclick="openExportModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 transition-all text-blue-400 flex items-center justify-center gap-2">
+                  <button onclick="openExportModal()" class="w-full px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 transition-all text-amber-400 flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
@@ -3999,8 +4018,8 @@ app.get('/', (req, res) => {
             <div id="tableView" class="bg-card/80 rounded-2xl shadow-sm overflow-hidden border border-border/30">
               <div>
                 <div class="overflow-x-auto max-h-[calc(100vh-200px)] hide-scrollbar">
-                  <table class="w-full table-auto border-collapse">
-                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(30, 35, 45, 0.95);">
+                  <table class="w-full table-auto border-collapse font-terminal text-sm">
+                    <thead id="tableHeader" class="sticky top-0 z-20" style="background-color: rgba(18, 18, 18, 0.97);">
                       <tr class="border-b border-border/50">
                         <!-- Headers will be dynamically generated -->
                       </tr>
@@ -4062,7 +4081,7 @@ app.get('/', (req, res) => {
               type="text" 
               id="exportPresetName" 
               placeholder="Enter preset name..."
-              class="w-full px-3 py-2 bg-card/80 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+              class="w-full px-3 py-2 bg-card/80 border border-border/50 rounded-lg text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50"
               onkeydown="if(event.key === 'Enter') exportFilterSettings()"
             />
           </div>
@@ -4075,7 +4094,7 @@ app.get('/', (req, res) => {
             </button>
             <button 
               onclick="exportFilterSettings()" 
-              class="px-4 py-2 text-sm font-medium rounded-lg border border-blue-500/50 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
+              class="px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 transition-colors"
             >
               Done
             </button>
@@ -4496,15 +4515,15 @@ app.get('/', (req, res) => {
             noUiSlider.create(el, { start: [0, 75], connect: true, range: { 'min': 0, 'max': 75 }, step: 1, tooltips: [{ to: v => Math.round(v) }, { to: v => Math.round(v) }] });
             sliders[sliderKey] = el;
             const conn = el.querySelector('.noUi-connect');
-            if (conn) conn.style.background = 'linear-gradient(to right, #60a5fa 0%, #60a5fa 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
+            if (conn) conn.style.background = 'linear-gradient(to right, #fbbf24 0%, #fbbf24 20%, #eab308 20%, #eab308 50%, #fb923c 50%, #fb923c 100%)';
             el.noUiSlider.on('update', function(values) {
               const mn = Math.round(values[0]), mx = Math.round(values[1]);
               const mnEl = document.getElementById(minLabelId), mxEl = document.getElementById(maxLabelId);
-              if (mnEl) { mnEl.textContent = mn; mnEl.className = 'font-semibold ' + (mn < 10 ? 'text-blue-400' : mn < 25 ? 'text-yellow-400' : 'text-orange-400'); }
-              if (mxEl) { mxEl.textContent = mx; mxEl.className = 'font-semibold ' + (mx < 10 ? 'text-blue-400' : mx < 25 ? 'text-yellow-400' : 'text-orange-400'); }
+              if (mnEl) { mnEl.textContent = mn; mnEl.className = 'font-semibold ' + (mn < 10 ? 'text-amber-400' : mn < 25 ? 'text-yellow-400' : 'text-orange-400'); }
+              if (mxEl) { mxEl.textContent = mx; mxEl.className = 'font-semibold ' + (mx < 10 ? 'text-amber-400' : mx < 25 ? 'text-yellow-400' : 'text-orange-400'); }
               const c = el.querySelector('.noUi-connect');
               if (c) {
-                const gc = v => v < 10 ? '#60a5fa' : v < 25 ? '#eab308' : '#fb923c';
+                const gc = v => v < 10 ? '#fbbf24' : v < 25 ? '#eab308' : '#fb923c';
                 const mc = gc(mn), xc = gc(mx);
                 c.style.background = mc === xc ? mc : 'linear-gradient(to right, ' + mc + ' 0%, ' + xc + ' 100%)';
               }
@@ -4822,7 +4841,7 @@ app.get('/', (req, res) => {
             const widthStyle = 'width: ' + width + 'px; min-width: ' + width + 'px; max-width: ' + width + 'px;';
             
             // Add ticker count badge for symbol column
-            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 rounded-md border border-blue-500/30">0</span>' : '';
+            const tickerCountBadge = colId === 'symbol' ? '<span id="tickerCount" class="ml-2 px-2 py-0.5 text-xs font-semibold bg-amber-500/20 text-amber-400 rounded-md border border-amber-500/30">0</span>' : '';
             
             return '<th ' +
               'class="text-left py-3 ' + paddingClass + ' font-bold text-muted-foreground ' + sortableClass + ' draggable-header" ' +
@@ -6350,7 +6369,7 @@ Use this to create a new preset filter button that applies these exact filter se
             let d1Direction = 'flat';
             if (dualStochD1 !== null && !isNaN(dualStochD1)) {
               d1Direction = alert.kDirection || alert.dualStochD1Direction || alert.d1Direction || 'flat';
-              d1DirClass = d1Direction === 'up' ? 'text-green-400' : d1Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
+              d1DirClass = d1Direction === 'up' ? 'text-green-400' : d1Direction === 'down' ? 'text-red-400' : 'text-gray-400';
               d1Arrow = d1Direction === 'up' ? '↑' : d1Direction === 'down' ? '↓' : '→';
               if (dualStochD1 > 80) {
                 d1ValueClass = 'text-white font-bold';
@@ -6359,7 +6378,7 @@ Use this to create a new preset filter button that applies these exact filter se
               } else if (d1Direction === 'up') {
                 d1ValueClass = 'text-green-400 font-semibold';
               } else if (d1Direction === 'down') {
-                d1ValueClass = 'text-blue-500 font-semibold';
+                d1ValueClass = 'text-red-400 font-semibold';
               }
             }
             
@@ -6404,7 +6423,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             // D2 color based on value (same as indicator: >80 white, <20 white, else green/blue)
             let d2ValueClass = 'text-foreground';
-            let d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-blue-500' : 'text-gray-400';
+            let d2DirClass = d2Direction === 'up' ? 'text-green-400' : d2Direction === 'down' ? 'text-red-400' : 'text-gray-400';
             let d2Arrow = d2Direction === 'up' ? '↑' : d2Direction === 'down' ? '↓' : '→';
             
             if (d2Value !== null && !isNaN(d2Value)) {
@@ -6415,7 +6434,7 @@ Use this to create a new preset filter button that applies these exact filter se
               } else if (d2Direction === 'up') {
                 d2ValueClass = 'text-green-400 font-semibold';
               } else if (d2Direction === 'down') {
-                d2ValueClass = 'text-blue-500 font-semibold';
+                d2ValueClass = 'text-red-400 font-semibold';
               }
             }
             
@@ -6568,7 +6587,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   const dir = kDir || 'flat';
                   const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–';
                   const valStr = v !== null ? v.toFixed(1) : '–';
-                  const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-blue-400' : 'text-muted-foreground') : 'text-muted-foreground';
+                  const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground') : 'text-muted-foreground';
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
                 const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
@@ -7328,7 +7347,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 </div>
                 <div class="flex-1 min-w-[120px]">
                   <label class="block text-xs font-medium text-muted-foreground mb-1">Shares Needed</label>
-                  <div id="customResult" class="px-2 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded text-blue-400 font-semibold text-sm text-center">
+                  <div id="customResult" class="px-2 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded text-amber-400 font-semibold text-sm text-center">
                     -
                   </div>
                 </div>
@@ -7488,13 +7507,13 @@ Use this to create a new preset filter button that applies these exact filter se
             <div id="general-content" class="exit-logic-tab-content">
               <div class="exit-strategy-container">
                 <div class="strategy-title">
-                  <span class="text-blue-400">💡</span>
+                  <span class="text-amber-400">💡</span>
                   General Exit Tips
                 </div>
                 <div class="strategy-description">
                   Universal principles that apply across all strategies.
                 </div>
-                <div class="exit-rules" style="border-left-color: #3b82f6;">
+                <div class="exit-rules" style="border-left-color: #f59e0b;">
                   <h4>Always consider:</h4>
                   <ol>
                     <li>Risk-reward ratio (minimum 1:2)</li>
@@ -7598,9 +7617,9 @@ Use this to create a new preset filter button that applies these exact filter se
             const currencySymbol = currency === 'HKD' ? 'HK$' : '$';
 
             return \`
-              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-blue-500 transition-colors">
+              <div class="flex items-center justify-between p-3 bg-secondary rounded border border-border hover:border-amber-500 transition-colors">
                 <div class="flex items-baseline gap-2">
-                  <span class="text-2xl font-bold text-blue-400">\${numShares.toLocaleString()}</span>
+                  <span class="text-2xl font-bold text-amber-400">\${numShares.toLocaleString()}</span>
                   <span class="text-sm text-muted-foreground">shares</span>
                   <span class="text-lg font-semibold text-foreground">= \${percent}%</span>
                 </div>
