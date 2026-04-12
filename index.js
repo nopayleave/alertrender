@@ -201,7 +201,7 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
   if (s.samples.length > 30) s.samples = s.samples.slice(-30)
 }
 
-/** Mini line chart for one stochastic series (0–100), same spirit as dualStoch mini chart */
+/** Mini line chart for one stochastic series — fixed 0–100 scale so 20/50/80 reference lines always align */
 function buildTriStochSeriesSvg(history, field, strokeHex) {
   const chartWidth = 88
   const chartHeight = 36
@@ -217,39 +217,29 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
     if (!isNaN(v)) pts.push(v)
   })
   if (pts.length === 0) return ''
-  let minVal = 100
-  let maxVal = 0
-  pts.forEach(v => {
-    minVal = Math.min(minVal, v)
-    maxVal = Math.max(maxVal, v)
-  })
-  if (pts.length === 1) {
-    minVal = Math.max(0, pts[0] - 12)
-    maxVal = Math.min(100, pts[0] + 12)
+  const yForStoch = (stochVal) => {
+    const clamped = Math.max(0, Math.min(100, stochVal))
+    return padding + plotHeight - (clamped / 100) * plotHeight
   }
-  const range = maxVal - minVal || 1
-  minVal = Math.max(0, minVal - range * 0.08)
-  maxVal = Math.min(100, maxVal + range * 0.08)
-  const scale = (maxVal - minVal) || 1
+  const y20 = yForStoch(20)
+  const y50 = yForStoch(50)
+  const y80 = yForStoch(80)
   let pathD = ''
   pts.forEach((v, index) => {
     const x = padding + (pts.length === 1 ? plotWidth / 2 : (index / (pts.length - 1)) * plotWidth)
-    const y = padding + plotHeight - ((v - minVal) / scale) * plotHeight
+    const y = yForStoch(v)
     pathD += (index === 0 ? 'M ' : ' L ') + x + ' ' + y
   })
-  const y20 = padding + plotHeight - ((20 - minVal) / scale) * plotHeight
-  const y50 = padding + plotHeight - ((50 - minVal) / scale) * plotHeight
-  const y80 = padding + plotHeight - ((80 - minVal) / scale) * plotHeight
   let extra = ''
   if (pts.length === 1) {
     const x = padding + plotWidth / 2
-    const y = padding + plotHeight - ((pts[0] - minVal) / scale) * plotHeight
+    const y = yForStoch(pts[0])
     extra = '<circle cx="' + x + '" cy="' + y + '" r="2.5" fill="' + strokeHex + '"/>'
   }
   return '<svg width="' + chartWidth + '" height="' + chartHeight + '" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
-    '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
-    '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#666" stroke-width="0.5" opacity="0.2"/>' +
-    '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#666" stroke-width="0.5" opacity="0.3"/>' +
+    '<line x1="' + padding + '" y1="' + y20 + '" x2="' + (chartWidth - padding) + '" y2="' + y20 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1"/>' +
+    '<line x1="' + padding + '" y1="' + y50 + '" x2="' + (chartWidth - padding) + '" y2="' + y50 + '" stroke="#aaa" stroke-width="0.6" opacity="0.55"/>' +
+    '<line x1="' + padding + '" y1="' + y80 + '" x2="' + (chartWidth - padding) + '" y2="' + y80 + '" stroke="#888" stroke-width="0.5" opacity="0.45" stroke-dasharray="2 1"/>' +
     '<path d="' + pathD + '" stroke="' + strokeHex + '" stroke-width="1.5" fill="none"/>' +
     extra +
     '</svg>'

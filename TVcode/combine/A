@@ -87,21 +87,27 @@ if not (hideonDWM and timeframe.isdwm)
 	upperBandValue3 := _vwap + bandBasis * bandMult_3
 	lowerBandValue3 := _vwap - bandBasis * bandMult_3
 
-// VWAP color logic - green above, red below
-vwapColor = close > vwapValue ? color.green : color.red
-plot(vwapValue, title="VWAP", color=vwapColor, linewidth=2, offset=offset)
+// VWAP: solid yellow
+plot(vwapValue, title="VWAP", color=color.yellow, linewidth=2, offset=offset)
 
-upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
-lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.green, offset=offset, display = showBand_1 ? display.all : display.none)
-fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color= color.new(color.green, 95)    , display = showBand_1 ? display.all : display.none)
+band1Up = #4caf50
+band1Lo = #f23645
+band2Up = #70ccbd
+band2Lo = #f48fb1
+band3Up = #00897b
+band3Lo = #e91e63
 
-upperBand_2 = plot(upperBandValue2, title="Upper Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
-lowerBand_2 = plot(lowerBandValue2, title="Lower Band #2", color=color.olive, offset=offset, display = showBand_2 ? display.all : display.none)
-fill(upperBand_2, lowerBand_2, title="Bands Fill #2", color= color.new(color.olive, 95)    , display = showBand_2 ? display.all : display.none)
+upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.new(band1Up, 50), linewidth=4, offset=offset, display = showBand_1 ? display.all : display.none)
+lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.new(band1Lo, 50), linewidth=4, offset=offset, display = showBand_1 ? display.all : display.none)
+fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color=color.new(band1Up, 92), display = showBand_1 ? display.all : display.none)
 
-upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
-lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.teal, offset=offset, display = showBand_3 ? display.all : display.none)
-fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color= color.new(color.teal, 95)    , display = showBand_3 ? display.all : display.none)
+upperBand_2 = plot(upperBandValue2, title="Upper Band #2", color=color.new(band2Up, 50), linewidth=1, offset=offset, display = showBand_2 ? display.all : display.none)
+lowerBand_2 = plot(lowerBandValue2, title="Lower Band #2", color=color.new(band2Lo, 50), linewidth=1, offset=offset, display = showBand_2 ? display.all : display.none)
+fill(upperBand_2, lowerBand_2, title="Bands Fill #2", color=color.new(band2Up, 92), display = showBand_2 ? display.all : display.none)
+
+upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.new(band3Up, 50), linewidth=4, offset=offset, display = showBand_3 ? display.all : display.none)
+lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.new(band3Lo, 50), linewidth=4, offset=offset, display = showBand_3 ? display.all : display.none)
+fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color=color.new(band3Up, 92), display = showBand_3 ? display.all : display.none)
 
 // ============ ADDITIONAL INDICATORS ============
 
@@ -145,9 +151,9 @@ isExtremeBullish = close > ema1Step and close > ema2Step
 // Detect extreme bearish: Price below BOTH EMAs
 isExtremeBearish = close < ema1Step and close < ema2Step
 
-// EMA color logic - simple: green above, red below
-ema1Color = close > ema1Step ? color.green : color.red
-ema2Color = close > ema2Step ? color.green : color.red
+// EMA 1: color 0 #a5d6a7 / color 1 #ab47bc  |  EMA 2: color 0 #80deea / color 1 #2962ff
+ema1Color = close > ema1Step ? #a5d6a7 : #ab47bc
+ema2Color = close > ema2Step ? #80deea : #2962ff
 
 // Trend status indicator
 aboveEma1 = close > ema1Step
@@ -211,9 +217,9 @@ rangeStatus = close > dayMidpoint ? "Up Range" : close < dayMidpoint ? "Down Ran
 dayHigh = day_high
 dayLow = day_low
 
-// Plot day high/low lines
-plot(day_high, title="Day High", color=color.lime, linewidth=1, style=plot.style_line)
-plot(day_low, title="Day Low", color=color.red, linewidth=1, style=plot.style_line)
+// Session day high / low: white, dashed, thickest line
+plot(day_high, title="Day High", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
+plot(day_low, title="Day Low", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
 
 // MACD Calculation (with optional multi-timeframe)
 [macdLine, signalLine, macdHist] = request.security(syminfo.tickerid, macdTimeframe == "" ? timeframe.period : macdTimeframe, ta.macd(close, macdFast, macdSlow, macdSignal))
