@@ -4066,7 +4066,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K1 Value <span class="text-foreground/60">|</span> <span id="stochK1ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK1ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK1Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer scale-90 origin-center"><input type="checkbox" id="stochK1ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK1Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK1ValueSlider"></div></div></div></div>
@@ -4076,7 +4076,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K2 Value <span class="text-foreground/60">|</span> <span id="stochK2ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer scale-90 origin-center"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK2ValueSlider"></div></div></div></div>
@@ -4086,7 +4086,7 @@ app.get('/', (req, res) => {
                         <label class="block text-xs font-medium text-muted-foreground">K3 Value <span class="text-foreground/60">|</span> <span id="stochK3ValueMinValue" class="text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">Excluded</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-sm peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-sm after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
+                          <label class="relative inline-flex items-center cursor-pointer scale-90 origin-center"><input type="checkbox" id="stochK3ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK3Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
                         </div>
                       </div>
                       <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK3ValueSlider"></div></div></div></div>
@@ -7198,7 +7198,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
-                  '<span class="font-mono text-[10px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
+                  '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
                   '</div></td>';
               })(),
               stochK3: (() => {
@@ -7216,7 +7216,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
-                  '<span class="font-mono text-[10px] px-0.5 ' + valCls + '">' + valStr + '</span>' +
+                  '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + '</span>' +
                   '</div></td>';
               })(),
               stoch: (() => {
