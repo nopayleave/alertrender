@@ -5726,7 +5726,7 @@ app.get('/', (req, res) => {
             const cardsHtml = cards.length === 0
               ? '<div class="kanban-card-empty">No tickers</div>'
               : cards.map(alert => {
-                  const symbol = alert.symbol || 'N/A';
+                  const symbol = alert.symbol || alert.ticker || 'N/A';
                   const t = alert.triStoch || {};
                   const k1Val = t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
                   const k3Val = t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
@@ -5743,11 +5743,16 @@ app.get('/', (req, res) => {
                   const cardClass = (starred ? 'kanban-card starred' : 'kanban-card') + (isMatched ? '' : ' unmatched');
                   
                   // Change percentage (from previous day's close)
-                  const changePercent = alert.changeFromPrevDay;
-                  const changeDisplay = changePercent !== null && changePercent !== undefined && !isNaN(changePercent)
+                  const changePercentRaw = alert.changeFromPrevDay;
+                  const changePercent = changePercentRaw !== null && changePercentRaw !== undefined
+                    ? parseFloat(changePercentRaw)
+                    : null;
+                  const changeDisplay = changePercent !== null && !isNaN(changePercent)
                     ? (changePercent >= 0 ? '+' : '') + changePercent.toFixed(2) + '%'
                     : '';
-                  const changeClass = changePercent >= 0 ? 'text-green-400' : 'text-red-400';
+                  const changeClass = (changePercent !== null && !isNaN(changePercent) && changePercent >= 0)
+                    ? 'text-green-400'
+                    : 'text-red-400';
                   
                   // Crossing tag (K crossing D)
                   const kCross = alert.kCross || 'none';
