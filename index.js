@@ -6019,6 +6019,36 @@ app.get('/', (req, res) => {
           }
         }
 
+        function syncPresetStripWithPanelState() {
+          const presetStrip = document.querySelector('.preset-filter-group');
+          if (!presetStrip) return;
+
+          const sameSingle = (arr, value) => Array.isArray(arr) && arr.length === 1 && arr[0] === value;
+          const near = (a, b) => Math.abs((a || 0) - b) < 0.0001;
+          const k3Exact = (mn, mx) => !!(stochK3Value.active && !stochK3Value.excluded && near(stochK3Value.min, mn) && near(stochK3Value.max, mx));
+
+          const presetStillMatches = {
+            aboveVwap: sameSingle(rangeVwapFilter, 'Above VWAP'),
+            belowVwap: sameSingle(rangeVwapFilter, 'Below VWAP'),
+            aboveOrb: sameSingle(rangeOrbFilter, 'Upper ORB'),
+            belowOrb: sameSingle(rangeOrbFilter, 'Lower ORB'),
+            withinOrb: sameSingle(rangeOrbFilter, 'ORB forming'),
+            k3Gt85: k3Exact(85, 100),
+            k3Lt20: k3Exact(0, 20)
+          };
+
+          Object.keys(presetStillMatches).forEach(preset => {
+            const btn = document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1));
+            if (btn && btn.classList.contains('active') && !presetStillMatches[preset]) {
+              btn.classList.remove('active');
+            }
+          });
+
+          const anyActive = presetStrip.querySelector('.preset-filter-chip.active') !== null;
+          presetStrip.classList.toggle('has-active', anyActive);
+          if (!anyActive) activePreset = null;
+        }
+
         function updateFilterArrays() {
           stochK1Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k1Dir"].active')).map(c => c.dataset.value);
           stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
@@ -6031,6 +6061,7 @@ app.get('/', (req, res) => {
           rangeVwapFilter = Array.from(document.querySelectorAll('[data-filter="range_vwap"].active')).map(c => c.dataset.value);
           rangeBandFilter = Array.from(document.querySelectorAll('[data-filter="range_band"].active')).map(c => c.dataset.value);
           rangeEmaFilter = Array.from(document.querySelectorAll('[data-filter="range_ema"].active')).map(c => c.dataset.value);
+          syncPresetStripWithPanelState();
         }
         
         function filterAlerts() {
