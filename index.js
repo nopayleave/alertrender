@@ -4028,6 +4028,51 @@ app.get('/', (req, res) => {
                   </button>
                 </div>
                 
+                <!-- Range column (ORB / VWAP / bands) -->
+                <div class="mb-2 filter-section">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-foreground/90 cursor-pointer select-none flex items-center gap-2 hover:text-foreground transition-colors" onclick="toggleFilterSection('rangeFilters', this)">
+                      <svg class="w-3 h-3 transition-transform duration-200 filter-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      Range
+                    </h3>
+                    <button onclick="event.stopPropagation(); clearRangeFilters()" class="text-xs text-amber-500 hover:text-amber-300 font-medium transition-colors active:opacity-70">Clear</button>
+                  </div>
+                  <div id="rangeFilters" class="filter-content">
+                    <div class="mb-3">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB / session</label>
+                      <div class="filter-group flex flex-wrap gap-1">
+                        <button type="button" onclick="toggleFilterChip('range_lbl', 'Break D.High', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-400" data-filter="range_lbl" data-value="Break D.High">Break D.High</button>
+                        <button type="button" onclick="toggleFilterChip('range_lbl', 'Break D.Low', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-400" data-filter="range_lbl" data-value="Break D.Low">Break D.Low</button>
+                        <button type="button" onclick="toggleFilterChip('range_lbl', 'Within Range', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-cyan-500/50 bg-cyan-500/15 hover:bg-cyan-500/25 active:scale-95 transition-all text-cyan-400" data-filter="range_lbl" data-value="Within Range">Within Range</button>
+                        <button type="button" onclick="toggleFilterChip('range_lbl', 'ORB forming', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 transition-all text-amber-400" data-filter="range_lbl" data-value="ORB forming">ORB forming</button>
+                        <button type="button" onclick="toggleFilterChip('range_lbl', '—', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-border bg-secondary/40 hover:bg-secondary/60 active:scale-95 transition-all text-muted-foreground" data-filter="range_lbl" data-value="—">—</button>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">vs VWAP</label>
+                      <div class="filter-group flex flex-wrap gap-1">
+                        <button type="button" onclick="toggleFilterChip('range_vwap', 'Above VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/90" data-filter="range_vwap" data-value="Above VWAP">Above VWAP</button>
+                        <button type="button" onclick="toggleFilterChip('range_vwap', 'Below VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/90" data-filter="range_vwap" data-value="Below VWAP">Below VWAP</button>
+                        <button type="button" onclick="toggleFilterChip('range_vwap', 'At VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-400/90" data-filter="range_vwap" data-value="At VWAP">At VWAP</button>
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">VWAP bands</label>
+                      <div class="filter-group flex flex-wrap gap-1">
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Above UB #3', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-400/40 bg-green-400/10 hover:bg-green-400/20 active:scale-95 transition-all text-green-300" data-filter="range_band" data-value="Above UB #3">UB #3+</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Above UB #2', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/90" data-filter="range_band" data-value="Above UB #2">UB #2</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Above UB #1', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-lime-500/40 bg-lime-500/10 hover:bg-lime-500/20 active:scale-95 transition-all text-lime-400/90" data-filter="range_band" data-value="Above UB #1">UB #1</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Inside bands', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400/80" data-filter="range_band" data-value="Inside bands">Inside</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Below LB #1', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400/90" data-filter="range_band" data-value="Below LB #1">LB #1</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Below LB #2', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/90" data-filter="range_band" data-value="Below LB #2">LB #2</button>
+                        <button type="button" onclick="toggleFilterChip('range_band', 'Below LB #3', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-400/40 bg-red-400/10 hover:bg-red-400/20 active:scale-95 transition-all text-red-300" data-filter="range_band" data-value="Below LB #3">LB #3−</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 <!-- Stoch Direction Filter -->
                 <div class="mb-2 filter-section">
                   <div class="flex items-center justify-between mb-3">
@@ -4217,6 +4262,9 @@ app.get('/', (req, res) => {
             <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 transition-all text-pink-400">
               EXT.BEAR <span id="presetExtBearCount" class="ml-0.5 text-pink-300 font-bold">0</span>
             </button>
+            <button id="presetBreakHigh" onclick="applyPresetFilter('breakHigh')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
+              BRK.HI <span id="presetBreakHighCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
+            </button>
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
               CLEAR
             </button>
@@ -4346,6 +4394,10 @@ app.get('/', (req, res) => {
         
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
+        /** Range column: ORB label, VWAP side, band row — AND across groups, OR within each group */
+        let rangeLabelFilter = [];
+        let rangeVwapFilter = [];
+        let rangeBandFilter = [];
         
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
@@ -4848,6 +4900,43 @@ app.get('/', (req, res) => {
           return { vwapText, vwapClass, bandText, bandClass }
         }
 
+        function getRangeCellLabel(alert) {
+          const raw = alert.sessionRangeLabel;
+          if (raw == null || String(raw).trim() === '') return '—';
+          return String(raw).trim();
+        }
+
+        function getRangeCellVwapSide(alert) {
+          const vw = getRangeColumnVwapHtml(alert);
+          return vw.vwapText || null;
+        }
+
+        function getRangeCellBand(alert) {
+          const vw = getRangeColumnVwapHtml(alert);
+          return vw.bandText || null;
+        }
+
+        function hasRangeFilters() {
+          return rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0;
+        }
+
+        function passesRangeFilter(alert) {
+          if (!hasRangeFilters()) return true;
+          if (rangeLabelFilter.length > 0) {
+            const lbl = getRangeCellLabel(alert);
+            if (!rangeLabelFilter.includes(lbl)) return false;
+          }
+          if (rangeVwapFilter.length > 0) {
+            const v = getRangeCellVwapSide(alert);
+            if (!v || !rangeVwapFilter.includes(v)) return false;
+          }
+          if (rangeBandFilter.length > 0) {
+            const b = getRangeCellBand(alert);
+            if (!b || !rangeBandFilter.includes(b)) return false;
+          }
+          return true;
+        }
+
         // High win-rate long/short suggestion from Tri K (K1=ov, K2=dt, K3=value)
         function getKDTrendMessage(alert) {
           const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
@@ -5128,13 +5217,6 @@ app.get('/', (req, res) => {
             );
           }
           
-          // Apply Stoch K direction filters
-          if (hasStochDirFilters()) {
-            filteredData = filteredData.filter(alert => {
-              return passesStochDirFilter(alert);
-            });
-          }
-          
           // Apply Other Filters (Price %, Volume) - same as renderTable
           if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
@@ -5172,6 +5254,17 @@ app.get('/', (req, res) => {
               }
               
               return true;
+            });
+          }
+
+          if (hasRangeFilters()) {
+            filteredData = filteredData.filter(alert => passesRangeFilter(alert));
+          }
+
+          // Apply Stoch K direction filters
+          if (hasStochDirFilters()) {
+            filteredData = filteredData.filter(alert => {
+              return passesStochDirFilter(alert);
             });
           }
           
@@ -5781,6 +5874,9 @@ app.get('/', (req, res) => {
           updateStochOrderFromDom();
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
+          rangeLabelFilter = Array.from(document.querySelectorAll('[data-filter="range_lbl"].active')).map(c => c.dataset.value);
+          rangeVwapFilter = Array.from(document.querySelectorAll('[data-filter="range_vwap"].active')).map(c => c.dataset.value);
+          rangeBandFilter = Array.from(document.querySelectorAll('[data-filter="range_band"].active')).map(c => c.dataset.value);
         }
         
         function filterAlerts() {
@@ -5809,10 +5905,23 @@ app.get('/', (req, res) => {
           volumeFilter = [];
           renderTable();
         }
+
+        function clearRangeFilters() {
+          document.querySelectorAll('[data-filter="range_lbl"], [data-filter="range_vwap"], [data-filter="range_band"]').forEach(chip => {
+            chip.classList.remove('active');
+            const parentGroup = chip.closest('.filter-group');
+            if (parentGroup) parentGroup.classList.remove('has-active');
+          });
+          rangeLabelFilter = [];
+          rangeVwapFilter = [];
+          rangeBandFilter = [];
+          renderTable();
+        }
         
         function clearAllFilters() {
           clearStochFilters();
           clearOtherFilters();
+          clearRangeFilters();
           // Clear search
           const searchInput = document.getElementById('searchInput');
           if (searchInput) {
@@ -5877,6 +5986,8 @@ app.get('/', (req, res) => {
           } else if (preset === 'extBear') {
             activateChip('stoch_k1Dir', 'down');
             setStochK1ValueFilterFromPreset(0, 30);
+          } else if (preset === 'breakHigh') {
+            activateChip('range_lbl', 'Break D.High');
           }
           
           // Update filter arrays from chip states
@@ -5927,6 +6038,11 @@ app.get('/', (req, res) => {
                 k1Dir: stochK1Dir,
                 k3Dir: stochK3Dir
               },
+              range: {
+                label: rangeLabelFilter,
+                vwap: rangeVwapFilter,
+                band: rangeBandFilter
+              },
               percentChange: stochFilterPercentChange,
               search: searchTerm || null
             }
@@ -5961,10 +6077,12 @@ Use this to create a new preset filter button that applies these exact filter se
             const upCountEl = document.getElementById('presetUpCount');
             const extBullCountEl = document.getElementById('presetExtBullCount');
             const extBearCountEl = document.getElementById('presetExtBearCount');
+            const breakHighCountEl = document.getElementById('presetBreakHighCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (extBullCountEl) extBullCountEl.textContent = '0';
             if (extBearCountEl) extBearCountEl.textContent = '0';
+            if (breakHighCountEl) breakHighCountEl.textContent = '0';
             return;
           }
 
@@ -5973,6 +6091,7 @@ Use this to create a new preset filter button that applies these exact filter se
           let upCount = 0;
           let extBullCount = 0;
           let extBearCount = 0;
+          let breakHighCount = 0;
 
           data.forEach(alert => {
             const t = alert.triStoch;
@@ -5983,11 +6102,14 @@ Use this to create a new preset filter button that applies these exact filter se
             let matchesUp = k1Dir === 'up';
             let matchesExtBull = k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100;
             let matchesExtBear = k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30;
+            const lbl = getRangeCellLabel(alert);
+            let matchesBreakHigh = lbl === 'Break D.High';
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesExtBull) extBullCount++;
             if (matchesExtBear) extBearCount++;
+            if (matchesBreakHigh) breakHighCount++;
           });
 
           // Update the count displays
@@ -5995,10 +6117,12 @@ Use this to create a new preset filter button that applies these exact filter se
           const upCountEl = document.getElementById('presetUpCount');
           const extBullCountEl = document.getElementById('presetExtBullCount');
           const extBearCountEl = document.getElementById('presetExtBearCount');
+          const breakHighCountEl = document.getElementById('presetBreakHighCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (extBullCountEl) extBullCountEl.textContent = extBullCount;
           if (extBearCountEl) extBearCountEl.textContent = extBearCount;
+          if (breakHighCountEl) breakHighCountEl.textContent = breakHighCount;
         }
 
         // Count how many alerts match each Price % range
@@ -6282,6 +6406,10 @@ Use this to create a new preset filter button that applies these exact filter se
               
               return true;
             });
+          }
+
+          if (hasRangeFilters()) {
+            filteredData = filteredData.filter(alert => passesRangeFilter(alert));
           }
           
           // Apply Stoch K direction filters
@@ -7269,6 +7397,7 @@ Use this to create a new preset filter button that applies these exact filter se
           if (k1Dir === 'up') matches.push('up');
           if (k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100) matches.push('extBull');
           if (k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30) matches.push('extBear');
+          if (getRangeCellLabel(alert) === 'Break D.High') matches.push('breakHigh');
           
           return matches;
         }
@@ -7303,6 +7432,11 @@ Use this to create a new preset filter button that applies these exact filter se
               title = 'Ext. Bear Signal';
               toastClass = 'cross-low';
               icon = '📉';
+              break;
+            case 'breakHigh':
+              title = 'Break day high (Range)';
+              toastClass = 'cross-high';
+              icon = '⬆';
               break;
             default:
               title = 'Preset Match';
@@ -7577,8 +7711,8 @@ Use this to create a new preset filter button that applies these exact filter se
                 // Check for new matches (presets that weren't matched before)
                 currentMatches.forEach(preset => {
                   if (!prevMatches.includes(preset)) {
-                    // New match detected - show toast (skip 'up' and 'down' presets)
-                    if (preset !== 'up' && preset !== 'down') {
+                    // New match detected - show toast (skip frequent / high-volume presets)
+                    if (preset !== 'up' && preset !== 'down' && preset !== 'breakHigh') {
                       showPresetMatchToast(symbol, preset, alert.price);
                     }
                   }
