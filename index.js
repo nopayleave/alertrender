@@ -4041,12 +4041,20 @@ app.get('/', (req, res) => {
                   </div>
                   <div id="rangeFilters" class="filter-content">
                     <div class="mb-3">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB / session</label>
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">ORB (NY vs 50%)</label>
+                      <div class="filter-group flex flex-wrap gap-1">
+                        <button type="button" onclick="toggleFilterChip('range_orb', 'Upper ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-400" data-filter="range_orb" data-value="Upper ORB" title="Close at/above NY ORB midpoint">Upper ORB</button>
+                        <button type="button" onclick="toggleFilterChip('range_orb', 'Lower ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-400" data-filter="range_orb" data-value="Lower ORB" title="Close below NY ORB midpoint">Lower ORB</button>
+                        <button type="button" onclick="toggleFilterChip('range_orb', 'ORB forming', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 transition-all text-amber-400" data-filter="range_orb" data-value="ORB forming">ORB forming</button>
+                        <button type="button" onclick="toggleFilterChip('range_orb', '—', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-border bg-secondary/40 hover:bg-secondary/60 active:scale-95 transition-all text-muted-foreground" data-filter="range_orb" data-value="—">—</button>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Range</label>
                       <div class="filter-group flex flex-wrap gap-1">
                         <button type="button" onclick="toggleFilterChip('range_lbl', 'Break D.High', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-400" data-filter="range_lbl" data-value="Break D.High">Break D.High</button>
                         <button type="button" onclick="toggleFilterChip('range_lbl', 'Break D.Low', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-400" data-filter="range_lbl" data-value="Break D.Low">Break D.Low</button>
                         <button type="button" onclick="toggleFilterChip('range_lbl', 'Within Range', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-cyan-500/50 bg-cyan-500/15 hover:bg-cyan-500/25 active:scale-95 transition-all text-cyan-400" data-filter="range_lbl" data-value="Within Range">Within Range</button>
-                        <button type="button" onclick="toggleFilterChip('range_lbl', 'ORB forming', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 transition-all text-amber-400" data-filter="range_lbl" data-value="ORB forming">ORB forming</button>
                         <button type="button" onclick="toggleFilterChip('range_lbl', '—', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-border bg-secondary/40 hover:bg-secondary/60 active:scale-95 transition-all text-muted-foreground" data-filter="range_lbl" data-value="—">—</button>
                       </div>
                     </div>
@@ -4413,6 +4421,7 @@ app.get('/', (req, res) => {
         // Other Filter state
         let volumeFilter = []; // Volume filter (multiple selections: <100K, 100K-500K, etc.)
         /** Range column: ORB label, VWAP side, band row — AND across groups, OR within each group */
+        let rangeOrbFilter = [];
         let rangeLabelFilter = [];
         let rangeVwapFilter = [];
         let rangeBandFilter = [];
@@ -4524,7 +4533,7 @@ app.get('/', (req, res) => {
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
-          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[175px]', tooltip: 'ORB / opening range, VWAP, bands, price vs EMA1/EMA2 (List webhook).' },
+          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[175px]', tooltip: 'ORB vs NY 50% (Upper/Lower), opening-range break, VWAP, bands, EMAs (List webhook).' },
           stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
           stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
           stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[160px]', tooltip: 'Tri K direction: K1 | K3' },
@@ -4925,6 +4934,13 @@ app.get('/', (req, res) => {
           return String(raw).trim();
         }
 
+        /** NY ORB vs 50% mid: Upper ORB, Lower ORB, ORB forming, or — (from List nyOrbHalf) */
+        function getRangeCellOrbLabel(alert) {
+          const raw = alert.nyOrbHalf;
+          if (raw == null || String(raw).trim() === '') return '—';
+          return String(raw).trim();
+        }
+
         function getRangeCellVwapSide(alert) {
           const vw = getRangeColumnVwapHtml(alert);
           return vw.vwapText || null;
@@ -4972,11 +4988,15 @@ app.get('/', (req, res) => {
         }
 
         function hasRangeFilters() {
-          return rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
+          return rangeOrbFilter.length > 0 || rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
         }
 
         function passesRangeFilter(alert) {
           if (!hasRangeFilters()) return true;
+          if (rangeOrbFilter.length > 0) {
+            const orb = getRangeCellOrbLabel(alert);
+            if (!rangeOrbFilter.includes(orb)) return false;
+          }
           if (rangeLabelFilter.length > 0) {
             const lbl = getRangeCellLabel(alert);
             if (!rangeLabelFilter.includes(lbl)) return false;
@@ -5845,7 +5865,7 @@ app.get('/', (req, res) => {
               return null;
             }
             case 'sessionRange': {
-              const order = { 'Break D.High': 4, 'Within Range': 3, 'ORB forming': 2, 'Break D.Low': 1, '—': 0 }
+              const order = { 'Break D.High': 4, 'Within Range': 3, 'Break D.Low': 1, '—': 0 }
               const lbl = alert.sessionRangeLabel
               if (lbl && order[lbl] !== undefined) return order[lbl]
               return null
@@ -5933,6 +5953,7 @@ app.get('/', (req, res) => {
           updateStochOrderFromDom();
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
+          rangeOrbFilter = Array.from(document.querySelectorAll('[data-filter="range_orb"].active')).map(c => c.dataset.value);
           rangeLabelFilter = Array.from(document.querySelectorAll('[data-filter="range_lbl"].active')).map(c => c.dataset.value);
           rangeVwapFilter = Array.from(document.querySelectorAll('[data-filter="range_vwap"].active')).map(c => c.dataset.value);
           rangeBandFilter = Array.from(document.querySelectorAll('[data-filter="range_band"].active')).map(c => c.dataset.value);
@@ -5967,11 +5988,12 @@ app.get('/', (req, res) => {
         }
 
         function clearRangeFilters() {
-          document.querySelectorAll('[data-filter="range_lbl"], [data-filter="range_vwap"], [data-filter="range_band"], [data-filter="range_ema"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="range_orb"], [data-filter="range_lbl"], [data-filter="range_vwap"], [data-filter="range_band"], [data-filter="range_ema"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
           });
+          rangeOrbFilter = [];
           rangeLabelFilter = [];
           rangeVwapFilter = [];
           rangeBandFilter = [];
@@ -6106,6 +6128,7 @@ app.get('/', (req, res) => {
                 k3Dir: stochK3Dir
               },
               range: {
+                orb: rangeOrbFilter,
                 label: rangeLabelFilter,
                 vwap: rangeVwapFilter,
                 band: rangeBandFilter,
@@ -7350,12 +7373,16 @@ Use this to create a new preset filter button that applies these exact filter se
                 </td>
               \`,
               sessionRange: (() => {
+                const orbLbl = getRangeCellOrbLabel(alert)
+                let orbCls = 'text-muted-foreground text-[10px] font-terminal leading-tight'
+                if (orbLbl === 'Upper ORB') orbCls = 'text-green-400 text-[10px] font-terminal font-semibold leading-tight'
+                else if (orbLbl === 'Lower ORB') orbCls = 'text-red-400 text-[10px] font-terminal font-semibold leading-tight'
+                else if (orbLbl === 'ORB forming') orbCls = 'text-amber-400 text-[10px] font-terminal leading-tight'
                 const lbl = alert.sessionRangeLabel || '—'
-                let cls = 'text-muted-foreground text-[10px] font-terminal'
-                if (lbl === 'Break D.High') cls = 'text-green-400 text-[10px] font-terminal font-semibold'
-                else if (lbl === 'Break D.Low') cls = 'text-red-400 text-[10px] font-terminal font-semibold'
-                else if (lbl === 'Within Range') cls = 'text-cyan-400 text-[10px] font-terminal'
-                else if (lbl === 'ORB forming') cls = 'text-amber-400 text-[10px] font-terminal'
+                let cls = 'text-muted-foreground text-[10px] font-terminal leading-tight'
+                if (lbl === 'Break D.High') cls = 'text-green-400 text-[10px] font-terminal font-semibold leading-tight'
+                else if (lbl === 'Break D.Low') cls = 'text-red-400 text-[10px] font-terminal font-semibold leading-tight'
+                else if (lbl === 'Within Range') cls = 'text-cyan-400 text-[10px] font-terminal leading-tight'
                 const vw = getRangeColumnVwapHtml(alert)
                 const tips = alert.sessionTips ? String(alert.sessionTips).replace(/"/g, '&quot;') : ''
                 const nyH = alert.nyOrbHigh != null && !isNaN(parseFloat(alert.nyOrbHigh)) ? parseFloat(alert.nyOrbHigh).toFixed(2) : ''
@@ -7364,7 +7391,9 @@ Use this to create a new preset filter button that applies these exact filter se
                 const oL = alert.openingRangeLow != null && !isNaN(parseFloat(alert.openingRangeLow)) ? parseFloat(alert.openingRangeLow).toFixed(2) : ''
                 const vwapN = alert.vwap != null && !isNaN(parseFloat(alert.vwap)) ? parseFloat(alert.vwap).toFixed(2) : ''
                 const remark = alert.vwapRemark ? String(alert.vwapRemark).replace(/"/g, '&quot;') : ''
-                let title = 'Range vs NY ORB (show_ny_orb) or first session bar. '
+                let title = 'ORB = NY ORB vs 50% mid; Range = break / inside opening or NY ORB box. '
+                if (orbLbl && orbLbl !== '—') title += 'ORB: ' + orbLbl + '. '
+                if (lbl && lbl !== '—') title += 'Range: ' + lbl + '. '
                 if (nyH || nyL) title += 'ORB H/L: ' + nyH + ' / ' + nyL + '. '
                 if (oH || oL) title += 'Open bar H/L: ' + oH + ' / ' + oL + '. '
                 if (vwapN) title += 'VWAP: ' + vwapN + '. '
@@ -7373,6 +7402,8 @@ Use this to create a new preset filter button that applies these exact filter se
                 const emaDisp = getEmaStackDisplay(alert)
                 if (emaDisp) title += 'EMA stack: ' + emaDisp + '. '
                 title = title.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                const orbRow = '<div class="flex items-baseline gap-1.5 flex-wrap leading-tight"><span class="text-[8px] text-muted-foreground font-terminal uppercase tracking-wide shrink-0">ORB</span><span class="' + orbCls + '">' + String(orbLbl).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>'
+                const rangeRow = '<div class="flex items-baseline gap-1.5 flex-wrap leading-tight"><span class="text-[8px] text-muted-foreground font-terminal uppercase tracking-wide shrink-0">Range</span><span class="' + cls + '">' + String(lbl).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span></div>'
                 let vwapBlock = ''
                 if (vw.vwapText) vwapBlock += '<div class="' + vw.vwapClass + '">' + vw.vwapText + '</div>'
                 if (vw.bandText) vwapBlock += '<div class="' + vw.bandClass + '">' + vw.bandText + '</div>'
@@ -7388,7 +7419,8 @@ Use this to create a new preset filter button that applies these exact filter se
                 }
                 return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('sessionRange') + '" title="' + title + '">' +
                   '<div class="flex flex-col gap-0.5">' +
-                  '<span class="' + cls + ' leading-tight">' + lbl + '</span>' +
+                  orbRow +
+                  rangeRow +
                   vwapBlock +
                   emaBlock +
                   '</div></td>'

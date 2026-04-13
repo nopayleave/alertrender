@@ -356,8 +356,11 @@ vwapRemark = close > upperBandValue3 ? "UP3+" :
      close < lowerBandValue1 ? "DN2" :
      close < vwapValue ? "DN1" : "VWAP"
 
-// Range column: NY ORB (9:30–9:45) when enabled; else first-bar opening range
-sessionRangeLabel = show_ny_orb and in_ny_session and not na(ny_high) and not na(ny_low) ? (in_ny ? "ORB forming" : close > ny_high ? "Break D.High" : close < ny_low ? "Break D.Low" : "Within Range") : not na(openingRangeHigh) and not na(openingRangeLow) ? (close > openingRangeHigh ? "Break D.High" : close < openingRangeLow ? "Break D.Low" : "Within Range") : "—"
+// ORB row (NY 9:30–9:45): vs ORB 50% mid — Upper = at/above mid, Lower = below mid; forming during ORB window
+nyOrbHalfLabel = show_ny_orb and in_ny_session and not na(ny_high) and not na(ny_low) and not na(ny_mid) ? (in_ny ? "ORB forming" : close >= ny_mid ? "Upper ORB" : "Lower ORB") : "—"
+
+// Range row: break / inside range only (no ORB forming here — see nyOrbHalfLabel)
+sessionRangeLabel = show_ny_orb and in_ny_session and not na(ny_high) and not na(ny_low) ? (in_ny ? "—" : close > ny_high ? "Break D.High" : close < ny_low ? "Break D.Low" : "Within Range") : not na(openingRangeHigh) and not na(openingRangeLow) ? (close > openingRangeHigh ? "Break D.High" : close < openingRangeLow ? "Break D.Low" : "Within Range") : "—"
 
 // Compact tips for dashboard tooltip (also see trend, vwapRemark, rangeStatus on feed)
 sessionTips = "ORB:" + ny_orb_status + " | vsDayMid:" + rangeStatus + " | Trend:" + trend + " | VWAP:" + vwapRemark + " | EMA:" + trendIndicator
@@ -399,6 +402,7 @@ if enableListAlerts and barstate.isconfirmed
       '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
       '"dayRange": ' + str.tostring(dayRange, "#.##") + ',' +
       '"rangeStatus": "' + rangeStatus + '",' +
+      '"nyOrbHalf": "' + nyOrbHalfLabel + '",' +
       '"sessionRangeLabel": "' + sessionRangeLabel + '",' +
       '"sessionTips": "' + sessionTips + '",' +
       '"nyOrbHigh": ' + (na(ny_high) ? "null" : str.tostring(ny_high)) + ',' +
