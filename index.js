@@ -3980,7 +3980,7 @@ app.get('/', (req, res) => {
           <span id="tickerCount" class="font-terminal text-[10px] font-bold text-amber-400 px-2.5">0</span>
         </div>
         <div class="flex-1"></div>
-        <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Toggle view">
+        <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Switch to Card View">
           <span id="viewIcon" class="text-sm">📋</span>
         </button>
         <button onclick="toggleStochHistory()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Stoch History">
@@ -4306,6 +4306,13 @@ app.get('/', (req, res) => {
               ☰ FILTERS
             </button>
           </div>
+          <div id="cardSortBar" class="hidden items-center gap-2 px-2 py-1.5 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
+            <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground">Card Sort</span>
+            <button id="cardSortK3BandsBtn" type="button" onclick="setCardSortMode('k3Bands', this)" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300">
+              K3 Bands
+            </button>
+            <span class="text-[10px] text-muted-foreground">Cols: &lt;10 | &lt;20 | 21-80 | &gt;80 | &gt;90</span>
+          </div>
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
             <div class="h-full overflow-auto scrollbar-thin">
@@ -4394,8 +4401,10 @@ app.get('/', (req, res) => {
       </div>
 
       <script>
-        // View state (table or masonry)
+        // View state (table or card)
         let currentView = localStorage.getItem('viewMode') || 'table'; // 'table' or 'masonry'
+        if (currentView === 'card') currentView = 'masonry'; // Backward/forward compatibility
+        let cardSortMode = localStorage.getItem('cardSortMode') || 'k3Bands';
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
@@ -5296,12 +5305,38 @@ app.get('/', (req, res) => {
           createVwapPctSlider();
         }
 
+        function updateViewToggleUI() {
+          const viewToggle = document.getElementById('viewToggle');
+          const viewIcon = document.getElementById('viewIcon');
+          const cardSortBar = document.getElementById('cardSortBar');
+          const inCardView = currentView === 'masonry';
+          if (viewIcon) viewIcon.textContent = inCardView ? '📋' : '🗂️';
+          if (viewToggle) viewToggle.title = inCardView ? 'Switch to Table View' : 'Switch to Card View';
+          if (cardSortBar) cardSortBar.classList.toggle('hidden', !inCardView);
+          if (cardSortBar) cardSortBar.classList.toggle('flex', inCardView);
+        }
+
+        function updateCardSortBarUI() {
+          const k3Btn = document.getElementById('cardSortK3BandsBtn');
+          if (k3Btn) k3Btn.classList.toggle('active', cardSortMode === 'k3Bands');
+        }
+
+        function setCardSortMode(mode, el) {
+          cardSortMode = mode || 'k3Bands';
+          localStorage.setItem('cardSortMode', cardSortMode);
+          updateCardSortBarUI();
+          if (currentView === 'masonry') {
+            renderMasonry();
+          }
+        }
+
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
+          updateCardSortBarUI();
           initializeView(); // Initialize view mode
         });
         
@@ -5309,39 +5344,36 @@ app.get('/', (req, res) => {
         function initializeView() {
           const tableView = document.getElementById('tableView');
           const masonryView = document.getElementById('masonryView');
-          const viewIcon = document.getElementById('viewIcon');
           
           if (currentView === 'masonry') {
             tableView.classList.add('hidden');
             masonryView.classList.remove('hidden');
-            viewIcon.textContent = '📋';
+            renderMasonry();
           } else {
             tableView.classList.remove('hidden');
             masonryView.classList.add('hidden');
-            viewIcon.textContent = '🧱';
           }
+          updateViewToggleUI();
         }
         
-        // Toggle between table and masonry view
+        // Toggle between table and card view
         function toggleView() {
           currentView = currentView === 'table' ? 'masonry' : 'table';
           localStorage.setItem('viewMode', currentView);
           
           const tableView = document.getElementById('tableView');
           const masonryView = document.getElementById('masonryView');
-          const viewIcon = document.getElementById('viewIcon');
           
           if (currentView === 'masonry') {
             tableView.classList.add('hidden');
             masonryView.classList.remove('hidden');
-            viewIcon.textContent = '📋';
             renderMasonry();
           } else {
             tableView.classList.remove('hidden');
             masonryView.classList.add('hidden');
-            viewIcon.textContent = '🧱';
             renderTable();
           }
+          updateViewToggleUI();
         }
         
         // Render masonry layout
@@ -5452,13 +5484,47 @@ app.get('/', (req, res) => {
             return;
           }
           
-          const kanbanColumns = [
-            { id: 'all', title: 'All', bgColor: 'bg-card' }
-          ];
+          function getK3ValueFromAlert(alert) {
+            const t = alert.triStoch;
+            const k3 = t && t.k3 != null ? parseFloat(t.k3) : null;
+            return (k3 !== null && !isNaN(k3)) ? k3 : null;
+          }
 
-          const columnBuckets = { all: [] };
+          const kanbanColumns = cardSortMode === 'k3Bands'
+            ? [
+                { id: 'k3_lt10', title: '<10', bgColor: 'bg-card' },
+                { id: 'k3_lt20', title: '<20', bgColor: 'bg-card' },
+                { id: 'k3_21_80', title: '21-80', bgColor: 'bg-card' },
+                { id: 'k3_gt80', title: '>80', bgColor: 'bg-card' },
+                { id: 'k3_gt90', title: '>90', bgColor: 'bg-card' }
+              ]
+            : [
+                { id: 'all', title: 'All', bgColor: 'bg-card' }
+              ];
+
+          const columnBuckets = {};
+          kanbanColumns.forEach(col => { columnBuckets[col.id] = []; });
+          masonryContainer.style.gridTemplateColumns = cardSortMode === 'k3Bands'
+            ? 'repeat(5, minmax(220px, 1fr))'
+            : 'repeat(auto-fit, minmax(220px, 1fr))';
           filteredData.forEach(alert => {
-            columnBuckets.all.push(alert);
+            if (cardSortMode === 'k3Bands') {
+              const k3Val = getK3ValueFromAlert(alert);
+              if (k3Val !== null && k3Val < 10) {
+                columnBuckets.k3_lt10.push(alert);
+              } else if (k3Val !== null && k3Val < 20) {
+                columnBuckets.k3_lt20.push(alert);
+              } else if (k3Val !== null && k3Val > 90) {
+                columnBuckets.k3_gt90.push(alert);
+              } else if (k3Val !== null && k3Val > 80) {
+                columnBuckets.k3_gt80.push(alert);
+              } else {
+                // Includes 21-80 as requested and unknown K3 values fallback.
+                columnBuckets.k3_21_80.push(alert);
+              }
+            } else {
+              columnBuckets.all.push(alert);
+            }
           });
 
           // Sort each column: starred first, then crossings, then by D2 (if sort active) or alphabetical
@@ -5480,7 +5546,15 @@ app.get('/', (req, res) => {
               if (aCross && !bCross) return -1;
               if (!aCross && bCross) return 1;
               
-              // Then by D2 value if sort active, else alphabetical
+              // Then by K3 value in card K3 mode, else optional D2 sort/alphabetical.
+              if (cardSortMode === 'k3Bands') {
+                const aK3 = getK3ValueFromAlert(a);
+                const bK3 = getK3ValueFromAlert(b);
+                const aVal = aK3 != null ? aK3 : -1;
+                const bVal = bK3 != null ? bK3 : -1;
+                if (bVal !== aVal) return bVal - aVal;
+                return (a.symbol || '').localeCompare(b.symbol || '');
+              }
               if (d2Dir === 'asc' || d2Dir === 'desc') {
                 const aD2 = getStochValues(a).dValue;
                 const bD2 = getStochValues(b).dValue;
@@ -5506,13 +5580,17 @@ app.get('/', (req, res) => {
               ? '<div class="kanban-card-empty">No tickers</div>'
               : cards.map(alert => {
                   const symbol = alert.symbol || 'N/A';
-                  const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-                  const kDisplay = kValue !== null && !isNaN(kValue) ? kValue.toFixed(1) : 'N/A';
-                  const dDisplay = dValue !== null && !isNaN(dValue) ? dValue.toFixed(1) : 'N/A';
-                  const kClass = getStochValueClass(kValue);
-                  const dClass = getStochValueClass(dValue);
-                  const d1Arrow = kDirection === 'up' ? '↑' : kDirection === 'down' ? '↓' : '→';
-                  const d2Arrow = dDirection === 'up' ? '↑' : dDirection === 'down' ? '↓' : '→';
+                  const t = alert.triStoch || {};
+                  const k1Val = t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+                  const k3Val = t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
+                  const k1Dir = t.ovKDirection || 'flat';
+                  const k3Dir = t.k3Direction || 'flat';
+                  const k1Display = k1Val !== null ? k1Val.toFixed(1) : 'N/A';
+                  const k3Display = k3Val !== null ? k3Val.toFixed(1) : 'N/A';
+                  const k1Class = getStochValueClass(k1Val);
+                  const k3Class = getStochValueClass(k3Val);
+                  const k1Arrow = k1Dir === 'up' ? '▲' : k1Dir === 'down' ? '▼' : '–';
+                  const k3Arrow = k3Dir === 'up' ? '▲' : k3Dir === 'down' ? '▼' : '–';
                   const starred = isStarred(symbol);
                   const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
                   
@@ -5535,14 +5613,14 @@ app.get('/', (req, res) => {
                   
                   // D1 crossing 90/10 levels - use bg color instead of tag
                   let levelCrossBg = '';
-                  if (kValue !== null && !isNaN(kValue)) {
-                    if (kValue >= 90 && kDirection === 'up') {
+                  if (k1Val !== null && !isNaN(k1Val)) {
+                    if (k1Val >= 90 && k1Dir === 'up') {
                       levelCrossBg = 'bg-yellow-500/20';
-                    } else if (kValue > 85 && kValue < 90 && kDirection === 'down') {
+                    } else if (k1Val > 85 && k1Val < 90 && k1Dir === 'down') {
                       levelCrossBg = 'bg-orange-500/20';
-                    } else if (kValue <= 10 && kDirection === 'down') {
+                    } else if (k1Val <= 10 && k1Dir === 'down') {
                       levelCrossBg = 'bg-purple-500/20';
-                    } else if (kValue > 10 && kValue <= 15 && kDirection === 'up') {
+                    } else if (k1Val > 10 && k1Val <= 15 && k1Dir === 'up') {
                       levelCrossBg = 'bg-cyan-500/20';
                     }
                   }
@@ -5554,25 +5632,27 @@ app.get('/', (req, res) => {
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     \${d2PatternTag ? \`<span class="\${d2PatternClass} font-bold">\${d2PatternTag}</span><span class="text-muted-foreground">|</span>\` : ''}
-                    <span class="text-muted-foreground">D1</span>
-                    <span class="\${kClass} font-semibold ml-1">\${kDisplay}\${d1Arrow}</span>
+                    <span class="text-muted-foreground">K1</span>
+                    <span class="\${k1Class} font-semibold ml-1">\${k1Display}\${k1Arrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
-                    <span class="text-muted-foreground">D2</span>
-                    <span class="\${dClass} font-semibold ml-1">\${dDisplay}\${d2Arrow}</span>
+                    <span class="text-muted-foreground">K3</span>
+                    <span class="\${k3Class} font-semibold ml-1">\${k3Display}\${k3Arrow}</span>
                   </div>
                 </div>
               </div>
                   \`;
                 }).join('');
 
+            const sortControlHtml = cardSortMode === 'k3Bands'
+              ? '<span class="text-xs text-cyan-400/80">K3</span>'
+              : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
+
             return \`
               <div class="kanban-column \${column.bgColor || ''}">
                 <div class="kanban-column-header">
                   <span class="flex items-center gap-1.5">
                     \${column.title}
-                    <button type="button" onclick="event.stopPropagation(); sortKanbanByD2('\${column.id}')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value">
-                      <span class="text-xs text-muted-foreground">\${kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅'}</span>
-                    </button>
+                    \${sortControlHtml}
                   </span>
                   <span class="kanban-column-count">\${cards.length}</span>
                   </div>
