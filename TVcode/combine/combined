@@ -389,9 +389,11 @@ if enableListAlerts and barstate.isconfirmed
       '"ema1": ' + str.tostring(ema1Value, "#.##") + ',' +
       '"ema1Tf": "' + effectiveEma1Tf + '",' +
       '"ema1Above": ' + str.tostring(close > ema1Step) + ',' +
+      '"ema1Length": ' + str.tostring(ema1Length) + ',' +
       '"ema2": ' + str.tostring(ema2Value, "#.##") + ',' +
       '"ema2Tf": "' + effectiveEma2Tf + '",' +
       '"ema2Above": ' + str.tostring(close > ema2Step) + ',' +
+      '"ema2Length": ' + str.tostring(ema2Length) + ',' +
       '"trendIndicator": "' + trendIndicator + '",' +
       '"dayHigh": ' + str.tostring(dayHigh, "#.##") + ',' +
       '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +

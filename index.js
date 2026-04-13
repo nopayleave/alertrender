@@ -4058,6 +4058,15 @@ app.get('/', (req, res) => {
                         <button type="button" onclick="toggleFilterChip('range_vwap', 'At VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-400/90" data-filter="range_vwap" data-value="At VWAP">At VWAP</button>
                       </div>
                     </div>
+                    <div class="mb-3">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Price vs EMAs (List lengths)</label>
+                      <div class="filter-group flex flex-wrap gap-1">
+                        <button type="button" onclick="toggleFilterChip('range_ema', 'ema_DD', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/45 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/90" data-filter="range_ema" data-value="ema_DD" title="Close below EMA 1 and below EMA 2">P&lt;E50&lt;E200</button>
+                        <button type="button" onclick="toggleFilterChip('range_ema', 'ema_UU', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/45 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/90" data-filter="range_ema" data-value="ema_UU" title="Close above both EMAs">P&gt;E50&gt;E200</button>
+                        <button type="button" onclick="toggleFilterChip('range_ema', 'ema_UD', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-cyan-500/45 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400/90" data-filter="range_ema" data-value="ema_UD" title="Above EMA 1, below EMA 2">E50&lt;P&lt;E200</button>
+                        <button type="button" onclick="toggleFilterChip('range_ema', 'ema_DU', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/45 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-400/90" data-filter="range_ema" data-value="ema_DU" title="Below EMA 1, above EMA 2">E200&lt;P&lt;E50</button>
+                      </div>
+                    </div>
                     <div class="mb-2">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">VWAP bands</label>
                       <div class="filter-group flex flex-wrap gap-1">
@@ -4249,27 +4258,36 @@ app.get('/', (req, res) => {
         <!-- Main content area — fills remaining space -->
         <main class="flex-1 min-w-0 flex flex-col overflow-hidden">
           <!-- Preset filter strip (compact) -->
-          <div class="flex items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
-            <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
+          <div class="flex flex-wrap items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
+            <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
               DOWN <span id="presetDownCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
+            <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
               UP <span id="presetUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
+            <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
               EXT.BULL <span id="presetExtBullCount" class="ml-0.5 text-yellow-300 font-bold">0</span>
             </button>
-            <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 transition-all text-pink-400">
+            <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 transition-all text-pink-400">
               EXT.BEAR <span id="presetExtBearCount" class="ml-0.5 text-pink-300 font-bold">0</span>
             </button>
-            <button id="presetBreakHigh" onclick="applyPresetFilter('breakHigh')" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
+            <button id="presetBreakHigh" onclick="applyPresetFilter('breakHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
               BRK.HI <span id="presetBreakHighCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
             </button>
-            <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-0.5 text-[10px] font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
+            <button id="presetBreakLow" onclick="applyPresetFilter('breakLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400">
+              BRK.LO <span id="presetBreakLowCount" class="ml-0.5 text-rose-300 font-bold">0</span>
+            </button>
+            <button id="presetBelowEmas" onclick="applyPresetFilter('belowEmas')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-orange-500/40 bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 transition-all text-orange-400">
+              P&lt;E50&lt;E200 <span id="presetBelowEmasCount" class="ml-0.5 text-orange-300 font-bold">0</span>
+            </button>
+            <button id="presetAboveEmas" onclick="applyPresetFilter('aboveEmas')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-lime-500/40 bg-lime-500/10 hover:bg-lime-500/20 active:scale-95 transition-all text-lime-400">
+              P&gt;E50&gt;E200 <span id="presetAboveEmasCount" class="ml-0.5 text-lime-300 font-bold">0</span>
+            </button>
+            <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
               CLEAR
             </button>
             <div class="flex-1"></div>
-            <button onclick="document.getElementById('filterSidebar').classList.toggle('hidden')" class="px-2 py-0.5 text-[10px] font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
+            <button onclick="document.getElementById('filterSidebar').classList.toggle('hidden')" class="px-2 py-1 text-sm font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
               ☰ FILTERS
             </button>
           </div>
@@ -4398,6 +4416,7 @@ app.get('/', (req, res) => {
         let rangeLabelFilter = [];
         let rangeVwapFilter = [];
         let rangeBandFilter = [];
+        let rangeEmaFilter = [];
         
         // Sector data storage (frontend copy)
         let sectorData = {}; // Store sector information by symbol
@@ -4445,7 +4464,7 @@ app.get('/', (req, res) => {
           stochK1: 96,
           stochK3: 96,
           stoch: 200,
-          sessionRange: 150,
+          sessionRange: 175,
           volume: 80
         };
         let columnWidths = JSON.parse(localStorage.getItem('columnWidths')) || defaultColumnWidths;
@@ -4505,7 +4524,7 @@ app.get('/', (req, res) => {
         const columnDefs = {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
-          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[150px]', tooltip: 'ORB / opening range, VWAP above|below, VWAP bands UB#1–3 / LB#1–3. List webhook (combined script).' },
+          sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[175px]', tooltip: 'ORB / opening range, VWAP, bands, price vs EMA1/EMA2 (List webhook).' },
           stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
           stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
           stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[160px]', tooltip: 'Tri K direction: K1 | K3' },
@@ -4916,8 +4935,44 @@ app.get('/', (req, res) => {
           return vw.bandText || null;
         }
 
+        function getEmaLen1(alert) {
+          const n = parseInt(alert.ema1Length, 10);
+          return !isNaN(n) && n > 0 ? n : 50;
+        }
+
+        function getEmaLen2(alert) {
+          const n = parseInt(alert.ema2Length, 10);
+          return !isNaN(n) && n > 0 ? n : 200;
+        }
+
+        /** Stable filter codes: ema_DD both below, ema_UU both above, ema_UD above E1 only, ema_DU above E2 only */
+        function getEmaStackCode(alert) {
+          if (alert.ema1Above === undefined || alert.ema1Above === null) return null;
+          if (alert.ema2Above === undefined || alert.ema2Above === null) return null;
+          const a1 = alert.ema1Above === true || alert.ema1Above === 'true';
+          const a2 = alert.ema2Above === true || alert.ema2Above === 'true';
+          if (a1 && a2) return 'ema_UU';
+          if (!a1 && !a2) return 'ema_DD';
+          if (a1 && !a2) return 'ema_UD';
+          return 'ema_DU';
+        }
+
+        /** Compact Range-cell label: P<E50<E200, P>E50>E200, E50<P<E200, E200<P<E50 */
+        function getEmaStackDisplay(alert) {
+          const code = getEmaStackCode(alert);
+          if (!code) return null;
+          const n1 = getEmaLen1(alert);
+          const n2 = getEmaLen2(alert);
+          const e1 = 'E' + n1;
+          const e2 = 'E' + n2;
+          if (code === 'ema_DD') return 'P<' + e1 + '<' + e2;
+          if (code === 'ema_UU') return 'P>' + e1 + '>' + e2;
+          if (code === 'ema_UD') return e1 + '<P<' + e2;
+          return e2 + '<P<' + e1;
+        }
+
         function hasRangeFilters() {
-          return rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0;
+          return rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
         }
 
         function passesRangeFilter(alert) {
@@ -4933,6 +4988,10 @@ app.get('/', (req, res) => {
           if (rangeBandFilter.length > 0) {
             const b = getRangeCellBand(alert);
             if (!b || !rangeBandFilter.includes(b)) return false;
+          }
+          if (rangeEmaFilter.length > 0) {
+            const code = getEmaStackCode(alert);
+            if (!code || !rangeEmaFilter.includes(code)) return false;
           }
           return true;
         }
@@ -5877,6 +5936,7 @@ app.get('/', (req, res) => {
           rangeLabelFilter = Array.from(document.querySelectorAll('[data-filter="range_lbl"].active')).map(c => c.dataset.value);
           rangeVwapFilter = Array.from(document.querySelectorAll('[data-filter="range_vwap"].active')).map(c => c.dataset.value);
           rangeBandFilter = Array.from(document.querySelectorAll('[data-filter="range_band"].active')).map(c => c.dataset.value);
+          rangeEmaFilter = Array.from(document.querySelectorAll('[data-filter="range_ema"].active')).map(c => c.dataset.value);
         }
         
         function filterAlerts() {
@@ -5907,7 +5967,7 @@ app.get('/', (req, res) => {
         }
 
         function clearRangeFilters() {
-          document.querySelectorAll('[data-filter="range_lbl"], [data-filter="range_vwap"], [data-filter="range_band"]').forEach(chip => {
+          document.querySelectorAll('[data-filter="range_lbl"], [data-filter="range_vwap"], [data-filter="range_band"], [data-filter="range_ema"]').forEach(chip => {
             chip.classList.remove('active');
             const parentGroup = chip.closest('.filter-group');
             if (parentGroup) parentGroup.classList.remove('has-active');
@@ -5915,6 +5975,7 @@ app.get('/', (req, res) => {
           rangeLabelFilter = [];
           rangeVwapFilter = [];
           rangeBandFilter = [];
+          rangeEmaFilter = [];
           renderTable();
         }
         
@@ -5988,6 +6049,12 @@ app.get('/', (req, res) => {
             setStochK1ValueFilterFromPreset(0, 30);
           } else if (preset === 'breakHigh') {
             activateChip('range_lbl', 'Break D.High');
+          } else if (preset === 'breakLow') {
+            activateChip('range_lbl', 'Break D.Low');
+          } else if (preset === 'belowEmas') {
+            activateChip('range_ema', 'ema_DD');
+          } else if (preset === 'aboveEmas') {
+            activateChip('range_ema', 'ema_UU');
           }
           
           // Update filter arrays from chip states
@@ -6041,7 +6108,8 @@ app.get('/', (req, res) => {
               range: {
                 label: rangeLabelFilter,
                 vwap: rangeVwapFilter,
-                band: rangeBandFilter
+                band: rangeBandFilter,
+                ema: rangeEmaFilter
               },
               percentChange: stochFilterPercentChange,
               search: searchTerm || null
@@ -6078,11 +6146,17 @@ Use this to create a new preset filter button that applies these exact filter se
             const extBullCountEl = document.getElementById('presetExtBullCount');
             const extBearCountEl = document.getElementById('presetExtBearCount');
             const breakHighCountEl = document.getElementById('presetBreakHighCount');
+            const breakLowCountEl = document.getElementById('presetBreakLowCount');
+            const belowEmasCountEl = document.getElementById('presetBelowEmasCount');
+            const aboveEmasCountEl = document.getElementById('presetAboveEmasCount');
             if (downCountEl) downCountEl.textContent = '0';
             if (upCountEl) upCountEl.textContent = '0';
             if (extBullCountEl) extBullCountEl.textContent = '0';
             if (extBearCountEl) extBearCountEl.textContent = '0';
             if (breakHighCountEl) breakHighCountEl.textContent = '0';
+            if (breakLowCountEl) breakLowCountEl.textContent = '0';
+            if (belowEmasCountEl) belowEmasCountEl.textContent = '0';
+            if (aboveEmasCountEl) aboveEmasCountEl.textContent = '0';
             return;
           }
 
@@ -6092,6 +6166,9 @@ Use this to create a new preset filter button that applies these exact filter se
           let extBullCount = 0;
           let extBearCount = 0;
           let breakHighCount = 0;
+          let breakLowCount = 0;
+          let belowEmasCount = 0;
+          let aboveEmasCount = 0;
 
           data.forEach(alert => {
             const t = alert.triStoch;
@@ -6104,12 +6181,17 @@ Use this to create a new preset filter button that applies these exact filter se
             let matchesExtBear = k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30;
             const lbl = getRangeCellLabel(alert);
             let matchesBreakHigh = lbl === 'Break D.High';
+            let matchesBreakLow = lbl === 'Break D.Low';
+            const emaC = getEmaStackCode(alert);
             
             if (matchesDown) downCount++;
             if (matchesUp) upCount++;
             if (matchesExtBull) extBullCount++;
             if (matchesExtBear) extBearCount++;
             if (matchesBreakHigh) breakHighCount++;
+            if (matchesBreakLow) breakLowCount++;
+            if (emaC === 'ema_DD') belowEmasCount++;
+            if (emaC === 'ema_UU') aboveEmasCount++;
           });
 
           // Update the count displays
@@ -6118,11 +6200,17 @@ Use this to create a new preset filter button that applies these exact filter se
           const extBullCountEl = document.getElementById('presetExtBullCount');
           const extBearCountEl = document.getElementById('presetExtBearCount');
           const breakHighCountEl = document.getElementById('presetBreakHighCount');
+          const breakLowCountEl = document.getElementById('presetBreakLowCount');
+          const belowEmasCountEl = document.getElementById('presetBelowEmasCount');
+          const aboveEmasCountEl = document.getElementById('presetAboveEmasCount');
           if (downCountEl) downCountEl.textContent = downCount;
           if (upCountEl) upCountEl.textContent = upCount;
           if (extBullCountEl) extBullCountEl.textContent = extBullCount;
           if (extBearCountEl) extBearCountEl.textContent = extBearCount;
           if (breakHighCountEl) breakHighCountEl.textContent = breakHighCount;
+          if (breakLowCountEl) breakLowCountEl.textContent = breakLowCount;
+          if (belowEmasCountEl) belowEmasCountEl.textContent = belowEmasCount;
+          if (aboveEmasCountEl) aboveEmasCountEl.textContent = aboveEmasCount;
         }
 
         // Count how many alerts match each Price % range
@@ -7282,14 +7370,27 @@ Use this to create a new preset filter button that applies these exact filter se
                 if (vwapN) title += 'VWAP: ' + vwapN + '. '
                 if (remark) title += 'Remark: ' + remark + '. '
                 if (tips) title += 'Tips: ' + tips
-                title = title.replace(/"/g, '&quot;')
+                const emaDisp = getEmaStackDisplay(alert)
+                if (emaDisp) title += 'EMA stack: ' + emaDisp + '. '
+                title = title.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 let vwapBlock = ''
                 if (vw.vwapText) vwapBlock += '<div class="' + vw.vwapClass + '">' + vw.vwapText + '</div>'
                 if (vw.bandText) vwapBlock += '<div class="' + vw.bandClass + '">' + vw.bandText + '</div>'
+                let emaBlock = ''
+                if (emaDisp) {
+                  const code = getEmaStackCode(alert)
+                  let emaCls = 'text-muted-foreground text-[9px] font-terminal leading-tight'
+                  if (code === 'ema_UU') emaCls = 'text-green-400/90 text-[9px] font-terminal font-semibold leading-tight'
+                  else if (code === 'ema_DD') emaCls = 'text-red-400/90 text-[9px] font-terminal font-semibold leading-tight'
+                  else if (code === 'ema_UD') emaCls = 'text-cyan-400/85 text-[9px] font-terminal leading-tight'
+                  else if (code === 'ema_DU') emaCls = 'text-amber-400/85 text-[9px] font-terminal leading-tight'
+                  emaBlock = '<div class="' + emaCls + '">' + emaDisp.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>'
+                }
                 return '<td class="py-1.5 px-2 align-top" style="' + getCellWidthStyle('sessionRange') + '" title="' + title + '">' +
                   '<div class="flex flex-col gap-0.5">' +
                   '<span class="' + cls + ' leading-tight">' + lbl + '</span>' +
                   vwapBlock +
+                  emaBlock +
                   '</div></td>'
               })(),
               highLevelTrend: \`
@@ -7398,6 +7499,10 @@ Use this to create a new preset filter button that applies these exact filter se
           if (k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100) matches.push('extBull');
           if (k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30) matches.push('extBear');
           if (getRangeCellLabel(alert) === 'Break D.High') matches.push('breakHigh');
+          if (getRangeCellLabel(alert) === 'Break D.Low') matches.push('breakLow');
+          const emaC = getEmaStackCode(alert);
+          if (emaC === 'ema_DD') matches.push('belowEmas');
+          if (emaC === 'ema_UU') matches.push('aboveEmas');
           
           return matches;
         }
@@ -7712,7 +7817,7 @@ Use this to create a new preset filter button that applies these exact filter se
                 currentMatches.forEach(preset => {
                   if (!prevMatches.includes(preset)) {
                     // New match detected - show toast (skip frequent / high-volume presets)
-                    if (preset !== 'up' && preset !== 'down' && preset !== 'breakHigh') {
+                    if (preset !== 'up' && preset !== 'down' && preset !== 'breakHigh' && preset !== 'breakLow' && preset !== 'belowEmas' && preset !== 'aboveEmas') {
                       showPresetMatchToast(symbol, preset, alert.price);
                     }
                   }
