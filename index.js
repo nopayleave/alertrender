@@ -3120,6 +3120,29 @@ app.get('/', (req, res) => {
         .preset-filter-group.has-active .preset-filter-chip:not(.active):hover {
           opacity: 0.7;
         }
+        .preset-hover-tooltip {
+          position: fixed;
+          z-index: 9999;
+          pointer-events: none;
+          background: rgba(15, 15, 15, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          color: rgba(255, 255, 255, 0.92);
+          font-size: 10px;
+          font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+          letter-spacing: 0.02em;
+          line-height: 1.2;
+          padding: 5px 7px;
+          border-radius: 4px;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+          white-space: nowrap;
+          opacity: 0;
+          transform: translateY(3px);
+          transition: opacity 80ms ease, transform 80ms ease;
+        }
+        .preset-hover-tooltip.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
         /* Filter group background */
         .filter-section {
           background: rgba(255, 255, 255, 0.02);
@@ -5398,12 +5421,64 @@ app.get('/', (req, res) => {
           }
         }
 
+        let presetTooltipEl = null;
+        function ensurePresetTooltipEl() {
+          if (presetTooltipEl) return presetTooltipEl;
+          presetTooltipEl = document.createElement('div');
+          presetTooltipEl.className = 'preset-hover-tooltip';
+          presetTooltipEl.id = 'presetHoverTooltip';
+          document.body.appendChild(presetTooltipEl);
+          return presetTooltipEl;
+        }
+
+        function placePresetTooltip(ev) {
+          if (!presetTooltipEl) return;
+          const margin = 10;
+          const tipRect = presetTooltipEl.getBoundingClientRect();
+          const vw = window.innerWidth || document.documentElement.clientWidth;
+          const vh = window.innerHeight || document.documentElement.clientHeight;
+          let x = ev.clientX + 12;
+          let y = ev.clientY + 14;
+          if (x + tipRect.width + margin > vw) x = vw - tipRect.width - margin;
+          if (y + tipRect.height + margin > vh) y = ev.clientY - tipRect.height - 12;
+          if (x < margin) x = margin;
+          if (y < margin) y = margin;
+          presetTooltipEl.style.left = x + 'px';
+          presetTooltipEl.style.top = y + 'px';
+        }
+
+        function initPresetStripTooltips() {
+          ensurePresetTooltipEl();
+          document.querySelectorAll('.preset-filter-chip').forEach(btn => {
+            if (btn.dataset.tooltipBound === '1') return;
+            const text = (btn.getAttribute('title') || '').trim();
+            if (!text) return;
+            btn.dataset.tooltipText = text;
+            btn.removeAttribute('title');
+            btn.dataset.tooltipBound = '1';
+            btn.addEventListener('mouseenter', (ev) => {
+              if (!presetTooltipEl) return;
+              presetTooltipEl.textContent = btn.dataset.tooltipText || '';
+              placePresetTooltip(ev);
+              presetTooltipEl.classList.add('visible');
+            });
+            btn.addEventListener('mousemove', placePresetTooltip);
+            btn.addEventListener('mouseleave', () => {
+              if (presetTooltipEl) presetTooltipEl.classList.remove('visible');
+            });
+            btn.addEventListener('blur', () => {
+              if (presetTooltipEl) presetTooltipEl.classList.remove('visible');
+            });
+          });
+        }
+
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
           initializeSliders();
+          initPresetStripTooltips();
           updateCardSortBarUI();
           initializeView(); // Initialize view mode
         });
