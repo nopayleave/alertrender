@@ -4275,31 +4275,28 @@ app.get('/', (req, res) => {
 
         <!-- Main content area — fills remaining space -->
         <main class="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <!-- Preset filter strip (compact) -->
+          <!-- Quick preset strip (compact) -->
           <div class="flex flex-wrap items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
-            <button id="presetDown" onclick="applyPresetFilter('down')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
-              DOWN <span id="presetDownCount" class="ml-0.5 text-red-300 font-bold">0</span>
+            <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
+              ABOVE VWAP <span id="presetAboveVwapCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetUp" onclick="applyPresetFilter('up')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
-              UP <span id="presetUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
+            <button id="presetBelowVwap" data-preset-group="vwap" onclick="applyPresetFilter('belowVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
+              BELOW VWAP <span id="presetBelowVwapCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetExtBull" onclick="applyPresetFilter('extBull')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
-              EXT.BULL <span id="presetExtBullCount" class="ml-0.5 text-yellow-300 font-bold">0</span>
+            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400">
+              BELOW ORB <span id="presetBelowOrbCount" class="ml-0.5 text-rose-300 font-bold">0</span>
             </button>
-            <button id="presetExtBear" onclick="applyPresetFilter('extBear')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 active:scale-95 transition-all text-pink-400">
-              EXT.BEAR <span id="presetExtBearCount" class="ml-0.5 text-pink-300 font-bold">0</span>
+            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
+              ABOVE ORB <span id="presetAboveOrbCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
             </button>
-            <button id="presetBreakHigh" onclick="applyPresetFilter('breakHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
-              BRK.HI <span id="presetBreakHighCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
+            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400">
+              WITHIN ORB <span id="presetWithinOrbCount" class="ml-0.5 text-cyan-300 font-bold">0</span>
             </button>
-            <button id="presetBreakLow" onclick="applyPresetFilter('breakLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400">
-              BRK.LO <span id="presetBreakLowCount" class="ml-0.5 text-rose-300 font-bold">0</span>
+            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
+              K3&gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-yellow-300 font-bold">0</span>
             </button>
-            <button id="presetBelowEmas" onclick="applyPresetFilter('belowEmas')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-orange-500/40 bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 transition-all text-orange-400">
-              P&lt;E50&lt;E200 <span id="presetBelowEmasCount" class="ml-0.5 text-orange-300 font-bold">0</span>
-            </button>
-            <button id="presetAboveEmas" onclick="applyPresetFilter('aboveEmas')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-lime-500/40 bg-lime-500/10 hover:bg-lime-500/20 active:scale-95 transition-all text-lime-400">
-              P&gt;E50&gt;E200 <span id="presetAboveEmasCount" class="ml-0.5 text-lime-300 font-bold">0</span>
+            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all text-purple-400">
+              K3&lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-purple-300 font-bold">0</span>
             </button>
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
               CLEAR
@@ -4446,7 +4443,7 @@ app.get('/', (req, res) => {
         // Notification state
         let notificationsEnabled = true; // Track whether notifications/toasts are enabled
         
-        // Active preset filter (for CCI-based presets)
+        // Active quick preset in the top strip
         let activePreset = null;
 
         // Starred alerts - stored in localStorage
@@ -6107,72 +6104,114 @@ app.get('/', (req, res) => {
           activePreset = null;
         }
 
-        /** Align EXT.BULL / EXT.BEAR presets with K1 value strip (counts already required K1 80–100 / 0–30). */
-        function setStochK1ValueFilterFromPreset(min, max) {
-          const excludedEl = document.getElementById('stochK1ValueExcluded');
+        function setStochK3ValueFilterFromPreset(min, max) {
+          const excludedEl = document.getElementById('stochK3ValueExcluded');
           if (excludedEl) excludedEl.checked = false;
-          const toggle = document.getElementById('stochK1ValueToggle');
+          const toggle = document.getElementById('stochK3ValueToggle');
           if (toggle) toggle.checked = true;
-          const el = sliders['stochK1Value'];
+          const el = sliders['stochK3Value'];
           if (el && el.noUiSlider) el.noUiSlider.set([min, max]);
-          updateGenericValueFilter('stochK1Value', stochK1Value);
+          updateGenericValueFilter('stochK3Value', stochK3Value);
         }
         
         function applyPresetFilter(preset) {
           const presetGroup = document.querySelector('.preset-filter-group');
           const presetButton = document.getElementById('preset' + preset.charAt(0).toUpperCase() + preset.slice(1));
-          
-          // Check if button is already active - if so, deactivate it
-          if (presetButton && presetButton.classList.contains('active')) {
-            clearAllFilters();
-            return;
+
+          const presetByGroup = {
+            vwap: ['aboveVwap', 'belowVwap'],
+            orb: ['belowOrb', 'aboveOrb', 'withinOrb'],
+            k3: ['k3Gt85', 'k3Lt20']
+          };
+          const groupByPreset = {
+            aboveVwap: 'vwap',
+            belowVwap: 'vwap',
+            belowOrb: 'orb',
+            aboveOrb: 'orb',
+            withinOrb: 'orb',
+            k3Gt85: 'k3',
+            k3Lt20: 'k3'
+          };
+          const presetGroupName = groupByPreset[preset];
+          if (!presetButton || !presetGroupName) return;
+
+          function clearChipGroup(filterName) {
+            document.querySelectorAll('[data-filter="' + filterName + '"]').forEach(chip => {
+              chip.classList.remove('active');
+            });
+            document.querySelectorAll('[data-filter="' + filterName + '"]').forEach(chip => {
+              const pg = chip.closest('.filter-group');
+              if (pg) pg.classList.toggle('has-active', pg.querySelector('.filter-chip.active') !== null);
+            });
           }
-          
-          // Clear all filters first
-          clearAllFilters();
-          
-          // Set active state for preset button
-          if (presetButton && presetGroup) {
-            presetButton.classList.add('active');
-            presetGroup.classList.add('has-active');
+
+          function clearPresetGroupState(groupName) {
+            const groupPresets = presetByGroup[groupName] || [];
+            groupPresets.forEach(p => {
+              const btn = document.getElementById('preset' + p.charAt(0).toUpperCase() + p.slice(1));
+              if (btn) btn.classList.remove('active');
+            });
+            if (groupName === 'vwap') {
+              clearChipGroup('range_vwap');
+            } else if (groupName === 'orb') {
+              clearChipGroup('range_orb');
+            } else if (groupName === 'k3') {
+              const excludedEl = document.getElementById('stochK3ValueExcluded');
+              if (excludedEl) excludedEl.checked = false;
+              const toggle = document.getElementById('stochK3ValueToggle');
+              if (toggle) toggle.checked = false;
+              const el = sliders['stochK3Value'];
+              if (el && el.noUiSlider) el.noUiSlider.set([0, 100]);
+              stochK3Value.min = 0;
+              stochK3Value.max = 100;
+              stochK3Value.active = false;
+              stochK3Value.excluded = false;
+            }
           }
-          
-          // Track active preset for CCI-based filtering
-          activePreset = preset;
-          
+
           function activateChip(filterName, value) {
             const chip = document.querySelector('[data-filter="' + filterName + '"][data-value="' + value + '"]');
             if (chip) { chip.classList.add('active'); const pg = chip.closest('.filter-group'); if (pg) pg.classList.add('has-active'); }
           }
 
-          if (preset === 'down') {
-            activateChip('stoch_k1Dir', 'down');
-          } else if (preset === 'up') {
-            activateChip('stoch_k1Dir', 'up');
-          } else if (preset === 'extBull') {
-            activateChip('stoch_k1Dir', 'up');
-            setStochK1ValueFilterFromPreset(80, 100);
-          } else if (preset === 'extBear') {
-            activateChip('stoch_k1Dir', 'down');
-            setStochK1ValueFilterFromPreset(0, 30);
-          } else if (preset === 'breakHigh') {
-            activateChip('range_lbl', 'Break D.High');
-          } else if (preset === 'breakLow') {
-            activateChip('range_lbl', 'Break D.Low');
-          } else if (preset === 'belowEmas') {
-            activateChip('range_ema', 'ema_DD');
-          } else if (preset === 'aboveEmas') {
-            activateChip('range_ema', 'ema_UU');
+          const wasActive = presetButton.classList.contains('active');
+          clearPresetGroupState(presetGroupName);
+
+          if (!wasActive) {
+            presetButton.classList.add('active');
           }
-          
-          // Update filter arrays from chip states
+
+          if (!wasActive) {
+            if (preset === 'aboveVwap') {
+              activateChip('range_vwap', 'Above VWAP');
+            } else if (preset === 'belowVwap') {
+              activateChip('range_vwap', 'Below VWAP');
+            } else if (preset === 'belowOrb') {
+              activateChip('range_orb', 'Lower ORB');
+            } else if (preset === 'aboveOrb') {
+              activateChip('range_orb', 'Upper ORB');
+            } else if (preset === 'withinOrb') {
+              activateChip('range_orb', 'ORB forming');
+            } else if (preset === 'k3Gt85') {
+              setStochK3ValueFilterFromPreset(85, 100);
+            } else if (preset === 'k3Lt20') {
+              setStochK3ValueFilterFromPreset(0, 20);
+            }
+          }
+
+          if (wasActive) {
+            activePreset = null;
+          } else {
+            activePreset = preset;
+          }
+
+          if (presetGroup) {
+            const anyActive = presetGroup.querySelector('.preset-filter-chip.active') !== null;
+            presetGroup.classList.toggle('has-active', anyActive);
+          }
+
           updateFilterArrays();
-          
-          // Apply filters - ensure renderTable is called
-            filterAlerts();
-          
-          // Force a re-render to ensure filters are applied
-          renderTable();
+          filterAlerts();
         }
 
         // Export filter settings
@@ -6244,83 +6283,69 @@ Use this to create a new preset filter button that applies these exact filter se
           });
         }
 
-        // Count how many alerts match each preset filter
+        // Count how many alerts match each quick preset
         // dataToCount: the data to count from (should be filteredData from renderTable)
         function updatePresetFilterCounts(dataToCount) {
           // Use filtered data if provided, otherwise use all alertsData
           const data = dataToCount || alertsData;
           
           if (data.length === 0) {
-            const downCountEl = document.getElementById('presetDownCount');
-            const upCountEl = document.getElementById('presetUpCount');
-            const extBullCountEl = document.getElementById('presetExtBullCount');
-            const extBearCountEl = document.getElementById('presetExtBearCount');
-            const breakHighCountEl = document.getElementById('presetBreakHighCount');
-            const breakLowCountEl = document.getElementById('presetBreakLowCount');
-            const belowEmasCountEl = document.getElementById('presetBelowEmasCount');
-            const aboveEmasCountEl = document.getElementById('presetAboveEmasCount');
-            if (downCountEl) downCountEl.textContent = '0';
-            if (upCountEl) upCountEl.textContent = '0';
-            if (extBullCountEl) extBullCountEl.textContent = '0';
-            if (extBearCountEl) extBearCountEl.textContent = '0';
-            if (breakHighCountEl) breakHighCountEl.textContent = '0';
-            if (breakLowCountEl) breakLowCountEl.textContent = '0';
-            if (belowEmasCountEl) belowEmasCountEl.textContent = '0';
-            if (aboveEmasCountEl) aboveEmasCountEl.textContent = '0';
+            const aboveVwapCountEl = document.getElementById('presetAboveVwapCount');
+            const belowVwapCountEl = document.getElementById('presetBelowVwapCount');
+            const belowOrbCountEl = document.getElementById('presetBelowOrbCount');
+            const aboveOrbCountEl = document.getElementById('presetAboveOrbCount');
+            const withinOrbCountEl = document.getElementById('presetWithinOrbCount');
+            const k3Gt85CountEl = document.getElementById('presetK3Gt85Count');
+            const k3Lt20CountEl = document.getElementById('presetK3Lt20Count');
+            if (aboveVwapCountEl) aboveVwapCountEl.textContent = '0';
+            if (belowVwapCountEl) belowVwapCountEl.textContent = '0';
+            if (belowOrbCountEl) belowOrbCountEl.textContent = '0';
+            if (aboveOrbCountEl) aboveOrbCountEl.textContent = '0';
+            if (withinOrbCountEl) withinOrbCountEl.textContent = '0';
+            if (k3Gt85CountEl) k3Gt85CountEl.textContent = '0';
+            if (k3Lt20CountEl) k3Lt20CountEl.textContent = '0';
             return;
           }
 
           // Count preset matches
-          let downCount = 0;
-          let upCount = 0;
-          let extBullCount = 0;
-          let extBearCount = 0;
-          let breakHighCount = 0;
-          let breakLowCount = 0;
-          let belowEmasCount = 0;
-          let aboveEmasCount = 0;
+          let aboveVwapCount = 0;
+          let belowVwapCount = 0;
+          let belowOrbCount = 0;
+          let aboveOrbCount = 0;
+          let withinOrbCount = 0;
+          let k3Gt85Count = 0;
+          let k3Lt20Count = 0;
 
           data.forEach(alert => {
             const t = alert.triStoch;
-            const k1Dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
-            const k1Val = t && t.ovK != null ? parseFloat(t.ovK) : null;
-            
-            let matchesDown = k1Dir === 'down';
-            let matchesUp = k1Dir === 'up';
-            let matchesExtBull = k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100;
-            let matchesExtBear = k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30;
-            const lbl = getRangeCellLabel(alert);
-            let matchesBreakHigh = lbl === 'Break D.High';
-            let matchesBreakLow = lbl === 'Break D.Low';
-            const emaC = getEmaStackCode(alert);
-            
-            if (matchesDown) downCount++;
-            if (matchesUp) upCount++;
-            if (matchesExtBull) extBullCount++;
-            if (matchesExtBear) extBearCount++;
-            if (matchesBreakHigh) breakHighCount++;
-            if (matchesBreakLow) breakLowCount++;
-            if (emaC === 'ema_DD') belowEmasCount++;
-            if (emaC === 'ema_UU') aboveEmasCount++;
+            const k3Val = t && t.k3 != null ? parseFloat(t.k3) : null;
+            const vwapSide = getRangeCellVwapSide(alert);
+            const orbLabel = getRangeCellOrbLabel(alert);
+
+            if (vwapSide === 'Above VWAP') aboveVwapCount++;
+            if (vwapSide === 'Below VWAP') belowVwapCount++;
+            if (orbLabel === 'Lower ORB') belowOrbCount++;
+            if (orbLabel === 'Upper ORB') aboveOrbCount++;
+            if (orbLabel === 'ORB forming') withinOrbCount++;
+            if (k3Val !== null && !isNaN(k3Val) && k3Val > 85) k3Gt85Count++;
+            if (k3Val !== null && !isNaN(k3Val) && k3Val < 20) k3Lt20Count++;
           });
 
           // Update the count displays
-          const downCountEl = document.getElementById('presetDownCount');
-          const upCountEl = document.getElementById('presetUpCount');
-          const extBullCountEl = document.getElementById('presetExtBullCount');
-          const extBearCountEl = document.getElementById('presetExtBearCount');
-          const breakHighCountEl = document.getElementById('presetBreakHighCount');
-          const breakLowCountEl = document.getElementById('presetBreakLowCount');
-          const belowEmasCountEl = document.getElementById('presetBelowEmasCount');
-          const aboveEmasCountEl = document.getElementById('presetAboveEmasCount');
-          if (downCountEl) downCountEl.textContent = downCount;
-          if (upCountEl) upCountEl.textContent = upCount;
-          if (extBullCountEl) extBullCountEl.textContent = extBullCount;
-          if (extBearCountEl) extBearCountEl.textContent = extBearCount;
-          if (breakHighCountEl) breakHighCountEl.textContent = breakHighCount;
-          if (breakLowCountEl) breakLowCountEl.textContent = breakLowCount;
-          if (belowEmasCountEl) belowEmasCountEl.textContent = belowEmasCount;
-          if (aboveEmasCountEl) aboveEmasCountEl.textContent = aboveEmasCount;
+          const aboveVwapCountEl = document.getElementById('presetAboveVwapCount');
+          const belowVwapCountEl = document.getElementById('presetBelowVwapCount');
+          const belowOrbCountEl = document.getElementById('presetBelowOrbCount');
+          const aboveOrbCountEl = document.getElementById('presetAboveOrbCount');
+          const withinOrbCountEl = document.getElementById('presetWithinOrbCount');
+          const k3Gt85CountEl = document.getElementById('presetK3Gt85Count');
+          const k3Lt20CountEl = document.getElementById('presetK3Lt20Count');
+          if (aboveVwapCountEl) aboveVwapCountEl.textContent = aboveVwapCount;
+          if (belowVwapCountEl) belowVwapCountEl.textContent = belowVwapCount;
+          if (belowOrbCountEl) belowOrbCountEl.textContent = belowOrbCount;
+          if (aboveOrbCountEl) aboveOrbCountEl.textContent = aboveOrbCount;
+          if (withinOrbCountEl) withinOrbCountEl.textContent = withinOrbCount;
+          if (k3Gt85CountEl) k3Gt85CountEl.textContent = k3Gt85Count;
+          if (k3Lt20CountEl) k3Lt20CountEl.textContent = k3Lt20Count;
         }
 
         // Count how many alerts match each Price % range
