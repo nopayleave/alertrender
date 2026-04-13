@@ -1,0 +1,314 @@
+//@version=6
+indicator(title="Tri Stochastic", shorttitle="Tri K", format=format.price, precision=2)
+
+// ===== S1 = chart × multiplier (S2 = S1×2, S3 = S1×4) =====
+// Computed on chart data with scaled periods — no request.security(), no jaggedness, no lag
+baseMult = input.string("1x", title="Base (S1)", group="Timeframes", options=["0.25x", "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "4x", "6x", "8x"], tooltip="S1 = chart × multiplier, S2 = S1×2, S3 = S1×4")
+multVal = baseMult == "0.25x" ? 0.25 : baseMult == "0.5x" ? 0.5 : baseMult == "1x" ? 1.0 : baseMult == "1.5x" ? 1.5 : baseMult == "2x" ? 2.0 : baseMult == "2.5x" ? 2.5 : baseMult == "3x" ? 3.0 : baseMult == "4x" ? 4.0 : baseMult == "6x" ? 6.0 : 8.0
+s1Mult = multVal
+s2Mult = multVal * 2
+s3Mult = multVal * 4
+
+// Overview = S1, Detail = S2 (fixed for webhook)
+ovSource = "S1"
+dtSource = "S2"
+
+// ===== STOCHASTIC PARAMETERS =====
+periodK = input.int(39, title="%K Length", minval=1, group="Stochastic")
+kOnly   = input.bool(true, title="%K only", group="Stochastic", tooltip="Only show %K, skip %D calculation to use less computing resource")
+
+// S1 smoothing
+smoothK1 = input.int(5, title="S1 %K Smoothing", minval=1, group="S1 Smoothing")
+periodD1 = input.int(4, title="S1 %D Smoothing", minval=1, group="S1 Smoothing")
+smooth1 = input.bool(true, title="S1 Extra Smooth", group="S1 Smoothing")
+smoothLen1 = input.int(3, minval=1, title="S1 Extra Smooth Length", group="S1 Smoothing")
+
+// S2 smoothing
+smoothK2 = input.int(5, title="S2 %K Smoothing", minval=1, group="S2 Smoothing")
+periodD2 = input.int(4, title="S2 %D Smoothing", minval=1, group="S2 Smoothing")
+smooth2 = input.bool(true, title="S2 Extra Smooth", group="S2 Smoothing")
+smoothLen2 = input.int(3, minval=1, title="S2 Extra Smooth Length", group="S2 Smoothing")
+
+// S3 smoothing
+smoothK3 = input.int(5, title="S3 %K Smoothing", minval=1, group="S3 Smoothing")
+periodD3 = input.int(4, title="S3 %D Smoothing", minval=1, group="S3 Smoothing")
+smooth3 = input.bool(true, title="S3 Extra Smooth", group="S3 Smoothing")
+smoothLen3 = input.int(8, minval=1, title="S3 Extra Smooth Length", group="S3 Smoothing")
+s3Opacity = input.int(50, title="S3 Opacity", minval=0, maxval=100, group="S3 Smoothing", tooltip="0=transparent, 100=solid")
+
+// ===== SCALED-PERIOD STOCHASTIC (no request.security, no stair-steps) =====
+// Higher TF stochastic ≈ chart stochastic with periods × multiplier
+// e.g. 2x TF with periodK=39 ≈ chart periodK=78
+pK1 = math.max(1, math.round(periodK * s1Mult))
+sK1 = math.max(1, math.round(smoothK1 * s1Mult))
+dK1 = math.max(1, math.round(periodD1 * s1Mult))
+
+pK2 = math.max(1, math.round(periodK * s2Mult))
+sK2 = math.max(1, math.round(smoothK2 * s2Mult))
+dK2 = math.max(1, math.round(periodD2 * s2Mult))
+
+pK3 = math.max(1, math.round(periodK * s3Mult))
+sK3 = math.max(1, math.round(smoothK3 * s3Mult))
+dK3 = math.max(1, math.round(periodD3 * s3Mult))
+
+// ===== S1 CALCULATION =====
+k1_raw = ta.sma(ta.stoch(close, high, low, pK1), sK1)
+d1_raw = kOnly ? na : ta.sma(k1_raw, dK1)
+k1 = smooth1 ? ta.sma(k1_raw, smoothLen1) : k1_raw
+d1 = kOnly ? na : (smooth1 ? ta.sma(d1_raw, smoothLen1) : d1_raw)
+
+// ===== S2 CALCULATION =====
+k2_raw = ta.sma(ta.stoch(close, high, low, pK2), sK2)
+d2_raw = kOnly ? na : ta.sma(k2_raw, dK2)
+k2 = smooth2 ? ta.sma(k2_raw, smoothLen2) : k2_raw
+d2 = kOnly ? na : (smooth2 ? ta.sma(d2_raw, smoothLen2) : d2_raw)
+
+// ===== S3 CALCULATION =====
+k3_raw = ta.sma(ta.stoch(close, high, low, pK3), sK3)
+d3_raw = kOnly ? na : ta.sma(k3_raw, dK3)
+k3 = smooth3 ? ta.sma(k3_raw, smoothLen3) : k3_raw
+d3 = kOnly ? na : (smooth3 ? ta.sma(d3_raw, smoothLen3) : d3_raw)
+
+// ===== COLOR SETTINGS (mono theme per pair) =====
+// Single Up/Down colors for S1, S2, S3
+colorUp   = input.color(#089981, title="Up", group="Colors")
+colorDown = input.color(#f23645, title="Down", group="Colors")
+
+// Extreme-zone overrides (shared)
+colorExHigh    = input.color(#4caf50, title="Overbought (>80)", group="Extreme Colors")
+colorExLow     = input.color(#f48fb1, title="Oversold (<20)", group="Extreme Colors")
+colorWarnHigh  = input.color(#f06292, title=">80 turning down", group="Extreme Colors")
+colorWarnLow   = input.color(#4dd0e1, title="<20 turning up", group="Extreme Colors")
+
+// Direction color helper: extreme zones override, otherwise use pair's mono up/down
+f_lineColor(val, isUp, colUp, colDown) =>
+    (val < 20 and isUp) ? colorWarnLow : (val > 80 and not isUp) ? colorWarnHigh : val > 80 ? colorExHigh : val < 20 ? colorExLow : isUp ? colUp : colDown
+
+// ===== LINE COLORS =====
+k1IsUp = k1 >= k1[1]
+d1IsUp = d1 >= d1[1]
+k1Color = (k1 < 5 or k1 > 95) ? color.white : f_lineColor(k1, k1IsUp, colorUp, colorDown)
+d1Color = f_lineColor(d1, d1IsUp, colorUp, colorDown)
+
+k2IsUp = k2 >= k2[1]
+d2IsUp = d2 >= d2[1]
+k2Color = (k2 < 5 or k2 > 95) ? color.white : f_lineColor(k2, k2IsUp, colorUp, colorDown)
+d2Color = f_lineColor(d2, d2IsUp, colorUp, colorDown)
+
+k3IsUp = k3 >= k3[1]
+d3IsUp = d3 >= d3[1]
+k3Color = (k3 < 5 or k3 > 95) ? color.white : f_lineColor(k3, k3IsUp, colorUp, colorDown)
+d3Color = f_lineColor(d3, d3IsUp, colorUp, colorDown)
+
+// ===== DIRECTION TRACKING =====
+var float prevK1 = na
+var float prevD1 = na
+k1Direction = na(prevK1) ? "flat" : k1 > prevK1 ? "up" : k1 < prevK1 ? "down" : "flat"
+d1Direction = na(prevD1) ? "flat" : d1 > prevD1 ? "up" : d1 < prevD1 ? "down" : "flat"
+prevK1 := k1
+prevD1 := d1
+
+var float prevK2 = na
+var float prevD2 = na
+k2Direction = na(prevK2) ? "flat" : k2 > prevK2 ? "up" : k2 < prevK2 ? "down" : "flat"
+d2Direction = na(prevD2) ? "flat" : d2 > prevD2 ? "up" : d2 < prevD2 ? "down" : "flat"
+prevK2 := k2
+prevD2 := d2
+
+var float prevK3 = na
+var float prevD3 = na
+k3Direction = na(prevK3) ? "flat" : k3 > prevK3 ? "up" : k3 < prevK3 ? "down" : "flat"
+d3Direction = na(prevD3) ? "flat" : d3 > prevD3 ? "up" : d3 < prevD3 ? "down" : "flat"
+prevK3 := k3
+prevD3 := d3
+
+// ===== CROSSING DETECTION =====
+k1CrossOver = not kOnly and ta.crossover(k1, d1)
+k1CrossUnder = not kOnly and ta.crossunder(k1, d1)
+k1Cross = k1CrossOver ? "cross_over" : k1CrossUnder ? "cross_under" : "none"
+
+k2CrossOver = not kOnly and ta.crossover(k2, d2)
+k2CrossUnder = not kOnly and ta.crossunder(k2, d2)
+k2Cross = k2CrossOver ? "cross_over" : k2CrossUnder ? "cross_under" : "none"
+
+k3CrossOver = not kOnly and ta.crossover(k3, d3)
+k3CrossUnder = not kOnly and ta.crossunder(k3, d3)
+k3Cross = k3CrossOver ? "cross_over" : k3CrossUnder ? "cross_under" : "none"
+
+// ===== HL/LH PATTERN HELPER =====
+f_hllh(isCrossOver, isCrossUnder, kVal, lastOverK, lastUnderK) =>
+    string pat = ""
+    float patVal = na
+    float newOverK = lastOverK
+    float newUnderK = lastUnderK
+    if isCrossOver
+        pat := na(lastOverK) ? "" : kVal > lastOverK ? "Higher Low" : ""
+        patVal := kVal
+        newOverK := kVal
+    else if isCrossUnder
+        pat := na(lastUnderK) ? "" : kVal < lastUnderK ? "Lower High" : ""
+        patVal := kVal
+        newUnderK := kVal
+    [pat, patVal, newOverK, newUnderK]
+
+// S1 HL/LH
+var float lastCOK1 = na
+var float lastCUK1 = na
+[d1Pat, d1PatVal, newCOK1, newCUK1] = f_hllh(k1CrossOver, k1CrossUnder, k1, lastCOK1, lastCUK1)
+lastCOK1 := newCOK1
+lastCUK1 := newCUK1
+
+// S2 HL/LH
+var float lastCOK2 = na
+var float lastCUK2 = na
+[d2Pat, d2PatVal, newCOK2, newCUK2] = f_hllh(k2CrossOver, k2CrossUnder, k2, lastCOK2, lastCUK2)
+lastCOK2 := newCOK2
+lastCUK2 := newCUK2
+
+// S3 HL/LH
+var float lastCOK3 = na
+var float lastCUK3 = na
+[d3Pat, d3PatVal, newCOK3, newCUK3] = f_hllh(k3CrossOver, k3CrossUnder, k3, lastCOK3, lastCUK3)
+lastCOK3 := newCOK3
+lastCUK3 := newCUK3
+
+// ===== CROSSING DISPLAY SETTINGS =====
+showCrossOver = input.bool(true, title="Show K Cross Over D", group="Crossing Settings")
+showCrossUnder = input.bool(true, title="Show K Cross Under D", group="Crossing Settings")
+colorCrossOver = input.color(color.new(#00ff00, 0), title="Cross Over Color", group="Crossing Settings")
+colorCrossUnder = input.color(color.new(#ff0000, 0), title="Cross Under Color", group="Crossing Settings")
+int crossingSize = input.int(4, minval=1, maxval=5, title="Crossing Marker Size", group="Crossing Settings")
+float crossingOffset = input.float(5.0, title="Crossing Marker Offset", group="Crossing Settings", step=1.0)
+showHLLH = input.bool(true, title="Show HL/LH Label", group="Crossing Settings")
+labelColorHL = color.new(#00ff00, 0)
+labelColorLH = color.new(#ff6600, 0)
+
+// ===== PLOTS (S3 first so it draws behind S1/S2) =====
+plot(kOnly ? k3 : (k3 - d3), title="S3 Histogram", style=plot.style_columns, color=color.new(k3Color, 100 - s3Opacity), linewidth=4)
+plot(k3, title="S3 %K", color=color.new(k3Color, 100 - s3Opacity), linewidth=1)
+plot(kOnly ? na : d3, title="S3 %D", color=color.new(d3Color, 100 - s3Opacity), linewidth=1)
+plot(k1, title="S1 %K", color=k1Color, linewidth=4, linestyle=plot.linestyle_dotted)
+plot(kOnly ? na : d1, title="S1 %D", color=d1Color, linewidth=1)
+plot(k2, title="S2 %K", color=k2Color, linewidth=4)
+plot(kOnly ? na : d2, title="S2 %D", color=d2Color, linewidth=2)
+
+// ===== S1 CROSSING MARKERS =====
+float d1COPlot = na
+if showCrossOver and k1CrossOver
+    d1COPlot := k1 + crossingOffset
+float d1CUPlot = na
+if showCrossUnder and k1CrossUnder
+    d1CUPlot := k1 - crossingOffset
+plot(d1COPlot, title="S1 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles)
+plot(d1CUPlot, title="S1 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles)
+
+// ===== S2 CROSSING MARKERS =====
+float d2COPlot = na
+if showCrossOver and k2CrossOver
+    d2COPlot := k2 + crossingOffset
+float d2CUPlot = na
+if showCrossUnder and k2CrossUnder
+    d2CUPlot := k2 - crossingOffset
+plot(d2COPlot, title="S2 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles)
+plot(d2CUPlot, title="S2 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles)
+
+// ===== S3 CROSSING MARKERS =====
+float d3COPlot = na
+if showCrossOver and k3CrossOver
+    d3COPlot := k3 + crossingOffset
+float d3CUPlot = na
+if showCrossUnder and k3CrossUnder
+    d3CUPlot := k3 - crossingOffset
+plot(d3COPlot, title="S3 Cross Over", color=colorCrossOver, linewidth=crossingSize, style=plot.style_circles)
+plot(d3CUPlot, title="S3 Cross Under", color=colorCrossUnder, linewidth=crossingSize, style=plot.style_circles)
+
+// ===== HL/LH LABELS =====
+if showHLLH and (k1CrossOver or k1CrossUnder) and d1Pat != ""
+    label.new(bar_index, k1 + (k1CrossOver ? crossingOffset : -crossingOffset), d1Pat == "Higher Low" ? "HL" : "LH", style=d1Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d1Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+if showHLLH and (k2CrossOver or k2CrossUnder) and d2Pat != ""
+    label.new(bar_index, k2 + (k2CrossOver ? crossingOffset : -crossingOffset), d2Pat == "Higher Low" ? "HL" : "LH", style=d2Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d2Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+if showHLLH and (k3CrossOver or k3CrossUnder) and d3Pat != ""
+    label.new(bar_index, k3 + (k3CrossOver ? crossingOffset : -crossingOffset), d3Pat == "Higher Low" ? "HL" : "LH", style=d3Pat == "Higher Low" ? label.style_label_down : label.style_label_up, color=d3Pat == "Higher Low" ? labelColorHL : labelColorLH, textcolor=color.black, size=size.small)
+
+// ===== DIRECTION TABLE =====
+showTable = input.bool(true, title="Show Direction Table", group="Table")
+tablePos  = input.string("top_right", title="Position", group="Table", options=["top_right", "top_left", "bottom_right", "bottom_left", "top_center", "middle_left", "middle_center", "middle_right", "bottom_center"])
+
+tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
+
+if showTable and barstate.islast
+    var tbl = table.new(tblPosition, 2, 3, bgcolor=#000000, border_width=1, border_color=color.new(#ffffff, 80))
+    k1Arr = k1IsUp ? "▲" : "▼"
+    k2Arr = k2IsUp ? "▲" : "▼"
+    k3Arr = k3IsUp ? "▲" : "▼"
+    k1Clr = k1IsUp ? colorUp : colorDown
+    k2Clr = k2IsUp ? colorUp : colorDown
+    k3Clr = k3IsUp ? colorUp : colorDown
+    table.cell(tbl, 0, 0, "S1", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(tbl, 1, 0, k1Arr, text_color=k1Clr, text_size=size.large)
+    table.cell(tbl, 0, 1, "S2", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(tbl, 1, 1, k2Arr, text_color=k2Clr, text_size=size.large)
+    table.cell(tbl, 0, 2, "S3", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(tbl, 1, 2, k3Arr, text_color=k3Clr, text_size=size.large)
+
+// ===== HORIZONTAL BANDS =====
+h0 = hline(80, "Upper Band", color=#787B86)
+hline(50, "Middle Band", color=color.new(#e5ff00, 0))
+hline(60, "Middle top Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(40, "Middle base Band", color=color.new(#e5ff00, 0), linestyle=hline.style_solid)
+hline(90, "Top top Band", color=color.new(#ffffff, 0))
+hline(10, "Base Band", color=color.new(#ffffff, 0))
+h1 = hline(20, "Lower Band", color=#787B86)
+fill(h0, h1, color=color.rgb(33, 150, 243, 90), title="Background")
+
+// ===== WEBHOOK: map selected sources to ov/dt =====
+ovK     = ovSource == "S1" ? k1 : ovSource == "S2" ? k2 : k3
+ovD     = ovSource == "S1" ? d1 : ovSource == "S2" ? d2 : d3
+ovKDir  = ovSource == "S1" ? k1Direction : ovSource == "S2" ? k2Direction : k3Direction
+ovDDir  = ovSource == "S1" ? d1Direction : ovSource == "S2" ? d2Direction : d3Direction
+ovPat   = ovSource == "S1" ? d1Pat : ovSource == "S2" ? d2Pat : d3Pat
+ovPatV  = ovSource == "S1" ? d1PatVal : ovSource == "S2" ? d2PatVal : d3PatVal
+
+dtK     = dtSource == "S1" ? k1 : dtSource == "S2" ? k2 : k3
+dtD     = dtSource == "S1" ? d1 : dtSource == "S2" ? d2 : d3
+dtKDir  = dtSource == "S1" ? k1Direction : dtSource == "S2" ? k2Direction : k3Direction
+dtDDir  = dtSource == "S1" ? d1Direction : dtSource == "S2" ? d2Direction : d3Direction
+dtPat   = dtSource == "S1" ? d1Pat : dtSource == "S2" ? d2Pat : d3Pat
+dtPatV  = dtSource == "S1" ? d1PatVal : dtSource == "S2" ? d2PatVal : d3PatVal
+
+// Day change % and daily volume for webhook
+prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
+dayChgPct = math.abs(prevDayClose) > 1e-9 ? (close - prevDayClose) / prevDayClose * 100.0 : na
+dayVol = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+if barstate.isconfirmed
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
+    alertStr += "\"changeFromPrevDay\":\"" + str.tostring(dayChgPct) + "\","
+    alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
+    // Overview
+    alertStr += "\"ovK\":\"" + str.tostring(ovK) + "\","
+    alertStr += "\"ovD\":\"" + str.tostring(ovD) + "\","
+    alertStr += "\"ovKDirection\":\"" + ovKDir + "\","
+    alertStr += "\"ovDDirection\":\"" + ovDDir + "\","
+    alertStr += "\"ovD2Pattern\":\"" + ovPat + "\","
+    alertStr += "\"ovD2PatternValue\":\"" + str.tostring(ovPatV) + "\","
+    // Detail
+    alertStr += "\"dtK\":\"" + str.tostring(dtK) + "\","
+    alertStr += "\"dtD\":\"" + str.tostring(dtD) + "\","
+    alertStr += "\"dtKDirection\":\"" + dtKDir + "\","
+    alertStr += "\"dtDDirection\":\"" + dtDDir + "\","
+    alertStr += "\"dtD2Pattern\":\"" + dtPat + "\","
+    alertStr += "\"dtD2PatternValue\":\"" + str.tostring(dtPatV) + "\","
+    // All three K values
+    alertStr += "\"k1\":\"" + str.tostring(k1) + "\","
+    alertStr += "\"k2\":\"" + str.tostring(k2) + "\","
+    alertStr += "\"k3\":\"" + str.tostring(k3) + "\","
+    // Signal type
+    alertStr += "\"d2Signal\":\"Tri\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)

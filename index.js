@@ -4281,26 +4281,57 @@ app.get('/', (req, res) => {
         <main class="flex-1 min-w-0 flex flex-col overflow-hidden">
           <!-- Quick preset strip (compact) -->
           <div class="flex flex-wrap items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
-            <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400">
-              ABOVE VWAP <span id="presetAboveVwapCount" class="ml-0.5 text-green-300 font-bold">0</span>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 pr-0.5">VWAP</span>
+            <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Price above VWAP">
+              ABV <span id="presetAboveVwapCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBelowVwap" data-preset-group="vwap" onclick="applyPresetFilter('belowVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400">
-              BELOW VWAP <span id="presetBelowVwapCount" class="ml-0.5 text-red-300 font-bold">0</span>
+            <button id="presetBelowVwap" data-preset-group="vwap" onclick="applyPresetFilter('belowVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Price below VWAP">
+              BLW <span id="presetBelowVwapCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400">
-              BELOW ORB <span id="presetBelowOrbCount" class="ml-0.5 text-rose-300 font-bold">0</span>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">ORB</span>
+            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400" title="Upper ORB — close at/above NY ORB midpoint">
+              UP <span id="presetAboveOrbCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
             </button>
-            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400">
-              ABOVE ORB <span id="presetAboveOrbCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
+            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400" title="Lower ORB — close below NY ORB midpoint">
+              DN <span id="presetBelowOrbCount" class="ml-0.5 text-rose-300 font-bold">0</span>
             </button>
-            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400">
-              WITHIN ORB <span id="presetWithinOrbCount" class="ml-0.5 text-cyan-300 font-bold">0</span>
+            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400" title="ORB still forming (inside NY ORB window)">
+              FRM <span id="presetWithinOrbCount" class="ml-0.5 text-cyan-300 font-bold">0</span>
             </button>
-            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400">
-              K3&gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-yellow-300 font-bold">0</span>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">BRK</span>
+            <button id="presetBrkHigh" data-preset-group="brk" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-400/40 bg-green-400/10 hover:bg-green-400/20 active:scale-95 transition-all text-green-300" title="Break D.High — price above opening range high">
+              HI <span id="presetBrkHighCount" class="ml-0.5 text-green-200 font-bold">0</span>
             </button>
-            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all text-purple-400">
-              K3&lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-purple-300 font-bold">0</span>
+            <button id="presetBrkLow" data-preset-group="brk" onclick="applyPresetFilter('brkLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-400/40 bg-red-400/10 hover:bg-red-400/20 active:scale-95 transition-all text-red-300" title="Break D.Low — price below opening range low">
+              LO <span id="presetBrkLowCount" class="ml-0.5 text-red-200 font-bold">0</span>
+            </button>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">TREND</span>
+            <button id="presetTrendUp" data-preset-group="trend" onclick="applyPresetFilter('trendUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-lime-500/40 bg-lime-500/10 hover:bg-lime-500/20 active:scale-95 transition-all text-lime-400" title="Bullish: price &gt; VWAP AND EMA50 &gt; EMA200">
+              BULL <span id="presetTrendUpCount" class="ml-0.5 text-lime-300 font-bold">0</span>
+            </button>
+            <button id="presetTrendDn" data-preset-group="trend" onclick="applyPresetFilter('trendDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-orange-500/40 bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 transition-all text-orange-400" title="Bearish: price &lt; VWAP AND EMA50 &lt; EMA200">
+              BEAR <span id="presetTrendDnCount" class="ml-0.5 text-orange-300 font-bold">0</span>
+            </button>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">MOM</span>
+            <button id="presetMomUp" data-preset-group="momentum" onclick="applyPresetFilter('momUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-300/40 bg-green-300/10 hover:bg-green-300/20 active:scale-95 transition-all text-green-200" title="Momentum Long: Upper ORB + Above VWAP + K1↑">
+              ↑ <span id="presetMomUpCount" class="ml-0.5 text-green-200 font-bold">0</span>
+            </button>
+            <button id="presetMomDn" data-preset-group="momentum" onclick="applyPresetFilter('momDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-300/40 bg-red-300/10 hover:bg-red-300/20 active:scale-95 transition-all text-red-200" title="Momentum Short: Lower ORB + Below VWAP + K1↓">
+              ↓ <span id="presetMomDnCount" class="ml-0.5 text-red-200 font-bold">0</span>
+            </button>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">REV</span>
+            <button id="presetRevUp" data-preset-group="reversal" onclick="applyPresetFilter('revUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 active:scale-95 transition-all text-sky-300" title="Reversal Long: K3 &lt; 20 + K1↑ (oversold macro, momentum turning up)">
+              ↑ <span id="presetRevUpCount" class="ml-0.5 text-sky-200 font-bold">0</span>
+            </button>
+            <button id="presetRevDn" data-preset-group="reversal" onclick="applyPresetFilter('revDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 active:scale-95 transition-all text-fuchsia-300" title="Reversal Short: K3 &gt; 80 + K1↓ (overbought macro, momentum turning down)">
+              ↓ <span id="presetRevDnCount" class="ml-0.5 text-fuchsia-200 font-bold">0</span>
+            </button>
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">K3</span>
+            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400" title="K3 &gt; 85 (macro overbought zone)">
+              &gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-yellow-300 font-bold">0</span>
+            </button>
+            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all text-purple-400" title="K3 &lt; 20 (macro oversold zone)">
+              &lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-purple-300 font-bold">0</span>
             </button>
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
               CLEAR
@@ -6113,6 +6144,7 @@ app.get('/', (req, res) => {
           if (!presetStrip) return;
 
           const sameSingle = (arr, value) => Array.isArray(arr) && arr.length === 1 && arr[0] === value;
+          const hasVal = (arr, value) => Array.isArray(arr) && arr.includes(value);
           const near = (a, b) => Math.abs((a || 0) - b) < 0.0001;
           const k3Exact = (mn, mx) => !!(stochK3Value.active && !stochK3Value.excluded && near(stochK3Value.min, mn) && near(stochK3Value.max, mx));
 
@@ -6122,6 +6154,14 @@ app.get('/', (req, res) => {
             aboveOrb: sameSingle(rangeOrbFilter, 'Upper ORB'),
             belowOrb: sameSingle(rangeOrbFilter, 'Lower ORB'),
             withinOrb: sameSingle(rangeOrbFilter, 'ORB forming'),
+            brkHigh: sameSingle(rangeLabelFilter, 'Break D.High'),
+            brkLow: sameSingle(rangeLabelFilter, 'Break D.Low'),
+            trendUp: hasVal(rangeVwapFilter, 'Above VWAP') && hasVal(rangeEmaFilter, 'ema_UU'),
+            trendDn: hasVal(rangeVwapFilter, 'Below VWAP') && hasVal(rangeEmaFilter, 'ema_DD'),
+            momUp: hasVal(rangeOrbFilter, 'Upper ORB') && hasVal(rangeVwapFilter, 'Above VWAP') && hasVal(stochK1Dir, 'up'),
+            momDn: hasVal(rangeOrbFilter, 'Lower ORB') && hasVal(rangeVwapFilter, 'Below VWAP') && hasVal(stochK1Dir, 'down'),
+            revUp: k3Exact(0, 20) && hasVal(stochK1Dir, 'up'),
+            revDn: k3Exact(80, 100) && hasVal(stochK1Dir, 'down'),
             k3Gt85: k3Exact(85, 100),
             k3Lt20: k3Exact(0, 20)
           };
@@ -6241,6 +6281,10 @@ app.get('/', (req, res) => {
           const presetByGroup = {
             vwap: ['aboveVwap', 'belowVwap'],
             orb: ['belowOrb', 'aboveOrb', 'withinOrb'],
+            brk: ['brkHigh', 'brkLow'],
+            trend: ['trendUp', 'trendDn'],
+            momentum: ['momUp', 'momDn'],
+            reversal: ['revUp', 'revDn'],
             k3: ['k3Gt85', 'k3Lt20']
           };
           const groupByPreset = {
@@ -6249,6 +6293,14 @@ app.get('/', (req, res) => {
             belowOrb: 'orb',
             aboveOrb: 'orb',
             withinOrb: 'orb',
+            brkHigh: 'brk',
+            brkLow: 'brk',
+            trendUp: 'trend',
+            trendDn: 'trend',
+            momUp: 'momentum',
+            momDn: 'momentum',
+            revUp: 'reversal',
+            revDn: 'reversal',
             k3Gt85: 'k3',
             k3Lt20: 'k3'
           };
@@ -6275,6 +6327,25 @@ app.get('/', (req, res) => {
               clearChipGroup('range_vwap');
             } else if (groupName === 'orb') {
               clearChipGroup('range_orb');
+            } else if (groupName === 'brk') {
+              clearChipGroup('range_lbl');
+            } else if (groupName === 'trend') {
+              clearChipGroup('range_vwap');
+              clearChipGroup('range_ema');
+            } else if (groupName === 'momentum') {
+              clearChipGroup('range_orb');
+              clearChipGroup('range_vwap');
+              clearChipGroup('stoch_k1Dir');
+            } else if (groupName === 'reversal') {
+              clearChipGroup('stoch_k1Dir');
+              const excludedEl = document.getElementById('stochK3ValueExcluded');
+              if (excludedEl) excludedEl.checked = false;
+              const toggle = document.getElementById('stochK3ValueToggle');
+              if (toggle) toggle.checked = false;
+              const el = sliders['stochK3Value'];
+              if (el && el.noUiSlider) el.noUiSlider.set([0, 100]);
+              stochK3Value.min = 0; stochK3Value.max = 100;
+              stochK3Value.active = false; stochK3Value.excluded = false;
             } else if (groupName === 'k3') {
               const excludedEl = document.getElementById('stochK3ValueExcluded');
               if (excludedEl) excludedEl.checked = false;
@@ -6312,6 +6383,36 @@ app.get('/', (req, res) => {
               activateChip('range_orb', 'Upper ORB');
             } else if (preset === 'withinOrb') {
               activateChip('range_orb', 'ORB forming');
+            } else if (preset === 'brkHigh') {
+              activateChip('range_lbl', 'Break D.High');
+            } else if (preset === 'brkLow') {
+              activateChip('range_lbl', 'Break D.Low');
+            } else if (preset === 'trendUp') {
+              // Bull trend: Above VWAP + both EMAs bullish (P>E50>E200)
+              activateChip('range_vwap', 'Above VWAP');
+              activateChip('range_ema', 'ema_UU');
+            } else if (preset === 'trendDn') {
+              // Bear trend: Below VWAP + both EMAs bearish (P<E50<E200)
+              activateChip('range_vwap', 'Below VWAP');
+              activateChip('range_ema', 'ema_DD');
+            } else if (preset === 'momUp') {
+              // Momentum Long: Upper ORB + Above VWAP + K1 up
+              activateChip('range_orb', 'Upper ORB');
+              activateChip('range_vwap', 'Above VWAP');
+              activateChip('stoch_k1Dir', 'up');
+            } else if (preset === 'momDn') {
+              // Momentum Short: Lower ORB + Below VWAP + K1 down
+              activateChip('range_orb', 'Lower ORB');
+              activateChip('range_vwap', 'Below VWAP');
+              activateChip('stoch_k1Dir', 'down');
+            } else if (preset === 'revUp') {
+              // Reversal Long: K3 < 20 (oversold macro) + K1 turning up
+              setStochK3ValueFilterFromPreset(0, 20);
+              activateChip('stoch_k1Dir', 'up');
+            } else if (preset === 'revDn') {
+              // Reversal Short: K3 > 80 (overbought macro) + K1 turning down
+              setStochK3ValueFilterFromPreset(80, 100);
+              activateChip('stoch_k1Dir', 'down');
             } else if (preset === 'k3Gt85') {
               setStochK3ValueFilterFromPreset(85, 100);
             } else if (preset === 'k3Lt20') {
@@ -6409,63 +6510,69 @@ Use this to create a new preset filter button that applies these exact filter se
           // Use filtered data if provided, otherwise use all alertsData
           const data = dataToCount || alertsData;
           
+          const presetIds = [
+            'presetAboveVwapCount','presetBelowVwapCount','presetAboveOrbCount','presetBelowOrbCount',
+            'presetWithinOrbCount','presetBrkHighCount','presetBrkLowCount',
+            'presetTrendUpCount','presetTrendDnCount',
+            'presetMomUpCount','presetMomDnCount',
+            'presetRevUpCount','presetRevDnCount',
+            'presetK3Gt85Count','presetK3Lt20Count'
+          ];
           if (data.length === 0) {
-            const aboveVwapCountEl = document.getElementById('presetAboveVwapCount');
-            const belowVwapCountEl = document.getElementById('presetBelowVwapCount');
-            const belowOrbCountEl = document.getElementById('presetBelowOrbCount');
-            const aboveOrbCountEl = document.getElementById('presetAboveOrbCount');
-            const withinOrbCountEl = document.getElementById('presetWithinOrbCount');
-            const k3Gt85CountEl = document.getElementById('presetK3Gt85Count');
-            const k3Lt20CountEl = document.getElementById('presetK3Lt20Count');
-            if (aboveVwapCountEl) aboveVwapCountEl.textContent = '0';
-            if (belowVwapCountEl) belowVwapCountEl.textContent = '0';
-            if (belowOrbCountEl) belowOrbCountEl.textContent = '0';
-            if (aboveOrbCountEl) aboveOrbCountEl.textContent = '0';
-            if (withinOrbCountEl) withinOrbCountEl.textContent = '0';
-            if (k3Gt85CountEl) k3Gt85CountEl.textContent = '0';
-            if (k3Lt20CountEl) k3Lt20CountEl.textContent = '0';
+            presetIds.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
             return;
           }
 
-          // Count preset matches
-          let aboveVwapCount = 0;
-          let belowVwapCount = 0;
-          let belowOrbCount = 0;
-          let aboveOrbCount = 0;
-          let withinOrbCount = 0;
-          let k3Gt85Count = 0;
-          let k3Lt20Count = 0;
+          let aboveVwapCount = 0, belowVwapCount = 0;
+          let aboveOrbCount = 0, belowOrbCount = 0, withinOrbCount = 0;
+          let brkHighCount = 0, brkLowCount = 0;
+          let trendUpCount = 0, trendDnCount = 0;
+          let momUpCount = 0, momDnCount = 0;
+          let revUpCount = 0, revDnCount = 0;
+          let k3Gt85Count = 0, k3Lt20Count = 0;
 
           data.forEach(alert => {
             const t = alert.triStoch;
             const k3Val = t && t.k3 != null ? parseFloat(t.k3) : null;
+            const k1Dir = t && t.ovKDirection ? String(t.ovKDirection).toLowerCase() : null;
             const vwapSide = getRangeCellVwapSide(alert);
             const orbLabel = getRangeCellOrbLabel(alert);
+            const rangeLabel = getRangeCellLabel(alert);
+            const emaCode = getEmaStackCode(alert);
 
             if (vwapSide === 'Above VWAP') aboveVwapCount++;
             if (vwapSide === 'Below VWAP') belowVwapCount++;
-            if (orbLabel === 'Lower ORB') belowOrbCount++;
             if (orbLabel === 'Upper ORB') aboveOrbCount++;
+            if (orbLabel === 'Lower ORB') belowOrbCount++;
             if (orbLabel === 'ORB forming') withinOrbCount++;
+            if (rangeLabel === 'Break D.High') brkHighCount++;
+            if (rangeLabel === 'Break D.Low') brkLowCount++;
+            if (vwapSide === 'Above VWAP' && emaCode === 'ema_UU') trendUpCount++;
+            if (vwapSide === 'Below VWAP' && emaCode === 'ema_DD') trendDnCount++;
+            if (orbLabel === 'Upper ORB' && vwapSide === 'Above VWAP' && k1Dir === 'up') momUpCount++;
+            if (orbLabel === 'Lower ORB' && vwapSide === 'Below VWAP' && k1Dir === 'down') momDnCount++;
+            if (k3Val !== null && !isNaN(k3Val) && k3Val < 20 && k1Dir === 'up') revUpCount++;
+            if (k3Val !== null && !isNaN(k3Val) && k3Val > 80 && k1Dir === 'down') revDnCount++;
             if (k3Val !== null && !isNaN(k3Val) && k3Val > 85) k3Gt85Count++;
             if (k3Val !== null && !isNaN(k3Val) && k3Val < 20) k3Lt20Count++;
           });
 
-          // Update the count displays
-          const aboveVwapCountEl = document.getElementById('presetAboveVwapCount');
-          const belowVwapCountEl = document.getElementById('presetBelowVwapCount');
-          const belowOrbCountEl = document.getElementById('presetBelowOrbCount');
-          const aboveOrbCountEl = document.getElementById('presetAboveOrbCount');
-          const withinOrbCountEl = document.getElementById('presetWithinOrbCount');
-          const k3Gt85CountEl = document.getElementById('presetK3Gt85Count');
-          const k3Lt20CountEl = document.getElementById('presetK3Lt20Count');
-          if (aboveVwapCountEl) aboveVwapCountEl.textContent = aboveVwapCount;
-          if (belowVwapCountEl) belowVwapCountEl.textContent = belowVwapCount;
-          if (belowOrbCountEl) belowOrbCountEl.textContent = belowOrbCount;
-          if (aboveOrbCountEl) aboveOrbCountEl.textContent = aboveOrbCount;
-          if (withinOrbCountEl) withinOrbCountEl.textContent = withinOrbCount;
-          if (k3Gt85CountEl) k3Gt85CountEl.textContent = k3Gt85Count;
-          if (k3Lt20CountEl) k3Lt20CountEl.textContent = k3Lt20Count;
+          const setCount = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+          setCount('presetAboveVwapCount', aboveVwapCount);
+          setCount('presetBelowVwapCount', belowVwapCount);
+          setCount('presetAboveOrbCount', aboveOrbCount);
+          setCount('presetBelowOrbCount', belowOrbCount);
+          setCount('presetWithinOrbCount', withinOrbCount);
+          setCount('presetBrkHighCount', brkHighCount);
+          setCount('presetBrkLowCount', brkLowCount);
+          setCount('presetTrendUpCount', trendUpCount);
+          setCount('presetTrendDnCount', trendDnCount);
+          setCount('presetMomUpCount', momUpCount);
+          setCount('presetMomDnCount', momDnCount);
+          setCount('presetRevUpCount', revUpCount);
+          setCount('presetRevDnCount', revDnCount);
+          setCount('presetK3Gt85Count', k3Gt85Count);
+          setCount('presetK3Lt20Count', k3Lt20Count);
         }
 
         // Count how many alerts match each Price % range
