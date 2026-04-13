@@ -1441,28 +1441,35 @@ app.post('/webhook', (req, res) => {
     }
   } else if (isTriStochAlert) {
     // Tri Stoch: single webhook carries k1/k2/k3 values + ov/dt mapped data
+    const parseTriVal = (v) => {
+      if (v == null) return null
+      const n = parseFloat(v)
+      return isNaN(n) ? null : n
+    }
     const triStoch = {
-      k1: alert.k1 || null,
-      k2: alert.k2 || null,
-      k3: alert.k3 || null,
-      ovK: alert.ovK || null,
-      ovD: alert.ovD || null,
+      k1: parseTriVal(alert.k1),
+      k2: parseTriVal(alert.k2),
+      k3: parseTriVal(alert.k3),
+      k3Direction: alert.k3Direction || null,
+      ovK: parseTriVal(alert.ovK),
+      ovD: parseTriVal(alert.ovD),
       ovKDirection: alert.ovKDirection || null,
       ovDDirection: alert.ovDDirection || null,
       ovD2Pattern: alert.ovD2Pattern || '',
-      ovD2PatternValue: alert.ovD2PatternValue || null,
-      dtK: alert.dtK || null,
-      dtD: alert.dtD || null,
+      ovD2PatternValue: parseTriVal(alert.ovD2PatternValue),
+      dtK: parseTriVal(alert.dtK),
+      dtD: parseTriVal(alert.dtD),
       dtKDirection: alert.dtKDirection || null,
       dtDDirection: alert.dtDDirection || null,
       dtD2Pattern: alert.dtD2Pattern || '',
-      dtD2PatternValue: alert.dtD2PatternValue || null,
+      dtD2PatternValue: parseTriVal(alert.dtD2PatternValue),
       timestamp: Date.now()
     }
     stochOverviewDataStorage[alert.symbol] = {
-      k: alert.ovK || null, d: alert.ovD || null, d2: alert.ovD || null,
+      k: parseTriVal(alert.ovK), d: parseTriVal(alert.ovD), d2: parseTriVal(alert.ovD),
       kDirection: alert.ovKDirection || null, dDirection: alert.ovDDirection || null, d2Direction: alert.ovDDirection || null,
-      d2Pattern: alert.ovD2Pattern || '', d2PatternValue: alert.ovD2PatternValue || null,
+      d2Pattern: alert.ovD2Pattern || '', d2PatternValue: parseTriVal(alert.ovD2PatternValue),
+      k3: parseTriVal(alert.k3), k3Direction: alert.k3Direction || null,
       timestamp: Date.now()
     }
     stochDetailDataStorage[alert.symbol] = {
@@ -2159,9 +2166,10 @@ app.get('/alerts', (req, res) => {
       const dtRecent = dtInfo && (now - dtInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES
       if (ovRecent || dtRecent) {
         alert.triStoch = {
-          k1: ovRecent && ovInfo.k1 ? ovInfo.k1 : null,
-          k2: dtRecent && dtInfo.k2 ? dtInfo.k2 : null,
-          k3: ovRecent && ovInfo.k3 ? ovInfo.k3 : (dtRecent && dtInfo.k3 ? dtInfo.k3 : null),
+          k1: ovRecent && ovInfo.k1 != null ? ovInfo.k1 : null,
+          k2: dtRecent && dtInfo.k2 != null ? dtInfo.k2 : null,
+          k3: ovRecent && ovInfo.k3 != null ? ovInfo.k3 : (dtRecent && dtInfo.k3 != null ? dtInfo.k3 : null),
+          k3Direction: ovRecent ? (ovInfo.k3Direction || null) : null,
           ovK: ovRecent ? ovInfo.k : null,
           ovD: ovRecent ? ovInfo.d : null,
           ovKDirection: ovRecent ? ovInfo.kDirection : null,
@@ -2193,6 +2201,13 @@ app.get('/alerts', (req, res) => {
     const triHist = triStochK1K3History[alert.symbol] || []
     alert.triStochK1MiniChart = buildTriStochSeriesSvg(triHist, 'k1', '#22c55e')
     alert.triStochK3MiniChart = buildTriStochSeriesSvg(triHist, 'k3', '#f59e0b')
+    // If triStoch.k3 is missing but history has a recent value, backfill it
+    if (alert.triStoch && alert.triStoch.k3 == null && triHist.length > 0) {
+      const lastEntry = triHist[triHist.length - 1]
+      if (lastEntry && lastEntry.k3 != null) {
+        alert.triStoch.k3 = lastEntry.k3
+      }
+    }
   })
   
   res.json(result)
