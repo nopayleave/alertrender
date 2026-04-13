@@ -4058,12 +4058,22 @@ app.get('/', (req, res) => {
                         <button type="button" onclick="toggleFilterChip('range_lbl', '—', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-border bg-secondary/40 hover:bg-secondary/60 active:scale-95 transition-all text-muted-foreground" data-filter="range_lbl" data-value="—">—</button>
                       </div>
                     </div>
-                    <div class="mb-3">
+                                       <div class="mb-3">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">vs VWAP</label>
                       <div class="filter-group flex flex-wrap gap-1">
                         <button type="button" onclick="toggleFilterChip('range_vwap', 'Above VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/90" data-filter="range_vwap" data-value="Above VWAP">Above VWAP</button>
                         <button type="button" onclick="toggleFilterChip('range_vwap', 'Below VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/90" data-filter="range_vwap" data-value="Below VWAP">Below VWAP</button>
                         <button type="button" onclick="toggleFilterChip('range_vwap', 'At VWAP', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-400/90" data-filter="range_vwap" data-value="At VWAP">At VWAP</button>
+                      </div>
+                      <div class="mt-3">
+                        <div class="flex items-center justify-between mb-2 px-1">
+                          <label class="block text-xs font-medium text-muted-foreground">% vs VWAP <span id="rangeVwapPctMinValue" class="ml-2 text-cyan-400 font-semibold">0.0</span> <span class="text-foreground/60">–</span> <span id="rangeVwapPctMaxValue" class="text-cyan-400 font-semibold">20.0</span><span class="text-muted-foreground/80 ml-0.5">%</span></label>
+                          <div class="flex items-center gap-3">
+                            <label class="flex items-center gap-1.5 cursor-pointer" title="Below VWAP (negative % band)"><input type="checkbox" id="rangeVwapPctBel" class="rounded border-border bg-secondary text-cyan-500 focus:ring-cyan-500/50" onchange="updateVwapPctFilter()"><span class="text-xs text-muted-foreground">bel.</span></label>
+                            <label class="relative inline-flex items-center cursor-pointer scale-90 origin-center"><input type="checkbox" id="rangeVwapPctToggle" class="sr-only peer" onchange="updateVwapPctFilter()"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div></label>
+                          </div>
+                        </div>
+                        <div class="px-2"><div class="mb-2"><div class="py-2"><div id="rangeVwapPctSlider"></div></div></div></div>
                       </div>
                     </div>
                     <div class="mb-3">
@@ -4424,6 +4434,9 @@ app.get('/', (req, res) => {
         let rangeOrbFilter = [];
         let rangeLabelFilter = [];
         let rangeVwapFilter = [];
+        /** % distance from VWAP: (price-vwap)/vwap*100; bel. = filter below VWAP (symmetric negative band) */
+        let rangeVwapPct = { min: 0, max: 20, active: false, below: false };
+        const RANGE_VWAP_PCT_MAX = 20;
         let rangeBandFilter = [];
         let rangeEmaFilter = [];
         
@@ -4988,7 +5001,14 @@ app.get('/', (req, res) => {
         }
 
         function hasRangeFilters() {
-          return rangeOrbFilter.length > 0 || rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
+          return rangeOrbFilter.length > 0 || rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeVwapPct.active || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
+        }
+
+        function getAlertVwapPct(alert) {
+          const p = parseFloat(alert.price);
+          const vwap = parseFloat(alert.vwap);
+          if (isNaN(p) || isNaN(vwap) || vwap === 0) return null;
+          return ((p - vwap) / vwap) * 100;
         }
 
         function passesRangeFilter(alert) {
@@ -5004,6 +5024,19 @@ app.get('/', (req, res) => {
           if (rangeVwapFilter.length > 0) {
             const v = getRangeCellVwapSide(alert);
             if (!v || !rangeVwapFilter.includes(v)) return false;
+          }
+          if (rangeVwapPct.active) {
+            const pct = getAlertVwapPct(alert);
+            if (pct === null) return false;
+            const mn = rangeVwapPct.min;
+            const mx = rangeVwapPct.max;
+            let ok;
+            if (!rangeVwapPct.below) {
+              ok = pct >= mn && pct <= mx;
+            } else {
+              ok = pct >= -mx && pct <= -mn;
+            }
+            if (!ok) return false;
           }
           if (rangeBandFilter.length > 0) {
             const b = getRangeCellBand(alert);
@@ -5218,9 +5251,52 @@ app.get('/', (req, res) => {
           }
         }
 
+        function createVwapPctSlider() {
+          const el = document.getElementById('rangeVwapPctSlider');
+          const maxPct = RANGE_VWAP_PCT_MAX;
+          if (el && !sliders['rangeVwapPct']) {
+            noUiSlider.create(el, {
+              start: [0, maxPct],
+              connect: true,
+              range: { 'min': 0, 'max': maxPct },
+              step: 0.1,
+              tooltips: [{ to: v => parseFloat(v).toFixed(1) + '%' }, { to: v => parseFloat(v).toFixed(1) + '%' }]
+            });
+            sliders['rangeVwapPct'] = el;
+            const conn = el.querySelector('.noUi-connect');
+            if (conn) conn.style.background = 'linear-gradient(to right, #06b6d4 0%, #22d3ee 50%, #0891b2 100%)';
+            el.noUiSlider.on('update', function(values) {
+              const mn = Math.round(parseFloat(values[0]) * 10) / 10;
+              const mx = Math.round(parseFloat(values[1]) * 10) / 10;
+              const mnEl = document.getElementById('rangeVwapPctMinValue');
+              const mxEl = document.getElementById('rangeVwapPctMaxValue');
+              if (mnEl) { mnEl.textContent = mn.toFixed(1); mnEl.className = 'ml-2 font-semibold text-cyan-400'; }
+              if (mxEl) { mxEl.textContent = mx.toFixed(1); mxEl.className = 'font-semibold text-cyan-400'; }
+            });
+            el.noUiSlider.on('change', updateVwapPctFilter);
+          }
+        }
+
+        function updateVwapPctFilter() {
+          const toggle = document.getElementById('rangeVwapPctToggle');
+          const belEl = document.getElementById('rangeVwapPctBel');
+          const slider = sliders['rangeVwapPct'];
+          if (slider && slider.noUiSlider) {
+            const values = slider.noUiSlider.get();
+            const minVal = Math.round(parseFloat(values[0]) * 10) / 10;
+            const maxVal = Math.round(parseFloat(values[1]) * 10) / 10;
+            rangeVwapPct.min = minVal;
+            rangeVwapPct.max = maxVal;
+            rangeVwapPct.below = belEl ? belEl.checked : false;
+            rangeVwapPct.active = !!(toggle && toggle.checked);
+            filterAlerts();
+          }
+        }
+
         function initializeSliders() {
           createValueSlider('stochK1Value', 'stochK1ValueSlider', 'stochK1ValueMinValue', 'stochK1ValueMaxValue', function() { updateGenericValueFilter('stochK1Value', stochK1Value); });
           createValueSlider('stochK3Value', 'stochK3ValueSlider', 'stochK3ValueMinValue', 'stochK3ValueMaxValue', function() { updateGenericValueFilter('stochK3Value', stochK3Value); });
+          createVwapPctSlider();
         }
 
         // Initialize sort indicators on page load
@@ -5996,6 +6072,16 @@ app.get('/', (req, res) => {
           rangeOrbFilter = [];
           rangeLabelFilter = [];
           rangeVwapFilter = [];
+          rangeVwapPct.min = 0;
+          rangeVwapPct.max = RANGE_VWAP_PCT_MAX;
+          rangeVwapPct.active = false;
+          rangeVwapPct.below = false;
+          const vwapBel = document.getElementById('rangeVwapPctBel');
+          if (vwapBel) vwapBel.checked = false;
+          const vwapTog = document.getElementById('rangeVwapPctToggle');
+          if (vwapTog) vwapTog.checked = false;
+          const vwapSl = sliders['rangeVwapPct'];
+          if (vwapSl && vwapSl.noUiSlider) vwapSl.noUiSlider.set([0, RANGE_VWAP_PCT_MAX]);
           rangeBandFilter = [];
           rangeEmaFilter = [];
           renderTable();
@@ -6131,6 +6217,7 @@ app.get('/', (req, res) => {
                 orb: rangeOrbFilter,
                 label: rangeLabelFilter,
                 vwap: rangeVwapFilter,
+                vwapPct: rangeVwapPct.active ? { min: rangeVwapPct.min, max: rangeVwapPct.max, below: rangeVwapPct.below } : null,
                 band: rangeBandFilter,
                 ema: rangeEmaFilter
               },
