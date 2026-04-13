@@ -4297,58 +4297,58 @@ app.get('/', (req, res) => {
           <!-- Quick preset strip (compact) -->
           <div class="flex flex-wrap items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 pr-0.5">VWAP</span>
-            <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Price above VWAP">
+            <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Above VWAP">
               ABV <span id="presetAboveVwapCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBelowVwap" data-preset-group="vwap" onclick="applyPresetFilter('belowVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Price below VWAP">
+            <button id="presetBelowVwap" data-preset-group="vwap" onclick="applyPresetFilter('belowVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Below VWAP">
               BLW <span id="presetBelowVwapCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">ORB</span>
-            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 active:scale-95 transition-all text-emerald-400" title="Upper ORB — close at/above NY ORB midpoint">
-              UP <span id="presetAboveOrbCount" class="ml-0.5 text-emerald-300 font-bold">0</span>
+            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Upper ORB">
+              UP <span id="presetAboveOrbCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 transition-all text-rose-400" title="Lower ORB — close below NY ORB midpoint">
-              DN <span id="presetBelowOrbCount" class="ml-0.5 text-rose-300 font-bold">0</span>
+            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Lower ORB">
+              DN <span id="presetBelowOrbCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-400" title="ORB still forming (inside NY ORB window)">
-              FRM <span id="presetWithinOrbCount" class="ml-0.5 text-cyan-300 font-bold">0</span>
+            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border bg-secondary hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="ORB forming">
+              FRM <span id="presetWithinOrbCount" class="ml-0.5 text-muted-foreground font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">BRK</span>
-            <button id="presetBrkHigh" data-preset-group="brk" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-400/40 bg-green-400/10 hover:bg-green-400/20 active:scale-95 transition-all text-green-300" title="Break D.High — price above opening range high">
-              HI <span id="presetBrkHighCount" class="ml-0.5 text-green-200 font-bold">0</span>
+            <button id="presetBrkHigh" data-preset-group="brk" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Break D.High">
+              HI <span id="presetBrkHighCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBrkLow" data-preset-group="brk" onclick="applyPresetFilter('brkLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-400/40 bg-red-400/10 hover:bg-red-400/20 active:scale-95 transition-all text-red-300" title="Break D.Low — price below opening range low">
-              LO <span id="presetBrkLowCount" class="ml-0.5 text-red-200 font-bold">0</span>
+            <button id="presetBrkLow" data-preset-group="brk" onclick="applyPresetFilter('brkLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Break D.Low">
+              LO <span id="presetBrkLowCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">TREND</span>
-            <button id="presetTrendUp" data-preset-group="trend" onclick="applyPresetFilter('trendUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-lime-500/40 bg-lime-500/10 hover:bg-lime-500/20 active:scale-95 transition-all text-lime-400" title="Bullish: price &gt; VWAP AND EMA50 &gt; EMA200">
-              BULL <span id="presetTrendUpCount" class="ml-0.5 text-lime-300 font-bold">0</span>
+            <button id="presetTrendUp" data-preset-group="trend" onclick="applyPresetFilter('trendUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Bull trend">
+              BULL <span id="presetTrendUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetTrendDn" data-preset-group="trend" onclick="applyPresetFilter('trendDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-orange-500/40 bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 transition-all text-orange-400" title="Bearish: price &lt; VWAP AND EMA50 &lt; EMA200">
-              BEAR <span id="presetTrendDnCount" class="ml-0.5 text-orange-300 font-bold">0</span>
+            <button id="presetTrendDn" data-preset-group="trend" onclick="applyPresetFilter('trendDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Bear trend">
+              BEAR <span id="presetTrendDnCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">MOM</span>
-            <button id="presetMomUp" data-preset-group="momentum" onclick="applyPresetFilter('momUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-300/40 bg-green-300/10 hover:bg-green-300/20 active:scale-95 transition-all text-green-200" title="Momentum Long: Upper ORB + Above VWAP + K1↑">
-              ↑ <span id="presetMomUpCount" class="ml-0.5 text-green-200 font-bold">0</span>
+            <button id="presetMomUp" data-preset-group="momentum" onclick="applyPresetFilter('momUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Momentum long">
+              ↑ <span id="presetMomUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetMomDn" data-preset-group="momentum" onclick="applyPresetFilter('momDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-300/40 bg-red-300/10 hover:bg-red-300/20 active:scale-95 transition-all text-red-200" title="Momentum Short: Lower ORB + Below VWAP + K1↓">
-              ↓ <span id="presetMomDnCount" class="ml-0.5 text-red-200 font-bold">0</span>
+            <button id="presetMomDn" data-preset-group="momentum" onclick="applyPresetFilter('momDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Momentum short">
+              ↓ <span id="presetMomDnCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">REV</span>
-            <button id="presetRevUp" data-preset-group="reversal" onclick="applyPresetFilter('revUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 active:scale-95 transition-all text-sky-300" title="Reversal Long: K3 &lt; 20 + K1↑ (oversold macro, momentum turning up)">
-              ↑ <span id="presetRevUpCount" class="ml-0.5 text-sky-200 font-bold">0</span>
+            <button id="presetRevUp" data-preset-group="reversal" onclick="applyPresetFilter('revUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Reversal long">
+              ↑ <span id="presetRevUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetRevDn" data-preset-group="reversal" onclick="applyPresetFilter('revDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-fuchsia-500/40 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 active:scale-95 transition-all text-fuchsia-300" title="Reversal Short: K3 &gt; 80 + K1↓ (overbought macro, momentum turning down)">
-              ↓ <span id="presetRevDnCount" class="ml-0.5 text-fuchsia-200 font-bold">0</span>
+            <button id="presetRevDn" data-preset-group="reversal" onclick="applyPresetFilter('revDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Reversal short">
+              ↓ <span id="presetRevDnCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">K3</span>
-            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-yellow-500/40 bg-yellow-500/10 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-400" title="K3 &gt; 85 (macro overbought zone)">
-              &gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-yellow-300 font-bold">0</span>
+            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="K3 > 85">
+              &gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 transition-all text-purple-400" title="K3 &lt; 20 (macro oversold zone)">
-              &lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-purple-300 font-bold">0</span>
+            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="K3 < 20">
+              &lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground">
+            <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="Clear all presets and filters">
               CLEAR
             </button>
             <div class="flex-1"></div>
