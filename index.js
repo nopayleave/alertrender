@@ -216,16 +216,16 @@ function nyMinutesSinceMidnight(ms) {
   return h * 60 + m + s / 60
 }
 
-/** X position 0–1 in fixed window 4:00 PM – 7:00 PM America/New_York (clamped) */
-function nyFourPmToSevenPmRatio(ms) {
+/** X position 0–1 in fixed window 9:30 AM – 4:00 PM America/New_York (regular session; clamped) */
+function ny930AmTo4PmRatio(ms) {
   if (ms == null || typeof ms !== 'number' || isNaN(ms)) return null
   const mins = nyMinutesSinceMidnight(ms)
-  const start = 16 * 60
-  const end = 19 * 60
+  const start = 9 * 60 + 30
+  const end = 16 * 60
   return Math.max(0, Math.min(1, (mins - start) / (end - start)))
 }
 
-/** Mini line chart: Y = 0–100 stoch; X = time in 4pm–7pm NY (or index fallback if no timestamps) */
+/** Mini line chart: Y = 0–100 stoch; X = time in 9:30 AM–4:00 PM NY (or index fallback if no timestamps) */
 function buildTriStochSeriesSvg(history, field, strokeHex) {
   const chartWidth = 88
   const chartHeight = 36
@@ -260,7 +260,7 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   pts.forEach((pt, index) => {
     let xRatio
     if (useTimeAxis) {
-      const r = pt.ts != null ? nyFourPmToSevenPmRatio(pt.ts) : null
+      const r = pt.ts != null ? ny930AmTo4PmRatio(pt.ts) : null
       xRatio = r !== null ? r : index / Math.max(1, pts.length - 1)
     } else {
       xRatio = pts.length === 1 ? 0.5 : index / (pts.length - 1)
@@ -278,7 +278,7 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
   if (pts.length === 1) {
     let xRatio
     if (useTimeAxis && pts[0].ts != null) {
-      const r = nyFourPmToSevenPmRatio(pts[0].ts)
+      const r = ny930AmTo4PmRatio(pts[0].ts)
       xRatio = r !== null ? r : 0.5
     } else {
       xRatio = 0.5
@@ -4048,13 +4048,6 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     <div class="mb-4">
-                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K2 Direction</label>
-                      <div class="filter-group flex flex-wrap gap-1.5">
-                        <button onclick="toggleFilterChip('stoch_k2Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k2Dir" data-value="up">▲ Up</button>
-                        <button onclick="toggleFilterChip('stoch_k2Dir', 'down', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_k2Dir" data-value="down">▼ Down</button>
-                      </div>
-                    </div>
-                    <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K3 Direction</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
                         <button onclick="toggleFilterChip('stoch_k3Dir', 'up', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_k3Dir" data-value="up">▲ Up</button>
@@ -4073,16 +4066,6 @@ app.get('/', (req, res) => {
                     </div>
                     <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
-                        <label class="block text-xs font-medium text-muted-foreground">K2 <span id="stochK2ValueMinValue" class="ml-2 text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK2ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
-                        <div class="flex items-center gap-3">
-                          <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK2ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK2Value')"><span class="text-xs text-muted-foreground">exc.</span></label>
-                          <label class="relative inline-flex items-center cursor-pointer scale-90 origin-center"><input type="checkbox" id="stochK2ValueToggle" class="sr-only peer" onchange="toggleSliderFilter('stochK2Value')"><div class="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div></label>
-                        </div>
-                      </div>
-                      <div class="px-2"><div class="mb-2"><div class="py-2"><div id="stochK2ValueSlider"></div></div></div></div>
-                    </div>
-                    <div class="mb-4">
-                      <div class="flex items-center justify-between mb-2 px-1">
                         <label class="block text-xs font-medium text-muted-foreground">K3 <span id="stochK3ValueMinValue" class="ml-2 text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK3ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
                           <label class="flex items-center gap-1.5 cursor-pointer" title="Exclude selected range"><input type="checkbox" id="stochK3ValueExcluded" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="toggleSliderFilter('stochK3Value')"><span class="text-xs text-muted-foreground">exc.</span></label>
@@ -4094,39 +4077,39 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Suggestion</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button type="button" onclick="applySuggestionFilterPreset('Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long" title="K1↑ K2↑ K3 71–100">Strong Long</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short" title="K1↓ K2↓ K3 0–29">Strong Short</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin." title="K1↑ K2↑ K2 value 51–80">Long Contin.</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin." title="K1↓ K2↓ K2 value 20–49">Short Contin.</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal" title="K1↑ K2↑ K2 value 20–49">Long Reversal</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal" title="K1↓ K2↓ K2 value 51–79">Short Reversal</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long" title="K1↑ K2↑ K2 value 21–50">Try Long</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias" title="K1↑ K2↑ K2 value 51–80">Long Bias</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short" title="K1↓ K2↓ K2 value 50–79">Try Short</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias" title="K1↓ K2↓ K2 value 20–49">Short Bias</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long" title="K1↑ only (weaker / K2 any)">Lean Long</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short" title="K1↓ only (weaker / K2 any)">Lean Short</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long" title="K2 value 0–15 (extreme low)">No Long</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short" title="K2 value 85–100 (extreme high)">No Short</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought" title="K2↑ K2 value 81–100">Overbought</button>
-                        <button type="button" onclick="applySuggestionFilterPreset('Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold" title="K2↓ K2 value 0–19">Oversold</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Strong Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-300/50 bg-green-300/20 hover:bg-green-300/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Strong Long" title="K1↑ K3 71–100">Strong Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Strong Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-300/50 bg-red-300/20 hover:bg-red-300/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Strong Short" title="K1↓ K3 0–29">Strong Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-cyan-500/50 bg-cyan-500/20 hover:bg-cyan-500/30 active:scale-95 transition-all text-cyan-400" data-filter="stoch_suggestion" data-value="Long Contin." title="K1↑ K1 value 51–80">Long Contin.</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Contin.', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-orange-500/50 bg-orange-500/20 hover:bg-orange-500/30 active:scale-95 transition-all text-orange-400" data-filter="stoch_suggestion" data-value="Short Contin." title="K1↓ K1 value 20–49">Short Contin.</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_suggestion" data-value="Long Reversal" title="K1↑ K1 value 20–49">Long Reversal</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Reversal', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_suggestion" data-value="Short Reversal" title="K1↓ K1 value 51–79">Short Reversal</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Try Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-lime-500/50 bg-lime-500/20 hover:bg-lime-500/30 active:scale-95 transition-all text-lime-400" data-filter="stoch_suggestion" data-value="Try Long" title="K1↑ K1 value 21–50">Try Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Long Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-400/50 bg-green-400/20 hover:bg-green-400/30 active:scale-95 transition-all text-green-300" data-filter="stoch_suggestion" data-value="Long Bias" title="K1↑ K1 value 51–80">Long Bias</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Try Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-rose-500/50 bg-rose-500/20 hover:bg-rose-500/30 active:scale-95 transition-all text-rose-400" data-filter="stoch_suggestion" data-value="Try Short" title="K1↓ K1 value 50–79">Try Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Short Bias', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-400/50 bg-red-400/20 hover:bg-red-400/30 active:scale-95 transition-all text-red-300" data-filter="stoch_suggestion" data-value="Short Bias" title="K1↓ K1 value 20–49">Short Bias</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Lean Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400/70" data-filter="stoch_suggestion" data-value="Lean Long" title="K1↑ only (weaker)">Lean Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Lean Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400/70" data-filter="stoch_suggestion" data-value="Lean Short" title="K1↓ only (weaker)">Lean Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('No Long', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-600/50 bg-red-600/20 hover:bg-red-600/30 active:scale-95 transition-all text-red-500" data-filter="stoch_suggestion" data-value="No Long" title="K1 value 0–15 (extreme low)">No Long</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('No Short', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-600/50 bg-green-600/20 hover:bg-green-600/30 active:scale-95 transition-all text-green-500" data-filter="stoch_suggestion" data-value="No Short" title="K1 value 85–100 (extreme high)">No Short</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Overbought', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-yellow-500/50 bg-yellow-500/20 hover:bg-yellow-500/30 active:scale-95 transition-all text-yellow-400" data-filter="stoch_suggestion" data-value="Overbought" title="K1↑ K1 value 81–100">Overbought</button>
+                        <button type="button" onclick="applySuggestionFilterPreset('Oversold', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-purple-500/50 bg-purple-500/20 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-400" data-filter="stoch_suggestion" data-value="Oversold" title="K1↓ K1 value 0–19">Oversold</button>
                       </div>
                     </div>
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">K order</label>
                       <div class="flex flex-wrap items-center gap-2 mb-2">
                         <label class="flex items-center gap-1.5 cursor-pointer">
-                          <input type="checkbox" id="stochOrderApply" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                          <input type="checkbox" id="stochOrderApply" class="rounded border-border bg-secondary text-amber-500 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <span class="text-xs text-muted-foreground">Apply</span>
                         </label>
                       </div>
                       <div class="flex flex-wrap items-center gap-2">
-                        <select id="stochOrderLeft" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderLeft" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <option value="K1">K1</option>
                           <option value="K2">K2</option>
                           <option value="K3" selected>K3</option>
                         </select>
-                        <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp1" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
@@ -4135,12 +4118,12 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderMid" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderMid" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <option value="K1">K1</option>
                           <option value="K2" selected>K2</option>
                           <option value="K3">K3</option>
                         </select>
-                        <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderOp2" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <option value="-">-</option>
                           <option value="&gt;">&gt;</option>
                           <option value="&lt;">&lt;</option>
@@ -4149,7 +4132,7 @@ app.get('/', (req, res) => {
                           <option value="=">=</option>
                           <option value="and">&amp;</option>
                         </select>
-                        <select id="stochOrderRight" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="updateStochOrderFromDom(); filterAlerts();">
+                        <select id="stochOrderRight" class="appearance-none text-xs rounded border border-border bg-secondary text-foreground px-2 py-1.5 focus:ring-1 focus:ring-amber-500/50" onchange="onUserStochOrderAdjust();">
                           <option value="K1" selected>K1</option>
                           <option value="K2">K2</option>
                           <option value="K3">K3</option>
@@ -4346,10 +4329,8 @@ app.get('/', (req, res) => {
         
         // Stoch K direction filter state
         let stochK1Dir = [];
-        let stochK2Dir = [];
         let stochK3Dir = [];
         let stochK1Value = { min: 0, max: 100, active: false, excluded: false };
-        let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK3Value = { min: 0, max: 100, active: false, excluded: false };
         let stochSuggestion = [];
         let stochOrderActive = false;
@@ -4358,6 +4339,8 @@ app.get('/', (req, res) => {
         let stochOrderMid = 'K2';
         let stochOrderOp2 = '>';
         let stochOrderRight = 'K1';
+        /** True while applySuggestionFilterPreset is pushing slider/dir state (skip auto-clearing suggestion). */
+        let applyingSuggestionPresetLock = false;
 
         let stochFilterPercentChange = [];
         
@@ -4471,9 +4454,9 @@ app.get('/', (req, res) => {
           symbol: { id: 'symbol', title: 'Ticker', sortable: true, sortField: 'symbol', width: 'w-[80px]' },
           price: { id: 'price', title: 'Price', sortable: true, sortField: 'price', width: 'w-[100px]' },
           sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[150px]', tooltip: 'ORB / opening range, VWAP above|below, VWAP bands UB#1–3 / LB#1–3. List webhook (combined script).' },
-          stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 4:00–7:00 PM NY (sample time); Y 0–100 stoch' },
-          stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 4:00–7:00 PM NY (sample time); Y 0–100 stoch' },
-          stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[200px]', tooltip: 'Tri K direction: K1 | K2 | K3' },
+          stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
+          stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
+          stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[160px]', tooltip: 'Tri K direction: K1 | K3' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
@@ -4556,8 +4539,8 @@ app.get('/', (req, res) => {
         }
 
         function hasStochDirFilters() {
-          return stochK1Dir.length > 0 || stochK2Dir.length > 0 || stochK3Dir.length > 0 ||
-            stochK1Value.active || stochK2Value.active || stochK3Value.active || stochSuggestion.length > 0 || stochOrderActive;
+          return stochK1Dir.length > 0 || stochK3Dir.length > 0 ||
+            stochK1Value.active || stochK3Value.active || stochSuggestion.length > 0 || stochOrderActive;
         }
 
         function updateStochOrderFromDom() {
@@ -4573,6 +4556,12 @@ app.get('/', (req, res) => {
           stochOrderMid = midEl ? midEl.value : 'K2';
           stochOrderOp2 = op2El ? op2El.value : '>';
           stochOrderRight = rightEl ? rightEl.value : 'K1';
+        }
+
+        function onUserStochOrderAdjust() {
+          if (!applyingSuggestionPresetLock) clearActiveSuggestionChips();
+          updateStochOrderFromDom();
+          filterAlerts();
         }
 
         function stochOrderCompare(a, op, b) {
@@ -4630,10 +4619,6 @@ app.get('/', (req, res) => {
             const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
             if (!stochK1Dir.includes(dir)) return false;
           }
-          if (stochK2Dir.length > 0) {
-            const dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
-            if (!stochK2Dir.includes(dir)) return false;
-          }
           if (stochK3Dir.length > 0) {
             if (!t || !t.k3) return false;
           }
@@ -4642,12 +4627,6 @@ app.get('/', (req, res) => {
             if (v === null) return false;
             const inside = v >= stochK1Value.min && v <= stochK1Value.max;
             if (stochK1Value.excluded ? inside : !inside) return false;
-          }
-          if (stochK2Value.active) {
-            const v = t && t.dtK != null && !isNaN(parseFloat(t.dtK)) ? parseFloat(t.dtK) : null;
-            if (v === null) return false;
-            const inside = v >= stochK2Value.min && v <= stochK2Value.max;
-            if (stochK2Value.excluded ? inside : !inside) return false;
           }
           if (stochK3Value.active) {
             const v = t && t.k3 != null && !isNaN(parseFloat(t.k3)) ? parseFloat(t.k3) : null;
@@ -4660,9 +4639,8 @@ app.get('/', (req, res) => {
 
         function resetStochValueSliders() {
           stochK1Value.min = 0; stochK1Value.max = 100; stochK1Value.active = false; stochK1Value.excluded = false;
-          stochK2Value.min = 0; stochK2Value.max = 100; stochK2Value.active = false; stochK2Value.excluded = false;
           stochK3Value.min = 0; stochK3Value.max = 100; stochK3Value.active = false; stochK3Value.excluded = false;
-          ['stochK1Value', 'stochK2Value', 'stochK3Value'].forEach(key => {
+          ['stochK1Value', 'stochK3Value'].forEach(key => {
             const t = document.getElementById(key + 'Toggle');
             const e = document.getElementById(key + 'Excluded');
             if (t) t.checked = false;
@@ -4694,26 +4672,26 @@ app.get('/', (req, res) => {
 
         /** Aligns Tri K filters with getKDTrendMessage / getTriStochSuggestion semantics (direction + optional value bands). */
         const SUGGESTION_FILTER_PRESETS = {
-          'Strong Long':   { k1: ['up'], k2: ['up'], k3v: [71, 100] },
-          'Strong Short':  { k1: ['down'], k2: ['down'], k3v: [0, 29] },
-          'Long Contin.':  { k1: ['up'], k2: ['up'], k2v: [51, 80] },
-          'Short Contin.': { k1: ['down'], k2: ['down'], k2v: [20, 49] },
-          'Long Reversal': { k1: ['up'], k2: ['up'], k2v: [20, 49] },
-          'Short Reversal':{ k1: ['down'], k2: ['down'], k2v: [51, 79] },
-          'Try Long':      { k1: ['up'], k2: ['up'], k2v: [21, 50] },
-          'Long Bias':     { k1: ['up'], k2: ['up'], k2v: [51, 80] },
-          'Try Short':     { k1: ['down'], k2: ['down'], k2v: [50, 79] },
-          'Short Bias':    { k1: ['down'], k2: ['down'], k2v: [20, 49] },
+          'Strong Long':   { k1: ['up'], k3v: [71, 100] },
+          'Strong Short':  { k1: ['down'], k3v: [0, 29] },
+          'Long Contin.':  { k1: ['up'], k1v: [51, 80] },
+          'Short Contin.': { k1: ['down'], k1v: [20, 49] },
+          'Long Reversal': { k1: ['up'], k1v: [20, 49] },
+          'Short Reversal':{ k1: ['down'], k1v: [51, 79] },
+          'Try Long':      { k1: ['up'], k1v: [21, 50] },
+          'Long Bias':     { k1: ['up'], k1v: [51, 80] },
+          'Try Short':     { k1: ['down'], k1v: [50, 79] },
+          'Short Bias':    { k1: ['down'], k1v: [20, 49] },
           'Lean Long':     { k1: ['up'] },
           'Lean Short':    { k1: ['down'] },
-          'No Long':       { k2v: [0, 15] },
-          'No Short':      { k2v: [85, 100] },
-          'Overbought':    { k2: ['up'], k2v: [81, 100] },
-          'Oversold':      { k2: ['down'], k2v: [0, 19] }
+          'No Long':       { k1v: [0, 15] },
+          'No Short':      { k1v: [85, 100] },
+          'Overbought':    { k1: ['up'], k1v: [81, 100] },
+          'Oversold':      { k1: ['down'], k1v: [0, 19] }
         };
 
         function applyStochValueSliderRange(key, min, max) {
-          const map = { stochK1Value: stochK1Value, stochK2Value: stochK2Value, stochK3Value: stochK3Value };
+          const map = { stochK1Value: stochK1Value, stochK3Value: stochK3Value };
           const excludedEl = document.getElementById(key + 'Excluded');
           if (excludedEl) excludedEl.checked = false;
           const toggle = document.getElementById(key + 'Toggle');
@@ -4723,7 +4701,19 @@ app.get('/', (req, res) => {
           updateGenericValueFilter(key, map[key]);
         }
 
-        /** One suggestion at a time; applies paired K1/K2/K3 value filters so text match is not blocked by stale chips. */
+        /** Drop suggestion text filter so manual K / slider / order changes take effect (AND no longer forces label match). */
+        function clearActiveSuggestionChips() {
+          const activeSug = document.querySelectorAll('[data-filter="stoch_suggestion"].active');
+          if (!activeSug.length) return;
+          activeSug.forEach(b => b.classList.remove('active'));
+          const anySug = document.querySelector('[data-filter="stoch_suggestion"]');
+          if (anySug) {
+            const pg = anySug.closest('.filter-group');
+            if (pg) pg.classList.remove('has-active');
+          }
+        }
+
+        /** One suggestion at a time; applies paired K1/K3 value filters so text match is not blocked by stale chips. */
         function applySuggestionFilterPreset(suggestionValue, el) {
           const wasActive = el.classList.contains('active');
           const sugGroup = el.closest('.filter-group');
@@ -4734,7 +4724,6 @@ app.get('/', (req, res) => {
           if (wasActive) {
             resetStochValueSliders();
             clearDirectionGroup('stoch_k1Dir');
-            clearDirectionGroup('stoch_k2Dir');
             clearDirectionGroup('stoch_k3Dir');
             stochOrderActive = false;
             const applyEl = document.getElementById('stochOrderApply');
@@ -4753,19 +4742,21 @@ app.get('/', (req, res) => {
           if (applyOrd) applyOrd.checked = false;
           updateStochOrderFromDom();
 
-          resetStochValueSliders();
-          clearDirectionGroup('stoch_k1Dir');
-          clearDirectionGroup('stoch_k2Dir');
-          clearDirectionGroup('stoch_k3Dir');
+          applyingSuggestionPresetLock = true;
+          try {
+            resetStochValueSliders();
+            clearDirectionGroup('stoch_k1Dir');
+            clearDirectionGroup('stoch_k3Dir');
 
-          const preset = SUGGESTION_FILTER_PRESETS[suggestionValue];
-          if (preset) {
-            if (preset.k1 && preset.k1.length) activateDirectionChips('stoch_k1Dir', preset.k1);
-            if (preset.k2 && preset.k2.length) activateDirectionChips('stoch_k2Dir', preset.k2);
-            if (preset.k3 && preset.k3.length) activateDirectionChips('stoch_k3Dir', preset.k3);
-            if (preset.k1v) applyStochValueSliderRange('stochK1Value', preset.k1v[0], preset.k1v[1]);
-            if (preset.k2v) applyStochValueSliderRange('stochK2Value', preset.k2v[0], preset.k2v[1]);
-            if (preset.k3v) applyStochValueSliderRange('stochK3Value', preset.k3v[0], preset.k3v[1]);
+            const preset = SUGGESTION_FILTER_PRESETS[suggestionValue];
+            if (preset) {
+              if (preset.k1 && preset.k1.length) activateDirectionChips('stoch_k1Dir', preset.k1);
+              if (preset.k3 && preset.k3.length) activateDirectionChips('stoch_k3Dir', preset.k3);
+              if (preset.k1v) applyStochValueSliderRange('stochK1Value', preset.k1v[0], preset.k1v[1]);
+              if (preset.k3v) applyStochValueSliderRange('stochK3Value', preset.k3v[0], preset.k3v[1]);
+            }
+          } finally {
+            applyingSuggestionPresetLock = false;
           }
 
           updateFilterArrays();
@@ -4774,7 +4765,7 @@ app.get('/', (req, res) => {
 
         function clearStochDirFilters() {
           document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
-          stochK1Dir = []; stochK2Dir = []; stochK3Dir = []; stochSuggestion = [];
+          stochK1Dir = []; stochK3Dir = []; stochSuggestion = [];
           stochOrderActive = false;
           stochOrderLeft = 'K3'; stochOrderOp1 = '>'; stochOrderMid = 'K2'; stochOrderOp2 = '>'; stochOrderRight = 'K1';
           const applyEl = document.getElementById('stochOrderApply');
@@ -5061,7 +5052,6 @@ app.get('/', (req, res) => {
 
         function initializeSliders() {
           createValueSlider('stochK1Value', 'stochK1ValueSlider', 'stochK1ValueMinValue', 'stochK1ValueMaxValue', function() { updateGenericValueFilter('stochK1Value', stochK1Value); });
-          createValueSlider('stochK2Value', 'stochK2ValueSlider', 'stochK2ValueMinValue', 'stochK2ValueMaxValue', function() { updateGenericValueFilter('stochK2Value', stochK2Value); });
           createValueSlider('stochK3Value', 'stochK3ValueSlider', 'stochK3ValueMinValue', 'stochK3ValueMaxValue', function() { updateGenericValueFilter('stochK3Value', stochK3Value); });
         }
 
@@ -5726,6 +5716,9 @@ app.get('/', (req, res) => {
 
         // Chip-based filter toggle function
         function toggleFilterChip(filterType, value, element) {
+          if (filterType === 'stoch_k1Dir' || filterType === 'stoch_k3Dir') {
+            clearActiveSuggestionChips();
+          }
           // Toggle active state for filters
           element.classList.toggle('active');
           
@@ -5744,7 +5737,7 @@ app.get('/', (req, res) => {
         }
         
         function toggleSliderFilter(sliderType) {
-          const map = { stochK1Value: stochK1Value, stochK2Value: stochK2Value, stochK3Value: stochK3Value };
+          const map = { stochK1Value: stochK1Value, stochK3Value: stochK3Value };
           if (map[sliderType]) updateGenericValueFilter(sliderType, map[sliderType]);
         }
 
@@ -5753,6 +5746,9 @@ app.get('/', (req, res) => {
           const excludedEl = document.getElementById(key + 'Excluded');
           const slider = sliders[key];
           if (slider && slider.noUiSlider) {
+            if (!applyingSuggestionPresetLock && (key === 'stochK1Value' || key === 'stochK3Value')) {
+              clearActiveSuggestionChips();
+            }
             const values = slider.noUiSlider.get();
             const minVal = Math.round(parseFloat(values[0]));
             const maxVal = Math.round(parseFloat(values[1]));
@@ -5780,7 +5776,6 @@ app.get('/', (req, res) => {
 
         function updateFilterArrays() {
           stochK1Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k1Dir"].active')).map(c => c.dataset.value);
-          stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
           stochK3Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k3Dir"].active')).map(c => c.dataset.value);
           stochSuggestion = Array.from(document.querySelectorAll('[data-filter="stoch_suggestion"].active')).map(c => c.dataset.value);
           updateStochOrderFromDom();
@@ -5874,10 +5869,8 @@ app.get('/', (req, res) => {
 
           if (preset === 'down') {
             activateChip('stoch_k1Dir', 'down');
-            activateChip('stoch_k2Dir', 'down');
           } else if (preset === 'up') {
             activateChip('stoch_k1Dir', 'up');
-            activateChip('stoch_k2Dir', 'up');
           } else if (preset === 'extBull') {
             activateChip('stoch_k1Dir', 'up');
             setStochK1ValueFilterFromPreset(80, 100);
@@ -5932,7 +5925,6 @@ app.get('/', (req, res) => {
             filters: {
               stoch: {
                 k1Dir: stochK1Dir,
-                k2Dir: stochK2Dir,
                 k3Dir: stochK3Dir
               },
               percentChange: stochFilterPercentChange,
@@ -5985,11 +5977,10 @@ Use this to create a new preset filter button that applies these exact filter se
           data.forEach(alert => {
             const t = alert.triStoch;
             const k1Dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
-            const k2Dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
             const k1Val = t && t.ovK != null ? parseFloat(t.ovK) : null;
             
-            let matchesDown = k1Dir === 'down' && k2Dir === 'down';
-            let matchesUp = k1Dir === 'up' && k2Dir === 'up';
+            let matchesDown = k1Dir === 'down';
+            let matchesUp = k1Dir === 'up';
             let matchesExtBull = k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100;
             let matchesExtBear = k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30;
             
@@ -7195,7 +7186,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
@@ -7213,7 +7204,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = 'text-amber-400';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 — X: 4–7 PM NY by sample time; Y: %K 0–100">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK3') + '" title="K3 — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + '</span>' +
@@ -7230,7 +7221,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground') : 'text-muted-foreground';
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
-                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', t.dtK, t.dtKDirection), kCell('K3', t.k3, null)];
+                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K3', t.k3, null)];
                 const unified = getUnifiedStochSuggestion(alert);
                 let suggestionHtml = '';
                 if (unified) {
@@ -7270,13 +7261,12 @@ Use this to create a new preset filter button that applies these exact filter se
           
           const t = alert.triStoch;
           const k1Dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
-          const k2Dir = t && t.dtKDirection ? t.dtKDirection : 'flat';
           const k1Val = t && t.ovK != null ? parseFloat(t.ovK) : null;
           
           const matches = [];
           
-          if (k1Dir === 'down' && k2Dir === 'down') matches.push('down');
-          if (k1Dir === 'up' && k2Dir === 'up') matches.push('up');
+          if (k1Dir === 'down') matches.push('down');
+          if (k1Dir === 'up') matches.push('up');
           if (k1Dir === 'up' && k1Val !== null && !isNaN(k1Val) && k1Val >= 80 && k1Val <= 100) matches.push('extBull');
           if (k1Dir === 'down' && k1Val !== null && !isNaN(k1Val) && k1Val >= 0 && k1Val <= 30) matches.push('extBear');
           
