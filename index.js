@@ -4064,6 +4064,8 @@ app.get('/', (req, res) => {
                       <div class="filter-group flex flex-wrap gap-1">
                         <button type="button" onclick="toggleFilterChip('range_orb', 'Upper ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-400" data-filter="range_orb" data-value="Upper ORB" title="Close at/above NY ORB midpoint">Upper ORB</button>
                         <button type="button" onclick="toggleFilterChip('range_orb', 'Lower ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-400" data-filter="range_orb" data-value="Lower ORB" title="Close below NY ORB midpoint">Lower ORB</button>
+                        <button type="button" onclick="toggleFilterChip('range_orb', 'Above ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-green-500/50 bg-green-500/15 hover:bg-green-500/25 active:scale-95 transition-all text-green-300" data-filter="range_orb" data-value="Above ORB" title="Price above NY ORB high">Above ORB</button>
+                        <button type="button" onclick="toggleFilterChip('range_orb', 'Below ORB', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-red-500/50 bg-red-500/15 hover:bg-red-500/25 active:scale-95 transition-all text-red-300" data-filter="range_orb" data-value="Below ORB" title="Price below NY ORB low">Below ORB</button>
                         <button type="button" onclick="toggleFilterChip('range_orb', 'ORB forming', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 active:scale-95 transition-all text-amber-400" data-filter="range_orb" data-value="ORB forming">ORB forming</button>
                         <button type="button" onclick="toggleFilterChip('range_orb', '—', this)" class="filter-chip px-2 py-1 text-[10px] font-medium border border-border bg-secondary/40 hover:bg-secondary/60 active:scale-95 transition-all text-muted-foreground" data-filter="range_orb" data-value="—">—</button>
                       </div>
@@ -4310,8 +4312,11 @@ app.get('/', (req, res) => {
             <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Lower ORB">
               DN <span id="presetBelowOrbCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetWithinOrb" data-preset-group="orb" onclick="applyPresetFilter('withinOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border bg-secondary hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="ORB forming">
-              FRM <span id="presetWithinOrbCount" class="ml-0.5 text-muted-foreground font-bold">0</span>
+            <button id="presetOrbAbove" data-preset-group="orb" onclick="applyPresetFilter('orbAbove')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Above ORB">
+              ABOVE <span id="presetOrbAboveCount" class="ml-0.5 text-green-300 font-bold">0</span>
+            </button>
+            <button id="presetOrbBelow" data-preset-group="orb" onclick="applyPresetFilter('orbBelow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Below ORB">
+              BELOW <span id="presetOrbBelowCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">BRK</span>
             <button id="presetBrkHigh" data-preset-group="brk" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Break D.High">
@@ -4342,11 +4347,11 @@ app.get('/', (req, res) => {
               ↓ <span id="presetRevDnCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">K3</span>
-            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="K3 > 85">
-              &gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-red-300 font-bold">0</span>
+            <button id="presetK3Gt85" data-preset-group="k3" onclick="applyPresetFilter('k3Gt85')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="K3 > 85">
+              &gt;85 <span id="presetK3Gt85Count" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="K3 < 20">
-              &lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-green-300 font-bold">0</span>
+            <button id="presetK3Lt20" data-preset-group="k3" onclick="applyPresetFilter('k3Lt20')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="K3 < 20">
+              &lt;20 <span id="presetK3Lt20Count" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="Clear all presets and filters">
               CLEAR
@@ -5010,6 +5015,17 @@ app.get('/', (req, res) => {
           return String(raw).trim();
         }
 
+        // ORB opening-range boundary side from price vs NY ORB high/low.
+        function getRangeCellOrbBoundaryLabel(alert) {
+          const p = parseFloat(alert.price);
+          const h = parseFloat(alert.nyOrbHigh);
+          const l = parseFloat(alert.nyOrbLow);
+          if (isNaN(p) || isNaN(h) || isNaN(l)) return null;
+          if (p > h) return 'Above ORB';
+          if (p < l) return 'Below ORB';
+          return 'Inside ORB';
+        }
+
         function getRangeCellVwapSide(alert) {
           const vw = getRangeColumnVwapHtml(alert);
           return vw.vwapText || null;
@@ -5071,7 +5087,9 @@ app.get('/', (req, res) => {
           if (!hasRangeFilters()) return true;
           if (rangeOrbFilter.length > 0) {
             const orb = getRangeCellOrbLabel(alert);
-            if (!rangeOrbFilter.includes(orb)) return false;
+            const orbBoundary = getRangeCellOrbBoundaryLabel(alert);
+            const orbMatched = rangeOrbFilter.some(v => v === orb || v === orbBoundary);
+            if (!orbMatched) return false;
           }
           if (rangeLabelFilter.length > 0) {
             const lbl = getRangeCellLabel(alert);
@@ -6168,7 +6186,8 @@ app.get('/', (req, res) => {
             belowVwap: sameSingle(rangeVwapFilter, 'Below VWAP'),
             aboveOrb: sameSingle(rangeOrbFilter, 'Upper ORB'),
             belowOrb: sameSingle(rangeOrbFilter, 'Lower ORB'),
-            withinOrb: sameSingle(rangeOrbFilter, 'ORB forming'),
+            orbAbove: sameSingle(rangeOrbFilter, 'Above ORB'),
+            orbBelow: sameSingle(rangeOrbFilter, 'Below ORB'),
             brkHigh: sameSingle(rangeLabelFilter, 'Break D.High'),
             brkLow: sameSingle(rangeLabelFilter, 'Break D.Low'),
             trendUp: hasVal(rangeVwapFilter, 'Above VWAP') && hasVal(rangeEmaFilter, 'ema_UU'),
@@ -6295,7 +6314,7 @@ app.get('/', (req, res) => {
 
           const presetByGroup = {
             vwap: ['aboveVwap', 'belowVwap'],
-            orb: ['belowOrb', 'aboveOrb', 'withinOrb'],
+            orb: ['belowOrb', 'aboveOrb', 'orbAbove', 'orbBelow'],
             brk: ['brkHigh', 'brkLow'],
             trend: ['trendUp', 'trendDn'],
             momentum: ['momUp', 'momDn'],
@@ -6307,7 +6326,8 @@ app.get('/', (req, res) => {
             belowVwap: 'vwap',
             belowOrb: 'orb',
             aboveOrb: 'orb',
-            withinOrb: 'orb',
+            orbAbove: 'orb',
+            orbBelow: 'orb',
             brkHigh: 'brk',
             brkLow: 'brk',
             trendUp: 'trend',
@@ -6396,8 +6416,10 @@ app.get('/', (req, res) => {
               activateChip('range_orb', 'Lower ORB');
             } else if (preset === 'aboveOrb') {
               activateChip('range_orb', 'Upper ORB');
-            } else if (preset === 'withinOrb') {
-              activateChip('range_orb', 'ORB forming');
+            } else if (preset === 'orbAbove') {
+              activateChip('range_orb', 'Above ORB');
+            } else if (preset === 'orbBelow') {
+              activateChip('range_orb', 'Below ORB');
             } else if (preset === 'brkHigh') {
               activateChip('range_lbl', 'Break D.High');
             } else if (preset === 'brkLow') {
@@ -6527,7 +6549,7 @@ Use this to create a new preset filter button that applies these exact filter se
           
           const presetIds = [
             'presetAboveVwapCount','presetBelowVwapCount','presetAboveOrbCount','presetBelowOrbCount',
-            'presetWithinOrbCount','presetBrkHighCount','presetBrkLowCount',
+            'presetOrbAboveCount','presetOrbBelowCount','presetBrkHighCount','presetBrkLowCount',
             'presetTrendUpCount','presetTrendDnCount',
             'presetMomUpCount','presetMomDnCount',
             'presetRevUpCount','presetRevDnCount',
@@ -6539,7 +6561,7 @@ Use this to create a new preset filter button that applies these exact filter se
           }
 
           let aboveVwapCount = 0, belowVwapCount = 0;
-          let aboveOrbCount = 0, belowOrbCount = 0, withinOrbCount = 0;
+          let aboveOrbCount = 0, belowOrbCount = 0, orbAboveCount = 0, orbBelowCount = 0;
           let brkHighCount = 0, brkLowCount = 0;
           let trendUpCount = 0, trendDnCount = 0;
           let momUpCount = 0, momDnCount = 0;
@@ -6552,6 +6574,7 @@ Use this to create a new preset filter button that applies these exact filter se
             const k1Dir = t && t.ovKDirection ? String(t.ovKDirection).toLowerCase() : null;
             const vwapSide = getRangeCellVwapSide(alert);
             const orbLabel = getRangeCellOrbLabel(alert);
+            const orbBoundaryLabel = getRangeCellOrbBoundaryLabel(alert);
             const rangeLabel = getRangeCellLabel(alert);
             const emaCode = getEmaStackCode(alert);
 
@@ -6559,7 +6582,8 @@ Use this to create a new preset filter button that applies these exact filter se
             if (vwapSide === 'Below VWAP') belowVwapCount++;
             if (orbLabel === 'Upper ORB') aboveOrbCount++;
             if (orbLabel === 'Lower ORB') belowOrbCount++;
-            if (orbLabel === 'ORB forming') withinOrbCount++;
+            if (orbBoundaryLabel === 'Above ORB') orbAboveCount++;
+            if (orbBoundaryLabel === 'Below ORB') orbBelowCount++;
             if (rangeLabel === 'Break D.High') brkHighCount++;
             if (rangeLabel === 'Break D.Low') brkLowCount++;
             if (vwapSide === 'Above VWAP' && emaCode === 'ema_UU') trendUpCount++;
@@ -6577,7 +6601,8 @@ Use this to create a new preset filter button that applies these exact filter se
           setCount('presetBelowVwapCount', belowVwapCount);
           setCount('presetAboveOrbCount', aboveOrbCount);
           setCount('presetBelowOrbCount', belowOrbCount);
-          setCount('presetWithinOrbCount', withinOrbCount);
+          setCount('presetOrbAboveCount', orbAboveCount);
+          setCount('presetOrbBelowCount', orbBelowCount);
           setCount('presetBrkHighCount', brkHighCount);
           setCount('presetBrkLowCount', brkLowCount);
           setCount('presetTrendUpCount', trendUpCount);
