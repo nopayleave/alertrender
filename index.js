@@ -3602,6 +3602,10 @@ app.get('/', (req, res) => {
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
+        .kanban-card.unmatched {
+          opacity: 0.35;
+          filter: saturate(0.55);
+        }
         .kanban-card.starred {
           border-color: rgba(251, 191, 36, 0.5);
           background: hsl(0 0% 14%);
@@ -5393,17 +5397,25 @@ app.get('/', (req, res) => {
             return;
           }
           
-          // Filter data (same logic as renderTable)
-          let filteredData = alertsData;
+          // Search narrows dataset; filters only decide match-vs-dim in card view.
+          let displayData = alertsData;
           if (searchTerm) {
-            filteredData = alertsData.filter(alert => 
+            displayData = alertsData.filter(alert => 
               (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
+
+          if (displayData.length === 0) {
+            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
+            return;
+          }
           
-          // Apply Other Filters (Price %, Volume) - same as renderTable
+          // Build matched subset from current filters; unmatched cards stay visible but dimmed.
+          let matchedData = displayData;
+
+          // Apply Other Filters (Price %, Volume) - same predicates as table
           if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
-            filteredData = filteredData.filter(alert => {
+            matchedData = matchedData.filter(alert => {
               // Price % filter (changeFromPrevDay)
               if (stochFilterPercentChange.length > 0) {
                 const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
@@ -5442,19 +5454,20 @@ app.get('/', (req, res) => {
           }
 
           if (hasRangeFilters()) {
-            filteredData = filteredData.filter(alert => passesRangeFilter(alert));
+            matchedData = matchedData.filter(alert => passesRangeFilter(alert));
           }
 
           // Apply Stoch K direction filters
           if (hasStochDirFilters()) {
-            filteredData = filteredData.filter(alert => {
+            matchedData = matchedData.filter(alert => {
               return passesStochDirFilter(alert);
             });
           }
+          const matchedSet = new Set(matchedData);
           
-          // Sort filtered data - starred items always come first
+          // Sort display data - starred items always come first
           if (currentSortField) {
-            filteredData.sort((a, b) => {
+            displayData.sort((a, b) => {
               const aStarred = isStarred(a.symbol);
               const bStarred = isStarred(b.symbol);
               
@@ -5477,11 +5490,6 @@ app.get('/', (req, res) => {
                 return currentSortDirection === 'asc' ? result : -result;
               }
             });
-          }
-          
-          if (filteredData.length === 0) {
-            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
-            return;
           }
           
           function getK3ValueFromAlert(alert) {
@@ -5507,7 +5515,7 @@ app.get('/', (req, res) => {
           masonryContainer.style.gridTemplateColumns = cardSortMode === 'k3Bands'
             ? 'repeat(5, minmax(220px, 1fr))'
             : 'repeat(auto-fit, minmax(220px, 1fr))';
-          filteredData.forEach(alert => {
+          displayData.forEach(alert => {
             if (cardSortMode === 'k3Bands') {
               const k3Val = getK3ValueFromAlert(alert);
               if (k3Val !== null && k3Val < 10) {
@@ -5592,7 +5600,8 @@ app.get('/', (req, res) => {
                   const k1Arrow = k1Dir === 'up' ? '▲' : k1Dir === 'down' ? '▼' : '–';
                   const k3Arrow = k3Dir === 'up' ? '▲' : k3Dir === 'down' ? '▼' : '–';
                   const starred = isStarred(symbol);
-                  const cardClass = starred ? 'kanban-card starred' : 'kanban-card';
+                  const isMatched = matchedSet.has(alert);
+                  const cardClass = (starred ? 'kanban-card starred' : 'kanban-card') + (isMatched ? '' : ' unmatched');
                   
                   // Change percentage (from previous day's close)
                   const changePercent = alert.changeFromPrevDay;
