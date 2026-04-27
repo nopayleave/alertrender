@@ -1446,6 +1446,7 @@ app.post('/webhook', (req, res) => {
       const n = parseFloat(v)
       return isNaN(n) ? null : n
     }
+    const triMode = String(alert.stochTimeframe || alert.stochMode || 'Interday').toLowerCase() === 'swing' ? 'Swing' : 'Interday'
     const triStoch = {
       k1: parseTriVal(alert.k1),
       k2: parseTriVal(alert.k2),
@@ -1463,6 +1464,7 @@ app.post('/webhook', (req, res) => {
       dtDDirection: alert.dtDDirection || null,
       dtD2Pattern: alert.dtD2Pattern || '',
       dtD2PatternValue: parseTriVal(alert.dtD2PatternValue),
+      stochTimeframe: triMode,
       timestamp: Date.now()
     }
     stochOverviewDataStorage[alert.symbol] = {
@@ -1498,6 +1500,8 @@ app.post('/webhook', (req, res) => {
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].triStoch = triStoch
+      alerts[existingIndex].triStochModes = alerts[existingIndex].triStochModes || {}
+      alerts[existingIndex].triStochModes[triMode] = triStoch
       if (alert.price) alerts[existingIndex].price = alert.price
       if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
       if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
@@ -1512,6 +1516,7 @@ app.post('/webhook', (req, res) => {
         changeFromPrevDay: alert.changeFromPrevDay || null,
         volume: alert.volume || null,
         triStoch,
+        triStochModes: { [triMode]: triStoch },
         receivedAt: Date.now()
       })
       console.log(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
@@ -2181,6 +2186,10 @@ app.get('/alerts', (req, res) => {
           timestamp: Math.max(ovRecent ? ovInfo.timestamp : 0, dtRecent ? dtInfo.timestamp : 0)
         }
       }
+    }
+    if (!alert.triStochModes && alert.triStoch) {
+      const inferredMode = String(alert.triStoch.stochTimeframe || 'Interday').toLowerCase() === 'swing' ? 'Swing' : 'Interday'
+      alert.triStochModes = { [inferredMode]: alert.triStoch }
     }
     // Inject stoch session tracker data
     const sess = stochSessionTracker[alert.symbol]
@@ -4004,8 +4013,9 @@ app.get('/', (req, res) => {
     <body class="bg-background h-screen overflow-hidden antialiased">
       <!-- === TOP BAR (36px) — Bloomberg-style edge-to-edge === -->
       <header class="flex items-center h-9 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
-        <div class="flex items-center gap-2 px-3 h-full border-r border-border bg-[hsl(38,95%,50%)] min-w-[130px]">
+        <div class="flex items-center gap-2 px-3 h-full border-r border-border bg-[hsl(38,95%,50%)] min-w-[240px]">
           <span class="font-terminal text-xs font-bold tracking-widest text-black">ALERTS</span>
+          <button id="triTimeframeToggle" onclick="toggleTriTimeframeMode()" class="ml-1 px-2 py-0.5 rounded border border-black/30 bg-black/10 hover:bg-black/20 text-[10px] font-terminal font-bold tracking-wide text-black" title="Toggle Stoch Timeframe Mode">INTERDAY</button>
         </div>
         <div class="flex items-center gap-1.5 px-2.5 h-full border-r border-border">
           <div id="connectionIndicator" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
@@ -4481,6 +4491,7 @@ app.get('/', (req, res) => {
       <script>
         // View state (table or card)
         let currentView = localStorage.getItem('viewMode') || 'table'; // 'table' or 'masonry'
+        let activeTriTimeframeMode = localStorage.getItem('triTimeframeMode') || 'Interday';
         if (currentView === 'card') currentView = 'masonry'; // Backward/forward compatibility
         let cardSortMode = localStorage.getItem('cardSortMode') || 'k3Bands';
         
@@ -4699,6 +4710,39 @@ app.get('/', (req, res) => {
           if (value === null || value === undefined || value === '') return null;
           const num = parseFloat(value);
           return isNaN(num) ? null : num;
+        }
+
+        function normalizeTriTimeframeMode(mode) {
+          return String(mode || '').toLowerCase() === 'swing' ? 'Swing' : 'Interday';
+        }
+
+        function getActiveTriStoch(alert) {
+          if (!alert) return null;
+          const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
+          const modes = alert.triStochModes || null;
+          if (modes && modes[mode]) return modes[mode];
+          if (modes && mode === 'Swing' && modes.Interday) return modes.Interday;
+          if (modes && mode === 'Interday' && modes.Swing) return modes.Swing;
+          return alert.triStoch || null;
+        }
+
+        function applyTriTimeframeModeToAlerts() {
+          alertsData.forEach(alert => {
+            const selected = getActiveTriStoch(alert);
+            if (selected) alert.triStoch = selected;
+          });
+        }
+
+        function updateTriTimeframeToggleUI() {
+          const btn = document.getElementById('triTimeframeToggle');
+          if (btn) btn.textContent = normalizeTriTimeframeMode(activeTriTimeframeMode).toUpperCase();
+        }
+
+        function toggleTriTimeframeMode() {
+          activeTriTimeframeMode = normalizeTriTimeframeMode(activeTriTimeframeMode) === 'Interday' ? 'Swing' : 'Interday';
+          localStorage.setItem('triTimeframeMode', activeTriTimeframeMode);
+          updateTriTimeframeToggleUI();
+          renderTable();
         }
 
         function getStochValues(alert) {
@@ -5474,6 +5518,8 @@ app.get('/', (req, res) => {
 
         // Initialize sort indicators on page load
         document.addEventListener('DOMContentLoaded', function() {
+          activeTriTimeframeMode = normalizeTriTimeframeMode(activeTriTimeframeMode);
+          updateTriTimeframeToggleUI();
           updateSortIndicators();
           renderTableHeaders();
           setupColumnDragAndDrop();
@@ -5529,6 +5575,7 @@ app.get('/', (req, res) => {
         function renderMasonry() {
           const masonryContainer = document.getElementById('masonryContainer');
           const lastUpdate = document.getElementById('lastUpdate');
+          applyTriTimeframeModeToAlerts();
           
           if (alertsData.length === 0) {
             masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No alerts available</div>';
@@ -6917,6 +6964,7 @@ Use this to create a new preset filter button that applies these exact filter se
           
           const alertTable = document.getElementById('alertTable');
           const lastUpdate = document.getElementById('lastUpdate');
+          applyTriTimeframeModeToAlerts();
           
           if (alertsData.length === 0) {
             alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No alerts available</td></tr>\`;
