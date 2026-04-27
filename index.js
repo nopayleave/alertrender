@@ -4721,15 +4721,18 @@ app.get('/', (req, res) => {
           const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
           const modes = alert.triStochModes || null;
           if (modes && modes[mode]) return modes[mode];
-          if (modes && mode === 'Swing' && modes.Interday) return modes.Interday;
-          if (modes && mode === 'Interday' && modes.Swing) return modes.Swing;
-          return alert.triStoch || null;
+          const legacy = alert.triStoch || null;
+          if (legacy) {
+            const legacyMode = normalizeTriTimeframeMode(legacy.stochTimeframe || 'Interday');
+            if (legacyMode === mode) return legacy;
+          }
+          return null;
         }
 
         function applyTriTimeframeModeToAlerts() {
           alertsData.forEach(alert => {
             const selected = getActiveTriStoch(alert);
-            if (selected) alert.triStoch = selected;
+            alert.triStoch = selected;
           });
         }
 
@@ -5585,9 +5588,10 @@ app.get('/', (req, res) => {
           
           // Search narrows dataset; filters only decide match-vs-dim in card view.
           let displayData = alertsData;
+          displayData = displayData.filter(alert => !!alert.triStoch);
           if (searchTerm) {
             displayData = alertsData.filter(alert => 
-              (alert.symbol || '').toLowerCase().includes(searchTerm)
+              !!alert.triStoch && (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
 
@@ -6977,9 +6981,10 @@ Use this to create a new preset filter button that applies these exact filter se
 
           // Filter data by search term
           let filteredData = alertsData;
+          filteredData = filteredData.filter(alert => !!alert.triStoch);
           if (searchTerm) {
             filteredData = alertsData.filter(alert => 
-              (alert.symbol || '').toLowerCase().includes(searchTerm)
+              !!alert.triStoch && (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
           
