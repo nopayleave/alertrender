@@ -6,18 +6,21 @@
 indicator("Stoch + Trendlines + Divergence + H&S", overlay=false,
      max_lines_count=500, max_labels_count=500, max_boxes_count=200)
 
+// line.new(xloc.bar_index) resolves x to timestamps via `time`. Without this, anchors far
+// behind the current bar can exceed the auto-sized buffer on realtime / Bar Replay (RE10143).
+max_bars_back(time, 5000)
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  INPUTS
 // ═══════════════════════════════════════════════════════════════════════════════
-grp_stoch = "Stochastic Settings"
-kLength   = input.int(39,    "K Length",        minval=1,  group=grp_stoch)
-kSmooth   = input.int(5,     "K Smoothing",     minval=1,  group=grp_stoch)
-dSmooth   = input.int(4,     "D Smoothing",     minval=1,  group=grp_stoch)
-extraSmooth = input.int(3,   "Extra Smooth (K & D)", minval=1, group=grp_stoch)
-obLevel   = input.int(80,    "Overbought",      minval=50, maxval=100, group=grp_stoch)
-obExtreme = input.int(90,    "Overbought Extreme", minval=50, maxval=100, group=grp_stoch)
-osLevel   = input.int(20,    "Oversold",         minval=0,  maxval=50,  group=grp_stoch)
-osExtreme = input.int(10,    "Oversold Extreme", minval=0,  maxval=50,  group=grp_stoch)
+kLength   = input.int(39,    "K Length",        minval=1,  group="Stochastic Settings")
+kSmooth   = input.int(5,     "K Smoothing",     minval=1,  group="Stochastic Settings")
+dSmooth   = input.int(4,     "D Smoothing",     minval=1,  group="Stochastic Settings")
+extraSmooth = input.int(3,   "Extra Smooth (K & D)", minval=1, group="Stochastic Settings")
+obLevel   = input.int(80,    "Overbought",      minval=50, maxval=100, group="Stochastic Settings")
+obExtreme = input.int(90,    "Overbought Extreme", minval=50, maxval=100, group="Stochastic Settings")
+osLevel   = input.int(20,    "Oversold",         minval=0,  maxval=50,  group="Stochastic Settings")
+osExtreme = input.int(10,    "Oversold Extreme", minval=0,  maxval=50,  group="Stochastic Settings")
 
 grp_mtf = "MTF Source"
 baseMult = input.string("1x", "Base (S1)", options=["0.25x", "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "4x", "6x", "8x"], group=grp_mtf)
@@ -130,7 +133,7 @@ d3IsUp = d3 >= d3[1]
 k3Color = (k3 < 5 or k3 > 95) ? color.white : f_lineColor(k3, k3IsUp, colorUp, colorDown)
 d3Color = f_lineColor(d3, d3IsUp, colorUp, colorDown)
 
-s3Opacity = input.int(50, title="S3 Opacity", minval=0, maxval=100, group=grp_stoch, tooltip="0=transparent, 100=solid")
+s3Opacity = input.int(50, title="S3 Opacity", minval=0, maxval=100, group="Stochastic Settings", tooltip="0=transparent, 100=solid")
 plot(k3, "S3 Histogram", style=plot.style_columns, color=color.new(k3Color, 100 - s3Opacity), linewidth=4)
 plot(k2, "S2 K", color.new(k2Color, 30), 2)
 plot(d2, "S2 D", color.new(d2Color, 45), 1, display=display.none)

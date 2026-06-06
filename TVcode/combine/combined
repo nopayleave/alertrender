@@ -1,14 +1,17 @@
 //@version=6
-indicator(title="OBR + Range", shorttitle="OBR + Range", overlay=true)
+indicator(title="OBR + Range", shorttitle="OBR + Range", overlay=true, behind_chart=true)
 
 // =============================================================================
 // INPUTS — List (VWAP / EMA / alerts)
 // =============================================================================
+DISPLAY_GROUP = "Display"
+hideAbove5m = input.bool(true, title="Hide Above 5 Minutes", group=DISPLAY_GROUP, tooltip="Hide all indicator visuals and alerts on chart timeframes longer than 5 minutes (daily/weekly always hidden when enabled)")
 hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings", display=display.data_window)
 var anchor = input.string(defval="Session", title="Anchor Period",
      options=["Session", "Week", "Month", "Quarter", "Year", "Decade", "Century", "Earnings", "Dividends", "Splits"], group="VWAP Settings")
 src = input(title="Source", defval=hlc3, group="VWAP Settings", display=display.data_window)
 offset = input.int(0, title="Offset", group="VWAP Settings", minval=0, display=display.data_window)
+vwapLineColor = input.color(color.yellow, title="VWAP Line", group="VWAP Settings")
 
 EMA_GROUP = "EMA Settings"
 ema1Length = input.int(50, title="EMA 1 Length", group=EMA_GROUP)
@@ -17,6 +20,10 @@ ema1Smooth = input.bool(false, title="EMA 1 Smooth (vs Step)", group=EMA_GROUP)
 ema2Length = input.int(200, title="EMA 2 Length", group=EMA_GROUP)
 ema2Timeframe = input.timeframe("1", title="EMA 2 Timeframe", group=EMA_GROUP, tooltip="Default 1m; change or use chart timeframe as needed")
 ema2Smooth = input.bool(false, title="EMA 2 Smooth (vs Step)", group=EMA_GROUP)
+showEmaSr = input.bool(true, title="Show EMA Support/Resistance Lines", group=EMA_GROUP)
+emaSrLen = input.int(20, title="EMA S/R Line Length (bars)", minval=1, group=EMA_GROUP)
+emaSlopeLen = input.int(10, title="EMA Slope Lookback (bars)", minval=1, group=EMA_GROUP, tooltip="Bars used to measure EMA slope. Rising EMA reinforces support; falling EMA reinforces resistance.")
+emaBreakThresh = input.int(40, title="Break Warning Below (%)", minval=0, maxval=100, group=EMA_GROUP, tooltip="If hold/reject confidence is at or below this, label adds a break warning.")
 
 ALERT_GROUP = "List — Alert Settings"
 enableListAlerts = input.bool(true, title="Enable List Webhook Alerts", group=ALERT_GROUP)
@@ -34,6 +41,26 @@ showBand_2 = input(true, title="", group=BANDS_GROUP, inline="band_2", display=d
 bandMult_2 = input.float(2.0, title="Bands Multiplier #2", group=BANDS_GROUP, inline="band_2", step=0.5, minval=0, display=display.data_window)
 showBand_3 = input(true, title="", group=BANDS_GROUP, inline="band_3", display=display.data_window)
 bandMult_3 = input.float(3.0, title="Bands Multiplier #3", group=BANDS_GROUP, inline="band_3", step=0.5, minval=0, display=display.data_window)
+
+BANDS_COLOR_GROUP = "VWAP Band Colors"
+showBandFills = input.bool(true, title="Show Band Background Fills", group=BANDS_COLOR_GROUP)
+bandFillTransp = input.int(88, title="Background Transparency", minval=0, maxval=100, group=BANDS_COLOR_GROUP, tooltip="0 = solid, 100 = invisible")
+bandLineTransp = input.int(50, title="Band Line Transparency", minval=0, maxval=100, group=BANDS_COLOR_GROUP)
+band1UpLine = input.color(#4caf50, title="B1 Upper Line", group=BANDS_COLOR_GROUP, inline="b1l")
+band1LoLine = input.color(#f23645, title="B1 Lower Line", group=BANDS_COLOR_GROUP, inline="b1l")
+band1UpFill = input.color(#4caf50, title="B1 Upper BG", group=BANDS_COLOR_GROUP, inline="b1bg")
+band1LoFill = input.color(#f23645, title="B1 Lower BG", group=BANDS_COLOR_GROUP, inline="b1bg")
+band1ChannelFill = input.color(#4caf50, title="B1 Channel BG", group=BANDS_COLOR_GROUP, inline="b1ch")
+band2UpLine = input.color(#70ccbd, title="B2 Upper Line", group=BANDS_COLOR_GROUP, inline="b2l")
+band2LoLine = input.color(#f48fb1, title="B2 Lower Line", group=BANDS_COLOR_GROUP, inline="b2l")
+band2UpFill = input.color(#70ccbd, title="B2 Upper BG", group=BANDS_COLOR_GROUP, inline="b2bg")
+band2LoFill = input.color(#f48fb1, title="B2 Lower BG", group=BANDS_COLOR_GROUP, inline="b2bg")
+band2ChannelFill = input.color(#70ccbd, title="B2 Channel BG", group=BANDS_COLOR_GROUP, inline="b2ch")
+band3UpLine = input.color(#00897b, title="B3 Upper Line", group=BANDS_COLOR_GROUP, inline="b3l")
+band3LoLine = input.color(#e91e63, title="B3 Lower Line", group=BANDS_COLOR_GROUP, inline="b3l")
+band3UpFill = input.color(#00897b, title="B3 Upper BG", group=BANDS_COLOR_GROUP, inline="b3bg")
+band3LoFill = input.color(#e91e63, title="B3 Lower BG", group=BANDS_COLOR_GROUP, inline="b3bg")
+band3ChannelFill = input.color(#00897b, title="B3 Channel BG", group=BANDS_COLOR_GROUP, inline="b3ch")
 
 // =============================================================================
 // INPUTS — OBR (session ORB / previous levels / webhook)
@@ -56,6 +83,14 @@ show_prev_4h = input.bool(true, title="Show Previous 4H High/Low", group=PREV_GR
 obrAlertFreq = obrWebhookFrequency == "Once Per Bar Close" ? alert.freq_once_per_bar_close :
      obrWebhookFrequency == "Once Per Bar" ? alert.freq_once_per_bar :
      alert.freq_all
+
+// =============================================================================
+// Chart timeframe gate (≤5m intraday when hideAbove5m enabled)
+// =============================================================================
+timeframeMinutes = timeframe.in_seconds() / 60.0
+showOnChart = not hideAbove5m or (timeframe.isintraday and timeframeMinutes <= 5)
+showVwapOnChart = showOnChart and not (hideonDWM and timeframe.isdwm)
+bandFillDisplay = showBandFills ? display.all : display.none
 
 // =============================================================================
 // List: volume check
@@ -95,7 +130,7 @@ float lowerBandValue2 = na
 float upperBandValue3 = na
 float lowerBandValue3 = na
 
-if not (hideonDWM and timeframe.isdwm)
+if showVwapOnChart
     [_vwap, _stdevUpper, _] = ta.vwap(src, isNewPeriod, 1)
     vwapValue := _vwap
     stdevAbs = _stdevUpper - _vwap
@@ -107,34 +142,10 @@ if not (hideonDWM and timeframe.isdwm)
     upperBandValue3 := _vwap + bandBasis * bandMult_3
     lowerBandValue3 := _vwap - bandBasis * bandMult_3
 
-// VWAP: solid yellow
-plot(vwapValue, title="VWAP", color=color.yellow, linewidth=2, offset=offset)
-
-// Band colors @ 50% opacity (transparency 50 in color.new); fills tinted to match
-band1Up = #4caf50
-band1Lo = #f23645
-band2Up = #70ccbd
-band2Lo = #f48fb1
-band3Up = #00897b
-band3Lo = #e91e63
-
-upperBand_1 = plot(upperBandValue1, title="Upper Band #1", color=color.new(band1Up, 50), linewidth=4, offset=offset, display=showBand_1 ? display.all : display.none)
-lowerBand_1 = plot(lowerBandValue1, title="Lower Band #1", color=color.new(band1Lo, 50), linewidth=4, offset=offset, display=showBand_1 ? display.all : display.none)
-fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color=color.new(band1Up, 92), display=showBand_1 ? display.all : display.none)
-
-upperBand_2 = plot(upperBandValue2, title="Upper Band #2", color=color.new(band2Up, 50), linewidth=1, offset=offset, display=showBand_2 ? display.all : display.none)
-lowerBand_2 = plot(lowerBandValue2, title="Lower Band #2", color=color.new(band2Lo, 50), linewidth=1, offset=offset, display=showBand_2 ? display.all : display.none)
-fill(upperBand_2, lowerBand_2, title="Bands Fill #2", color=color.new(band2Up, 92), display=showBand_2 ? display.all : display.none)
-
-upperBand_3 = plot(upperBandValue3, title="Upper Band #3", color=color.new(band3Up, 50), linewidth=4, offset=offset, display=showBand_3 ? display.all : display.none)
-lowerBand_3 = plot(lowerBandValue3, title="Lower Band #3", color=color.new(band3Lo, 50), linewidth=4, offset=offset, display=showBand_3 ? display.all : display.none)
-fill(upperBand_3, lowerBand_3, title="Bands Fill #3", color=color.new(band3Up, 92), display=showBand_3 ? display.all : display.none)
-
 // =============================================================================
-// OBR: New York ORB window
+// OBR: New York ORB window (calc first — fill plots declared before band fills = lowest z-order in indicator)
 // =============================================================================
-timeframeMinutes = timeframe.in_seconds() / 60.0
-hide = timeframe.isintraday and timeframeMinutes <= inputMax
+hide = showOnChart and timeframe.isintraday and timeframeMinutes <= inputMax
 
 t_ny = time(timeframe.period, nyORB + ":1234567")
 t_ny_session = time(timeframe.period, nySession + ":1234567")
@@ -158,11 +169,38 @@ if high > ny_high and in_ny
 if low < ny_low and in_ny
     ny_low := low
 
-plot(hide and in_ny_session and show_ny_orb ? ny_high : na, style=plot.style_line, color=ny_high[1] != ny_high ? na : #00ff6a00, title="New York ORB High", linewidth=2)
-plot(hide and in_ny_session and show_ny_orb ? ny_low : na, style=plot.style_line, color=ny_low[1] != ny_low ? na : #00ff6a00, title="New York ORB Low", linewidth=2)
+// ORB range background: declared before VWAP band fills = underneath band fills within this indicator.
+// indicator(..., behind_chart=true): entire script (fills, VWAP, bands, EMAs, etc.) draws behind candlesticks.
+pNyHighFill = plot(hide and in_ny_session and show_ny_orb ? ny_high : na, style=plot.style_line, color=color.new(color.gray, 100), title="New York ORB High (fill ref)", linewidth=1, display=display.none, editable=false)
+pNyLowFill = plot(hide and in_ny_session and show_ny_orb ? ny_low : na, style=plot.style_line, color=color.new(color.gray, 100), title="New York ORB Low (fill ref)", linewidth=1, display=display.none, editable=false)
+fill(pNyHighFill, pNyLowFill, title="New York ORB Range (background)", color=ny_fill_color, display=show_ny_orb ? display.all : display.none)
 
-alertcondition(ta.crossover(high, ny_high) and in_ny_session and not in_ny, title="New York ORB High Break", message="Price crossed above New York ORB High: {{ticker}} at {{close}}")
-alertcondition(ta.crossunder(low, ny_low) and in_ny_session and not in_ny, title="New York ORB Low Break", message="Price crossed below New York ORB Low: {{ticker}} at {{close}}")
+alertcondition(showOnChart and ta.crossover(high, ny_high) and in_ny_session and not in_ny, title="New York ORB High Break", message="Price crossed above New York ORB High: {{ticker}} at {{close}}")
+alertcondition(showOnChart and ta.crossunder(low, ny_low) and in_ny_session and not in_ny, title="New York ORB Low Break", message="Price crossed below New York ORB Low: {{ticker}} at {{close}}")
+
+// Lowest z-order: invisible plot refs + fills first (Pine draws in declaration order).
+// Visible VWAP/band lines are plotted later so they sit above all fills.
+pVwapFill = plot(showVwapOnChart ? vwapValue : na, title="VWAP (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+upperBand_1Fill = plot(showVwapOnChart ? upperBandValue1 : na, title="Upper #1 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+lowerBand_1Fill = plot(showVwapOnChart ? lowerBandValue1 : na, title="Lower #1 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+upperBand_2Fill = plot(showVwapOnChart ? upperBandValue2 : na, title="Upper #2 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+lowerBand_2Fill = plot(showVwapOnChart ? lowerBandValue2 : na, title="Lower #2 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+upperBand_3Fill = plot(showVwapOnChart ? upperBandValue3 : na, title="Upper #3 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+lowerBand_3Fill = plot(showVwapOnChart ? lowerBandValue3 : na, title="Lower #3 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
+
+// Channel background (upper ↔ lower per band)
+fill(upperBand_1Fill, lowerBand_1Fill, title="Band 1 Channel BG", color=color.new(band1ChannelFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
+fill(upperBand_2Fill, lowerBand_2Fill, title="Band 2 Channel BG", color=color.new(band2ChannelFill, bandFillTransp), display=showBand_2 ? bandFillDisplay : display.none)
+fill(upperBand_3Fill, lowerBand_3Fill, title="Band 3 Channel BG", color=color.new(band3ChannelFill, bandFillTransp), display=showBand_3 ? bandFillDisplay : display.none)
+
+// Ring fills: VWAP ↔ band levels (upper / lower stacks)
+fill(pVwapFill, upperBand_1Fill, title="Fill VWAP → Upper #1", color=color.new(band1UpFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
+fill(upperBand_1Fill, upperBand_2Fill, title="Fill Upper #1 → Upper #2", color=color.new(band2UpFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
+fill(upperBand_2Fill, upperBand_3Fill, title="Fill Upper #2 → Upper #3", color=color.new(band3UpFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
+
+fill(lowerBand_1Fill, pVwapFill, title="Fill Lower #1 → VWAP", color=color.new(band1LoFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
+fill(lowerBand_2Fill, lowerBand_1Fill, title="Fill Lower #2 → Lower #1", color=color.new(band2LoFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
+fill(lowerBand_3Fill, lowerBand_2Fill, title="Fill Lower #3 → Lower #2", color=color.new(band3LoFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
 
 // =============================================================================
 // Shared daily data (List JSON + OBR JSON)
@@ -196,7 +234,7 @@ var label prev4h_lo_lbl = na
 
 len = 5
 
-if barstate.islast
+if barstate.islast and showOnChart
     if not na(prevD_hi_ln)
         line.delete(prevD_hi_ln)
     if not na(prevD_lo_ln)
@@ -233,10 +271,51 @@ if barstate.islast
     prev4h_hi_lbl := show_prev_4h ? label.new(bar_index, prev_4h_high, "Prev 4H High", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(0, 255, 0), 100), size=size.small) : na
     prev4h_lo_lbl := show_prev_4h ? label.new(bar_index, prev_4h_low, "Prev 4H Low", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(255, 166, 0), 100), size=size.small) : na
 
-pNyHigh = plot(hide and in_ny_session and show_ny_orb ? ny_high : na, style=plot.style_line, color=ny_high[1] != ny_high ? na : #00bfff00, title="New York ORB High (fill)", linewidth=2)
-pNyLow = plot(hide and in_ny_session and show_ny_orb ? ny_low : na, style=plot.style_line, color=ny_low[1] != ny_low ? na : #00bfff00, title="New York ORB Low (fill)", linewidth=2)
+else if barstate.islast
+    if not na(prevD_hi_ln)
+        line.delete(prevD_hi_ln)
+        prevD_hi_ln := na
+    if not na(prevD_lo_ln)
+        line.delete(prevD_lo_ln)
+        prevD_lo_ln := na
+    if not na(prevD_op_ln)
+        line.delete(prevD_op_ln)
+        prevD_op_ln := na
+    if not na(prevD_hi_lbl)
+        label.delete(prevD_hi_lbl)
+        prevD_hi_lbl := na
+    if not na(prevD_lo_lbl)
+        label.delete(prevD_lo_lbl)
+        prevD_lo_lbl := na
+    if not na(prevD_op_lbl)
+        label.delete(prevD_op_lbl)
+        prevD_op_lbl := na
+    if not na(prev4h_hi_ln)
+        line.delete(prev4h_hi_ln)
+        prev4h_hi_ln := na
+    if not na(prev4h_lo_ln)
+        line.delete(prev4h_lo_ln)
+        prev4h_lo_ln := na
+    if not na(prev4h_hi_lbl)
+        label.delete(prev4h_hi_lbl)
+        prev4h_hi_lbl := na
+    if not na(prev4h_lo_lbl)
+        label.delete(prev4h_lo_lbl)
+        prev4h_lo_lbl := na
 
-fill(pNyHigh, pNyLow, color=ny_fill_color)
+// Visible VWAP + band lines (above band fills + ORB fill)
+pVwap = plot(showVwapOnChart ? vwapValue : na, title="VWAP", color=vwapLineColor, linewidth=2, offset=offset)
+
+upperBand_1 = plot(showVwapOnChart ? upperBandValue1 : na, title="Upper Band #1", color=color.new(band1UpLine, bandLineTransp), linewidth=4, offset=offset, display=showBand_1 ? display.all : display.none)
+lowerBand_1 = plot(showVwapOnChart ? lowerBandValue1 : na, title="Lower Band #1", color=color.new(band1LoLine, bandLineTransp), linewidth=4, offset=offset, display=showBand_1 ? display.all : display.none)
+upperBand_2 = plot(showVwapOnChart ? upperBandValue2 : na, title="Upper Band #2", color=color.new(band2UpLine, bandLineTransp), linewidth=1, offset=offset, display=showBand_2 ? display.all : display.none)
+lowerBand_2 = plot(showVwapOnChart ? lowerBandValue2 : na, title="Lower Band #2", color=color.new(band2LoLine, bandLineTransp), linewidth=1, offset=offset, display=showBand_2 ? display.all : display.none)
+upperBand_3 = plot(showVwapOnChart ? upperBandValue3 : na, title="Upper Band #3", color=color.new(band3UpLine, bandLineTransp), linewidth=4, offset=offset, display=showBand_3 ? display.all : display.none)
+lowerBand_3 = plot(showVwapOnChart ? lowerBandValue3 : na, title="Lower Band #3", color=color.new(band3LoLine, bandLineTransp), linewidth=4, offset=offset, display=showBand_3 ? display.all : display.none)
+
+// ORB high/low edges + 50% (on top of VWAP band fills)
+plot(hide and in_ny_session and show_ny_orb ? ny_high : na, style=plot.style_line, color=ny_high[1] != ny_high ? na : #00ff6a00, title="New York ORB High", linewidth=2)
+plot(hide and in_ny_session and show_ny_orb ? ny_low : na, style=plot.style_line, color=ny_low[1] != ny_low ? na : #00ff6a00, title="New York ORB Low", linewidth=2)
 
 ny_mid = (ny_high + ny_low) / 2.0
 
@@ -251,7 +330,7 @@ ny_lower_half = ny_within and not na(ny_mid) and close < ny_mid
 ny_orb_status = ny_outside_above ? "outside_above" : ny_outside_below ? "outside_below" : ny_upper_half ? "within_upper" : ny_lower_half ? "within_lower" : "unknown"
 
 shouldSendObrAlert = enableObrWebhook and (obrWebhookFrequency == "Once Per Bar Close" ? barstate.isconfirmed : true)
-if shouldSendObrAlert and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
+if showOnChart and shouldSendObrAlert and in_ny_session and not in_ny and not na(ny_high) and not na(ny_low)
     price_direction = close > close[1] ? "up" : close < close[1] ? "down" : "flat"
 
     orb_cross_high = ta.crossover(high, ny_high)
@@ -307,8 +386,67 @@ trendIndicator = aboveEma1 and aboveEma2 ? "↑ ↑" :
      not aboveEma1 and not aboveEma2 ? "↓ ↓" :
      aboveEma2 and not aboveEma1 ? "- ↑" :
      aboveEma1 and not aboveEma2 ? "↑ -" : "- -"
-plot(ema1Value, title="EMA 1", color=ema1Color, linewidth=2)
-plot(ema2Value, title="EMA 2", color=ema2Color, linewidth=2)
+plot(showOnChart ? ema1Value : na, title="EMA 1", color=ema1Color, linewidth=2)
+plot(showOnChart ? ema2Value : na, title="EMA 2", color=ema2Color, linewidth=2)
+
+// EMA support (price above) / resistance (price below) — lines + labels on last bar
+// Slope logic: a rising EMA reinforces it as support; a falling EMA reinforces it as
+// resistance. Confidence = how strongly the slope backs the current role (hold vs break).
+emaAtr = ta.atr(14)
+
+f_emaSrInfo(float emaVal, bool isSupport, int slopeLen, float atrVal) =>
+    slope = (emaVal - emaVal[slopeLen]) / slopeLen
+    slopeNorm = atrVal > 0 ? slope / atrVal : 0.0
+    aligned = isSupport ? slopeNorm : -slopeNorm
+    conf = math.round(math.min(95, math.max(5, 50 + aligned * 200)))
+    arrow = slopeNorm > 0.02 ? "↑" : slopeNorm < -0.02 ? "↓" : "→"
+    [conf, arrow]
+
+ema1IsSupport = close > ema1Step
+ema2IsSupport = close > ema2Step
+[ema1Conf, ema1Arrow] = f_emaSrInfo(ema1Value, ema1IsSupport, emaSlopeLen, emaAtr)
+[ema2Conf, ema2Arrow] = f_emaSrInfo(ema2Value, ema2IsSupport, emaSlopeLen, emaAtr)
+
+ema1Verb = ema1IsSupport ? "support" : "reject"
+ema2Verb = ema2IsSupport ? "support" : "reject"
+ema1Hint = ema1Conf <= emaBreakThresh ? " ⚠break" : ""
+ema2Hint = ema2Conf <= emaBreakThresh ? " ⚠break" : ""
+ema1SrLbl = "EMA " + str.tostring(ema1Length) + " " + ema1Arrow + "  " + str.tostring(ema1Conf) + "% " + ema1Verb + ema1Hint
+ema2SrLbl = "EMA " + str.tostring(ema2Length) + " " + ema2Arrow + "  " + str.tostring(ema2Conf) + "% " + ema2Verb + ema2Hint
+
+var line ema1SrLn = na
+var line ema2SrLn = na
+var label ema1SrLblObj = na
+var label ema2SrLblObj = na
+
+if barstate.islast and showOnChart and showEmaSr and not na(ema1Value) and not na(ema2Value)
+    if not na(ema1SrLn)
+        line.delete(ema1SrLn)
+    if not na(ema2SrLn)
+        line.delete(ema2SrLn)
+    if not na(ema1SrLblObj)
+        label.delete(ema1SrLblObj)
+    if not na(ema2SrLblObj)
+        label.delete(ema2SrLblObj)
+
+    ema1SrLn := line.new(bar_index - emaSrLen, ema1Value, bar_index, ema1Value, color=ema1Color, width=2, style=line.style_dashed)
+    ema2SrLn := line.new(bar_index - emaSrLen, ema2Value, bar_index, ema2Value, color=ema2Color, width=2, style=line.style_dashed)
+    ema1SrLblObj := label.new(bar_index, ema1Value, ema1SrLbl, style=label.style_label_left, textcolor=ema1Color, color=color.new(ema1Color, 85), size=size.small)
+    ema2SrLblObj := label.new(bar_index, ema2Value, ema2SrLbl, style=label.style_label_left, textcolor=ema2Color, color=color.new(ema2Color, 85), size=size.small)
+
+else if barstate.islast
+    if not na(ema1SrLn)
+        line.delete(ema1SrLn)
+        ema1SrLn := na
+    if not na(ema2SrLn)
+        line.delete(ema2SrLn)
+        ema2SrLn := na
+    if not na(ema1SrLblObj)
+        label.delete(ema1SrLblObj)
+        ema1SrLblObj := na
+    if not na(ema2SrLblObj)
+        label.delete(ema2SrLblObj)
+        ema2SrLblObj := na
 
 t = time("1440", session.extended)
 is_first = na(t[1]) and not na(t) or t[1] < t
@@ -342,8 +480,8 @@ dayHigh = day_high
 dayLow = day_low
 
 // Session day high / low: white, dashed, thickest line
-plot(day_high, title="Day High", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
-plot(day_low, title="Day Low", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
+plot(showOnChart ? day_high : na, title="Day High", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
+plot(showOnChart ? day_low : na, title="Day Low", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
 
 trend = close > vwapValue and ema1Value > ema2Value ? "Bullish" : close < vwapValue and ema1Value < ema2Value ? "Bearish" : "Neutral"
 
@@ -368,7 +506,7 @@ sessionTips = "ORB:" + ny_orb_status + " | vsDayMid:" + rangeStatus + " | Trend:
 // =============================================================================
 // List: webhook JSON
 // =============================================================================
-if enableListAlerts and barstate.isconfirmed
+if showOnChart and enableListAlerts and barstate.isconfirmed
     effectiveEma1Tf = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
     effectiveEma2Tf = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
 

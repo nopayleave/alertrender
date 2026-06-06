@@ -225,6 +225,58 @@ function ny930AmTo4PmRatio(ms) {
   return Math.max(0, Math.min(1, (mins - start) / (end - start)))
 }
 
+function normalizeTriTimeframeMode(mode) {
+  return String(mode || '').toLowerCase() === 'swing' ? 'Swing' : 'Interday'
+}
+
+function parseTriWebhookVal(v) {
+  if (v == null) return null
+  const n = parseFloat(v)
+  return isNaN(n) ? null : n
+}
+
+function buildTriModePayload(k1, d1, k2, d2, k1Dir, d1Dir, k2Dir, d2Dir, mode) {
+  const k1n = parseTriWebhookVal(k1)
+  const d1n = parseTriWebhookVal(d1)
+  const k2n = parseTriWebhookVal(k2)
+  const d2n = parseTriWebhookVal(d2)
+  return {
+    k1: k1n,
+    k2: k2n,
+    k3: k2n,
+    k3Direction: k2Dir || null,
+    ovK: k1n,
+    ovD: d1n,
+    ovKDirection: k1Dir || null,
+    ovDDirection: d1Dir || null,
+    dtK: k2n,
+    dtD: d2n,
+    dtKDirection: k2Dir || null,
+    dtDDirection: d2Dir || null,
+    stochTimeframe: mode,
+    timestamp: Date.now()
+  }
+}
+
+function buildTriDualModePayload(alert) {
+  const hasDualTf = alert.k1A != null || alert.stochTimeframeA != null
+  if (!hasDualTf) return null
+  const modeA = normalizeTriTimeframeMode(alert.stochTimeframeA || 'Interday')
+  const modeB = normalizeTriTimeframeMode(alert.stochTimeframeB || 'Swing')
+  return {
+    [modeA]: buildTriModePayload(
+      alert.k1A, alert.d1A, alert.k2A, alert.d2A,
+      alert.k1ADirection, alert.d1ADirection, alert.k2ADirection, alert.d2ADirection,
+      modeA
+    ),
+    [modeB]: buildTriModePayload(
+      alert.k1B, alert.d1B, alert.k2B, alert.d2B,
+      alert.k1BDirection, alert.d1BDirection, alert.k2BDirection, alert.d2BDirection,
+      modeB
+    )
+  }
+}
+
 /** Mini line chart: Y = 0–100 stoch; X = time in 9:30 AM–4:00 PM NY (or index fallback if no timestamps) */
 function buildTriStochSeriesSvg(history, field, strokeHex) {
   const chartWidth = 88
@@ -1440,56 +1492,81 @@ app.post('/webhook', (req, res) => {
       console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
   } else if (isTriStochAlert) {
-    // Tri Stoch: single webhook carries k1/k2/k3 values + ov/dt mapped data
-    const parseTriVal = (v) => {
-      if (v == null) return null
-      const n = parseFloat(v)
-      return isNaN(n) ? null : n
+    // Tri Stoch: legacy single-TF (k1/k2/k3) or dual-TF (k1A/k1B + stochTimeframeA/B)
+    const dualModes = buildTriDualModePayload(alert)
+    let triStochModes = null
+    let triStoch = null
+
+    if (dualModes) {
+      triStochModes = dualModes
+      const defaultMode = normalizeTriTimeframeMode(alert.stochTimeframeA || 'Interday')
+      triStoch = dualModes[defaultMode] || Object.values(dualModes)[0]
+      const interday = dualModes.Interday
+      const swing = dualModes.Swing
+      if (interday) {
+        stochOverviewDataStorage[alert.symbol] = {
+          k: interday.ovK, d: interday.ovD, d2: interday.ovD,
+          kDirection: interday.ovKDirection, dDirection: interday.ovDDirection, d2Direction: interday.ovDDirection,
+          k3: interday.k3, k3Direction: interday.k3Direction,
+          timestamp: Date.now()
+        }
+      }
+      if (swing) {
+        stochDetailDataStorage[alert.symbol] = {
+          k: swing.ovK, d: swing.ovD, d2: swing.ovD,
+          kDirection: swing.ovKDirection, dDirection: swing.ovDDirection, d2Direction: swing.ovDDirection,
+          k3: swing.k3, k3Direction: swing.k3Direction,
+          timestamp: Date.now()
+        }
+      }
+      console.log(`✅ Tri Dual stored for ${alert.symbol}: Interday K1=${alert.k1A} S2=${alert.k2A}, Swing K1=${alert.k1B} S2=${alert.k2B}`)
+    } else {
+      const triMode = normalizeTriTimeframeMode(alert.stochTimeframe || alert.stochMode || 'Interday')
+      triStoch = {
+        k1: parseTriWebhookVal(alert.k1),
+        k2: parseTriWebhookVal(alert.k2),
+        k3: parseTriWebhookVal(alert.k3),
+        k3Direction: alert.k3Direction || null,
+        ovK: parseTriWebhookVal(alert.ovK),
+        ovD: parseTriWebhookVal(alert.ovD),
+        ovKDirection: alert.ovKDirection || null,
+        ovDDirection: alert.ovDDirection || null,
+        ovD2Pattern: alert.ovD2Pattern || '',
+        ovD2PatternValue: parseTriWebhookVal(alert.ovD2PatternValue),
+        dtK: parseTriWebhookVal(alert.dtK),
+        dtD: parseTriWebhookVal(alert.dtD),
+        dtKDirection: alert.dtKDirection || null,
+        dtDDirection: alert.dtDDirection || null,
+        dtD2Pattern: alert.dtD2Pattern || '',
+        dtD2PatternValue: parseTriWebhookVal(alert.dtD2PatternValue),
+        stochTimeframe: triMode,
+        timestamp: Date.now()
+      }
+      triStochModes = { [triMode]: triStoch }
+      stochOverviewDataStorage[alert.symbol] = {
+        k: triStoch.ovK, d: triStoch.ovD, d2: triStoch.ovD,
+        kDirection: triStoch.ovKDirection, dDirection: triStoch.ovDDirection, d2Direction: triStoch.ovDDirection,
+        d2Pattern: triStoch.ovD2Pattern || '', d2PatternValue: triStoch.ovD2PatternValue,
+        k3: triStoch.k3, k3Direction: triStoch.k3Direction,
+        timestamp: Date.now()
+      }
+      stochDetailDataStorage[alert.symbol] = {
+        k: triStoch.dtK, d: triStoch.dtD, d2: triStoch.dtD,
+        kDirection: triStoch.dtKDirection, dDirection: triStoch.dtDDirection, d2Direction: triStoch.dtDDirection,
+        d2Pattern: triStoch.dtD2Pattern || '', d2PatternValue: triStoch.dtD2PatternValue,
+        timestamp: Date.now()
+      }
+      console.log(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
     }
-    const triMode = String(alert.stochTimeframe || alert.stochMode || 'Interday').toLowerCase() === 'swing' ? 'Swing' : 'Interday'
-    const triStoch = {
-      k1: parseTriVal(alert.k1),
-      k2: parseTriVal(alert.k2),
-      k3: parseTriVal(alert.k3),
-      k3Direction: alert.k3Direction || null,
-      ovK: parseTriVal(alert.ovK),
-      ovD: parseTriVal(alert.ovD),
-      ovKDirection: alert.ovKDirection || null,
-      ovDDirection: alert.ovDDirection || null,
-      ovD2Pattern: alert.ovD2Pattern || '',
-      ovD2PatternValue: parseTriVal(alert.ovD2PatternValue),
-      dtK: parseTriVal(alert.dtK),
-      dtD: parseTriVal(alert.dtD),
-      dtKDirection: alert.dtKDirection || null,
-      dtDDirection: alert.dtDDirection || null,
-      dtD2Pattern: alert.dtD2Pattern || '',
-      dtD2PatternValue: parseTriVal(alert.dtD2PatternValue),
-      stochTimeframe: triMode,
-      timestamp: Date.now()
-    }
-    stochOverviewDataStorage[alert.symbol] = {
-      k: parseTriVal(alert.ovK), d: parseTriVal(alert.ovD), d2: parseTriVal(alert.ovD),
-      kDirection: alert.ovKDirection || null, dDirection: alert.ovDDirection || null, d2Direction: alert.ovDDirection || null,
-      d2Pattern: alert.ovD2Pattern || '', d2PatternValue: parseTriVal(alert.ovD2PatternValue),
-      k3: parseTriVal(alert.k3), k3Direction: alert.k3Direction || null,
-      timestamp: Date.now()
-    }
-    stochDetailDataStorage[alert.symbol] = {
-      k: alert.dtK || null, d: alert.dtD || null, d2: alert.dtD || null,
-      kDirection: alert.dtKDirection || null, dDirection: alert.dtDDirection || null, d2Direction: alert.dtDDirection || null,
-      d2Pattern: alert.dtD2Pattern || '', d2PatternValue: alert.dtD2PatternValue || null,
-      timestamp: Date.now()
-    }
-    console.log(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
 
     const tsTri = Date.now()
-    const k1Hist = parseFloat(alert.ovK != null ? alert.ovK : alert.k1)
-    const k3Hist = parseFloat(alert.k3)
-    if (!isNaN(k1Hist) || !isNaN(k3Hist)) {
+    const k1Hist = parseTriWebhookVal(alert.k1A ?? alert.ovK ?? alert.k1)
+    const k3Hist = parseTriWebhookVal(alert.k2A ?? alert.k2 ?? alert.k3)
+    if (k1Hist != null || k3Hist != null) {
       if (!triStochK1K3History[alert.symbol]) triStochK1K3History[alert.symbol] = []
       triStochK1K3History[alert.symbol].push({
-        k1: !isNaN(k1Hist) ? k1Hist : null,
-        k3: !isNaN(k3Hist) ? k3Hist : null,
+        k1: k1Hist,
+        k3: k3Hist,
         timestamp: tsTri
       })
       if (triStochK1K3History[alert.symbol].length > 50) {
@@ -1497,15 +1574,20 @@ app.post('/webhook', (req, res) => {
       }
     }
 
+    const entrySig = String(alert.entrySignal || '').toLowerCase()
+    const entryUpdate = (entrySig === 'long' || entrySig === 'short')
+      ? { entrySignal: entrySig, entrySignalSet: alert.entrySet || null, entrySignalAt: Date.now() }
+      : {}
+
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].triStoch = triStoch
-      alerts[existingIndex].triStochModes = alerts[existingIndex].triStochModes || {}
-      alerts[existingIndex].triStochModes[triMode] = triStoch
+      alerts[existingIndex].triStochModes = { ...(alerts[existingIndex].triStochModes || {}), ...triStochModes }
       if (alert.price) alerts[existingIndex].price = alert.price
       if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
       if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
     } else {
       alerts.unshift({
@@ -1516,7 +1598,8 @@ app.post('/webhook', (req, res) => {
         changeFromPrevDay: alert.changeFromPrevDay || null,
         volume: alert.volume || null,
         triStoch,
-        triStochModes: { [triMode]: triStoch },
+        triStochModes,
+        ...entryUpdate,
         receivedAt: Date.now()
       })
       console.log(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
@@ -4568,7 +4651,7 @@ app.get('/', (req, res) => {
         };
 
         // Column order - stored in localStorage
-        const defaultColumnOrder = ['symbol', 'price', 'sessionRange', 'stochK1', 'stochK3', 'stoch', 'volume'];
+        const defaultColumnOrder = ['symbol', 'price', 'sessionRange', 'stochK1', 'stochK3', 'stoch', 'entrySignal', 'volume'];
         let columnOrder = JSON.parse(localStorage.getItem('columnOrder')) || defaultColumnOrder;
         // Remove legacy columns (star, orb) and any not in columnDefs
         columnOrder = columnOrder.filter(colId => colId !== 'star' && colId !== 'orb');
@@ -4581,6 +4664,7 @@ app.get('/', (req, res) => {
           stochK1: 96,
           stochK3: 96,
           stoch: 200,
+          entrySignal: 72,
           sessionRange: 175,
           volume: 80
         };
@@ -4636,6 +4720,14 @@ app.get('/', (req, res) => {
           }
           localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
         }
+        if (!columnOrder.includes('entrySignal')) {
+          const stochIdx = columnOrder.indexOf('stoch');
+          const volIdx = columnOrder.indexOf('volume');
+          if (stochIdx !== -1) columnOrder.splice(stochIdx + 1, 0, 'entrySignal');
+          else if (volIdx !== -1) columnOrder.splice(volIdx, 0, 'entrySignal');
+          else columnOrder.push('entrySignal');
+          localStorage.setItem('columnOrder', JSON.stringify(columnOrder));
+        }
         
         // Column definitions
         const columnDefs = {
@@ -4644,7 +4736,8 @@ app.get('/', (req, res) => {
           sessionRange: { id: 'sessionRange', title: 'Range', sortable: true, sortField: 'sessionRange', width: 'w-[175px]', tooltip: 'ORB vs NY 50% (Upper/Lower), opening-range break, VWAP, bands, EMAs (List webhook).' },
           stochK1: { id: 'stochK1', title: 'K1', sortable: true, sortField: 'stochK1', width: 'w-[96px]', tooltip: 'K1 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
           stochK3: { id: 'stochK3', title: 'K3', sortable: true, sortField: 'stochK3', width: 'w-[96px]', tooltip: 'K3 — X axis 9:30 AM–4:00 PM NY (sample time); Y 0–100 stoch' },
-          stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[160px]', tooltip: 'Tri K direction: K1 | K3' },
+          stoch: { id: 'stoch', title: 'Stoch', sortable: false, width: 'w-[160px]', tooltip: 'Tri K direction: K1 | S2 (Interday/Swing toggle)' },
+          entrySignal: { id: 'entrySignal', title: 'Entry', sortable: true, sortField: 'entrySignal', width: 'w-[72px]', tooltip: 'S1A entry signal: L long / S short (Set 1 or 2 from Tri webhook)' },
           highLevelTrend: { id: 'highLevelTrend', title: 'HLT', sortable: true, sortField: 'highLevelTrend', width: 'w-16', tooltip: 'High Level Trend: Bull/Bear when D1 switches direction with large D1-D2 difference' },
           volume: { id: 'volume', title: 'Vol', sortable: true, sortField: 'volume', width: 'w-20', tooltip: 'Volume since 9:30 AM' }
         };
@@ -6220,6 +6313,12 @@ app.get('/', (req, res) => {
               const t3 = alert.triStoch;
               if (t3 && t3.k3 != null && !isNaN(parseFloat(t3.k3))) return parseFloat(t3.k3);
               return null;
+            }
+            case 'entrySignal': {
+              const sig = String(alert.entrySignal || '').toLowerCase();
+              if (sig === 'long') return 2;
+              if (sig === 'short') return 1;
+              return 0;
             }
             case 'sessionRange': {
               const order = { 'Break D.High': 4, 'Within Range': 3, 'Break D.Low': 1, '—': 0 }
@@ -7994,7 +8093,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground') : 'text-muted-foreground';
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
-                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K3', t.k3, null)];
+                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('S2', t.k3, t.k3Direction)];
                 const unified = getUnifiedStochSuggestion(alert);
                 let suggestionHtml = '';
                 if (unified) {
@@ -8012,6 +8111,18 @@ Use this to create a new preset filter button that applies these exact filter se
                   suggestionHtml = '<span class="text-xs ' + sugClr + ' ml-2">' + txt + '</span>';
                 }
                 return '<td class="py-1.5 px-2 text-left" style="' + getCellWidthStyle('stoch') + '"><div class="flex flex-row items-center gap-3 flex-wrap">' + parts.join('<span class="text-muted-foreground">|</span>') + suggestionHtml + '</div></td>';
+              })(),
+              entrySignal: (() => {
+                const sig = String(alert.entrySignal || '').toLowerCase();
+                if (sig !== 'long' && sig !== 'short') {
+                  return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('entrySignal') + '">–</td>';
+                }
+                const setLbl = alert.entrySignalSet ? ' ' + alert.entrySignalSet : '';
+                const isLong = sig === 'long';
+                const lbl = (isLong ? 'L' : 'S') + setLbl;
+                const cls = isLong ? 'text-green-400 font-bold' : 'text-red-400 font-bold';
+                const title = (isLong ? 'Long' : 'Short') + ' entry' + (alert.entrySignalSet ? ' (Set ' + alert.entrySignalSet + ')' : '') + (alert.entrySignalAt ? ' @ ' + new Date(alert.entrySignalAt).toLocaleTimeString() : '');
+                return '<td class="py-1.5 px-2 text-center" style="' + getCellWidthStyle('entrySignal') + '" title="' + title + '"><span class="font-mono text-sm ' + cls + '">' + lbl + '</span></td>';
               })()
             };
             
