@@ -1,0 +1,474 @@
+//@version=6
+// Tri Stoch Strategy — S2 regime + S1 Go entries from stoch indicator
+strategy("Tri Stoch Strategy", shorttitle="Stoch Strat", overlay=true,
+     pyramiding=0, default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     initial_capital=100000, commission_type=strategy.commission.percent, commission_value=0.01)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MODE & SESSION
+// ═══════════════════════════════════════════════════════════════════════════════
+grpMode = "Strategy Mode"
+longHlMin        = input.int(50, "Long: S1 HL pivot above", minval=50, maxval=100, group=grpMode,
+     tooltip="Long when S2 > split and S1 forms Higher Low with HL pivot above this level.")
+shortLhMax       = input.int(20, "Short: S1 LH pivot below", minval=0, maxval=50, group=grpMode,
+     tooltip="Short when S1 forms Lower High and the LH pivot K value is below this level.")
+useRevGo         = input.bool(true,  "R label upgrades to Go", group=grpMode)
+exitOnOppositeGo = input.bool(true,  "Exit on opposite Go signal", group=grpMode)
+exitOnStructFail = input.bool(true,  "Exit on HL (short) / LH (long)", group=grpMode)
+exitOnKdCross    = input.bool(true,  "Exit on K%D cross against position", group=grpMode)
+exitOnS2Block    = input.bool(true,  "Exit on S2 No Long / No Short", group=grpMode)
+
+grpRisk = "Risk"
+useStopLoss      = input.bool(true,  "ATR stop loss", group=grpRisk)
+atrLen           = input.int(14,    "ATR length", minval=1, group=grpRisk)
+atrMult          = input.float(2.0, "ATR multiplier", minval=0.1, step=0.1, group=grpRisk)
+usePctTp         = input.bool(true,  "Partial TP every % move", group=grpRisk)
+tpStepPct        = input.float(1.0, "TP step (%)", minval=0.1, step=0.1, group=grpRisk)
+tpPartialPct     = input.float(25.0, "Partial close % each TP", minval=1, maxval=100, group=grpRisk)
+exitOnEntryStoch = input.bool(true, "Full exit if S1 crosses entry K", group=grpRisk,
+     tooltip="Short: close all if S1 rises above entry K. Long: close all if S1 falls below entry K.")
+
+grpOpen = "Day Open Bias"
+enableOpenBias = input.bool(true, "VWAP>200>50 at open → short only", group=grpOpen,
+     tooltip="On first RTH bar: if VWAP > EMA200 > EMA50, block longs for the session.")
+
+grpSession = "Session"
+inTradeWindow = not na(time(timeframe.period, "0930-1500", "America/New_York"))
+inRTH         = not na(time(timeframe.period, "0930-1600", "America/New_York"))
+isFirstRTH    = inRTH and not inRTH[1]
+exitAt3pm     = not inTradeWindow and inTradeWindow[1]
+canTrade      = inTradeWindow
+
+grpDisplay = "Display"
+showLabels   = input.bool(true, "Show entry/exit labels", group=grpDisplay)
+showContext  = input.bool(true, "Plot VWAP / ORB / EMA", group=grpDisplay)
+
+grpCtx = "Combined Context (ORB / VWAP / EMA)"
+enableCtxFilter = input.bool(true, "Enable context filters", group=grpCtx)
+filterTrend     = input.bool(true, "Trend: Bullish long / Bearish short", group=grpCtx,
+     tooltip="Bullish = price > VWAP and EMA50 > EMA200. Bearish = opposite.")
+filterVwap      = input.bool(true, "Long above VWAP / Short below VWAP", group=grpCtx)
+filterEmaStack  = input.bool(true, "EMA stack vs VWAP (50>200>VWAP long)", group=grpCtx)
+filterOrb       = input.bool(false, "ORB half (long upper / short lower)", group=grpCtx,
+     tooltip="After ORB forms: long needs close ≥ ORB mid; short needs close < ORB mid.")
+tfCtx           = input.timeframe("1", "EMA / VWAP context TF", group=grpCtx)
+ema1Len         = input.int(50,  "EMA 1 length", group=grpCtx)
+ema2Len         = input.int(200, "EMA 2 length", group=grpCtx)
+bandMult1       = input.float(1.0, "VWAP band 1 mult", minval=0, step=0.5, group=grpCtx)
+bandMult2       = input.float(2.0, "VWAP band 2 mult", minval=0, step=0.5, group=grpCtx)
+bandMult3       = input.float(3.0, "VWAP band 3 mult", minval=0, step=0.5, group=grpCtx)
+orbDuration     = input.int(15, "ORB duration (min, chart TF gate)", minval=1, group=grpCtx)
+nyOrbSession    = input.session("0930-0945", "NY ORB window", group=grpCtx)
+nyRthSession    = input.session("0930-1600", "NY RTH session", group=grpCtx)
+
+grpTf = "Timeframes"
+tfSignal = input.timeframe("", "Signal TF (S1 + entries)", group=grpTf,
+     tooltip="Leave empty for chart TF. Use lower TF (e.g. 15S) for faster S1 triggers.")
+tfRegime = input.timeframe("", "Regime TF (S2 filter)", group=grpTf,
+     tooltip="Leave empty to use Signal TF. Set higher TF (e.g. 4) to confirm S2 regime.")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STOCH SETTINGS (match stoch indicator defaults)
+// ═══════════════════════════════════════════════════════════════════════════════
+grpStoch = "Stochastic Settings"
+kLength     = input.int(39,  "K Length",             minval=1, group=grpStoch)
+kSmooth     = input.int(5,   "K Smoothing",          minval=1, group=grpStoch)
+dSmooth     = input.int(4,   "D Smoothing",          minval=1, group=grpStoch)
+extraSmooth = input.int(3,   "Extra Smooth (K & D)", minval=1, group=grpStoch)
+baseMultA   = input.string("1x", "Base (S1A)", options=["0.25x","0.5x","1x","1.5x","2x","2.5x","3x","4x","6x","8x","10x"], group=grpStoch)
+s2VsS1A     = input.float(8.0, "S2A vs S1A (x)", minval=0.25, step=0.25, group=grpStoch)
+s2aSplit       = input.int(50, "S2A Split Level (X)", minval=0, maxval=100, group=grpStoch)
+s2NoShortLevel = input.int(70, "S2 No Short above", minval=50, maxval=100, group=grpStoch)
+s2NoLongLevel  = input.int(30, "S2 No Long below", minval=0, maxval=50, group=grpStoch)
+longAbove1  = input.int(60, "Set1 Long: S1A turn up above (Y)", minval=0, maxval=100, group=grpStoch)
+shortBelow1 = input.int(60, "Set1 Short: S1A turn down below (Z)", minval=0, maxval=100, group=grpStoch)
+longAbove2  = input.int(40, "Set2 Long: S1A turn up above (Y)", minval=0, maxval=100, group=grpStoch)
+shortBelow2 = input.int(40, "Set2 Short: S1A turn down below (Z)", minval=0, maxval=100, group=grpStoch)
+minLegMove   = input.float(5.0, "Min Leg Move", minval=0, step=0.5, group=grpStoch)
+minPivotMove = input.float(3.0, "Min HL/LH Pivot Delta", minval=0, step=0.5, group=grpStoch)
+
+f_multVal(s) =>
+    s == "0.25x" ? 0.25 : s == "0.5x" ? 0.5 : s == "1x" ? 1.0 : s == "1.5x" ? 1.5 :
+     s == "2x" ? 2.0 : s == "2.5x" ? 2.5 : s == "3x" ? 3.0 : s == "4x" ? 4.0 :
+     s == "6x" ? 6.0 : s == "8x" ? 8.0 : s == "10x" ? 10.0 : 1.0
+
+s1MultA = f_multVal(baseMultA)
+s2MultA = s1MultA * s2VsS1A
+
+f_stochPair(float s1Mult, float s2Mult) =>
+    pK1 = math.max(1, math.round(kLength * s1Mult))
+    sK1 = math.max(1, math.round(kSmooth * s1Mult))
+    dK1 = math.max(1, math.round(dSmooth * s1Mult))
+    pK2 = math.max(1, math.round(kLength * s2Mult))
+    sK2 = math.max(1, math.round(kSmooth * s2Mult))
+    dK2 = math.max(1, math.round(dSmooth * s2Mult))
+    k1Base = ta.sma(ta.stoch(close, high, low, pK1), sK1)
+    d1Base = ta.sma(k1Base, dK1)
+    k2Base = ta.sma(ta.stoch(close, high, low, pK2), sK2)
+    d2Base = ta.sma(k2Base, dK2)
+    k1 = ta.sma(k1Base, extraSmooth)
+    d1 = ta.sma(d1Base, extraSmooth)
+    k2 = ta.sma(k2Base, extraSmooth)
+    d2 = ta.sma(d2Base, extraSmooth)
+    [k1, d1, k2, d2]
+
+// Returns S1 triggers, HL/LH, reverses, S2 state, K%D crosses
+f_stochBundle() =>
+    [k1A, d1A, k2A, d2A] = f_stochPair(s1MultA, s2MultA)
+    kUp = k1A >= k1A[1]
+    s1aTurnUp   = not kUp[1] and kUp
+    s1aTurnDown = kUp[1] and not kUp
+    s1aPivot = k1A[1]
+
+    var float lastTurnUpK = na
+    var float lastTurnDownK = na
+    downLegOk = na(lastTurnDownK) or lastTurnDownK - s1aPivot >= minLegMove
+    upLegOk   = na(lastTurnUpK) or s1aPivot - lastTurnUpK >= minLegMove
+    sigTurnUp   = s1aTurnUp and downLegOk
+    sigTurnDown = s1aTurnDown and upLegOk
+
+    string s1aPat = ""
+    float s1aPatVal = na
+    if sigTurnUp
+        s1aPat := na(lastTurnUpK) ? "" : s1aPivot >= lastTurnUpK + minPivotMove ? "HL" : ""
+        s1aPatVal := s1aPivot
+        lastTurnUpK := s1aPivot
+    else if sigTurnDown
+        s1aPat := na(lastTurnDownK) ? "" : s1aPivot <= lastTurnDownK - minPivotMove ? "LH" : ""
+        s1aPatVal := s1aPivot
+        lastTurnDownK := s1aPivot
+
+    var float lastHlK = na
+    var float lastLhK = na
+    var bool hlWasHeld = false
+    var bool lhWasBroken = false
+    var bool hlRActive = false
+    var bool lhRActive = false
+
+    if s1aPat == "HL"
+        lastHlK := s1aPatVal
+        hlWasHeld := false
+        hlRActive := true
+        lhWasBroken := false
+        lhRActive := false
+    if s1aPat == "LH"
+        lastLhK := s1aPatVal
+        lhWasBroken := false
+        lhRActive := true
+        hlWasHeld := false
+        hlRActive := false
+    if hlRActive and not na(lastHlK) and k1A > lastHlK
+        hlWasHeld := true
+    if lhRActive and not na(lastLhK) and k1A < lastLhK
+        lhWasBroken := true
+
+    bullReverse = lhRActive and not na(lastLhK) and lhWasBroken and ta.crossover(k1A, lastLhK)
+    bearReverse = hlRActive and not na(lastHlK) and hlWasHeld and ta.crossunder(k1A, lastHlK)
+
+    k2AUp = k2A > k2A[1]
+    k2ADown = k2A < k2A[1]
+    s2BelowSplit = k2A < s2aSplit
+    s2State = s2BelowSplit and k2AUp ? (k2A < s2NoLongLevel ? "No Long" : "On Hold") :
+         s2BelowSplit and k2ADown ? "Try Short" :
+         not s2BelowSplit and k2AUp ? "Try Long" :
+         k2A > s2NoShortLevel and k2ADown ? "No Short" : "On Hold"
+
+    goShortTrig = s2State == "Try Short" and (s1aTurnDown or (useRevGo and bearReverse))
+    goLongTrig  = s2State == "Try Long" and (s1aTurnUp or (useRevGo and bullReverse))
+
+    set1Active = k2A < s2aSplit
+    set2Active = k2A >= s2aSplit
+    withTrendLong  = goLongTrig  and k1A > longAbove2
+    withTrendShort = goShortTrig and k1A < shortBelow1
+    counterLong    = set1Active and (s1aTurnUp or (useRevGo and bullReverse)) and k1A > longAbove1
+    counterShort   = set2Active and (s1aTurnDown or (useRevGo and bearReverse)) and k1A < shortBelow2
+
+    lhPivot = s1aPat == "LH" ? s1aPatVal : na
+    hlPivot = s1aPat == "HL" ? s1aPatVal : na
+    [k1A, d1A, k2A, s2State, goLongTrig, goShortTrig, withTrendLong, withTrendShort,
+     counterLong, counterShort, s1aPat == "HL", s1aPat == "LH", hlPivot, lhPivot,
+     ta.crossover(k1A, d1A), ta.crossunder(k1A, d1A)]
+
+f_resolveBundle(string tf) =>
+    if tf == ""
+        f_stochBundle()
+    else
+        request.security(syminfo.tickerid, tf, f_stochBundle(), lookahead=barmerge.lookahead_off)
+
+[k1, d1, k2, s2State, goLong, goShort, wtLong, wtShort, ctLong, ctShort, isHL, isLH, hlPivot, lhPivot, kCrossOver, kCrossUnder] =
+     f_resolveBundle(tfSignal)
+
+longHlSignal  = isHL and not na(hlPivot) and hlPivot > longHlMin and k2 > s2aSplit
+shortLhSignal = isLH and not na(lhPivot) and lhPivot < shortLhMax
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COMBINED CONTEXT — ORB / VWAP bands / EMA (from combined)
+// ═══════════════════════════════════════════════════════════════════════════════
+f_ctxBundle() =>
+    ema1 = ta.ema(close, ema1Len)
+    ema2 = ta.ema(close, ema2Len)
+    [vwapVal, stdevUpper, _] = ta.vwap(hlc3, timeframe.change("D"), 1)
+    stdevAbs = stdevUpper - vwapVal
+    u1 = vwapVal + stdevAbs * bandMult1
+    l1 = vwapVal - stdevAbs * bandMult1
+    u2 = vwapVal + stdevAbs * bandMult2
+    l2 = vwapVal - stdevAbs * bandMult2
+    u3 = vwapVal + stdevAbs * bandMult3
+    l3 = vwapVal - stdevAbs * bandMult3
+    aboveVwap = close > vwapVal
+    bullStack = ema1 > ema2 and ema2 > vwapVal
+    bearStack = ema1 < ema2 and ema2 < vwapVal
+    trendBull = aboveVwap and ema1 > ema2
+    trendBear = not aboveVwap and ema1 < ema2
+    vwapRemark = close > u3 ? "UP3+" : close > u2 ? "UP3" : close > u1 ? "UP2" :
+         close > vwapVal ? "UP1" : close < l3 ? "DN3+" : close < l2 ? "DN3" :
+         close < l1 ? "DN2" : close < vwapVal ? "DN1" : "VWAP"
+    vwapTopStack = vwapVal > ema2 and ema2 > ema1
+    [ema1, ema2, vwapVal, u1, l1, u2, l2, u3, l3, aboveVwap, bullStack, bearStack, trendBull, trendBear, vwapRemark, vwapTopStack]
+
+[ema1Val, ema2Val, vwapVal, vwapU1, vwapL1, vwapU2, vwapL2, vwapU3, vwapL3,
+     aboveVwap, bullStack, bearStack, trendBull, trendBear, vwapRemark, vwapTopStack] =
+     request.security(syminfo.tickerid, tfCtx, f_ctxBundle(), lookahead=barmerge.lookahead_off)
+
+// Day open: VWAP > EMA200 > EMA50 → short-only session
+var bool shortOnlyDay = false
+if isFirstRTH
+    shortOnlyDay := enableOpenBias and vwapTopStack
+else if not inRTH
+    shortOnlyDay := shortOnlyDay[1]
+longAllowed = not shortOnlyDay
+
+// NY ORB range (chart TF)
+tfMin = timeframe.in_seconds() / 60.0
+orbOnChart = timeframe.isintraday and tfMin <= orbDuration
+tOrb = time(timeframe.period, nyOrbSession + ":1234567", "America/New_York")
+tRth = time(timeframe.period, nyRthSession + ":1234567", "America/New_York")
+inOrb  = not na(tOrb)
+inRthNy = not na(tRth)
+isFirstOrb = inOrb and not inOrb[1]
+
+var float orbHigh = na
+var float orbLow  = na
+if isFirstOrb
+    orbHigh := high
+    orbLow  := low
+else
+    orbHigh := orbHigh[1]
+    orbLow  := orbLow[1]
+if inOrb and high > orbHigh
+    orbHigh := high
+if inOrb and low < orbLow
+    orbLow := low
+
+orbMid = (orbHigh + orbLow) / 2.0
+orbReady = inRthNy and not inOrb and not na(orbHigh) and not na(orbLow)
+orbUpper = orbReady and close >= orbMid
+orbLower = orbReady and close < orbMid
+orbBreakHigh = orbReady and close > orbHigh
+orbBreakLow  = orbReady and close < orbLow
+
+ctxLongOrb  = not filterOrb or not enableCtxFilter or (orbReady and (orbUpper or orbBreakHigh))
+ctxShortOrb = not filterOrb or not enableCtxFilter or (orbReady and (orbLower or orbBreakLow))
+ctxLongTrend  = not filterTrend or not enableCtxFilter or trendBull
+ctxShortTrend = not filterTrend or not enableCtxFilter or trendBear
+ctxLongVwap  = not filterVwap or not enableCtxFilter or aboveVwap
+ctxShortVwap = not filterVwap or not enableCtxFilter or not aboveVwap
+ctxLongEma   = not filterEmaStack or not enableCtxFilter or bullStack
+ctxShortEma  = not filterEmaStack or not enableCtxFilter or bearStack
+
+ctxLongOk  = ctxLongTrend and ctxLongVwap and ctxLongEma and ctxLongOrb
+ctxShortOk = ctxShortTrend and ctxShortVwap and ctxShortEma and ctxShortOrb
+
+trendTxt = trendBull ? "Bullish" : trendBear ? "Bearish" : "Neutral"
+orbTxt = inOrb ? "forming" : orbBreakHigh ? "brk↑" : orbBreakLow ? "brk↓" : orbUpper ? "upper" : orbLower ? "lower" : "—"
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENTRIES — long: S2>50 + S1 HL pivot >50 | short: S1 LH pivot <20
+// ═══════════════════════════════════════════════════════════════════════════════
+longEntry  = canTrade and longAllowed and ctxLongOk and longHlSignal
+shortEntry = canTrade and ctxShortOk and shortLhSignal
+
+inLong  = strategy.position_size > 0
+inShort = strategy.position_size < 0
+flat    = strategy.position_size == 0
+
+var float entryK = na
+var float entryPx = na
+var int   lastTpLevel = 0
+
+var string activeSide = "none"
+if longEntry and (flat or inShort)
+    strategy.close("Short", comment="Flip L")
+    strategy.entry("Long", strategy.long, comment="HL>" + str.tostring(longHlMin))
+    entryK := k1
+    entryPx := close
+    lastTpLevel := 0
+    activeSide := "HL-L"
+if shortEntry and (flat or inLong)
+    strategy.close("Long", comment="Flip S")
+    strategy.entry("Short", strategy.short, comment="LH<" + str.tostring(shortLhMax))
+    entryK := k1
+    entryPx := close
+    lastTpLevel := 0
+    activeSide := "LH-S"
+
+// Flatten at 15:00 ET — no holds into last hour or extended session
+if exitAt3pm and not flat
+    strategy.close_all(comment="3pm exit")
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+    activeSide := "none"
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  EXITS — partial TP every 1% | full close on S1 vs entry K | signal exits
+// ═══════════════════════════════════════════════════════════════════════════════
+f_gainLong(float px) => px > 0 ? (close - px) / px * 100.0 : 0.0
+f_gainShort(float px) => px > 0 ? (px - close) / px * 100.0 : 0.0
+
+gainLong  = inLong and not na(entryPx) ? f_gainLong(entryPx) : 0.0
+gainShort = inShort and not na(entryPx) ? f_gainShort(entryPx) : 0.0
+tpLvlLong  = int(math.floor(gainLong / tpStepPct))
+tpLvlShort = int(math.floor(gainShort / tpStepPct))
+
+longPartialTp  = canTrade and usePctTp and inLong and not na(entryPx) and tpLvlLong > lastTpLevel and tpLvlLong > 0
+shortPartialTp = canTrade and usePctTp and inShort and not na(entryPx) and tpLvlShort > lastTpLevel and tpLvlShort > 0
+
+longStochExit  = canTrade and exitOnEntryStoch and inLong and not na(entryK) and k1 < entryK
+shortStochExit = canTrade and exitOnEntryStoch and inShort and not na(entryK) and k1 > entryK
+
+if longPartialTp
+    strategy.close("Long", qty_percent=tpPartialPct, comment="TP " + str.tostring(tpLvlLong) + "%")
+    lastTpLevel := tpLvlLong
+if shortPartialTp
+    strategy.close("Short", qty_percent=tpPartialPct, comment="TP " + str.tostring(tpLvlShort) + "%")
+    lastTpLevel := tpLvlShort
+
+if longStochExit
+    strategy.close("Long", comment="S1<entryK")
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+    activeSide := "none"
+if shortStochExit
+    strategy.close("Short", comment="S1>entryK")
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+    activeSide := "none"
+longExitGo   = canTrade and exitOnOppositeGo and inLong and goShort
+longExitStruct = canTrade and exitOnStructFail and inLong and isLH
+longExitKd   = canTrade and exitOnKdCross and inLong and kCrossUnder
+longExitS2   = canTrade and exitOnS2Block and inLong and (s2State == "No Long" or s2State == "Try Short")
+
+shortExitGo   = canTrade and exitOnOppositeGo and inShort and goLong
+shortExitStruct = canTrade and exitOnStructFail and inShort and isHL
+shortExitKd   = canTrade and exitOnKdCross and inShort and kCrossOver
+shortExitS2   = canTrade and exitOnS2Block and inShort and (s2State == "No Short" or s2State == "Try Long")
+
+if longExitGo or longExitStruct or longExitKd or longExitS2
+    reason = longExitGo ? "Go↓" : longExitStruct ? "LH" : longExitKd ? "K%D↓" : "S2 blk"
+    strategy.close("Long", comment=reason)
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+    activeSide := "none"
+if shortExitGo or shortExitStruct or shortExitKd or shortExitS2
+    reason = shortExitGo ? "Go↑" : shortExitStruct ? "HL" : shortExitKd ? "K%D↑" : "S2 blk"
+    strategy.close("Short", comment=reason)
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+    activeSide := "none"
+
+// ATR stop only (trade window)
+atr = ta.atr(atrLen)
+if canTrade and inLong and useStopLoss
+    avgL = strategy.position_avg_price
+    strategy.exit("Long SL", "Long", stop=avgL - atr * atrMult)
+if canTrade and inShort and useStopLoss
+    avgS = strategy.position_avg_price
+    strategy.exit("Short SL", "Short", stop=avgS + atr * atrMult)
+
+if flat and activeSide != "none"
+    activeSide := "none"
+if flat
+    entryK := na
+    entryPx := na
+    lastTpLevel := 0
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  VISUALS & DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+plotshape(showLabels and longEntry,  "Long Entry",  shape.triangleup,   location.belowbar, #089981, text="HL", size=size.small)
+plotshape(showLabels and shortEntry, "Short Entry", shape.triangledown, location.abovebar, #f23645, text="LH", size=size.small)
+plotshape(showLabels and longPartialTp,  "Long TP",  shape.circle, location.abovebar, #089981, text="TP", size=size.tiny)
+plotshape(showLabels and shortPartialTp, "Short TP", shape.circle, location.belowbar, #f23645, text="TP", size=size.tiny)
+plotshape(showLabels and longStochExit,  "Long S1 Exit",  shape.xcross, location.abovebar, color.orange, size=size.tiny)
+plotshape(showLabels and shortStochExit, "Short S1 Exit", shape.xcross, location.belowbar, color.orange, size=size.tiny)
+plotshape(showLabels and (longExitGo or longExitStruct or longExitKd or longExitS2),  "Long Exit",  shape.xcross, location.abovebar, color.gray, size=size.tiny)
+plotshape(showLabels and (shortExitGo or shortExitStruct or shortExitKd or shortExitS2), "Short Exit", shape.xcross, location.abovebar, color.gray, size=size.tiny)
+
+// Context overlays (combined)
+plot(showContext ? vwapVal : na, "VWAP", color.yellow, linewidth=2)
+plot(showContext ? vwapU1 : na, "VWAP U1", color.new(#4caf50, 50), linewidth=1)
+plot(showContext ? vwapL1 : na, "VWAP L1", color.new(#f23645, 50), linewidth=1)
+plot(showContext ? vwapU2 : na, "VWAP U2", color.new(#70ccbd, 60), linewidth=1)
+plot(showContext ? vwapL2 : na, "VWAP L2", color.new(#f48fb1, 60), linewidth=1)
+plot(showContext and orbOnChart and inRthNy ? orbHigh : na, "ORB High", color.new(#00ff6a, 30), linewidth=2)
+plot(showContext and orbOnChart and inRthNy ? orbLow : na, "ORB Low", color.new(#00ff6a, 30), linewidth=2)
+plot(showContext and orbOnChart and inRthNy and orbReady ? orbMid : na, "ORB 50%", color.new(color.white, 50), linewidth=1, linestyle=plot.linestyle_dashed)
+plot(showContext ? ema1Val : na, "EMA 50", color.new(#a5d6a7, 0), linewidth=2)
+plot(showContext ? ema2Val : na, "EMA 200", color.new(#80deea, 0), linewidth=2)
+
+var table dash = table.new(position.top_left, 2, 14, bgcolor=color.new(#000000, 15), border_width=1)
+if barstate.islast
+    table.cell(dash, 0, 0, "Metric", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dash, 1, 0, "Value", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dash, 0, 1, "S1 K", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 1, str.tostring(k1, "#.#"), text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 2, "S2 K", text_color=#cccccc, text_size=size.small)
+    s2Col = k2 >= s2aSplit ? #089981 : #f23645
+    table.cell(dash, 1, 2, str.tostring(k2, "#.#"), text_color=s2Col, text_size=size.small)
+    table.cell(dash, 0, 3, "S2 State", text_color=#cccccc, text_size=size.small)
+    s2TxtCol = s2State == "Try Long" ? #089981 : s2State == "Try Short" ? #f23645 : #888888
+    table.cell(dash, 1, 3, s2State, text_color=s2TxtCol, text_size=size.small)
+    table.cell(dash, 0, 4, "Trend", text_color=#cccccc, text_size=size.small)
+    trCol = trendBull ? #089981 : trendBear ? #f23645 : #888888
+    table.cell(dash, 1, 4, trendTxt, text_color=trCol, text_size=size.small)
+    table.cell(dash, 0, 5, "VWAP zone", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 5, vwapRemark, text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 6, "ORB", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 6, orbTxt, text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 7, "Open bias", text_color=#cccccc, text_size=size.small)
+    biasTxt = shortOnlyDay ? "SHORT ONLY" : vwapTopStack ? "V>200>50" : "—"
+    biasCol = shortOnlyDay ? #f23645 : #666666
+    table.cell(dash, 1, 7, biasTxt, text_color=biasCol, text_size=size.small)
+    table.cell(dash, 0, 8, "EMA stack", text_color=#cccccc, text_size=size.small)
+    stkTxt = bullStack ? "BULL" : bearStack ? "BEAR" : "—"
+    stkCol = bullStack ? #089981 : bearStack ? #f23645 : #666666
+    table.cell(dash, 1, 8, stkTxt, text_color=stkCol, text_size=size.small)
+    table.cell(dash, 0, 9, "Entry K", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 9, na(entryK) ? "—" : str.tostring(entryK, "#.#"), text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 10, "HL pivot", text_color=#cccccc, text_size=size.small)
+    hlTxt = not na(hlPivot) ? str.tostring(hlPivot, "#.#") : "—"
+    hlCol = longHlSignal ? #089981 : #888888
+    table.cell(dash, 1, 10, hlTxt, text_color=hlCol, text_size=size.small)
+    table.cell(dash, 0, 11, "LH pivot", text_color=#cccccc, text_size=size.small)
+    lhTxt = not na(lhPivot) ? str.tostring(lhPivot, "#.#") : "—"
+    lhCol = shortLhSignal ? #f23645 : #888888
+    table.cell(dash, 1, 11, lhTxt, text_color=lhCol, text_size=size.small)
+    table.cell(dash, 0, 12, "Position", text_color=#cccccc, text_size=size.small)
+    posTxt = inLong ? "LONG" : inShort ? "SHORT" : "flat"
+    posCol = inLong ? #089981 : inShort ? #f23645 : #888888
+    table.cell(dash, 1, 12, posTxt, text_color=posCol, text_size=size.small)
+    table.cell(dash, 0, 13, "Net P&L", text_color=#cccccc, text_size=size.small)
+    pnlCol = strategy.netprofit >= 0 ? #089981 : #f23645
+    table.cell(dash, 1, 13, str.tostring(strategy.netprofit, "#.##"), text_color=pnlCol, text_size=size.small)
+
+alertcondition(longEntry,  "Stoch Long Entry",  "Tri Stoch: S2>50 S1 HL long")
+alertcondition(shortEntry, "Stoch Short Entry", "Tri Stoch: S1 LH below 20 short")
+alertcondition(longPartialTp or shortPartialTp, "Partial TP", "Tri Stoch: partial take profit")
+alertcondition(longStochExit or shortStochExit, "Entry Stoch Exit", "Tri Stoch: full exit on S1 vs entry K")
+alertcondition(longExitGo or longExitStruct or longExitKd or longExitS2,  "Stoch Long Exit",  "Tri Stoch: long exit")
+alertcondition(shortExitGo or shortExitStruct or shortExitKd or shortExitS2, "Stoch Short Exit", "Tri Stoch: short exit")

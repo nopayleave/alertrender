@@ -1,0 +1,313 @@
+// This Pine Script™ source code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+// Dual TF Tri Stoch: S1A/S2A (S2 = histogram)
+
+//@version=6
+indicator("Tri TF-A (S1+S2 Hist) HLLH", overlay=false, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+kLength     = input.int(39,  "K Length",             minval=1, group="Stochastic Settings")
+kSmooth     = input.int(5,   "K Smoothing",          minval=1, group="Stochastic Settings")
+dSmooth     = input.int(4,   "D Smoothing",          minval=1, group="Stochastic Settings")
+extraSmoothMode = input.string("EMA", "Extra Smooth Mode", options=["Off", "SMA", "EMA", "RMA", "WMA", "ALMA", "HMA"], group="Stochastic Settings", tooltip="Off = raw K/D after standard smooth. SMA stacks lag and can flatten swings. EMA/RMA/WMA react faster. ALMA/HMA preserve turn shape with less pull.")
+extraSmoothLen  = input.int(3,   "Extra Smooth Length", minval=1, group="Stochastic Settings")
+obLevel     = input.int(80,  "Overbought",           minval=50, maxval=100, group="Stochastic Settings")
+obExtreme   = input.int(90,  "Overbought Extreme",   minval=50, maxval=100, group="Stochastic Settings")
+osLevel     = input.int(20,  "Oversold",             minval=0,  maxval=50,  group="Stochastic Settings")
+osExtreme   = input.int(10,  "Oversold Extreme",     minval=0,  maxval=50,  group="Stochastic Settings")
+s2Opacity   = input.int(50,  "S2 Histogram Opacity", minval=0, maxval=100, group="Stochastic Settings", tooltip="0=transparent, 100=solid")
+
+grp_a = "Timeframe A"
+timeframeA  = input.timeframe("", "Timeframe A", group=grp_a, tooltip="Approximate this TF with scaled periods on chart data — smooth curves, no HTF stair-steps. Leave empty for chart TF.")
+baseMultA   = input.string("1x", "Base (S1A)", options=["0.25x", "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "4x", "6x", "8x", "10x", "12x", "14x", "16x", "18x", "20x"], group=grp_a)
+s2VsS1A     = input.float(8.0, "S2A vs S1A (x)", minval=0.25, step=0.25, group=grp_a)
+stochTagA   = input.string("Interday", "Stoch Label (webhook)", options=["Interday", "Swing"], group=grp_a)
+
+colorUp        = input.color(#089981, title="Up", group="Colors")
+colorDown      = input.color(#f23645, title="Down", group="Colors")
+colorExHigh    = input.color(#4caf50, title="Overbought (>90)", group="Extreme Colors")
+colorExLow     = input.color(#f48fb1, title="Oversold (<10)", group="Extreme Colors")
+colorWarnHigh  = input.color(#f06292, title=">90 turning down", group="Extreme Colors")
+colorWarnLow   = input.color(#4dd0e1, title="<10 turning up", group="Extreme Colors")
+
+grp_table = "Direction Table"
+showTable = input.bool(true, "Show Direction Table", group=grp_table)
+tablePos  = input.string("top_right", "Position", group=grp_table, options=["top_right", "top_left", "bottom_right", "bottom_left", "top_center", "middle_left", "middle_center", "middle_right", "bottom_center"])
+
+grp_entry = "Entry Signals"
+showEntries = input.bool(true, "Show Entry Markers", group=grp_entry)
+entryAlerts = input.bool(true, "Enable Entry Alerts", group=grp_entry)
+s2aSplit       = input.int(50, "S2A Split Level (X)", minval=0, maxval=100, group=grp_entry, tooltip="Bear/bull regime split for S2 state and entry sets.")
+s2NoShortLevel = input.int(70, "S2 No Short above", minval=50, maxval=100, group=grp_entry, tooltip="S2 above this level turning down → No Short.")
+s2NoLongLevel  = input.int(30, "S2 No Long below", minval=0, maxval=50, group=grp_entry, tooltip="S2 below this level turning up → No Long.")
+useRevGo       = input.bool(true, "R label upgrades to Go", group=grp_entry, tooltip="Try Long + bull R → Go Long; Try Short + bear R → Go Short.")
+
+grp_set1 = "Entry Set 1 — S2A below X (bear regime)"
+longAbove1  = input.int(60, "Long: S1A turns up above (Y)", minval=0, maxval=100, group=grp_set1, tooltip="Counter-trend long: strict. Dip must bottom above this level despite the bear regime.")
+shortBelow1 = input.int(60, "Short: S1A turns down below (Z)", minval=0, maxval=100, group=grp_set1, tooltip="With-trend short: loose. Any bounce that fails below this level continues the downtrend.")
+
+grp_set2 = "Entry Set 2 — S2A above X (bull regime)"
+longAbove2  = input.int(40, "Long: S1A turns up above (Y)", minval=0, maxval=100, group=grp_set2, tooltip="With-trend long: loose. Any dip that bottoms above this level continues the uptrend.")
+shortBelow2 = input.int(40, "Short: S1A turns down below (Z)", minval=0, maxval=100, group=grp_set2, tooltip="Counter-trend short: strict. Bounce must fail below this level despite the bull regime.")
+
+grp_sigfilter = "Signal Filter"
+useSignalFilter = input.bool(false, "Enable Signal Filter", group=grp_sigfilter, tooltip="When enabled, only show LH when pivot K is below the LH level and HL when pivot K is above the HL level.")
+filterLhBelow   = input.int(40, "LH: pivot below", minval=0, maxval=100, group=grp_sigfilter, tooltip="Lower High labels only when K pivot is below this level.")
+filterHlAbove   = input.int(60, "HL: pivot above", minval=0, maxval=100, group=grp_sigfilter, tooltip="Higher Low labels only when K pivot is above this level.")
+
+grp_cross = "S1A K Trend"
+showHLLH       = input.bool(true, "Show HL/LH Labels", group=grp_cross, tooltip="HL/LH from K trend turns: turn up vs prior turn-up low, turn down vs prior turn-down high.")
+showReverse    = input.bool(true, "Show Reverse (R) Labels", group=grp_cross, tooltip="Bear R: K held above last HL then crosses below (until LH forms). Bull R: K held below last LH then crosses above (until HL forms).")
+minLegMove     = input.float(5.0, "Min Leg Move", minval=0, step=0.5, group=grp_cross, tooltip="Min K points in the swing leg before a turn counts (filters minor wiggles).")
+minPivotMove   = input.float(3.0, "Min HL/LH Pivot Delta", minval=0, step=0.5, group=grp_cross, tooltip="Min K points above prior HL low or below prior LH high to label HL/LH.")
+crossingOffset = input.float(5.0, "Label Offset", minval=0, step=1.0, group=grp_cross)
+labelColorHL   = input.color(#00ff00, "Higher Low", group=grp_cross)
+labelColorLH   = input.color(#ff6600, "Lower High", group=grp_cross)
+labelColorRevUp = input.color(#2196f3, "Reverse Up (above LH)", group=grp_cross)
+labelColorRevDn = input.color(#9c27b0, "Reverse Down (below HL)", group=grp_cross)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+f_multVal(s) =>
+    s == "0.25x" ? 0.25 : s == "0.5x" ? 0.5 : s == "1x" ? 1.0 : s == "1.5x" ? 1.5 : s == "2x" ? 2.0 : s == "2.5x" ? 2.5 : s == "3x" ? 3.0 : s == "4x" ? 4.0 : s == "6x" ? 6.0 : s == "8x" ? 8.0 : s == "10x" ? 10.0 : s == "12x" ? 12.0 : s == "14x" ? 14.0 : s == "16x" ? 16.0 : s == "18x" ? 18.0 : s == "20x" ? 20.0 : 1.0
+
+f_lineColor(val, isUp, colUp, colDown) =>
+    (val < 10 and isUp) ? colorWarnLow : (val > 90 and not isUp) ? colorWarnHigh : val > 90 ? colorExHigh : val < 10 ? colorExLow : isUp ? colUp : colDown
+
+f_dir(float v) =>
+    v > v[1] ? "up" : v < v[1] ? "down" : "flat"
+
+f_extraSmooth(float src, string mode, int len) =>
+    mode == "SMA" ? ta.sma(src, len) : mode == "EMA" ? ta.ema(src, len) : mode == "RMA" ? ta.rma(src, len) : mode == "WMA" ? ta.wma(src, len) : mode == "ALMA" ? ta.alma(src, len, 0.85, 6) : mode == "HMA" ? ta.hma(src, len) : src
+
+f_tfScale(string tf) =>
+    tf == "" ? 1.0 : timeframe.in_seconds(tf) / timeframe.in_seconds(timeframe.period)
+
+f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, float lastTurnDownK, float minDelta) =>
+    string pat = ""
+    float patVal = na
+    float newTurnUpK = lastTurnUpK
+    float newTurnDownK = lastTurnDownK
+    if isTurnUp
+        pat := na(lastTurnUpK) ? "" : pivotVal >= lastTurnUpK + minDelta ? "Higher Low" : ""
+        patVal := pivotVal
+        newTurnUpK := pivotVal
+    else if isTurnDown
+        pat := na(lastTurnDownK) ? "" : pivotVal <= lastTurnDownK - minDelta ? "Lower High" : ""
+        patVal := pivotVal
+        newTurnDownK := pivotVal
+    [pat, patVal, newTurnUpK, newTurnDownK]
+
+tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
+
+// S1 = line, S2 = histogram (formerly S3)
+f_stochPair(float s1Mult, float s2Mult) =>
+    pK1 = math.max(1, math.round(kLength * s1Mult))
+    sK1 = math.max(1, math.round(kSmooth * s1Mult))
+    dK1 = math.max(1, math.round(dSmooth * s1Mult))
+    pK2 = math.max(1, math.round(kLength * s2Mult))
+    sK2 = math.max(1, math.round(kSmooth * s2Mult))
+    dK2 = math.max(1, math.round(dSmooth * s2Mult))
+    k1Base = ta.sma(ta.stoch(close, high, low, pK1), sK1)
+    d1Base = ta.sma(k1Base, dK1)
+    k2Base = ta.sma(ta.stoch(close, high, low, pK2), sK2)
+    d2Base = ta.sma(k2Base, dK2)
+    k1 = f_extraSmooth(k1Base, extraSmoothMode, extraSmoothLen)
+    d1 = f_extraSmooth(d1Base, extraSmoothMode, extraSmoothLen)
+    k2 = f_extraSmooth(k2Base, extraSmoothMode, extraSmoothLen)
+    d2 = f_extraSmooth(d2Base, extraSmoothMode, extraSmoothLen)
+    [k1, d1, k2, d2]
+
+f_stochPairWithSignals(float s1Mult, float s2Mult) =>
+    [k1, d1, k2, d2] = f_stochPair(s1Mult, s2Mult)
+    kUp = k1 >= k1[1]
+    [k1, d1, k2, d2, ta.crossover(k1, d1), ta.crossunder(k1, d1), not kUp[1] and kUp, kUp[1] and not kUp]
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STOCHASTIC — A (scaled periods on chart TF — no request.security stair-steps)
+// ═══════════════════════════════════════════════════════════════════════════════
+tfScaleA  = f_tfScale(timeframeA)
+s1MultA   = f_multVal(baseMultA) * tfScaleA
+s2MultA   = s1MultA * s2VsS1A
+
+[k1A, d1A, k2A, d2A, k1ACrossOver, k1ACrossUnder, s1aTurnUp, s1aTurnDown] = f_stochPairWithSignals(s1MultA, s2MultA)
+
+k1AIsUp = k1A >= k1A[1]
+d1AIsUp = d1A >= d1A[1]
+k1AColor = (k1A < 5 or k1A > 95) ? color.white : f_lineColor(k1A, k1AIsUp, colorUp, colorDown)
+d1AColor = f_lineColor(d1A, d1AIsUp, colorUp, colorDown)
+k2AIsUp = k2A >= k2A[1]
+k2AColor = (k2A < 5 or k2A > 95) ? color.white : f_lineColor(k2A, k2AIsUp, colorUp, colorDown)
+
+s1aPivot = k1A[1]
+var float lastTurnUpK = na
+var float lastTurnDownK = na
+
+downLegOk = na(lastTurnDownK) or lastTurnDownK - s1aPivot >= minLegMove
+upLegOk   = na(lastTurnUpK) or s1aPivot - lastTurnUpK >= minLegMove
+sigTurnUp   = s1aTurnUp and downLegOk
+sigTurnDown = s1aTurnDown and upLegOk
+
+[s1aPat, s1aPatVal, newTurnUpK, newTurnDownK] = f_hllhTrend(sigTurnUp, sigTurnDown, s1aPivot, lastTurnUpK, lastTurnDownK, minPivotMove)
+lastTurnUpK := newTurnUpK
+lastTurnDownK := newTurnDownK
+
+var float lastHlK = na
+var float lastLhK = na
+var bool hlWasHeld = false
+var bool lhWasBroken = false
+var bool hlRActive = false
+var bool lhRActive = false
+
+if s1aPat == "Higher Low"
+    lastHlK := s1aPatVal
+    hlWasHeld := false
+    hlRActive := true
+    lhWasBroken := false
+    lhRActive := false
+
+if s1aPat == "Lower High"
+    lastLhK := s1aPatVal
+    lhWasBroken := false
+    lhRActive := true
+    hlWasHeld := false
+    hlRActive := false
+
+if hlRActive and not na(lastHlK) and k1A > lastHlK
+    hlWasHeld := true
+
+if lhRActive and not na(lastLhK) and k1A < lastLhK
+    lhWasBroken := true
+
+bullReverse = lhRActive and not na(lastLhK) and lhWasBroken and ta.crossover(k1A, lastLhK)
+bearReverse = hlRActive and not na(lastHlK) and hlWasHeld and ta.crossunder(k1A, lastHlK)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  S2 REGIME + S1 GO — table states drive entries
+//  S2: below X up=On Hold/No Long, below X down=Try Short, above X up=Try Long,
+//       above No-Short down=No Short, else above X down=On Hold
+//  S1: On Hold unless Try Short+turn/R → Go Short, Try Long+turn/R → Go Long
+// ═══════════════════════════════════════════════════════════════════════════════
+k2AUp = k2A > k2A[1]
+k2ADown = k2A < k2A[1]
+s2BelowSplit = k2A < s2aSplit
+
+s2State = s2BelowSplit and k2AUp ? (k2A < s2NoLongLevel ? "No Long" : "On Hold") : s2BelowSplit and k2ADown ? "Try Short" : not s2BelowSplit and k2AUp ? "Try Long" : k2A > s2NoShortLevel and k2ADown ? "No Short" : "On Hold"
+
+goShortTrig = s2State == "Try Short" and (s1aTurnDown or (useRevGo and bearReverse))
+goLongTrig  = s2State == "Try Long" and (s1aTurnUp or (useRevGo and bullReverse))
+
+s1State = s2State == "On Hold" or s2State == "No Short" or s2State == "No Long" ? "On Hold" : goShortTrig ? "Go Short" : goLongTrig ? "Go Long" : "On Hold"
+
+s2StateColor = s2State == "Try Short" ? colorDown : s2State == "Try Long" ? colorUp : s2State == "No Short" ? color.orange : s2State == "No Long" ? colorWarnLow : #aaaaaa
+s1StateColor = s1State == "Go Short" ? colorDown : s1State == "Go Long" ? colorUp : #aaaaaa
+
+// S2 histogram first (behind), then S1 lines
+plot(k2A, "S2A Histogram", style=plot.style_columns, color=color.new(k2AColor, 100 - s2Opacity), linewidth=4, display=display.none)
+plot(k1A, "S1A K", k1AColor, 3)
+plot(d1A, "S1A D", d1AColor, 1, display=display.none)
+
+hOBx = hline(obExtreme, "Overbought Extreme", color.new(color.white, 0),  hline.style_dashed)
+hOB  = hline(obLevel,   "Overbought",         color.new(color.white, 70), hline.style_dashed)
+hOS  = hline(osLevel,   "Oversold",           color.new(color.white, 70), hline.style_dashed)
+hOSx = hline(osExtreme, "Oversold Extreme",   color.new(color.white, 0),  hline.style_dashed)
+hline(60, "Mid 60", color.new(color.yellow, 0), hline.style_solid)
+hline(40, "Mid 40", color.new(color.yellow, 0), hline.style_solid)
+hline(50, "Mid 50", color.new(color.yellow, 0), hline.style_dashed)
+fill(hOB, hOS, color.new(color.purple, 92))
+
+hlShow = showHLLH and s1aPat == "Higher Low" and (not useSignalFilter or s1aPatVal > filterHlAbove)
+lhShow = showHLLH and s1aPat == "Lower High" and (not useSignalFilter or s1aPatVal < filterLhBelow)
+plotshape(hlShow ? s1aPatVal - crossingOffset : na, "S1A HL", shape.labelup, location.absolute, labelColorHL, text="HL", textcolor=color.black, size=size.small)
+plotshape(lhShow ? s1aPatVal + crossingOffset : na, "S1A LH", shape.labeldown, location.absolute, labelColorLH, text="LH", textcolor=color.black, size=size.small)
+plotshape(showReverse and bullReverse ? k1A - crossingOffset : na, "S1A R Up", shape.labelup, location.absolute, labelColorRevUp, text="R", textcolor=color.white, size=size.small)
+plotshape(showReverse and bearReverse ? k1A + crossingOffset : na, "S1A R Dn", shape.labeldown, location.absolute, labelColorRevDn, text="R", textcolor=color.white, size=size.small)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENTRY SIGNALS — unified with table (turn/R trigger + Y/Z level filter)
+// ═══════════════════════════════════════════════════════════════════════════════
+shortSignal = goShortTrig and k1A < shortBelow1
+longSignal  = goLongTrig  and k1A > longAbove2
+entrySignal = longSignal ? "long" : shortSignal ? "short" : "none"
+entrySet    = shortSignal ? "1" : longSignal ? "2" : ""
+
+plotshape(showEntries and longSignal  ? k1A : na, "Long Signal",  shape.labelup,   location.absolute, colorUp,   text="L", textcolor=color.white, size=size.small)
+plotshape(showEntries and shortSignal ? k1A : na, "Short Signal", shape.labeldown, location.absolute, colorDown, text="S", textcolor=color.white, size=size.small)
+
+alertcondition(longSignal  and entryAlerts, "Go Long",  "Go Long: S2 Try Long + S1 turn/R above Y")
+alertcondition(shortSignal and entryAlerts, "Go Short", "Go Short: S2 Try Short + S1 turn/R below Z")
+
+var string prevS1State = ""
+var string prevS2State = ""
+s1StateChanged = s1State != prevS1State and s1State != "On Hold"
+s2StateChanged = s2State != prevS2State
+if barstate.isconfirmed
+    prevS1State := s1State
+    prevS2State := s2State
+
+alertcondition(s1StateChanged and entryAlerts, "S1 State Change", "S1 state changed")
+alertcondition(s2StateChanged and entryAlerts, "S2 State Change", "S2 state changed")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DIRECTION TABLE
+// ═══════════════════════════════════════════════════════════════════════════════
+if showTable and barstate.islast
+    var dirTbl = table.new(tblPosition, 2, 3, bgcolor=#000000, border_width=1, border_color=color.new(#ffffff, 80))
+    table.cell(dirTbl, 0, 0, "", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dirTbl, 1, 0, "State", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dirTbl, 0, 1, "S1", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(dirTbl, 1, 1, s1State, text_color=s1StateColor, text_size=size.normal)
+    table.cell(dirTbl, 0, 2, "S2", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(dirTbl, 1, 2, s2State, text_color=s2StateColor, text_size=size.normal)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+alertcondition(k1ACrossOver and k1A < osLevel,
+     "S1A Bullish Cross in Oversold",
+     "S1A: K crossed above D below oversold")
+alertcondition(k1ACrossUnder and k1A > obLevel,
+     "S1A Bearish Cross in Overbought",
+     "S1A: K crossed below D above overbought")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  WEBHOOK
+// ═══════════════════════════════════════════════════════════════════════════════
+k1ADirection = f_dir(k1A)
+d1ADirection = f_dir(d1A)
+k2ADirection = f_dir(k2A)
+d2ADirection = f_dir(d2A)
+
+prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
+dayChgPct = math.abs(prevDayClose) > 1e-9 ? (close - prevDayClose) / prevDayClose * 100.0 : na
+dayVol = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+
+if barstate.isconfirmed
+    alertStr = "{"
+    alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
+    alertStr += "\"timeframe\":\"" + timeframe.period + "\","
+    alertStr += "\"time\":\"" + str.tostring(time) + "\","
+    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
+    alertStr += "\"changeFromPrevDay\":\"" + str.tostring(dayChgPct) + "\","
+    alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
+    alertStr += "\"k1A\":\"" + str.tostring(k1A) + "\","
+    alertStr += "\"d1A\":\"" + str.tostring(d1A) + "\","
+    alertStr += "\"k2A\":\"" + str.tostring(k2A) + "\","
+    alertStr += "\"d2A\":\"" + str.tostring(d2A) + "\","
+    alertStr += "\"k1ADirection\":\"" + k1ADirection + "\","
+    alertStr += "\"d1ADirection\":\"" + d1ADirection + "\","
+    alertStr += "\"k2ADirection\":\"" + k2ADirection + "\","
+    alertStr += "\"d2ADirection\":\"" + d2ADirection + "\","
+    alertStr += "\"s1State\":\"" + s1State + "\","
+    alertStr += "\"s2State\":\"" + s2State + "\","
+    alertStr += "\"entrySignal\":\"" + entrySignal + "\","
+    alertStr += "\"entrySet\":\"" + entrySet + "\","
+    alertStr += "\"d2Signal\":\"Tri\""
+    alertStr += "}"
+    alert(alertStr, alert.freq_once_per_bar_close)
+

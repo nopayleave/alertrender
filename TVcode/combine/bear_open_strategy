@@ -1,0 +1,348 @@
+//@version=6
+// Open + Pullback Strategy — long & short; mirrors combined + Tri (15s / 2m / 4m)
+strategy("Open + Pullback Strategy", shorttitle="Open/PB Strat", overlay=true,
+     pyramiding=0, default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     initial_capital=100000, commission_type=strategy.commission.percent, commission_value=0.01)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  STRATEGY MODE & SESSION
+// ═══════════════════════════════════════════════════════════════════════════════
+grpShort = "Short Setups"
+enableBearOpen   = input.bool(true, "A — Bear Open Short", group=grpShort,
+     tooltip="Bear EMA stack at open + 4m S2<50; 15s <10 bounce-fail.")
+enablePbShort    = input.bool(true, "B — Pullback Short", group=grpShort,
+     tooltip="2m+4m S2<50 + 15s LH; exit HL or K%D crossunder.")
+preferLowBreak   = input.bool(false, "Require PM/day low break (A)", group=grpShort)
+
+grpLong = "Long Setups"
+enableBullOpen   = input.bool(true, "C — Bull Open Long", group=grpLong,
+     tooltip="Bull EMA stack at open + 4m S2>50; 15s >90 pullback-resume.")
+enablePbLong     = input.bool(true, "D — Pullback Long", group=grpLong,
+     tooltip="2m+4m S2>50 + 15s HL; exit LH or K%D crossover.")
+preferHighBreak  = input.bool(false, "Require PM/day high break (C)", group=grpLong)
+
+grpMode = "Display"
+showDebugLabels  = input.bool(true, "Show entry/exit labels", group=grpMode)
+
+grpSession = "Session"
+tradeRTH     = input.bool(true, "Regular hours only (9:30–16:00 ET)", group=grpSession)
+inRTH        = not na(time(timeframe.period, "0930-1600", "America/New_York"))
+canTrade     = tradeRTH ? inRTH : true
+
+grpTf = "Timeframes"
+tf15s = input.timeframe("15S", "15s (Tri trigger TF)", group=grpTf)
+tf2m  = input.timeframe("2",   "2m (exit / regime)", group=grpTf)
+tf4m  = input.timeframe("4",   "4m (reconfirm)", group=grpTf)
+tf1m  = input.timeframe("1",   "1m (EMA / VWAP context)", group=grpTf)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TRI STOCH SETTINGS (match Tri副本4 defaults)
+// ═══════════════════════════════════════════════════════════════════════════════
+grpStoch = "Tri Stoch (shared)"
+kLength     = input.int(39,  "K Length",             minval=1, group=grpStoch)
+kSmooth     = input.int(5,   "K Smoothing",          minval=1, group=grpStoch)
+dSmooth     = input.int(4,   "D Smoothing",          minval=1, group=grpStoch)
+extraSmooth = input.int(3,   "Extra Smooth",         minval=1, group=grpStoch)
+osExtreme   = input.int(10,  "Oversold Extreme",     minval=0, maxval=50, group=grpStoch)
+obExtreme   = input.int(90,  "Overbought Extreme",   minval=50, maxval=100, group=grpStoch)
+s2Split     = input.int(50,  "S2 Split (regime)",    minval=0, maxval=100, group=grpStoch)
+baseMult    = input.string("1x", "Base mult (S1)", options=["0.25x","0.5x","1x","1.5x","2x","2.5x","3x","4x"], group=grpStoch)
+s2VsS1      = input.float(8.0, "S2 vs S1 (x)", minval=0.25, step=0.25, group=grpStoch)
+minLegMove  = input.float(5.0, "Min leg move (HL/LH)", minval=0, step=0.5, group=grpStoch)
+minPivotMove= input.float(3.0, "Min HL/LH pivot", minval=0, step=0.5, group=grpStoch)
+pivotWindow = input.int(8, "Max bars after entry pivot for fail-exit", minval=1, group=grpStoch,
+     tooltip="Short: HL after LH. Long: LH after HL.")
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COMBINED CONTEXT (EMA / VWAP / session highs & lows)
+// ═══════════════════════════════════════════════════════════════════════════════
+grpCtx = "Combined Context"
+ema1Len = input.int(50,  "EMA 1", group=grpCtx)
+ema2Len = input.int(200, "EMA 2", group=grpCtx)
+pmStartH = input.int(4,  "Premarket start hour (ET)", minval=0, maxval=23, group=grpCtx)
+pmStartM = input.int(0,  "Premarket start minute", minval=0, maxval=59, group=grpCtx)
+pmEndH   = input.int(9,  "Premarket end hour (ET)", minval=0, maxval=23, group=grpCtx)
+pmEndM   = input.int(30, "Premarket end minute", minval=0, maxval=59, group=grpCtx)
+
+f_multVal(s) =>
+    s == "0.25x" ? 0.25 : s == "0.5x" ? 0.5 : s == "1x" ? 1.0 : s == "1.5x" ? 1.5 :
+     s == "2x" ? 2.0 : s == "2.5x" ? 2.5 : s == "3x" ? 3.0 : s == "4x" ? 4.0 : 1.0
+
+s1M = f_multVal(baseMult)
+s2M = s1M * s2VsS1
+
+f_stochPair(float s1Mult, float s2Mult) =>
+    pK1 = math.max(1, math.round(kLength * s1Mult))
+    sK1 = math.max(1, math.round(kSmooth * s1Mult))
+    dK1 = math.max(1, math.round(dSmooth * s1Mult))
+    pK2 = math.max(1, math.round(kLength * s2Mult))
+    sK2 = math.max(1, math.round(kSmooth * s2Mult))
+    dK2 = math.max(1, math.round(dSmooth * s2Mult))
+    k1b = ta.sma(ta.stoch(close, high, low, pK1), sK1)
+    d1b = ta.sma(k1b, dK1)
+    k2b = ta.sma(ta.stoch(close, high, low, pK2), sK2)
+    d2b = ta.sma(k2b, dK2)
+    k1 = ta.sma(k1b, extraSmooth)
+    d1 = ta.sma(d1b, extraSmooth)
+    k2 = ta.sma(k2b, extraSmooth)
+    d2 = ta.sma(d2b, extraSmooth)
+    [k1, d1, k2, d2]
+
+f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, float lastTurnDownK, float minDelta) =>
+    string pat = ""
+    float newTurnUpK = lastTurnUpK
+    float newTurnDownK = lastTurnDownK
+    if isTurnUp
+        pat := na(lastTurnUpK) ? "" : pivotVal >= lastTurnUpK + minDelta ? "HL" : ""
+        newTurnUpK := pivotVal
+    else if isTurnDown
+        pat := na(lastTurnDownK) ? "" : pivotVal <= lastTurnDownK - minDelta ? "LH" : ""
+        newTurnDownK := pivotVal
+    [pat, newTurnUpK, newTurnDownK]
+
+// k1,d1,k2,k1Up,turnUp,turnDown,isLH,isHL,kCrossUnder,kCrossOver,s2Below50
+f_triBundle() =>
+    [k1, d1, k2, d2] = f_stochPair(s1M, s2M)
+    kUp = k1 >= k1[1]
+    turnUp   = not kUp[1] and kUp
+    turnDown = kUp[1] and not kUp
+    pivot = k1[1]
+
+    var float lastTurnUpK = na
+    var float lastTurnDownK = na
+    downLegOk = na(lastTurnDownK) or lastTurnDownK - pivot >= minLegMove
+    upLegOk   = na(lastTurnUpK) or pivot - lastTurnUpK >= minLegMove
+    sigUp   = turnUp and downLegOk
+    sigDown = turnDown and upLegOk
+    [pat, newUpK, newDnK] = f_hllhTrend(sigUp, sigDown, pivot, lastTurnUpK, lastTurnDownK, minPivotMove)
+    lastTurnUpK := newUpK
+    lastTurnDownK := newDnK
+
+    isLH = pat == "LH"
+    isHL = pat == "HL"
+    [k1, d1, k2, kUp, turnUp, turnDown, isLH, isHL, ta.crossunder(k1, d1), ta.crossover(k1, d1), k2 < s2Split]
+
+[k15, d15, s215, k15Up, tu15, td15, lh15, hl15, kcu15, kco15, s2b15] = request.security(syminfo.tickerid, tf15s, f_triBundle(), lookahead=barmerge.lookahead_off)
+[k2m, d2m, s22m, k2mUp, tu2m, td2m, lh2m, hl2m, kcu2m, kco2m, s2b2m] = request.security(syminfo.tickerid, tf2m,  f_triBundle(), lookahead=barmerge.lookahead_off)
+[k4m, d4m, s24m, k4mUp, tu4m, td4m, lh4m, hl4m, kcu4m, kco4m, s2b4m] = request.security(syminfo.tickerid, tf4m,  f_triBundle(), lookahead=barmerge.lookahead_off)
+
+s2a2m = not s2b2m
+s2a4m = not s2b4m
+
+f_ctx1m() =>
+    ema50  = ta.ema(close, ema1Len)
+    ema200 = ta.ema(close, ema2Len)
+    [vwapVal, _, _] = ta.vwap(hlc3, timeframe.change("D"), 1)
+    bearStack = ema50 < ema200 and ema200 < vwapVal
+    bullStack = ema50 > ema200 and ema200 > vwapVal
+    [bearStack, bullStack]
+
+[bearStack1m, bullStack1m] = request.security(syminfo.tickerid, tf1m, f_ctx1m(), lookahead=barmerge.lookahead_off)
+
+var bool bearOpenDay = false
+var bool bullOpenDay = false
+isFirstRTH = inRTH and not inRTH[1]
+if isFirstRTH
+    bearOpenDay := bearStack1m
+    bullOpenDay := bullStack1m
+else if not inRTH
+    bearOpenDay := bearOpenDay[1]
+    bullOpenDay := bullOpenDay[1]
+
+tz = "America/New_York"
+curHM = hour(time, tz) * 100 + minute(time, tz)
+pmStart = pmStartH * 100 + pmStartM
+pmEnd   = pmEndH * 100 + pmEndM
+inPM    = curHM >= pmStart and curHM < pmEnd
+
+var float pmLow = na
+var float pmHigh = na
+var int   pmDayKey = na
+dayKey = year(time, tz) * 10000 + month(time, tz) * 100 + dayofmonth(time, tz)
+if dayKey != pmDayKey
+    pmLow := na
+    pmHigh := na
+    pmDayKey := dayKey
+if inPM
+    pmLow  := na(pmLow)  ? low  : math.min(pmLow, low)
+    pmHigh := na(pmHigh) ? high : math.max(pmHigh, high)
+
+tExt = time("1440", session.extended)
+isFirstDay = na(tExt[1]) and not na(tExt) or tExt[1] < tExt
+var float dayLow = na
+var float dayHigh = na
+if isFirstDay and barstate.isnew
+    dayLow := low
+    dayHigh := high
+else
+    dayLow := nz(dayLow[1], low)
+    dayHigh := nz(dayHigh[1], high)
+if low < dayLow
+    dayLow := low
+if high > dayHigh
+    dayHigh := high
+
+lowBreakOk  = (not na(pmLow) and low < pmLow) or low <= dayLow
+highBreakOk = (not na(pmHigh) and high > pmHigh) or high >= dayHigh
+
+var string activeSetup = "none"
+inShort = strategy.position_size < 0
+inLong  = strategy.position_size > 0
+flat    = strategy.position_size == 0
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  A — BEAR OPEN SHORT
+// ═══════════════════════════════════════════════════════════════════════════════
+var bool aSawBelow10 = false
+var bool aSawBounce  = false
+
+if k15 < osExtreme
+    aSawBelow10 := true
+if aSawBelow10 and tu15
+    aSawBounce := true
+
+bearOpenEntry = enableBearOpen and canTrade and flat and bearOpenDay and s2b4m
+     and aSawBelow10 and aSawBounce and td15 and (not preferLowBreak or lowBreakOk)
+bearOpenExit  = inShort and activeSetup == "BearOpen" and k2mUp and k15Up
+
+if bearOpenEntry
+    strategy.entry("BearOpen", strategy.short, comment=lowBreakOk ? "BO+Low" : "BO")
+    activeSetup := "BearOpen"
+    aSawBelow10 := false
+    aSawBounce := false
+if bearOpenExit
+    strategy.close("BearOpen", comment="2m+15s up")
+    activeSetup := "none"
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  B — PULLBACK SHORT
+// ═══════════════════════════════════════════════════════════════════════════════
+var int pbShortBars = na
+
+pbShortEntry = enablePbShort and canTrade and flat and s2b2m and s2b4m and lh15
+if pbShortEntry
+    pbShortBars := 0
+else if inShort and activeSetup == "PbShort"
+    pbShortBars := nz(pbShortBars) + 1
+
+kcu15x = ta.crossunder(k15, d15)
+pbShortHlExit  = inShort and activeSetup == "PbShort" and hl15 and not na(pbShortBars) and pbShortBars <= pivotWindow
+pbShortKcuExit = inShort and activeSetup == "PbShort" and kcu15x
+
+if pbShortEntry
+    strategy.entry("PbShort", strategy.short, comment="PB↓")
+    activeSetup := "PbShort"
+    pbShortBars := 0
+if pbShortHlExit
+    strategy.close("PbShort", comment="HL fail")
+    activeSetup := "none"
+    pbShortBars := na
+if pbShortKcuExit
+    strategy.close("PbShort", comment="K%D↓")
+    activeSetup := "none"
+    pbShortBars := na
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  C — BULL OPEN LONG
+// ═══════════════════════════════════════════════════════════════════════════════
+var bool cSawAbove90 = false
+var bool cSawPullback = false
+
+if k15 > obExtreme
+    cSawAbove90 := true
+if cSawAbove90 and td15
+    cSawPullback := true
+
+bullOpenEntry = enableBullOpen and canTrade and flat and bullOpenDay and s2a4m
+     and cSawAbove90 and cSawPullback and tu15 and (not preferHighBreak or highBreakOk)
+bullOpenExit  = inLong and activeSetup == "BullOpen" and not k2mUp and not k15Up
+
+if bullOpenEntry
+    strategy.entry("BullOpen", strategy.long, comment=highBreakOk ? "BO+Hi" : "BO")
+    activeSetup := "BullOpen"
+    cSawAbove90 := false
+    cSawPullback := false
+if bullOpenExit
+    strategy.close("BullOpen", comment="2m+15s dn")
+    activeSetup := "none"
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  D — PULLBACK LONG
+// ═══════════════════════════════════════════════════════════════════════════════
+var int pbLongBars = na
+
+pbLongEntry = enablePbLong and canTrade and flat and s2a2m and s2a4m and hl15
+if pbLongEntry
+    pbLongBars := 0
+else if inLong and activeSetup == "PbLong"
+    pbLongBars := nz(pbLongBars) + 1
+
+kco15x = ta.crossover(k15, d15)
+pbLongLhExit = inLong and activeSetup == "PbLong" and lh15 and not na(pbLongBars) and pbLongBars <= pivotWindow
+pbLongKcoExit = inLong and activeSetup == "PbLong" and kco15x
+
+if pbLongEntry
+    strategy.entry("PbLong", strategy.long, comment="PB↑")
+    activeSetup := "PbLong"
+    pbLongBars := 0
+if pbLongLhExit
+    strategy.close("PbLong", comment="LH fail")
+    activeSetup := "none"
+    pbLongBars := na
+if pbLongKcoExit
+    strategy.close("PbLong", comment="K%D↑")
+    activeSetup := "none"
+    pbLongBars := na
+
+// Sync activeSetup when flat (skip entry bar — position fills at bar close)
+justEntered = bearOpenEntry or pbShortEntry or bullOpenEntry or pbLongEntry
+if flat and activeSetup != "none" and not justEntered
+    activeSetup := "none"
+    pbShortBars := na
+    pbLongBars := na
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  VISUALS & DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+plotshape(showDebugLabels and bearOpenEntry, "Bear Open", shape.triangledown, location.abovebar, #f23645, text="BO↓", size=size.small)
+plotshape(showDebugLabels and bullOpenEntry, "Bull Open", shape.triangleup, location.belowbar, #089981, text="BO↑", size=size.small)
+plotshape(showDebugLabels and pbShortEntry, "PB Short", shape.triangledown, location.abovebar, #ff6600, text="PB↓", size=size.small)
+plotshape(showDebugLabels and pbLongEntry, "PB Long", shape.triangleup, location.belowbar, #2196f3, text="PB↑", size=size.small)
+plotshape(showDebugLabels and (bearOpenExit or bullOpenExit or pbShortHlExit or pbShortKcuExit or pbLongLhExit or pbLongKcoExit),
+     "Exit", shape.xcross, location.abovebar, color.gray, size=size.tiny)
+
+var table dash = table.new(position.top_left, 2, 9, bgcolor=color.new(#000000, 15), border_width=1)
+if barstate.islast
+    table.cell(dash, 0, 0, "Signal", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dash, 1, 0, "State", text_color=#aaaaaa, text_size=size.small)
+    table.cell(dash, 0, 1, "Open bias", text_color=#cccccc, text_size=size.small)
+    biasTxt = bearOpenDay ? "BEAR" : bullOpenDay ? "BULL" : "—"
+    biasCol = bearOpenDay ? #f23645 : bullOpenDay ? #089981 : #666666
+    table.cell(dash, 1, 1, biasTxt, text_color=biasCol, text_size=size.small)
+    table.cell(dash, 0, 2, "4m S2", text_color=#cccccc, text_size=size.small)
+    s2Txt = s2b4m ? "<50" : s2a4m ? ">50" : "~50"
+    table.cell(dash, 1, 2, s2Txt, text_color=s2b4m ? #f23645 : #089981, text_size=size.small)
+    table.cell(dash, 0, 3, "15s K", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 3, str.tostring(k15, "#.#") + (k15Up ? " ▲" : " ▼"), text_color=k15Up ? #089981 : #f23645, text_size=size.small)
+    table.cell(dash, 0, 4, "2m K", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 4, k2mUp ? "▲ up" : "▼ dn", text_color=k2mUp ? #089981 : #f23645, text_size=size.small)
+    table.cell(dash, 0, 5, "2m/4m regime", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 5, (s2b2m ? "2<" : "2>") + " " + (s2b4m ? "4<" : "4>"), text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 6, "PM/D break", text_color=#cccccc, text_size=size.small)
+    brkTxt = lowBreakOk ? "Lo" : highBreakOk ? "Hi" : "—"
+    table.cell(dash, 1, 6, brkTxt, text_color=lowBreakOk or highBreakOk ? #ffeb3b : #666666, text_size=size.small)
+    table.cell(dash, 0, 7, "Setup", text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 1, 7, activeSetup, text_color=#cccccc, text_size=size.small)
+    table.cell(dash, 0, 8, "Position", text_color=#cccccc, text_size=size.small)
+    posTxt = strategy.position_size > 0 ? "LONG" : strategy.position_size < 0 ? "SHORT" : "flat"
+    posCol = strategy.position_size > 0 ? #089981 : strategy.position_size < 0 ? #f23645 : #888888
+    table.cell(dash, 1, 8, posTxt, text_color=posCol, text_size=size.small)
+
+alertcondition(bearOpenEntry,  "Bear Open Short Entry",  "Bear open short")
+alertcondition(bearOpenExit,   "Bear Open Short Exit",   "Bear open short exit")
+alertcondition(pbShortEntry,   "Pullback Short Entry",   "Pullback short")
+alertcondition(pbShortHlExit or pbShortKcuExit, "Pullback Short Exit", "Pullback short exit")
+alertcondition(bullOpenEntry,  "Bull Open Long Entry",   "Bull open long")
+alertcondition(bullOpenExit,   "Bull Open Long Exit",    "Bull open long exit")
+alertcondition(pbLongEntry,    "Pullback Long Entry",    "Pullback long")
+alertcondition(pbLongLhExit or pbLongKcoExit, "Pullback Long Exit", "Pullback long exit")

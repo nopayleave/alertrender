@@ -5,7 +5,7 @@ indicator(title="OBR + Range", shorttitle="OBR + Range", overlay=true, behind_ch
 // INPUTS — List (VWAP / EMA / alerts)
 // =============================================================================
 DISPLAY_GROUP = "Display"
-hideAbove5m = input.bool(true, title="Hide Above 5 Minutes", group=DISPLAY_GROUP, tooltip="Hide all indicator visuals and alerts on chart timeframes longer than 5 minutes (daily/weekly always hidden when enabled)")
+hideAbove5m = input.bool(true, title="Hide Above 5 Minutes", group=DISPLAY_GROUP, tooltip="Hide VWAP/ORB/etc. on intraday charts longer than 5m (8m, 13m, 15m…). Those charts still show Daily 50 & 200 EMA.")
 hideonDWM = input(false, title="Hide VWAP on 1D or Above", group="VWAP Settings", display=display.data_window)
 var anchor = input.string(defval="Session", title="Anchor Period",
      options=["Session", "Week", "Month", "Quarter", "Year", "Decade", "Century", "Earnings", "Dividends", "Splits"], group="VWAP Settings")
@@ -20,6 +20,7 @@ ema1Smooth = input.bool(false, title="EMA 1 Smooth (vs Step)", group=EMA_GROUP)
 ema2Length = input.int(200, title="EMA 2 Length", group=EMA_GROUP)
 ema2Timeframe = input.timeframe("1", title="EMA 2 Timeframe", group=EMA_GROUP, tooltip="Default 1m; change or use chart timeframe as needed")
 ema2Smooth = input.bool(false, title="EMA 2 Smooth (vs Step)", group=EMA_GROUP)
+emaVwapZoneColor = input.bool(true, title="Color EMAs by VWAP Band Zone", group=EMA_GROUP, tooltip="On: EMA color shows which VWAP band zone the EMA itself sits in (uses the band line colors). Off: green/purple by price above/below EMA.")
 showEmaSr = input.bool(true, title="Show EMA Support/Resistance Lines", group=EMA_GROUP)
 emaSrLen = input.int(20, title="EMA S/R Line Length (bars)", minval=1, group=EMA_GROUP)
 emaSlopeLen = input.int(10, title="EMA Slope Lookback (bars)", minval=1, group=EMA_GROUP, tooltip="Bars used to measure EMA slope. Rising EMA reinforces support; falling EMA reinforces resistance.")
@@ -48,19 +49,16 @@ bandFillTransp = input.int(88, title="Background Transparency", minval=0, maxval
 bandLineTransp = input.int(50, title="Band Line Transparency", minval=0, maxval=100, group=BANDS_COLOR_GROUP)
 band1UpLine = input.color(#4caf50, title="B1 Upper Line", group=BANDS_COLOR_GROUP, inline="b1l")
 band1LoLine = input.color(#f23645, title="B1 Lower Line", group=BANDS_COLOR_GROUP, inline="b1l")
-band1UpFill = input.color(#4caf50, title="B1 Upper BG", group=BANDS_COLOR_GROUP, inline="b1bg")
-band1LoFill = input.color(#f23645, title="B1 Lower BG", group=BANDS_COLOR_GROUP, inline="b1bg")
-band1ChannelFill = input.color(#4caf50, title="B1 Channel BG", group=BANDS_COLOR_GROUP, inline="b1ch")
 band2UpLine = input.color(#70ccbd, title="B2 Upper Line", group=BANDS_COLOR_GROUP, inline="b2l")
 band2LoLine = input.color(#f48fb1, title="B2 Lower Line", group=BANDS_COLOR_GROUP, inline="b2l")
-band2UpFill = input.color(#70ccbd, title="B2 Upper BG", group=BANDS_COLOR_GROUP, inline="b2bg")
-band2LoFill = input.color(#f48fb1, title="B2 Lower BG", group=BANDS_COLOR_GROUP, inline="b2bg")
-band2ChannelFill = input.color(#70ccbd, title="B2 Channel BG", group=BANDS_COLOR_GROUP, inline="b2ch")
 band3UpLine = input.color(#00897b, title="B3 Upper Line", group=BANDS_COLOR_GROUP, inline="b3l")
 band3LoLine = input.color(#e91e63, title="B3 Lower Line", group=BANDS_COLOR_GROUP, inline="b3l")
-band3UpFill = input.color(#00897b, title="B3 Upper BG", group=BANDS_COLOR_GROUP, inline="b3bg")
-band3LoFill = input.color(#e91e63, title="B3 Lower BG", group=BANDS_COLOR_GROUP, inline="b3bg")
-band3ChannelFill = input.color(#00897b, title="B3 Channel BG", group=BANDS_COLOR_GROUP, inline="b3ch")
+band3UpFill = input.color(#00897b, title="Upper 3 BG", group=BANDS_COLOR_GROUP)
+band2UpFill = input.color(#70ccbd, title="Upper 2 BG", group=BANDS_COLOR_GROUP)
+band1UpFill = input.color(#4caf50, title="Upper 1 BG", group=BANDS_COLOR_GROUP)
+band3LoFill = input.color(#e91e63, title="Lower 3 BG", group=BANDS_COLOR_GROUP)
+band2LoFill = input.color(#f48fb1, title="Lower 2 BG", group=BANDS_COLOR_GROUP)
+band1LoFill = input.color(#f23645, title="Lower 1 BG", group=BANDS_COLOR_GROUP)
 
 // =============================================================================
 // INPUTS — OBR (session ORB / previous levels / webhook)
@@ -88,7 +86,11 @@ obrAlertFreq = obrWebhookFrequency == "Once Per Bar Close" ? alert.freq_once_per
 // Chart timeframe gate (≤5m intraday when hideAbove5m enabled)
 // =============================================================================
 timeframeMinutes = timeframe.in_seconds() / 60.0
+// ≤5m intraday: full indicator. >5m intraday (8m, 13m…): Daily 50/200 EMA only when hideAbove5m on.
+chartAbove5m = timeframe.isintraday and timeframeMinutes > 5
 showOnChart = not hideAbove5m or (timeframe.isintraday and timeframeMinutes <= 5)
+useDailyEma = chartAbove5m
+showEmaOnChart = showOnChart or useDailyEma
 showVwapOnChart = showOnChart and not (hideonDWM and timeframe.isdwm)
 bandFillDisplay = showBandFills ? display.all : display.none
 
@@ -188,19 +190,15 @@ lowerBand_2Fill = plot(showVwapOnChart ? lowerBandValue2 : na, title="Lower #2 (
 upperBand_3Fill = plot(showVwapOnChart ? upperBandValue3 : na, title="Upper #3 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
 lowerBand_3Fill = plot(showVwapOnChart ? lowerBandValue3 : na, title="Lower #3 (fill ref)", color=color.new(color.gray, 100), linewidth=1, offset=offset, display=display.none, editable=false)
 
-// Channel background (upper ↔ lower per band)
-fill(upperBand_1Fill, lowerBand_1Fill, title="Band 1 Channel BG", color=color.new(band1ChannelFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
-fill(upperBand_2Fill, lowerBand_2Fill, title="Band 2 Channel BG", color=color.new(band2ChannelFill, bandFillTransp), display=showBand_2 ? bandFillDisplay : display.none)
-fill(upperBand_3Fill, lowerBand_3Fill, title="Band 3 Channel BG", color=color.new(band3ChannelFill, bandFillTransp), display=showBand_3 ? bandFillDisplay : display.none)
+// Band backgrounds: non-overlapping rings, one color per zone
+// Upper 1 = VWAP→U1, Upper 2 = U1→U2, Upper 3 = U2→U3 (mirror for lower)
+fill(pVwapFill, upperBand_1Fill, title="Upper 1 BG", color=color.new(band1UpFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
+fill(upperBand_1Fill, upperBand_2Fill, title="Upper 2 BG", color=color.new(band2UpFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
+fill(upperBand_2Fill, upperBand_3Fill, title="Upper 3 BG", color=color.new(band3UpFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
 
-// Ring fills: VWAP ↔ band levels (upper / lower stacks)
-fill(pVwapFill, upperBand_1Fill, title="Fill VWAP → Upper #1", color=color.new(band1UpFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
-fill(upperBand_1Fill, upperBand_2Fill, title="Fill Upper #1 → Upper #2", color=color.new(band2UpFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
-fill(upperBand_2Fill, upperBand_3Fill, title="Fill Upper #2 → Upper #3", color=color.new(band3UpFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
-
-fill(lowerBand_1Fill, pVwapFill, title="Fill Lower #1 → VWAP", color=color.new(band1LoFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
-fill(lowerBand_2Fill, lowerBand_1Fill, title="Fill Lower #2 → Lower #1", color=color.new(band2LoFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
-fill(lowerBand_3Fill, lowerBand_2Fill, title="Fill Lower #3 → Lower #2", color=color.new(band3LoFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
+fill(lowerBand_1Fill, pVwapFill, title="Lower 1 BG", color=color.new(band1LoFill, bandFillTransp), display=showBand_1 ? bandFillDisplay : display.none)
+fill(lowerBand_2Fill, lowerBand_1Fill, title="Lower 2 BG", color=color.new(band2LoFill, bandFillTransp), display=showBand_1 and showBand_2 ? bandFillDisplay : display.none)
+fill(lowerBand_3Fill, lowerBand_2Fill, title="Lower 3 BG", color=color.new(band3LoFill, bandFillTransp), display=showBand_2 and showBand_3 ? bandFillDisplay : display.none)
 
 // =============================================================================
 // Shared daily data (List JSON + OBR JSON)
@@ -234,19 +232,14 @@ var label prev4h_lo_lbl = na
 
 len = 5
 
+// line.delete / label.delete are no-ops on na ids, so no guards needed
 if barstate.islast and showOnChart
-    if not na(prevD_hi_ln)
-        line.delete(prevD_hi_ln)
-    if not na(prevD_lo_ln)
-        line.delete(prevD_lo_ln)
-    if not na(prevD_op_ln)
-        line.delete(prevD_op_ln)
-    if not na(prevD_hi_lbl)
-        label.delete(prevD_hi_lbl)
-    if not na(prevD_lo_lbl)
-        label.delete(prevD_lo_lbl)
-    if not na(prevD_op_lbl)
-        label.delete(prevD_op_lbl)
+    line.delete(prevD_hi_ln)
+    line.delete(prevD_lo_ln)
+    line.delete(prevD_op_ln)
+    label.delete(prevD_hi_lbl)
+    label.delete(prevD_lo_lbl)
+    label.delete(prevD_op_lbl)
 
     prevD_hi_ln := show_prev_daily ? line.new(bar_index - len, prev_daily_high, bar_index, prev_daily_high, color=color.rgb(255, 255, 255), width=2) : na
     prevD_lo_ln := show_prev_daily ? line.new(bar_index - len, prev_daily_low, bar_index, prev_daily_low, color=color.rgb(255, 255, 255), width=2) : na
@@ -256,14 +249,10 @@ if barstate.islast and showOnChart
     prevD_lo_lbl := show_prev_daily ? label.new(bar_index, prev_daily_low, "Prev D Low", style=label.style_label_left, textcolor=color.white, color=color.new(color.white, 100), size=size.small) : na
     prevD_op_lbl := show_prev_daily ? label.new(bar_index, prev_daily_open, "Prev D Open", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(0, 128, 255), 100), size=size.small) : na
 
-    if not na(prev4h_hi_ln)
-        line.delete(prev4h_hi_ln)
-    if not na(prev4h_lo_ln)
-        line.delete(prev4h_lo_ln)
-    if not na(prev4h_hi_lbl)
-        label.delete(prev4h_hi_lbl)
-    if not na(prev4h_lo_lbl)
-        label.delete(prev4h_lo_lbl)
+    line.delete(prev4h_hi_ln)
+    line.delete(prev4h_lo_ln)
+    label.delete(prev4h_hi_lbl)
+    label.delete(prev4h_lo_lbl)
 
     prev4h_hi_ln := show_prev_4h ? line.new(bar_index - len, prev_4h_high, bar_index, prev_4h_high, color=#ffffff, width=2) : na
     prev4h_lo_ln := show_prev_4h ? line.new(bar_index - len, prev_4h_low, bar_index, prev_4h_low, color=#ffffff, width=2) : na
@@ -272,36 +261,16 @@ if barstate.islast and showOnChart
     prev4h_lo_lbl := show_prev_4h ? label.new(bar_index, prev_4h_low, "Prev 4H Low", style=label.style_label_left, textcolor=color.white, color=color.new(color.rgb(255, 166, 0), 100), size=size.small) : na
 
 else if barstate.islast
-    if not na(prevD_hi_ln)
-        line.delete(prevD_hi_ln)
-        prevD_hi_ln := na
-    if not na(prevD_lo_ln)
-        line.delete(prevD_lo_ln)
-        prevD_lo_ln := na
-    if not na(prevD_op_ln)
-        line.delete(prevD_op_ln)
-        prevD_op_ln := na
-    if not na(prevD_hi_lbl)
-        label.delete(prevD_hi_lbl)
-        prevD_hi_lbl := na
-    if not na(prevD_lo_lbl)
-        label.delete(prevD_lo_lbl)
-        prevD_lo_lbl := na
-    if not na(prevD_op_lbl)
-        label.delete(prevD_op_lbl)
-        prevD_op_lbl := na
-    if not na(prev4h_hi_ln)
-        line.delete(prev4h_hi_ln)
-        prev4h_hi_ln := na
-    if not na(prev4h_lo_ln)
-        line.delete(prev4h_lo_ln)
-        prev4h_lo_ln := na
-    if not na(prev4h_hi_lbl)
-        label.delete(prev4h_hi_lbl)
-        prev4h_hi_lbl := na
-    if not na(prev4h_lo_lbl)
-        label.delete(prev4h_lo_lbl)
-        prev4h_lo_lbl := na
+    line.delete(prevD_hi_ln)
+    line.delete(prevD_lo_ln)
+    line.delete(prevD_op_ln)
+    label.delete(prevD_hi_lbl)
+    label.delete(prevD_lo_lbl)
+    label.delete(prevD_op_lbl)
+    line.delete(prev4h_hi_ln)
+    line.delete(prev4h_lo_ln)
+    label.delete(prev4h_hi_lbl)
+    label.delete(prev4h_lo_lbl)
 
 // Visible VWAP + band lines (above band fills + ORB fill)
 pVwap = plot(showVwapOnChart ? vwapValue : na, title="VWAP", color=vwapLineColor, linewidth=2, offset=offset)
@@ -364,30 +333,51 @@ if showOnChart and shouldSendObrAlert and in_ny_session and not in_ny and not na
 // =============================================================================
 // List: EMAs, day high/low, trend
 // =============================================================================
-ema1 = ta.ema(close, ema1Length)
-htfRes1 = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+effectiveEma1Len = useDailyEma ? 50 : ema1Length
+effectiveEma2Len = useDailyEma ? 200 : ema2Length
+effectiveEma1Tf = useDailyEma ? "D" : ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+effectiveEma2Tf = useDailyEma ? "D" : ema2Timeframe == "" ? timeframe.period : ema2Timeframe
+
+ema1 = ta.ema(close, effectiveEma1Len)
+htfRes1 = effectiveEma1Tf
 ema1Step = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
 ema1SmoothValue = request.security(syminfo.tickerid, htfRes1, ema1[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
 ema1Value = ema1Smooth ? ema1SmoothValue : ema1Step
 
-ema2 = ta.ema(close, ema2Length)
-htfRes2 = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
+ema2 = ta.ema(close, effectiveEma2Len)
+htfRes2 = effectiveEma2Tf
 ema2Step = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
 ema2SmoothValue = request.security(syminfo.tickerid, htfRes2, ema2[barstate.isrealtime ? 1 : 0], gaps=barmerge.gaps_on)[barstate.isrealtime ? 0 : 1]
 ema2Value = ema2Smooth ? ema2SmoothValue : ema2Step
 
-// EMA 1: color 0 #a5d6a7 / color 1 #ab47bc  |  EMA 2: color 0 #80deea / color 1 #2962ff
-ema1Color = close > ema1Step ? #a5d6a7 : #ab47bc
-ema2Color = close > ema2Step ? #80deea : #2962ff
-
 aboveEma1 = close > ema1Step
 aboveEma2 = close > ema2Step
+
+// VWAP band zone color: which zone a value sits in, using the band line colors
+// > U2 → B3 upper, U1–U2 → B2 upper, VWAP–U1 → B1 upper (mirror below VWAP)
+f_vwapZoneColor(float v, color fallback) =>
+    na(v) or na(vwapValue) ? fallback :
+         v > upperBandValue2 ? band3UpLine :
+         v > upperBandValue1 ? band2UpLine :
+         v > vwapValue       ? band1UpLine :
+         v < lowerBandValue2 ? band3LoLine :
+         v < lowerBandValue1 ? band2LoLine :
+         band1LoLine
+
+// EMA 1: color 0 #a5d6a7 / color 1 #ab47bc  |  EMA 2: color 0 #80deea / color 1 #2962ff
+ema1PriceColor = aboveEma1 ? #a5d6a7 : #ab47bc
+ema2PriceColor = aboveEma2 ? #80deea : #2962ff
+ema1Color = emaVwapZoneColor ? f_vwapZoneColor(ema1Value, ema1PriceColor) : ema1PriceColor
+ema2Color = emaVwapZoneColor ? f_vwapZoneColor(ema2Value, ema2PriceColor) : ema2PriceColor
 trendIndicator = aboveEma1 and aboveEma2 ? "↑ ↑" :
      not aboveEma1 and not aboveEma2 ? "↓ ↓" :
      aboveEma2 and not aboveEma1 ? "- ↑" :
      aboveEma1 and not aboveEma2 ? "↑ -" : "- -"
-plot(showOnChart ? ema1Value : na, title="EMA 1", color=ema1Color, linewidth=2)
-plot(showOnChart ? ema2Value : na, title="EMA 2", color=ema2Color, linewidth=2)
+// Price above EMA → solid; price below EMA → dotted (two plots; style can't switch per bar)
+plot(showEmaOnChart and aboveEma1 ? ema1Value : na, title="EMA 1 (above, solid)", color=ema1Color, linewidth=2, style=plot.style_linebr)
+plot(showEmaOnChart and not aboveEma1 ? ema1Value : na, title="EMA 1 (below, dotted)", color=ema1Color, linewidth=2, style=plot.style_linebr, linestyle=plot.linestyle_dotted)
+plot(showEmaOnChart and aboveEma2 ? ema2Value : na, title="EMA 2 (above, solid)", color=ema2Color, linewidth=2, style=plot.style_linebr)
+plot(showEmaOnChart and not aboveEma2 ? ema2Value : na, title="EMA 2 (below, dotted)", color=ema2Color, linewidth=2, style=plot.style_linebr, linestyle=plot.linestyle_dotted)
 
 // EMA support (price above) / resistance (price below) — lines + labels on last bar
 // Slope logic: a rising EMA reinforces it as support; a falling EMA reinforces it as
@@ -402,32 +392,26 @@ f_emaSrInfo(float emaVal, bool isSupport, int slopeLen, float atrVal) =>
     arrow = slopeNorm > 0.02 ? "↑" : slopeNorm < -0.02 ? "↓" : "→"
     [conf, arrow]
 
-ema1IsSupport = close > ema1Step
-ema2IsSupport = close > ema2Step
-[ema1Conf, ema1Arrow] = f_emaSrInfo(ema1Value, ema1IsSupport, emaSlopeLen, emaAtr)
-[ema2Conf, ema2Arrow] = f_emaSrInfo(ema2Value, ema2IsSupport, emaSlopeLen, emaAtr)
+[ema1Conf, ema1Arrow] = f_emaSrInfo(ema1Value, aboveEma1, emaSlopeLen, emaAtr)
+[ema2Conf, ema2Arrow] = f_emaSrInfo(ema2Value, aboveEma2, emaSlopeLen, emaAtr)
 
-ema1Verb = ema1IsSupport ? "support" : "reject"
-ema2Verb = ema2IsSupport ? "support" : "reject"
+ema1Verb = aboveEma1 ? "support" : "reject"
+ema2Verb = aboveEma2 ? "support" : "reject"
 ema1Hint = ema1Conf <= emaBreakThresh ? " ⚠break" : ""
 ema2Hint = ema2Conf <= emaBreakThresh ? " ⚠break" : ""
-ema1SrLbl = "EMA " + str.tostring(ema1Length) + " " + ema1Arrow + "  " + str.tostring(ema1Conf) + "% " + ema1Verb + ema1Hint
-ema2SrLbl = "EMA " + str.tostring(ema2Length) + " " + ema2Arrow + "  " + str.tostring(ema2Conf) + "% " + ema2Verb + ema2Hint
+ema1SrLbl = (useDailyEma ? "D " : "") + "EMA " + str.tostring(effectiveEma1Len) + " " + ema1Arrow + "  " + str.tostring(ema1Conf) + "% " + ema1Verb + ema1Hint
+ema2SrLbl = (useDailyEma ? "D " : "") + "EMA " + str.tostring(effectiveEma2Len) + " " + ema2Arrow + "  " + str.tostring(ema2Conf) + "% " + ema2Verb + ema2Hint
 
 var line ema1SrLn = na
 var line ema2SrLn = na
 var label ema1SrLblObj = na
 var label ema2SrLblObj = na
 
-if barstate.islast and showOnChart and showEmaSr and not na(ema1Value) and not na(ema2Value)
-    if not na(ema1SrLn)
-        line.delete(ema1SrLn)
-    if not na(ema2SrLn)
-        line.delete(ema2SrLn)
-    if not na(ema1SrLblObj)
-        label.delete(ema1SrLblObj)
-    if not na(ema2SrLblObj)
-        label.delete(ema2SrLblObj)
+if barstate.islast and showEmaOnChart and showEmaSr and not na(ema1Value) and not na(ema2Value)
+    line.delete(ema1SrLn)
+    line.delete(ema2SrLn)
+    label.delete(ema1SrLblObj)
+    label.delete(ema2SrLblObj)
 
     ema1SrLn := line.new(bar_index - emaSrLen, ema1Value, bar_index, ema1Value, color=ema1Color, width=2, style=line.style_dashed)
     ema2SrLn := line.new(bar_index - emaSrLen, ema2Value, bar_index, ema2Value, color=ema2Color, width=2, style=line.style_dashed)
@@ -435,18 +419,10 @@ if barstate.islast and showOnChart and showEmaSr and not na(ema1Value) and not n
     ema2SrLblObj := label.new(bar_index, ema2Value, ema2SrLbl, style=label.style_label_left, textcolor=ema2Color, color=color.new(ema2Color, 85), size=size.small)
 
 else if barstate.islast
-    if not na(ema1SrLn)
-        line.delete(ema1SrLn)
-        ema1SrLn := na
-    if not na(ema2SrLn)
-        line.delete(ema2SrLn)
-        ema2SrLn := na
-    if not na(ema1SrLblObj)
-        label.delete(ema1SrLblObj)
-        ema1SrLblObj := na
-    if not na(ema2SrLblObj)
-        label.delete(ema2SrLblObj)
-        ema2SrLblObj := na
+    line.delete(ema1SrLn)
+    line.delete(ema2SrLn)
+    label.delete(ema1SrLblObj)
+    label.delete(ema2SrLblObj)
 
 t = time("1440", session.extended)
 is_first = na(t[1]) and not na(t) or t[1] < t
@@ -476,9 +452,6 @@ dayRange = day_high - day_low
 dayMidpoint = day_low + (dayRange / 2)
 rangeStatus = close > dayMidpoint ? "Up Range" : close < dayMidpoint ? "Down Range" : "Mid Range"
 
-dayHigh = day_high
-dayLow = day_low
-
 // Session day high / low: white, dashed, thickest line
 plot(showOnChart ? day_high : na, title="Day High", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
 plot(showOnChart ? day_low : na, title="Day Low", color=color.white, linewidth=4, style=plot.style_line, linestyle=plot.linestyle_dashed)
@@ -507,9 +480,6 @@ sessionTips = "ORB:" + ny_orb_status + " | vsDayMid:" + rangeStatus + " | Trend:
 // List: webhook JSON
 // =============================================================================
 if showOnChart and enableListAlerts and barstate.isconfirmed
-    effectiveEma1Tf = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
-    effectiveEma2Tf = ema2Timeframe == "" ? timeframe.period : ema2Timeframe
-
     listJsonMsg = '{' +
       '"symbol": "' + syminfo.ticker + '",' +
       '"timeframe": "' + timeframe.period + '",' +
@@ -528,16 +498,16 @@ if showOnChart and enableListAlerts and barstate.isconfirmed
       '"vwapUpper3": ' + str.tostring(upperBandValue3, "#.##") + ',' +
       '"vwapLower3": ' + str.tostring(lowerBandValue3, "#.##") + ',' +
       '"ema1": ' + str.tostring(ema1Value, "#.##") + ',' +
-      '"ema1Tf": "' + effectiveEma1Tf + '",' +
-      '"ema1Above": ' + str.tostring(close > ema1Step) + ',' +
-      '"ema1Length": ' + str.tostring(ema1Length) + ',' +
+      '"ema1Tf": "' + htfRes1 + '",' +
+      '"ema1Above": ' + str.tostring(aboveEma1) + ',' +
+      '"ema1Length": ' + str.tostring(effectiveEma1Len) + ',' +
       '"ema2": ' + str.tostring(ema2Value, "#.##") + ',' +
-      '"ema2Tf": "' + effectiveEma2Tf + '",' +
-      '"ema2Above": ' + str.tostring(close > ema2Step) + ',' +
-      '"ema2Length": ' + str.tostring(ema2Length) + ',' +
+      '"ema2Tf": "' + htfRes2 + '",' +
+      '"ema2Above": ' + str.tostring(aboveEma2) + ',' +
+      '"ema2Length": ' + str.tostring(effectiveEma2Len) + ',' +
       '"trendIndicator": "' + trendIndicator + '",' +
-      '"dayHigh": ' + str.tostring(dayHigh, "#.##") + ',' +
-      '"dayLow": ' + str.tostring(dayLow, "#.##") + ',' +
+      '"dayHigh": ' + str.tostring(day_high, "#.##") + ',' +
+      '"dayLow": ' + str.tostring(day_low, "#.##") + ',' +
       '"dayRange": ' + str.tostring(dayRange, "#.##") + ',' +
       '"rangeStatus": "' + rangeStatus + '",' +
       '"nyOrbHalf": "' + nyOrbHalfLabel + '",' +
