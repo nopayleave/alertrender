@@ -91,35 +91,31 @@ f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, f
 
 tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
 
-// S1 = line, S2 = histogram (formerly S3)
-f_stochKD(float mult) =>
-    pK = math.max(1, math.round(kLength * mult))
-    sK = math.max(1, math.round(kSmooth * mult))
-    dK = math.max(1, math.round(dSmooth * mult))
-    kBase = ta.sma(ta.stoch(close, high, low, pK), sK)
-    dBase = ta.sma(kBase, dK)
-    k = ta.sma(kBase, extraSmooth)
-    d = ta.sma(dBase, extraSmooth)
-    [k, d]
+// S1 = line, S2 = histogram — compute K1/K2 in ONE pass (avoids request.security dedup aliasing K1=K2 over long runs)
+f_stochPair(float s1Mult, float s2Mult) =>
+    pK1 = math.max(1, math.round(kLength * s1Mult))
+    sK1 = math.max(1, math.round(kSmooth * s1Mult))
+    dK1 = math.max(1, math.round(dSmooth * s1Mult))
+    pK2 = math.max(1, math.round(kLength * s2Mult))
+    sK2 = math.max(1, math.round(kSmooth * s2Mult))
+    dK2 = math.max(1, math.round(dSmooth * s2Mult))
+    k1Base = ta.sma(ta.stoch(close, high, low, pK1), sK1)
+    d1Base = ta.sma(k1Base, dK1)
+    k2Base = ta.sma(ta.stoch(close, high, low, pK2), sK2)
+    d2Base = ta.sma(k2Base, dK2)
+    k1 = ta.sma(k1Base, extraSmooth)
+    d1 = ta.sma(d1Base, extraSmooth)
+    k2 = ta.sma(k2Base, extraSmooth)
+    d2 = ta.sma(d2Base, extraSmooth)
+    [k1, d1, k2, d2]
 
-// Separate zero-arg wrappers — TV request.security dedupes identical expressions; distinct functions avoid K1/K2 aliasing over long runs.
-f_stochKD_s1A() =>
-    f_stochKD(f_multVal(baseMultA))
-
-f_stochKD_s2A() =>
-    f_stochKD(f_multVal(baseMultA) * s2VsS1A)
-
-f_resolveS1A() =>
-    if timeframeA == ""
-        f_stochKD_s1A()
+f_resolveTf(string tf, float s1M, float s2M) =>
+    [k1c, d1c, k2c, d2c] = f_stochPair(s1M, s2M)
+    if tf == ""
+        [k1c, d1c, k2c, d2c]
     else
-        request.security(syminfo.tickerid, timeframeA, f_stochKD_s1A(), barmerge.gaps_off, barmerge.lookahead_off)
-
-f_resolveS2A() =>
-    if timeframeA == ""
-        f_stochKD_s2A()
-    else
-        request.security(syminfo.tickerid, timeframeA, f_stochKD_s2A(), barmerge.gaps_off, barmerge.lookahead_off)
+        [k1m, d1m, k2m, d2m] = request.security(syminfo.tickerid, tf, f_stochPair(s1M, s2M), barmerge.gaps_off, barmerge.lookahead_off)
+        [k1m, d1m, k2m, d2m]
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  STOCHASTIC — A
@@ -127,8 +123,7 @@ f_resolveS2A() =>
 s1MultA = f_multVal(baseMultA)
 s2MultA = s1MultA * s2VsS1A
 
-[k1A, d1A] = f_resolveS1A()
-[k2A, d2A] = f_resolveS2A()
+[k1A, d1A, k2A, d2A] = f_resolveTf(timeframeA, s1MultA, s2MultA)
 
 k1AIsUp = k1A >= k1A[1]
 k1ACrossOver = ta.crossover(k1A, d1A)

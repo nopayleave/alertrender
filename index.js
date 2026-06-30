@@ -163,6 +163,8 @@ let stochSessionTracker = {}
 //   rejected50: boolean,          — K rose toward 50 from below and turned down
 //   crossedAbove50: boolean,      — K crossed up through 50 this session
 //   crossedBelow50: boolean,      — K crossed down through 50 this session
+//   crossed50At: number|null,     — epoch ms when K last crossed 50 (for 1m card highlight)
+//   crossed50Dir: string|null,    — 'up' | 'down' — direction of last 50 cross
 //   wasBelow20: boolean,          — K was below 20 at some point today
 //   wasAbove80: boolean,          — K was above 80 at some point today
 //   kCrossedAboveD: boolean,      — K crossed above D this session
@@ -189,6 +191,8 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
       rejected50: false,
       crossedAbove50: false,
       crossedBelow50: false,
+      crossed50At: null,
+      crossed50Dir: null,
       wasBelow20: k < 20,
       wasAbove80: k > 80,
       kCrossedAboveD: false,
@@ -212,8 +216,16 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
 
   // Midline 50 cross detection
   if (s.prevK !== null) {
-    if (s.prevK < 50 && k >= 50) s.crossedAbove50 = true
-    if (s.prevK > 50 && k <= 50) s.crossedBelow50 = true
+    if (s.prevK < 50 && k >= 50) {
+      s.crossedAbove50 = true
+      s.crossed50At = now
+      s.crossed50Dir = 'up'
+    }
+    if (s.prevK > 50 && k <= 50) {
+      s.crossedBelow50 = true
+      s.crossed50At = now
+      s.crossed50Dir = 'down'
+    }
   }
 
   // 50-level bounce / rejection detection
@@ -2426,6 +2438,8 @@ app.get('/alerts', (req, res) => {
         rejected50: sess.rejected50,
         crossedAbove50: sess.crossedAbove50,
         crossedBelow50: sess.crossedBelow50,
+        crossed50At: sess.crossed50At,
+        crossed50Dir: sess.crossed50Dir,
         wasBelow20: sess.wasBelow20,
         wasAbove80: sess.wasAbove80,
         kCrossedAboveD: sess.kCrossedAboveD,
@@ -5153,12 +5167,40 @@ app.get('/', (req, res) => {
           return { tag: '', bgClass: '', tagClass: '', title: '' };
         }
 
-        /** Dark grey card bg when K1 crossed the 50 midline this session (up or down). */
-        function getCardCross50BgClass(alert) {
+        /** Dark grey card bg for 1 minute after K1 crosses the 50 midline. */
+        const CROSS50_BG_MS = 60000;
+        let cross50BgRefreshTimer = null;
+
+        function isCross50BgActive(alert) {
           const ss = alert && alert.stochSession;
-          if (!ss) return '';
-          if (ss.crossedAbove50 || ss.crossedBelow50) return 'kanban-card-cross50';
-          return '';
+          if (!ss || ss.crossed50At == null) return false;
+          return (Date.now() - ss.crossed50At) < CROSS50_BG_MS;
+        }
+
+        function getCardCross50BgClass(alert) {
+          return isCross50BgActive(alert) ? 'kanban-card-cross50' : '';
+        }
+
+        function scheduleCross50BgRefresh() {
+          if (cross50BgRefreshTimer) {
+            clearTimeout(cross50BgRefreshTimer);
+            cross50BgRefreshTimer = null;
+          }
+          if (currentView !== 'masonry') return;
+          let soonestDelay = null;
+          alertsData.forEach(alert => {
+            if (!isCross50BgActive(alert)) return;
+            const delay = alert.stochSession.crossed50At + CROSS50_BG_MS - Date.now();
+            if (delay > 0 && (soonestDelay === null || delay < soonestDelay)) {
+              soonestDelay = delay;
+            }
+          });
+          if (soonestDelay !== null) {
+            cross50BgRefreshTimer = setTimeout(() => {
+              cross50BgRefreshTimer = null;
+              renderMasonry();
+            }, soonestDelay + 50);
+          }
         }
 
         function getAlertPineLabelFilterKey(alert) {
@@ -6476,7 +6518,7 @@ app.get('/', (req, res) => {
                   const pineLabelBg = cross50Bg || pineLabel.bgClass;
                   const pineLabelClass = pineLabel.tagClass;
                   const cross50Title = cross50Bg
-                    ? (alert.stochSession.crossedAbove50 ? 'K1 crossed above 50' : 'K1 crossed below 50')
+                    ? (alert.stochSession.crossed50Dir === 'up' ? 'K1 crossed above 50' : 'K1 crossed below 50')
                     : '';
                   const pineLabelTitle = pineLabel.title;
                   const cardTitle = [
@@ -6534,6 +6576,7 @@ app.get('/', (req, res) => {
           // Update last update time
           const now = new Date();
           lastUpdate.innerHTML = \`UPD \${now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})} <span id="countdown"></span>\`;
+          scheduleCross50BgRefresh();
         }
 
         /** Sync <col> widths with columnOrder + columnWidths (stops fixed-layout from redistributing across columns). */
