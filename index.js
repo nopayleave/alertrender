@@ -4420,6 +4420,17 @@ app.get('/', (req, res) => {
                       </div>
                     </div>
                     <div class="mb-4">
+                      <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Label</label>
+                      <div class="filter-group flex flex-wrap gap-1.5">
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'HL', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#00ff00]/45 bg-[#00ff00]/12 hover:bg-[#00ff00]/20 active:scale-95 transition-all text-[#00ff00]" data-filter="stoch_pine_label" data-value="HL" title="Higher Low">HL</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'LH', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#ff6600]/45 bg-[#ff6600]/12 hover:bg-[#ff6600]/20 active:scale-95 transition-all text-[#ff6600]" data-filter="stoch_pine_label" data-value="LH" title="Lower High">LH</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bull', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#2196f3]/45 bg-[#2196f3]/12 hover:bg-[#2196f3]/20 active:scale-95 transition-all text-[#2196f3]" data-filter="stoch_pine_label" data-value="R_bull" title="Reverse up (cross above LH)">R↑</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bear', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#9c27b0]/45 bg-[#9c27b0]/12 hover:bg-[#9c27b0]/20 active:scale-95 transition-all text-[#9c27b0]" data-filter="stoch_pine_label" data-value="R_bear" title="Reverse down (cross below HL)">R↓</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'L', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#089981]/45 bg-[#089981]/12 hover:bg-[#089981]/20 active:scale-95 transition-all text-[#089981]" data-filter="stoch_pine_label" data-value="L" title="Long entry (Set 1 or 2)">L</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'S', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#f23645]/45 bg-[#f23645]/12 hover:bg-[#f23645]/20 active:scale-95 transition-all text-[#f23645]" data-filter="stoch_pine_label" data-value="S" title="Short entry (Set 1 or 2)">S</button>
+                      </div>
+                    </div>
+                    <div class="mb-4">
                       <div class="flex items-center justify-between mb-2 px-1">
                         <label class="block text-xs font-medium text-muted-foreground">K1 <span id="stochK1ValueMinValue" class="ml-2 text-amber-400 font-semibold">0</span> <span class="text-foreground/60">-</span> <span id="stochK1ValueMaxValue" class="text-amber-400 font-semibold">100</span></label>
                         <div class="flex items-center gap-3">
@@ -4773,6 +4784,7 @@ app.get('/', (req, res) => {
         let stochK1Value = { min: 0, max: 100, active: false, excluded: false };
         let stochK2Value = { min: 0, max: 100, active: false, excluded: false };
         let stochSuggestion = [];
+        let stochPineLabelFilter = [];
         let stochOrderActive = false;
         let stochOrderLeft = 'K2';
         let stochOrderOp1 = '>';
@@ -5108,8 +5120,21 @@ app.get('/', (req, res) => {
           }
           return { tag: '', bgClass: '', tagClass: '', title: '' };
         }
-        
-        // Format regular numbers with k notation for values over 1000
+
+        function getAlertPineLabelFilterKey(alert) {
+          const info = getCardPineLabelInfo(alert);
+          const tag = info.tag;
+          if (!tag) return null;
+          if (tag.startsWith('L')) return 'L';
+          if (tag.startsWith('S')) return 'S';
+          if (tag === 'HL') return 'HL';
+          if (tag === 'LH') return 'LH';
+          if (tag === 'R') {
+            const rev = String(alert.reverseSignal || '').toLowerCase();
+            return rev === 'bear' ? 'R_bear' : 'R_bull';
+          }
+          return null;
+        }
         function formatNumber(value, decimals = 2) {
           if (!value || isNaN(value)) return 'N/A';
           
@@ -5209,7 +5234,8 @@ app.get('/', (req, res) => {
 
         function hasStochDirFilters() {
           return stochK1Dir.length > 0 || stochK2Dir.length > 0 ||
-            stochK1Value.active || stochK2Value.active || stochSuggestion.length > 0 || stochOrderActive;
+            stochK1Value.active || stochK2Value.active || stochSuggestion.length > 0 ||
+            stochPineLabelFilter.length > 0 || stochOrderActive;
         }
 
         function updateStochOrderFromDom() {
@@ -5302,6 +5328,10 @@ app.get('/', (req, res) => {
             if (v === null) return false;
             const inside = v >= stochK2Value.min && v <= stochK2Value.max;
             if (stochK2Value.excluded ? inside : !inside) return false;
+          }
+          if (stochPineLabelFilter.length > 0) {
+            const labelKey = getAlertPineLabelFilterKey(alert);
+            if (!labelKey || !stochPineLabelFilter.includes(labelKey)) return false;
           }
           return true;
         }
@@ -5433,8 +5463,8 @@ app.get('/', (req, res) => {
         }
 
         function clearStochDirFilters() {
-          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]').forEach(c => c.classList.remove('active'));
-          stochK1Dir = []; stochK2Dir = []; stochSuggestion = [];
+          document.querySelectorAll('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"], [data-filter="stoch_pine_label"]').forEach(c => c.classList.remove('active'));
+          stochK1Dir = []; stochK2Dir = []; stochSuggestion = []; stochPineLabelFilter = [];
           stochOrderActive = false;
           stochOrderLeft = 'K3'; stochOrderOp1 = '>'; stochOrderMid = 'K2'; stochOrderOp2 = '>'; stochOrderRight = 'K1';
           const applyEl = document.getElementById('stochOrderApply');
@@ -5451,7 +5481,7 @@ app.get('/', (req, res) => {
           if (rightEl) rightEl.value = 'K1';
           resetStochValueSliders();
           document.querySelectorAll('.filter-group').forEach(pg => {
-            if (pg.querySelector('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"]')) {
+            if (pg.querySelector('[data-filter^="stoch_k"], [data-filter="stoch_suggestion"], [data-filter="stoch_pine_label"]')) {
               pg.classList.toggle('has-active', !!pg.querySelector('.filter-chip.active'));
             }
           });
@@ -6896,6 +6926,7 @@ app.get('/', (req, res) => {
           stochK1Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k1Dir"].active')).map(c => c.dataset.value);
           stochK2Dir = Array.from(document.querySelectorAll('[data-filter="stoch_k2Dir"].active')).map(c => c.dataset.value);
           stochSuggestion = Array.from(document.querySelectorAll('[data-filter="stoch_suggestion"].active')).map(c => c.dataset.value);
+          stochPineLabelFilter = Array.from(document.querySelectorAll('[data-filter="stoch_pine_label"].active')).map(c => c.dataset.value);
           updateStochOrderFromDom();
           stochFilterPercentChange = Array.from(document.querySelectorAll('[data-filter="percentChange"].active')).map(c => c.dataset.value);
           volumeFilter = Array.from(document.querySelectorAll('[data-filter="volume"].active')).map(c => c.dataset.value);
@@ -7188,7 +7219,8 @@ app.get('/', (req, res) => {
             filters: {
               stoch: {
                 k1Dir: stochK1Dir,
-                k3Dir: stochK2Dir
+                k3Dir: stochK2Dir,
+                pineLabel: stochPineLabelFilter
               },
               range: {
                 orb: rangeOrbFilter,
