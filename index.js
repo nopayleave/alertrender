@@ -4890,14 +4890,36 @@ app.get('/', (req, res) => {
           return sign + body + '%' + (suffix || '');
         }
 
-        function buildSessionChangeHtml(alert, rthOverride) {
-          const rth = rthOverride !== undefined ? rthOverride : parsePctField(alert.changeFromPrevDay);
+        function buildSessionChangeHtml(alert) {
+          const rth = parsePctField(alert.changeFromPrevDay);
           const pre = parsePctField(alert.changePreMarket);
           const post = parsePctField(alert.changePostMarket);
+
+          // Legacy fallback: no session split fields — compute from price vs prior close
+          let rthDisplay = rth;
+          if (rthDisplay === null && pre === null && post === null && alert.price && alert.previousClose) {
+            const close = parseFloat(alert.price);
+            const prev = parseFloat(alert.previousClose);
+            if (!isNaN(close) && !isNaN(prev) && prev !== 0) {
+              rthDisplay = (close - prev) / prev * 100;
+            }
+          }
+
           const parts = [];
-          if (rth !== null) parts.push({ text: formatSignedPct(rth, ''), cls: pctColorClass(rth) });
-          if (pre !== null) parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
-          if (post !== null) parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+          const preOnly = pre !== null && (rth === null || (post === null && rth !== null && Math.abs(rth - pre) < 0.05));
+          if (post !== null && rthDisplay !== null) {
+            // Post-market: regular day change + after-hours move
+            parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
+            parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+          } else if (post !== null) {
+            parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+          } else if (preOnly) {
+            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          } else if (rthDisplay !== null) {
+            parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
+          } else if (pre !== null) {
+            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          }
           if (!parts.length) return '';
           return parts.map((p, i) => '<span class="' + p.cls + (i ? ' ml-1' : '') + '">' + p.text + '</span>').join('');
         }
@@ -7481,7 +7503,10 @@ Use this to create a new preset filter button that applies these exact filter se
               const parsed = parseFloat(priceChangeDisplay);
               rthPctForDisplay = isNaN(parsed) ? null : parsed;
             }
-            const sessionChangeHtml = buildSessionChangeHtml(alert, rthPctForDisplay);
+            const sessionChangeHtml = buildSessionChangeHtml(alert);
+            const legacyPctHtml = (!sessionChangeHtml && rthPctForDisplay !== null)
+              ? '<span class="' + pctColorClass(rthPctForDisplay) + '">(' + formatSignedPct(rthPctForDisplay, '') + ')</span>'
+              : '';
             
             // Calculate VWAP percentage difference
             let vwapDiffDisplay = '';
@@ -8186,7 +8211,7 @@ Use this to create a new preset filter button that applies these exact filter se
               price: \`
                 <td class="py-1.5 px-2 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   \${alert.price ? formatCurrency(alert.price) : 'N/A'}
-                  <span class="text-sm ml-2">\${sessionChangeHtml || (priceChangeDisplay !== 'N/A' ? '<span class="' + priceChangeClass + '">(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)</span>' : '')}</span>
+                  <span class="text-sm ml-2">\${sessionChangeHtml || legacyPctHtml}</span>
                 </td>
               \`,
               sessionRange: (() => {
