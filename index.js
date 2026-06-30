@@ -912,6 +912,44 @@ function parseStochValue(value) {
   return isNaN(num) ? null : num
 }
 
+/** Normalize TV exchange prefix (syminfo.prefix) for chart URLs. */
+function normalizeTvExchange(exchange) {
+  if (exchange == null || exchange === '') return null
+  const ex = String(exchange).trim().toUpperCase()
+  if (!ex) return null
+  if (ex === 'BATS') return 'NASDAQ'
+  return ex
+}
+
+function buildTvSymbolFromParts(symbol, exchange) {
+  const raw = String(symbol || '').trim()
+  if (!raw) return null
+  if (raw.includes(':')) return raw
+  const ex = normalizeTvExchange(exchange) || 'NASDAQ'
+  return `${ex}:${raw.toUpperCase()}`
+}
+
+function pickTvSymbolFields(webhook) {
+  const direct = webhook.tvSymbol || webhook.tv_symbol || null
+  const exchange = webhook.exchange || webhook.tvExchange || webhook.prefix || null
+  const tvSymbol = direct
+    ? String(direct).trim()
+    : buildTvSymbolFromParts(webhook.symbol, exchange)
+  return {
+    tvSymbol: tvSymbol || null,
+    exchange: exchange ? normalizeTvExchange(exchange) : null
+  }
+}
+
+function syncTvSymbolOnAlert(symbol, webhook) {
+  if (!symbol || !webhook) return
+  const idx = alerts.findIndex(a => a.symbol === symbol)
+  if (idx === -1) return
+  const tv = pickTvSymbolFields(webhook)
+  if (tv.tvSymbol) alerts[idx].tvSymbol = tv.tvSymbol
+  if (tv.exchange) alerts[idx].exchange = tv.exchange
+}
+
 // Webhook for TradingView POST
 // TradingView times out after ~3s — respond immediately, then process.
 app.post('/webhook', (req, res) => {
@@ -2353,6 +2391,10 @@ function processWebhookAlert(alert) {
   
   // Keep only latest 10000 entries in history (prevent memory issues)
   alertsHistory = alertsHistory.slice(0, 10000)
+
+  if (alert.symbol) {
+    syncTvSymbolOnAlert(alert.symbol, alert)
+  }
   
   // Broadcast real-time update to connected clients
   broadcastUpdate('alert_received', {
@@ -6159,7 +6201,7 @@ app.get('/', (req, res) => {
             if (!card || !card.dataset.symbol) return;
             e.preventDefault();
             e.stopPropagation();
-            openTradingViewChart(card.dataset.symbol);
+            openTradingViewChart(card.dataset.symbol, card.dataset.tvSymbol, card.dataset.exchange);
           });
         }
 
@@ -6527,9 +6569,11 @@ app.get('/', (req, res) => {
                     'Click: star/unstar',
                     'Right-click: open TradingView chart'
                   ].filter(Boolean).join(' · ');
+                  const tvSymbolAttr = alert.tvSymbol ? escapeHtmlAttr(alert.tvSymbol) : '';
+                  const exchangeAttr = alert.exchange ? escapeHtmlAttr(alert.exchange) : '';
             
             return \`
-              <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}" title="\${escapeHtmlAttr(cardTitle)}">
+              <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}"\${tvSymbolAttr ? \` data-tv-symbol="\${tvSymbolAttr}"\` : ''}\${exchangeAttr ? \` data-exchange="\${exchangeAttr}"\` : ''} title="\${escapeHtmlAttr(cardTitle)}">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
@@ -7574,23 +7618,39 @@ Use this to create a new preset filter button that applies these exact filter se
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
 
-        function normalizeTvChartSymbol(symbol) {
+        function normalizeTvChartSymbol(symbol, tvSymbol, exchange) {
+          if (tvSymbol != null && String(tvSymbol).trim()) {
+            const tv = String(tvSymbol).trim();
+            return tv.includes(':') ? tv.toUpperCase() : tv;
+          }
           if (symbol == null || symbol === '' || symbol === 'N/A') return null;
           const raw = String(symbol).trim();
           if (!raw) return null;
           if (raw.includes(':')) return raw.toUpperCase();
-          return 'NASDAQ:' + raw.toUpperCase();
+          const ex = (exchange && String(exchange).trim())
+            ? String(exchange).trim().toUpperCase()
+            : 'NASDAQ';
+          return ex + ':' + raw.toUpperCase();
         }
 
-        function getTradingViewChartUrl(symbol) {
-          const tvSymbol = normalizeTvChartSymbol(symbol);
-          if (!tvSymbol) return null;
+        function getTradingViewChartUrl(symbol, tvSymbol, exchange) {
+          let resolvedTv = tvSymbol;
+          let resolvedEx = exchange;
+          if ((!resolvedTv || !String(resolvedTv).trim()) && symbol) {
+            const row = alertsData.find(a => a.symbol === symbol);
+            if (row) {
+              if (row.tvSymbol) resolvedTv = row.tvSymbol;
+              if (row.exchange) resolvedEx = row.exchange;
+            }
+          }
+          const tv = normalizeTvChartSymbol(symbol, resolvedTv, resolvedEx);
+          if (!tv) return null;
           const layoutId = localStorage.getItem('tvChartLayoutId') || TV_CHART_LAYOUT_ID;
-          return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tvSymbol);
+          return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tv);
         }
 
-        function openTradingViewChart(symbol) {
-          const url = getTradingViewChartUrl(symbol);
+        function openTradingViewChart(symbol, tvSymbol, exchange) {
+          const url = getTradingViewChartUrl(symbol, tvSymbol, exchange);
           if (url) window.open(url, '_blank', 'noopener,noreferrer');
         }
         

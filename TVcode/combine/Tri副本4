@@ -58,6 +58,15 @@ labelColorHL   = input.color(#00ff00, "Higher Low", group=grp_cross)
 labelColorLH   = input.color(#ff6600, "Lower High", group=grp_cross)
 labelColorRevUp = input.color(#2196f3, "Reverse Up (above LH)", group=grp_cross)
 labelColorRevDn = input.color(#9c27b0, "Reverse Down (below HL)", group=grp_cross)
+useRDimHllh = input.bool(true, "Dim HL/LH before R", group=grp_cross, tooltip="Bear R dims the prior HL; Bull R dims the prior LH, when R fires within N bars after that label.")
+rDimBars = input.int(12, "R within N bars", minval=1, maxval=50, group=grp_cross)
+
+grp_ema = "EMA 1 (HL/LH dim)"
+useEmaHllhDim = input.bool(true, "Dim HL/LH vs EMA1", group=grp_ema, tooltip="HL dimmed when price is more than band below EMA1; LH dimmed when more than band above EMA1.")
+ema1Length = input.int(50, "EMA 1 Length", minval=1, group=grp_ema)
+ema1Timeframe = input.timeframe("1", "EMA 1 Timeframe", group=grp_ema)
+emaHllhBandPct = input.float(1.0, "EMA band (±% of price)", minval=0.0, step=0.1, group=grp_ema, tooltip="HL/LH stay full color within ± this % of price from EMA1.")
+hllhDimTransp = input.int(70, "Dim transparency", minval=0, maxval=95, group=grp_ema)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  HELPERS
@@ -88,6 +97,27 @@ f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, f
         patVal := pivotVal
         newTurnDownK := pivotVal
     [pat, patVal, newTurnUpK, newTurnDownK]
+
+f_hllhTransp(bool emaDim, bool rDim) =>
+    (emaDim or rDim) ? hllhDimTransp : 0
+
+f_dimHllhLabel(label lbl, color baseCol) =>
+    if not na(lbl)
+        label.set_color(lbl, color.new(baseCol, hllhDimTransp))
+        label.set_textcolor(lbl, color.new(color.black, hllhDimTransp))
+
+f_trimHllhLabels(label[] lbls, int[] bars, int maxN) =>
+    while array.size(lbls) > maxN
+        label.delete(array.pop(lbls))
+        array.pop(bars)
+
+f_dimHllhBeforeR(label[] lbls, int[] bars, int rBar, color baseCol) =>
+    if array.size(lbls) > 0
+        for i = 0 to array.size(bars) - 1
+            b = array.get(bars, i)
+            if rBar - b <= rDimBars and rBar - b >= 0
+                f_dimHllhLabel(array.get(lbls, i), baseCol)
+                break
 
 tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
 
@@ -189,6 +219,46 @@ if bullReverse
 else if bearReverse
     lastReverseSignal := "bear"
 
+// EMA1 + 1m price — HL dim when price > band below EMA1; LH dim when > band above (also used in webhook)
+ema1Calc = ta.ema(close, ema1Length)
+htfRes1 = ema1Timeframe == "" ? timeframe.period : ema1Timeframe
+ema1Value = request.security(syminfo.tickerid, htfRes1, ema1Calc[barstate.isrealtime ? 1 : 0])[barstate.isrealtime ? 0 : 1]
+extPrice = request.security(syminfo.tickerid, "1", close, barmerge.gaps_off, barmerge.lookahead_on)
+extTime = request.security(syminfo.tickerid, "1", time, barmerge.gaps_off, barmerge.lookahead_on)
+emaHllhBand = extPrice * emaHllhBandPct / 100.0
+aboveEma1 = extPrice > ema1Value + emaHllhBand
+belowEma1 = extPrice < ema1Value - emaHllhBand
+
+var label[] hlLabels = array.new_label(0)
+var int[]   hlBars   = array.new_int(0)
+var label[] lhLabels = array.new_label(0)
+var int[]   lhBars   = array.new_int(0)
+
+isHlBar = showHLLH and s1aPat == "Higher Low"
+isLhBar = showHLLH and s1aPat == "Lower High"
+hlEmaDim = useEmaHllhDim and belowEma1
+lhEmaDim = useEmaHllhDim and aboveEma1
+
+if isHlBar
+    hlTransp = f_hllhTransp(hlEmaDim, false)
+    hlLbl = label.new(bar_index, s1aPatVal - crossingOffset, "HL", style=label.style_label_up, color=color.new(labelColorHL, hlTransp), textcolor=color.new(color.black, hlTransp), size=size.small)
+    array.unshift(hlLabels, hlLbl)
+    array.unshift(hlBars, bar_index)
+    f_trimHllhLabels(hlLabels, hlBars, 120)
+
+if isLhBar
+    lhTransp = f_hllhTransp(lhEmaDim, false)
+    lhLbl = label.new(bar_index, s1aPatVal + crossingOffset, "LH", style=label.style_label_down, color=color.new(labelColorLH, lhTransp), textcolor=color.new(color.black, lhTransp), size=size.small)
+    array.unshift(lhLabels, lhLbl)
+    array.unshift(lhBars, bar_index)
+    f_trimHllhLabels(lhLabels, lhBars, 120)
+
+if showReverse and useRDimHllh and bearReverse
+    f_dimHllhBeforeR(hlLabels, hlBars, bar_index, labelColorHL)
+
+if showReverse and useRDimHllh and bullReverse
+    f_dimHllhBeforeR(lhLabels, lhBars, bar_index, labelColorLH)
+
 // S2 histogram first (behind), then S1 K + D lines (solid, visible by default)
 plot(k2A, "S2A Histogram", style=plot.style_columns, color=color.new(k2AColor, 100 - s2Opacity), linewidth=4, display=display.none)
 plot(k1A, "S1A K", k1AColor, 3, linestyle=plot.linestyle_solid)
@@ -203,8 +273,6 @@ hline(40, "Mid 40", color.new(color.yellow, 0), hline.style_solid)
 hline(50, "Mid 50", color.new(color.yellow, 0), hline.style_dashed)
 fill(hOB, hOS, color.new(color.purple, 92))
 
-plotshape(showHLLH and s1aPat == "Higher Low" ? s1aPatVal - crossingOffset : na, "S1A HL", shape.labelup, location.absolute, labelColorHL, text="HL", textcolor=color.black, size=size.small)
-plotshape(showHLLH and s1aPat == "Lower High" ? s1aPatVal + crossingOffset : na, "S1A LH", shape.labeldown, location.absolute, labelColorLH, text="LH", textcolor=color.black, size=size.small)
 plotshape(showReverse and bullReverse ? k1A - crossingOffset : na, "S1A R Up", shape.labelup, location.absolute, labelColorRevUp, text="R", textcolor=color.white, size=size.small)
 plotshape(showReverse and bearReverse ? k1A + crossingOffset : na, "S1A R Dn", shape.labeldown, location.absolute, labelColorRevDn, text="R", textcolor=color.white, size=size.small)
 
@@ -267,8 +335,6 @@ d2ADirection = f_dir(d2A)
 // Regular vs extended prices (TV extended-hours column)
 prevRegClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
 regClose     = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
-extPrice     = request.security(syminfo.tickerid, "1", close, barmerge.gaps_off, barmerge.lookahead_on)
-extTime      = request.security(syminfo.tickerid, "1", time, barmerge.gaps_off, barmerge.lookahead_on)
 
 sessionTZ = "America/New_York"
 nyT = hour(extTime, sessionTZ) * 100 + minute(extTime, sessionTZ)
@@ -319,6 +385,8 @@ if barstate.isconfirmed
     whD2Dir = d2ADirection
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
+    alertStr += "\"exchange\":\"" + syminfo.prefix + "\","
+    alertStr += "\"tvSymbol\":\"" + syminfo.tickerid + "\","
     alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","
     alertStr += "\"time\":\"" + str.tostring(extTime) + "\","
