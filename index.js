@@ -1647,6 +1647,8 @@ function processWebhookAlert(alert) {
       if (alert.changePostMarket !== undefined) alerts[existingIndex].changePostMarket = alert.changePostMarket
       if (alert.sessionPhase !== undefined) alerts[existingIndex].sessionPhase = alert.sessionPhase
       if (alert.todayRthClose !== undefined) alerts[existingIndex].todayRthClose = alert.todayRthClose
+      if (alert.regClose !== undefined) alerts[existingIndex].regClose = alert.regClose
+      if (alert.extPrice !== undefined) alerts[existingIndex].extPrice = alert.extPrice
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
@@ -1661,6 +1663,8 @@ function processWebhookAlert(alert) {
         changePostMarket: alert.changePostMarket || null,
         sessionPhase: alert.sessionPhase || null,
         todayRthClose: alert.todayRthClose || null,
+        regClose: alert.regClose || null,
+        extPrice: alert.extPrice || null,
         volume: alert.volume || null,
         triStoch,
         triStochModes,
@@ -4894,36 +4898,53 @@ app.get('/', (req, res) => {
           return sign + body + '%' + (suffix || '');
         }
 
-        function pctPostExtended(alert) {
-          const post = parsePctField(alert.changePostMarket);
-          if (post !== null) return post;
-          if (!alert.price || !alert.todayRthClose) return null;
-          const p = parseFloat(alert.price);
-          const rth = parseFloat(alert.todayRthClose);
-          if (isNaN(p) || isNaN(rth) || rth === 0) return null;
-          return (p - rth) / rth * 100;
+        function rthCompletedToday(alert) {
+          const prev = parseFloat(alert.previousClose);
+          const reg = parseFloat(alert.todayRthClose || alert.regClose);
+          if (isNaN(prev) || isNaN(reg) || prev === 0) return false;
+          return Math.abs(reg - prev) / Math.abs(prev) > 0.001;
+        }
+
+        function getTvExtendedPct(alert) {
+          const ext = parseFloat(alert.extPrice || alert.price);
+          const prev = parseFloat(alert.previousClose);
+          const rthRef = parseFloat(alert.todayRthClose || alert.regClose);
+          if (isNaN(ext)) return null;
+          if (rthCompletedToday(alert) && !isNaN(rthRef) && rthRef !== 0) {
+            return (ext - rthRef) / rthRef * 100;
+          }
+          if (!isNaN(prev) && prev !== 0) {
+            return (ext - prev) / prev * 100;
+          }
+          return null;
         }
 
         function buildSessionChangeHtml(alert) {
           const phase = alert.sessionPhase || '';
           const pre = parsePctField(alert.changePreMarket);
+          const post = parsePctField(alert.changePostMarket);
           const rth = parsePctField(alert.changeFromPrevDay);
+          const extPct = getTvExtendedPct(alert);
 
-          // Match TradingView: one % only — extended column in pre/post, day % in RTH
-          if (phase === 'pre' && pre !== null) {
-            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
+          // Extended hours: TV red column only (vs today RTH close after open, else vs prior close)
+          if (phase === 'post' || (phase === 'pre' && rthCompletedToday(alert))) {
+            const v = post !== null ? post : extPct;
+            if (v !== null) {
+              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'PS') + '</span>';
+            }
+            return '';
           }
-          if (phase === 'post') {
-            const postExt = pctPostExtended(alert);
-            if (postExt !== null) {
-              return '<span class="' + pctColorClass(postExt) + '">' + formatSignedPct(postExt, 'PS') + '</span>';
+          if (phase === 'pre') {
+            const v = pre !== null ? pre : extPct;
+            if (v !== null) {
+              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'PE') + '</span>';
             }
             return '';
           }
           if (phase === 'rth') {
             let v = rth;
-            if (v === null && alert.price && alert.previousClose) {
-              const p = parseFloat(alert.price);
+            if (v === null && alert.extPrice && alert.previousClose) {
+              const p = parseFloat(alert.extPrice);
               const prev = parseFloat(alert.previousClose);
               if (!isNaN(p) && !isNaN(prev) && prev !== 0) v = (p - prev) / prev * 100;
             }
@@ -4933,19 +4954,18 @@ app.get('/', (req, res) => {
             return '';
           }
 
-          // Legacy: no sessionPhase on older alerts
-          const postExt = pctPostExtended(alert);
-          if (postExt !== null && rth !== null) {
-            return '<span class="' + pctColorClass(postExt) + '">' + formatSignedPct(postExt, 'PS') + '</span>';
+          // Legacy alerts
+          if (rthCompletedToday(alert) && extPct !== null) {
+            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'PS') + '</span>';
           }
-          if (pre !== null && rth === null) {
+          if (pre !== null && !rthCompletedToday(alert)) {
             return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
           }
           if (rth !== null) {
             return '<span class="' + pctColorClass(rth) + '">' + formatSignedPct(rth, '') + '</span>';
           }
-          if (pre !== null) {
-            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
+          if (extPct !== null) {
+            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'PE') + '</span>';
           }
           return '';
         }

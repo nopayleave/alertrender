@@ -255,36 +255,47 @@ d1ADirection = f_dir(d1A)
 k2ADirection = f_dir(k2A)
 d2ADirection = f_dir(d2A)
 
-// Session % — matches TradingView watchlist columns:
-//   RTH:     day % vs prior regular close (10.62%)
-//   Pre:     extended % vs prior regular close (gap before open)
-//   Post:    extended % vs TODAY regular close only (-1.68%, not full day move)
+// Regular vs extended prices (TV extended-hours column)
+prevRegClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
+regClose     = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
+extPrice     = request.security(syminfo.tickerid, "1", close, barmerge.gaps_off, barmerge.lookahead_on)
+extTime      = request.security(syminfo.tickerid, "1", time, barmerge.gaps_off, barmerge.lookahead_on)
+
 sessionTZ = "America/New_York"
-prevDayClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
-todayRthClose = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
-
-px = close
-barTime = time
-
-nyT = hour(barTime, sessionTZ) * 100 + minute(barTime, sessionTZ)
+nyT = hour(extTime, sessionTZ) * 100 + minute(extTime, sessionTZ)
 inPre = nyT >= 400 and nyT < 930
 inRth = nyT >= 930 and nyT < 1600
 inPost = nyT >= 1600 and nyT < 2000
-hasPrev = not na(prevDayClose) and math.abs(prevDayClose) > 1e-9
-hasRthClose = not na(todayRthClose) and math.abs(todayRthClose) > 1e-9
+
+// Capture today's RTH close from 1m stream (reliable post reference vs daily bar)
+var float rthCloseCaptured = na
+var int lastDateKey = na
+dateKey = year(extTime, sessionTZ) * 10000 + month(extTime, sessionTZ) * 100 + dayofmonth(extTime, sessionTZ)
+if na(lastDateKey) or dateKey != lastDateKey
+    lastDateKey := dateKey
+    rthCloseCaptured := na
+if inRth
+    rthCloseCaptured := extPrice
+
+hasPrev = not na(prevRegClose) and math.abs(prevRegClose) > 1e-9
+postRefClose = not na(rthCloseCaptured) ? rthCloseCaptured : regClose
+hasPostRef = not na(postRefClose) and math.abs(postRefClose) > 1e-9
+rthDoneToday = hasPrev and hasPostRef and math.abs(postRefClose - prevRegClose) / prevRegClose > 0.001
 
 float chgPre = na
 float chgRTH = na
 float chgPost = na
-if inPre and hasPrev
-    chgPre := (px - prevDayClose) / prevDayClose * 100.0
+// Pre (before today's open): extended vs prior regular close
+if inPre and hasPrev and not rthDoneToday
+    chgPre := (extPrice - prevRegClose) / prevRegClose * 100.0
+// Post: extended vs today's regular close only (TV red column)
+if inPost and hasPostRef
+    chgPost := (extPrice - postRefClose) / postRefClose * 100.0
 if inRth and hasPrev
-    chgRTH := (px - prevDayClose) / prevDayClose * 100.0
-if inPost and hasRthClose
-    chgPost := (px - todayRthClose) / todayRthClose * 100.0
+    chgRTH := (extPrice - prevRegClose) / prevRegClose * 100.0
 
-dayChgPct = inRth ? chgRTH : inPost and hasPrev and hasRthClose ? (todayRthClose - prevDayClose) / prevDayClose * 100.0 : na
-sessionPhase = inPre ? "pre" : inRth ? "rth" : inPost ? "post" : "closed"
+dayChgPct = inRth ? chgRTH : inPost and hasPrev and hasPostRef ? (postRefClose - prevRegClose) / prevRegClose * 100.0 : na
+sessionPhase = inPost ? "post" : inPre ? "pre" : inRth ? "rth" : "closed"
 dayVol = request.security(syminfo.tickerid, "D", volume, barmerge.gaps_off, barmerge.lookahead_off)
 
 if barstate.isconfirmed
@@ -292,10 +303,12 @@ if barstate.isconfirmed
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
     alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","
-    alertStr += "\"time\":\"" + str.tostring(barTime) + "\","
-    alertStr += "\"price\":\"" + str.tostring(px) + "\","
-    alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
-    alertStr += "\"todayRthClose\":\"" + f_jsonNum(todayRthClose) + "\","
+    alertStr += "\"time\":\"" + str.tostring(extTime) + "\","
+    alertStr += "\"price\":\"" + str.tostring(extPrice) + "\","
+    alertStr += "\"extPrice\":\"" + str.tostring(extPrice) + "\","
+    alertStr += "\"previousClose\":\"" + str.tostring(prevRegClose) + "\","
+    alertStr += "\"regClose\":\"" + f_jsonNum(regClose) + "\","
+    alertStr += "\"todayRthClose\":\"" + f_jsonNum(postRefClose) + "\","
     alertStr += "\"changeFromPrevDay\":\"" + f_jsonNum(dayChgPct) + "\","
     alertStr += "\"changePreMarket\":\"" + f_jsonNum(chgPre) + "\","
     alertStr += "\"changePostMarket\":\"" + f_jsonNum(chgPost) + "\","
