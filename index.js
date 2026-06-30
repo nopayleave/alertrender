@@ -5827,10 +5827,33 @@ app.get('/', (req, res) => {
           return isNaN(v) ? null : v;
         }
 
+        function getCardDisplayPctValue(alert) {
+          if (alert == null) return null;
+          const phase = alert.sessionPhase || '';
+          const pre = parsePctField(alert.changePreMarket);
+          const post = parsePctField(alert.changePostMarket);
+          const rth = parsePctField(alert.changeFromPrevDay);
+          const extPct = getTvExtendedPct(alert);
+
+          if (phase === 'post' || (phase === 'pre' && rthCompletedToday(alert))) {
+            return post !== null ? post : extPct;
+          }
+          if (phase === 'pre') {
+            return pre !== null ? pre : extPct;
+          }
+          if (phase === 'rth') {
+            return rth !== null ? rth : extPct;
+          }
+          if (rthCompletedToday(alert)) {
+            return post !== null ? post : extPct;
+          }
+          if (pre !== null && rth === null) return pre;
+          if (rth !== null) return rth;
+          return extPct;
+        }
+
         function getCardPctChgValue(alert) {
-          if (alert == null || alert.changeFromPrevDay == null || alert.changeFromPrevDay === '') return null;
-          const v = parseFloat(alert.changeFromPrevDay);
-          return isNaN(v) ? null : v;
+          return getCardDisplayPctValue(alert);
         }
 
         function compareCardOrderValues(aVal, bVal, dir) {
