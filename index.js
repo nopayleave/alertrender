@@ -58,6 +58,29 @@ if (!fs.existsSync(DATA_DIR)) {
 
 // Initialize SQLite database
 let db = null
+function saveNotificationSettingsToDb() {
+  if (!db) return
+  try {
+    db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
+      .run('notificationSettings', JSON.stringify({ enabled: NOTIFICATION_CONFIG.enabled }), Date.now())
+  } catch (error) {
+    console.error('❌ Error saving notification settings:', error)
+  }
+}
+
+function loadNotificationSettingsFromDb() {
+  if (!db) return
+  try {
+    const row = db.prepare('SELECT value FROM app_state WHERE key = ?').get('notificationSettings')
+    if (row) {
+      const saved = JSON.parse(row.value)
+      if (saved.enabled !== undefined) NOTIFICATION_CONFIG.enabled = !!saved.enabled
+    }
+  } catch (error) {
+    console.error('❌ Error loading notification settings:', error)
+  }
+}
+
 function initDatabase() {
   try {
     db = new Database(DB_FILE)
@@ -2566,6 +2589,7 @@ app.post('/notification-settings', (req, res) => {
     // Update global notification toggle
     if (enabled !== undefined) {
       NOTIFICATION_CONFIG.enabled = enabled
+      saveNotificationSettingsToDb()
       console.log(`🔔 Global notifications ${enabled ? 'ENABLED' : 'DISABLED'}`)
     }
     
@@ -4516,6 +4540,9 @@ app.get('/', (req, res) => {
           </div>
           <div id="cardSortBar" class="hidden items-center gap-2 px-2 py-1.5 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
             <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground">Card Sort</span>
+            <button id="cardSortK1BandsBtn" type="button" onclick="setCardSortMode('k1Bands', this)" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-green-500/45 bg-green-500/12 hover:bg-green-500/20 active:scale-95 transition-all text-green-300">
+              K1 Bands
+            </button>
             <button id="cardSortK2BandsBtn" type="button" onclick="setCardSortMode('k2Bands', this)" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300">
               K2 Bands
             </button>
@@ -4663,7 +4690,7 @@ app.get('/', (req, res) => {
         let sectorData = {}; // Store sector information by symbol
         
         // Notification state
-        let notificationsEnabled = true; // Track whether notifications/toasts are enabled
+        let notificationsEnabled = localStorage.getItem('notificationsEnabled') !== 'false';
         
         // Active quick preset in the top strip
         let activePreset = null;
@@ -5609,7 +5636,9 @@ app.get('/', (req, res) => {
         }
 
         function updateCardSortBarUI() {
+          const k1Btn = document.getElementById('cardSortK1BandsBtn');
           const k2Btn = document.getElementById('cardSortK2BandsBtn');
+          if (k1Btn) k1Btn.classList.toggle('active', cardSortMode === 'k1Bands');
           if (k2Btn) k2Btn.classList.toggle('active', cardSortMode === 'k2Bands');
         }
 
@@ -5836,11 +5865,23 @@ app.get('/', (req, res) => {
             });
           }
           
+          function getK1ValueFromAlert(alert) {
+            const t = alert.triStoch;
+            if (!t || t.ovK == null || isNaN(parseFloat(t.ovK))) return null;
+            return parseFloat(t.ovK);
+          }
+
           function getK2ValueFromAlert(alert) {
             return getTriK2Value(alert.triStoch);
           }
 
-          const kanbanColumns = cardSortMode === 'k2Bands'
+          function getCardBandValue(alert) {
+            return cardSortMode === 'k1Bands' ? getK1ValueFromAlert(alert) : getK2ValueFromAlert(alert);
+          }
+
+          const isBandSortMode = cardSortMode === 'k1Bands' || cardSortMode === 'k2Bands';
+
+          const kanbanColumns = isBandSortMode
             ? [
                 { id: 'k3_lt10', title: '<10', bgColor: 'bg-card' },
                 { id: 'k3_lt20', title: '<20', bgColor: 'bg-card' },
@@ -5854,22 +5895,21 @@ app.get('/', (req, res) => {
 
           const columnBuckets = {};
           kanbanColumns.forEach(col => { columnBuckets[col.id] = []; });
-          masonryContainer.style.gridTemplateColumns = cardSortMode === 'k2Bands'
+          masonryContainer.style.gridTemplateColumns = isBandSortMode
             ? 'repeat(5, minmax(220px, 1fr))'
             : 'repeat(auto-fit, minmax(220px, 1fr))';
           displayData.forEach(alert => {
-            if (cardSortMode === 'k2Bands') {
-              const k2Val = getK2ValueFromAlert(alert);
-              if (k2Val !== null && k2Val < 10) {
+            if (isBandSortMode) {
+              const bandVal = getCardBandValue(alert);
+              if (bandVal !== null && bandVal < 10) {
                 columnBuckets.k3_lt10.push(alert);
-              } else if (k2Val !== null && k2Val < 20) {
+              } else if (bandVal !== null && bandVal < 20) {
                 columnBuckets.k3_lt20.push(alert);
-              } else if (k2Val !== null && k2Val > 90) {
+              } else if (bandVal !== null && bandVal > 90) {
                 columnBuckets.k3_gt90.push(alert);
-              } else if (k2Val !== null && k2Val > 80) {
+              } else if (bandVal !== null && bandVal > 80) {
                 columnBuckets.k3_gt80.push(alert);
               } else {
-                // Includes 21-80 as requested and unknown K3 values fallback.
                 columnBuckets.k3_21_80.push(alert);
               }
             } else {
@@ -5896,12 +5936,12 @@ app.get('/', (req, res) => {
               if (aCross && !bCross) return -1;
               if (!aCross && bCross) return 1;
               
-              // Then by K3 value in card K3 mode, else optional D2 sort/alphabetical.
-              if (cardSortMode === 'k2Bands') {
-                const aK2 = getK2ValueFromAlert(a);
-                const bK2 = getK2ValueFromAlert(b);
-                const aVal = aK2 != null ? aK2 : -1;
-                const bVal = bK2 != null ? bK2 : -1;
+              // Then by K1/K2 band value in band mode, else optional D2 sort/alphabetical.
+              if (isBandSortMode) {
+                const aBand = getCardBandValue(a);
+                const bBand = getCardBandValue(b);
+                const aVal = aBand != null ? aBand : -1;
+                const bVal = bBand != null ? bBand : -1;
                 if (bVal !== aVal) return bVal - aVal;
                 return (a.symbol || '').localeCompare(b.symbol || '');
               }
@@ -5999,8 +6039,8 @@ app.get('/', (req, res) => {
                   \`;
                 }).join('');
 
-            const sortControlHtml = cardSortMode === 'k2Bands'
-              ? '<span class="text-xs text-cyan-400/80">K2</span>'
+            const sortControlHtml = isBandSortMode
+              ? '<span class="text-xs text-cyan-400/80">' + (cardSortMode === 'k1Bands' ? 'K1' : 'K2') + '</span>'
               : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
 
             return \`
@@ -7032,6 +7072,7 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Load notification settings on page load
         loadNotificationSettings();
+        updateNotificationToggleUI(notificationsEnabled);
 
         function isStarred(symbol) {
           return starredAlerts[symbol] || false;
@@ -7051,19 +7092,14 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Update notification toggle UI
         function updateNotificationToggleUI(enabled) {
+          notificationsEnabled = !!enabled;
+          localStorage.setItem('notificationsEnabled', notificationsEnabled ? 'true' : 'false');
           const toggle = document.getElementById('notificationToggle');
           const icon = document.getElementById('notificationIcon');
-          const text = document.getElementById('notificationText');
-          
-          if (enabled) {
-            toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
-            icon.textContent = '🔔';
-            text.textContent = 'Unmute';
-          } else {
-            toggle.className = 'inline-flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-lg';
-            icon.textContent = '🔕';
-            text.textContent = 'Mute';
-          }
+          if (!toggle || !icon) return;
+          icon.textContent = notificationsEnabled ? '🔔' : '🔕';
+          toggle.title = notificationsEnabled ? 'Mute toast notifications' : 'Unmute toast notifications';
+          toggle.classList.toggle('opacity-40', !notificationsEnabled);
         }
         
         // Toggle notifications
@@ -8223,6 +8259,7 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Show toast notification for preset filter match
         function showPresetMatchToast(symbol, presetName, price) {
+          if (!notificationsEnabled) return;
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
           
@@ -9337,6 +9374,7 @@ console.log('🔄 Initializing database...')
 if (initDatabase()) {
   console.log('🔄 Loading persisted data...')
   loadDataFromDatabase()
+  loadNotificationSettingsFromDb()
 } else {
   console.log('⚠️  Database initialization failed, starting with empty data')
 }
