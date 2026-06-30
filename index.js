@@ -6055,6 +6055,31 @@ app.get('/', (req, res) => {
           presetTooltipEl.style.top = y + 'px';
         }
 
+        function escapeHtmlAttr(val) {
+          return String(val == null ? '' : val)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
+        }
+
+        function initKanbanCardHandlers() {
+          const container = document.getElementById('masonryContainer');
+          if (!container || container.dataset.kanbanHandlersBound === '1') return;
+          container.dataset.kanbanHandlersBound = '1';
+          container.addEventListener('click', (e) => {
+            const card = e.target.closest('.kanban-card');
+            if (!card || !card.dataset.symbol) return;
+            toggleStar(card.dataset.symbol);
+          });
+          container.addEventListener('contextmenu', (e) => {
+            const card = e.target.closest('.kanban-card');
+            if (!card || !card.dataset.symbol) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openTradingViewChart(card.dataset.symbol);
+          });
+        }
+
         function initPresetStripTooltips() {
           ensurePresetTooltipEl();
           document.querySelectorAll('.preset-filter-chip').forEach(btn => {
@@ -6089,6 +6114,7 @@ app.get('/', (req, res) => {
           setupColumnDragAndDrop();
           initializeSliders();
           initPresetStripTooltips();
+          initKanbanCardHandlers();
           updateCardSortBarUI();
           initializeView(); // Initialize view mode
         });
@@ -6415,7 +6441,7 @@ app.get('/', (req, res) => {
                   ].filter(Boolean).join(' · ');
             
             return \`
-              <div class="\${cardClass} \${pineLabelBg}" title="\${cardTitle.replace(/"/g, '&quot;')}" onclick="toggleStar(\${JSON.stringify(symbol)})" oncontextmenu="onKanbanCardContextMenu(event, \${JSON.stringify(symbol)})">
+              <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}" title="\${escapeHtmlAttr(cardTitle)}">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
@@ -7477,12 +7503,6 @@ Use this to create a new preset filter button that applies these exact filter se
         function openTradingViewChart(symbol) {
           const url = getTradingViewChartUrl(symbol);
           if (url) window.open(url, '_blank', 'noopener,noreferrer');
-        }
-
-        function onKanbanCardContextMenu(event, symbol) {
-          event.preventDefault();
-          event.stopPropagation();
-          openTradingViewChart(symbol);
         }
         
         // Sync starred symbols to backend
