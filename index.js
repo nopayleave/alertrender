@@ -1646,6 +1646,7 @@ function processWebhookAlert(alert) {
       if (alert.changePreMarket !== undefined) alerts[existingIndex].changePreMarket = alert.changePreMarket
       if (alert.changePostMarket !== undefined) alerts[existingIndex].changePostMarket = alert.changePostMarket
       if (alert.sessionPhase !== undefined) alerts[existingIndex].sessionPhase = alert.sessionPhase
+      if (alert.todayRthClose !== undefined) alerts[existingIndex].todayRthClose = alert.todayRthClose
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
@@ -1659,6 +1660,7 @@ function processWebhookAlert(alert) {
         changePreMarket: alert.changePreMarket || null,
         changePostMarket: alert.changePostMarket || null,
         sessionPhase: alert.sessionPhase || null,
+        todayRthClose: alert.todayRthClose || null,
         volume: alert.volume || null,
         triStoch,
         triStochModes,
@@ -4892,56 +4894,60 @@ app.get('/', (req, res) => {
           return sign + body + '%' + (suffix || '');
         }
 
-        function pctFromPrice(alert) {
-          if (!alert.price || !alert.previousClose) return null;
+        function pctPostExtended(alert) {
+          const post = parsePctField(alert.changePostMarket);
+          if (post !== null) return post;
+          if (!alert.price || !alert.todayRthClose) return null;
           const p = parseFloat(alert.price);
-          const prev = parseFloat(alert.previousClose);
-          if (isNaN(p) || isNaN(prev) || prev === 0) return null;
-          return (p - prev) / prev * 100;
+          const rth = parseFloat(alert.todayRthClose);
+          if (isNaN(p) || isNaN(rth) || rth === 0) return null;
+          return (p - rth) / rth * 100;
         }
 
         function buildSessionChangeHtml(alert) {
           const phase = alert.sessionPhase || '';
-          const rth = parsePctField(alert.changeFromPrevDay);
           const pre = parsePctField(alert.changePreMarket);
-          const post = parsePctField(alert.changePostMarket);
-          const liveFromPrev = pctFromPrice(alert);
+          const rth = parsePctField(alert.changeFromPrevDay);
 
-          // Legacy fallback: no session split fields — compute from price vs prior close
-          let rthDisplay = rth;
-          if (rthDisplay === null && pre === null && post === null && liveFromPrev !== null) {
-            rthDisplay = liveFromPrev;
+          // Match TradingView: one % only — extended column in pre/post, day % in RTH
+          if (phase === 'pre' && pre !== null) {
+            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
           }
-
-          const parts = [];
-          if (phase === 'pre' && liveFromPrev !== null) {
-            parts.push({ text: formatSignedPct(liveFromPrev, 'PE'), cls: pctColorClass(liveFromPrev) });
-          } else if (phase === 'pre' && pre !== null) {
-            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
-          } else if (phase === 'post' && post !== null && rthDisplay !== null) {
-            parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
-            parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-          } else if (phase === 'post' && post !== null) {
-            parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-          } else if (phase === 'rth' && (liveFromPrev !== null || rthDisplay !== null)) {
-            parts.push({ text: formatSignedPct(liveFromPrev !== null ? liveFromPrev : rthDisplay, ''), cls: pctColorClass(liveFromPrev !== null ? liveFromPrev : rthDisplay) });
-          } else {
-            const preOnly = pre !== null && (rth === null || (post === null && rth !== null && Math.abs(rth - pre) < 0.05));
-            if (post !== null && rthDisplay !== null) {
-              parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
-              parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-            } else if (post !== null) {
-              parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-            } else if (preOnly) {
-              parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
-            } else if (rthDisplay !== null) {
-              parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
-            } else if (pre !== null) {
-              parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          if (phase === 'post') {
+            const postExt = pctPostExtended(alert);
+            if (postExt !== null) {
+              return '<span class="' + pctColorClass(postExt) + '">' + formatSignedPct(postExt, 'PS') + '</span>';
             }
+            return '';
           }
-          if (!parts.length) return '';
-          return parts.map((p, i) => '<span class="' + p.cls + (i ? ' ml-1' : '') + '">' + p.text + '</span>').join('');
+          if (phase === 'rth') {
+            let v = rth;
+            if (v === null && alert.price && alert.previousClose) {
+              const p = parseFloat(alert.price);
+              const prev = parseFloat(alert.previousClose);
+              if (!isNaN(p) && !isNaN(prev) && prev !== 0) v = (p - prev) / prev * 100;
+            }
+            if (v !== null) {
+              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, '') + '</span>';
+            }
+            return '';
+          }
+
+          // Legacy: no sessionPhase on older alerts
+          const postExt = pctPostExtended(alert);
+          if (postExt !== null && rth !== null) {
+            return '<span class="' + pctColorClass(postExt) + '">' + formatSignedPct(postExt, 'PS') + '</span>';
+          }
+          if (pre !== null && rth === null) {
+            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
+          }
+          if (rth !== null) {
+            return '<span class="' + pctColorClass(rth) + '">' + formatSignedPct(rth, '') + '</span>';
+          }
+          if (pre !== null) {
+            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
+          }
+          return '';
         }
         
         // Format regular numbers with k notation for values over 1000

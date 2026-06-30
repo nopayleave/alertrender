@@ -255,10 +255,13 @@ d1ADirection = f_dir(d1A)
 k2ADirection = f_dir(k2A)
 d2ADirection = f_dir(d2A)
 
-// Session % change — chart bar price (matches TV watchlist %); prior close from daily RTH bar.
+// Session % — matches TradingView watchlist columns:
+//   RTH:     day % vs prior regular close (10.62%)
+//   Pre:     extended % vs prior regular close (gap before open)
+//   Post:    extended % vs TODAY regular close only (-1.68%, not full day move)
 sessionTZ = "America/New_York"
 prevDayClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
-todayDailyClose = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
+todayRthClose = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
 
 px = close
 barTime = time
@@ -268,7 +271,7 @@ inPre = nyT >= 400 and nyT < 930
 inRth = nyT >= 930 and nyT < 1600
 inPost = nyT >= 1600 and nyT < 2000
 hasPrev = not na(prevDayClose) and math.abs(prevDayClose) > 1e-9
-hasDaily = not na(todayDailyClose) and math.abs(todayDailyClose) > 1e-9
+hasRthClose = not na(todayRthClose) and math.abs(todayRthClose) > 1e-9
 
 float chgPre = na
 float chgRTH = na
@@ -277,10 +280,10 @@ if inPre and hasPrev
     chgPre := (px - prevDayClose) / prevDayClose * 100.0
 if inRth and hasPrev
     chgRTH := (px - prevDayClose) / prevDayClose * 100.0
-if inPost and hasDaily
-    chgPost := (px - todayDailyClose) / todayDailyClose * 100.0
+if inPost and hasRthClose
+    chgPost := (px - todayRthClose) / todayRthClose * 100.0
 
-dayChgPct = inRth ? chgRTH : inPost and hasPrev and hasDaily ? (todayDailyClose - prevDayClose) / prevDayClose * 100.0 : na
+dayChgPct = inRth ? chgRTH : inPost and hasPrev and hasRthClose ? (todayRthClose - prevDayClose) / prevDayClose * 100.0 : na
 sessionPhase = inPre ? "pre" : inRth ? "rth" : inPost ? "post" : "closed"
 dayVol = request.security(syminfo.tickerid, "D", volume, barmerge.gaps_off, barmerge.lookahead_off)
 
@@ -292,6 +295,7 @@ if barstate.isconfirmed
     alertStr += "\"time\":\"" + str.tostring(barTime) + "\","
     alertStr += "\"price\":\"" + str.tostring(px) + "\","
     alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
+    alertStr += "\"todayRthClose\":\"" + f_jsonNum(todayRthClose) + "\","
     alertStr += "\"changeFromPrevDay\":\"" + f_jsonNum(dayChgPct) + "\","
     alertStr += "\"changePreMarket\":\"" + f_jsonNum(chgPre) + "\","
     alertStr += "\"changePostMarket\":\"" + f_jsonNum(chgPost) + "\","
