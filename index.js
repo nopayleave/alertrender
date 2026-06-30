@@ -4585,7 +4585,7 @@ app.get('/', (req, res) => {
             <button id="cardOrderVolumeBtn" type="button" onclick="setCardOrderBy('volume')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-amber-500/45 bg-amber-500/12 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-300" title="Sort cards by volume (day)">
               Volume <span id="cardOrderVolumeArrow" class="text-[10px]">↓</span>
             </button>
-            <button id="cardOrderPctBtn" type="button" onclick="setCardOrderBy('pctChg')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-violet-500/45 bg-violet-500/12 hover:bg-violet-500/20 active:scale-95 transition-all text-violet-300" title="Sort cards by % change from previous day">
+            <button id="cardOrderPctBtn" type="button" onclick="setCardOrderBy('pctChg')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-violet-500/45 bg-violet-500/12 hover:bg-violet-500/20 active:scale-95 transition-all text-violet-300" title="Sort cards by displayed % change (same as card label, incl. extended %P)">
               % Chg <span id="cardOrderPctArrow" class="text-[10px]">↓</span>
             </button>
           </div>
@@ -4941,27 +4941,20 @@ app.get('/', (req, res) => {
           return null;
         }
 
-        function buildSessionChangeHtml(alert) {
+        // Same numeric value shown on cards (incl. -1.68%P extended); P suffix is display-only.
+        function getSessionDisplayPct(alert) {
+          if (alert == null) return null;
           const phase = alert.sessionPhase || '';
           const pre = parsePctField(alert.changePreMarket);
           const post = parsePctField(alert.changePostMarket);
           const rth = parsePctField(alert.changeFromPrevDay);
           const extPct = getTvExtendedPct(alert);
 
-          // Extended hours: TV red column only (vs today RTH close after open, else vs prior close)
           if (phase === 'post' || (phase === 'pre' && rthCompletedToday(alert))) {
-            const v = post !== null ? post : extPct;
-            if (v !== null) {
-              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'P') + '</span>';
-            }
-            return '';
+            return post !== null ? post : extPct;
           }
           if (phase === 'pre') {
-            const v = pre !== null ? pre : extPct;
-            if (v !== null) {
-              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'P') + '</span>';
-            }
-            return '';
+            return pre !== null ? pre : extPct;
           }
           if (phase === 'rth') {
             let v = rth;
@@ -4970,26 +4963,40 @@ app.get('/', (req, res) => {
               const prev = parseFloat(alert.previousClose);
               if (!isNaN(p) && !isNaN(prev) && prev !== 0) v = (p - prev) / prev * 100;
             }
-            if (v !== null) {
-              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, '') + '</span>';
-            }
-            return '';
+            return v;
           }
 
-          // Legacy alerts
-          if (rthCompletedToday(alert) && extPct !== null) {
-            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'P') + '</span>';
+          // Legacy / closed / missing sessionPhase
+          if (rthCompletedToday(alert)) {
+            return post !== null ? post : extPct;
           }
-          if (pre !== null && !rthCompletedToday(alert)) {
-            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'P') + '</span>';
+          if (post !== null) return post;
+          if (pre !== null) return pre;
+          if (rth !== null) return rth;
+          if (extPct !== null) return extPct;
+          const price = parseFloat(alert.extPrice || alert.price);
+          const prev = parseFloat(alert.previousClose);
+          if (!isNaN(price) && !isNaN(prev) && prev !== 0) {
+            return (price - prev) / prev * 100;
           }
-          if (rth !== null) {
-            return '<span class="' + pctColorClass(rth) + '">' + formatSignedPct(rth, '') + '</span>';
-          }
-          if (extPct !== null) {
-            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'P') + '</span>';
-          }
-          return '';
+          return null;
+        }
+
+        function sessionDisplayPctUsesExtendedSuffix(alert) {
+          const phase = alert.sessionPhase || '';
+          if (phase === 'rth') return false;
+          if (phase === 'post' || phase === 'pre') return true;
+          if (rthCompletedToday(alert)) return true;
+          if (parsePctField(alert.changePostMarket) !== null) return true;
+          if (parsePctField(alert.changePreMarket) !== null) return true;
+          return parsePctField(alert.changeFromPrevDay) === null;
+        }
+
+        function buildSessionChangeHtml(alert) {
+          const v = getSessionDisplayPct(alert);
+          if (v === null) return '';
+          const suffix = sessionDisplayPctUsesExtendedSuffix(alert) ? 'P' : '';
+          return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, suffix) + '</span>';
         }
         
         // Format regular numbers with k notation for values over 1000
@@ -5828,32 +5835,11 @@ app.get('/', (req, res) => {
         }
 
         function getCardDisplayPctValue(alert) {
-          if (alert == null) return null;
-          const phase = alert.sessionPhase || '';
-          const pre = parsePctField(alert.changePreMarket);
-          const post = parsePctField(alert.changePostMarket);
-          const rth = parsePctField(alert.changeFromPrevDay);
-          const extPct = getTvExtendedPct(alert);
-
-          if (phase === 'post' || (phase === 'pre' && rthCompletedToday(alert))) {
-            return post !== null ? post : extPct;
-          }
-          if (phase === 'pre') {
-            return pre !== null ? pre : extPct;
-          }
-          if (phase === 'rth') {
-            return rth !== null ? rth : extPct;
-          }
-          if (rthCompletedToday(alert)) {
-            return post !== null ? post : extPct;
-          }
-          if (pre !== null && rth === null) return pre;
-          if (rth !== null) return rth;
-          return extPct;
+          return getSessionDisplayPct(alert);
         }
 
         function getCardPctChgValue(alert) {
-          return getCardDisplayPctValue(alert);
+          return getSessionDisplayPct(alert);
         }
 
         function compareCardOrderValues(aVal, bVal, dir) {
@@ -6004,11 +5990,10 @@ app.get('/', (req, res) => {
           // Apply Other Filters (Price %, Volume) - same predicates as table
           if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             matchedData = matchedData.filter(alert => {
-              // Price % filter (changeFromPrevDay)
+              // Price % filter (same value as card display / % Chg sort)
               if (stochFilterPercentChange.length > 0) {
-                const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
-                if (percentChange === null || isNaN(percentChange)) return false;
-                const pctVal = percentChange;
+                const pctVal = getSessionDisplayPct(alert);
+                if (pctVal === null || isNaN(pctVal)) return false;
                 let matchesPct = false;
                 for (const filter of stochFilterPercentChange) {
                   if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
@@ -6130,36 +6115,30 @@ app.get('/', (req, res) => {
             }
           });
 
-          // Sort each column: starred first, then crossings, then by D2 (if sort active) or alphabetical
+          // Sort each column: explicit Order (% / volume) first, then starred, crossings, band/D2/alpha
           Object.keys(columnBuckets).forEach(columnId => {
             const d2Dir = kanbanD2SortByColumn[columnId];
             columnBuckets[columnId].sort((a, b) => {
-              const aStarred = isStarred(a.symbol);
-              const bStarred = isStarred(b.symbol);
-              
-              // Starred symbols always come first
-              if (aStarred && !bStarred) return -1;
-              if (!aStarred && bStarred) return 1;
-              
-              // Check for stochastic crossings
-              const aCross = a.kCross && a.kCross !== 'none';
-              const bCross = b.kCross && b.kCross !== 'none';
-              
-              // Crossings come next (after starred)
-              if (aCross && !bCross) return -1;
-              if (!aCross && bCross) return 1;
-              
-              // Then by order (volume / % chg), K band value, D2, or alphabetical.
               if (cardOrderBy === 'volume') {
                 const cmp = compareCardOrderValues(getCardVolumeValue(a), getCardVolumeValue(b), cardOrderDir);
                 if (cmp !== 0) return cmp;
-                return (a.symbol || '').localeCompare(b.symbol || '');
               }
               if (cardOrderBy === 'pctChg') {
                 const cmp = compareCardOrderValues(getCardPctChgValue(a), getCardPctChgValue(b), cardOrderDir);
                 if (cmp !== 0) return cmp;
-                return (a.symbol || '').localeCompare(b.symbol || '');
               }
+
+              const aStarred = isStarred(a.symbol);
+              const bStarred = isStarred(b.symbol);
+              if (aStarred && !bStarred) return -1;
+              if (!aStarred && bStarred) return 1;
+
+              const aCross = a.kCross && a.kCross !== 'none';
+              const bCross = b.kCross && b.kCross !== 'none';
+              if (aCross && !bCross) return -1;
+              if (!aCross && bCross) return 1;
+
+              // K band value, D2, or alphabetical when no explicit order
               if (isBandSortMode) {
                 const aBand = getCardBandValue(a);
                 const bBand = getCardBandValue(b);
@@ -7415,11 +7394,10 @@ Use this to create a new preset filter button that applies these exact filter se
           // Apply Other Filters (Price %, Volume)
           if (stochFilterPercentChange.length > 0 || volumeFilter.length > 0) {
             filteredData = filteredData.filter(alert => {
-              // Price % filter (changeFromPrevDay)
+              // Price % filter (same value as card display / % Chg sort)
               if (stochFilterPercentChange.length > 0) {
-                const percentChange = alert.changeFromPrevDay !== null && alert.changeFromPrevDay !== undefined ? parseFloat(alert.changeFromPrevDay) : null;
-                if (percentChange === null || isNaN(percentChange)) return false;
-                const pctVal = percentChange;
+                const pctVal = getSessionDisplayPct(alert);
+                if (pctVal === null || isNaN(pctVal)) return false;
                 let matchesPct = false;
                 for (const filter of stochFilterPercentChange) {
                   if (filter === '<-10' && pctVal < -10) { matchesPct = true; break; }
