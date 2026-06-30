@@ -258,12 +258,25 @@ function parseTriWebhookVal(v) {
   return isNaN(n) ? null : n
 }
 
+function getTriK1Value(t) {
+  if (!t) return null
+  const raw = t.k1 != null ? t.k1 : t.ovK
+  if (raw == null) return null
+  const n = parseFloat(raw)
+  return isNaN(n) ? null : n
+}
+
 function getTriK2Value(t) {
   if (!t) return null
   const raw = t.k2 != null ? t.k2 : t.k3
   if (raw == null) return null
   const n = parseFloat(raw)
   return isNaN(n) ? null : n
+}
+
+function getTriK1Direction(t) {
+  if (!t) return null
+  return t.k1Direction || t.ovKDirection || null
 }
 
 function getTriK2Direction(t) {
@@ -278,6 +291,7 @@ function buildTriModePayload(k1, d1, k2, d2, k1Dir, d1Dir, k2Dir, d2Dir, mode) {
   const d2n = parseTriWebhookVal(d2)
   return {
     k1: k1n,
+    k1Direction: k1Dir || null,
     k2: k2n,
     k2Direction: k2Dir || null,
     k3: k2n,
@@ -1560,18 +1574,24 @@ function processWebhookAlert(alert) {
       const swing = dualModes.Swing
       if (interday) {
         stochOverviewDataStorage[alert.symbol] = {
+          k1: interday.k1,
+          k2: interday.k2,
           k: interday.ovK, d: interday.ovD, d2: interday.ovD,
           kDirection: interday.ovKDirection, dDirection: interday.ovDDirection, d2Direction: interday.ovDDirection,
-          k2: interday.k2, k2Direction: interday.k2Direction,
+          k1Direction: interday.k1Direction,
+          k2Direction: interday.k2Direction,
           k3: interday.k2, k3Direction: interday.k2Direction,
           timestamp: Date.now()
         }
       }
       if (swing) {
         stochDetailDataStorage[alert.symbol] = {
+          k1: swing.k1,
+          k2: swing.k2,
           k: swing.ovK, d: swing.ovD, d2: swing.ovD,
           kDirection: swing.ovKDirection, dDirection: swing.ovDDirection, d2Direction: swing.ovDDirection,
-          k2: swing.k2, k2Direction: swing.k2Direction,
+          k1Direction: swing.k1Direction,
+          k2Direction: swing.k2Direction,
           k3: swing.k2, k3Direction: swing.k2Direction,
           timestamp: Date.now()
         }
@@ -1617,8 +1637,8 @@ function processWebhookAlert(alert) {
     }
 
     const tsTri = Date.now()
-    const k1Hist = parseTriWebhookVal(alert.k1A ?? alert.ovK ?? alert.k1)
-    const k2Hist = parseTriWebhookVal(alert.k2A ?? alert.k2 ?? alert.k3)
+    const k1Hist = parseTriWebhookVal(alert.k1A ?? alert.k1 ?? alert.ovK)
+    const k2Hist = parseTriWebhookVal(alert.k2A ?? alert.k2)
     if (k1Hist != null || k2Hist != null) {
       if (!triStochK1K2History[alert.symbol]) triStochK1K2History[alert.symbol] = []
       triStochK1K2History[alert.symbol].push({
@@ -2321,9 +2341,11 @@ app.get('/alerts', (req, res) => {
       const dtRecent = dtInfo && (now - dtInfo.timestamp) / 60000 <= STOCH_STORAGE_MAX_AGE_MINUTES
       if (ovRecent || dtRecent) {
         alert.triStoch = {
-          k1: ovRecent && ovInfo.k1 != null ? ovInfo.k1 : null,
-          k2: dtRecent && dtInfo.k2 != null ? dtInfo.k2 : null,
+          k1: ovRecent ? (ovInfo.k1 != null ? ovInfo.k1 : ovInfo.k) : (dtRecent && dtInfo.k1 != null ? dtInfo.k1 : null),
+          k2: ovRecent && ovInfo.k2 != null ? ovInfo.k2 : (dtRecent && dtInfo.k2 != null ? dtInfo.k2 : null),
           k3: ovRecent && ovInfo.k3 != null ? ovInfo.k3 : (dtRecent && dtInfo.k3 != null ? dtInfo.k3 : null),
+          k1Direction: ovRecent ? (ovInfo.k1Direction || ovInfo.kDirection) : null,
+          k2Direction: ovRecent ? ovInfo.k2Direction : (dtRecent ? dtInfo.k2Direction : null),
           k3Direction: ovRecent ? (ovInfo.k3Direction || null) : null,
           ovK: ovRecent ? ovInfo.k : null,
           ovD: ovRecent ? ovInfo.d : null,
@@ -4998,11 +5020,23 @@ app.get('/', (req, res) => {
           return String(mode || '').toLowerCase() === 'swing' ? 'Swing' : 'Interday';
         }
 
+        function getTriK1Value(t) {
+          if (!t) return null;
+          const raw = t.k1 != null ? t.k1 : t.ovK;
+          if (raw == null || isNaN(parseFloat(raw))) return null;
+          return parseFloat(raw);
+        }
+
         function getTriK2Value(t) {
           if (!t) return null;
           const raw = t.k2 != null ? t.k2 : t.k3;
           if (raw == null || isNaN(parseFloat(raw))) return null;
           return parseFloat(raw);
+        }
+
+        function getTriK1Direction(t) {
+          if (!t) return 'flat';
+          return t.k1Direction || t.ovKDirection || 'flat';
         }
 
         function getTriK2Direction(t) {
@@ -6024,9 +6058,7 @@ app.get('/', (req, res) => {
           }
           
           function getK1ValueFromAlert(alert) {
-            const t = alert.triStoch;
-            if (!t || t.ovK == null || isNaN(parseFloat(t.ovK))) return null;
-            return parseFloat(t.ovK);
+            return getTriK1Value(alert.triStoch);
           }
 
           function getK2ValueFromAlert(alert) {
@@ -6139,9 +6171,9 @@ app.get('/', (req, res) => {
               : cards.map(alert => {
                   const symbol = alert.symbol || alert.ticker || 'N/A';
                   const t = alert.triStoch || {};
-                  const k1Val = t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
+                  const k1Val = getTriK1Value(t);
                   const k2Val = getTriK2Value(t);
-                  const k1Dir = t.ovKDirection || 'flat';
+                  const k1Dir = getTriK1Direction(t);
                   const k2Dir = getTriK2Direction(t);
                   const k1Display = k1Val !== null ? k1Val.toFixed(1) : 'N/A';
                   const k2Display = k2Val !== null ? k2Val.toFixed(1) : 'N/A';
@@ -8325,8 +8357,8 @@ Use this to create a new preset filter button that applies these exact filter se
                 const t = alert.triStoch;
                 const svg = alert.triStochK1MiniChart || '';
                 if (!t && !svg) return '<td class="py-1.5 px-2 text-muted-foreground text-xs" style="' + getCellWidthStyle('stochK1') + '">–</td>';
-                const v = t && t.ovK != null && !isNaN(parseFloat(t.ovK)) ? parseFloat(t.ovK) : null;
-                const dir = t && t.ovKDirection ? t.ovKDirection : 'flat';
+                const v = getTriK1Value(t);
+                const dir = getTriK1Direction(t);
                 const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–';
                 const valStr = v !== null ? v.toFixed(1) : '–';
                 let valCls = 'text-muted-foreground';
@@ -8335,7 +8367,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK1') + '" title="K1 S1A — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
@@ -8355,7 +8387,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   else if (v < 20) valCls = 'text-red-400 font-semibold';
                   else valCls = dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-amber-400';
                 }
-                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK2') + '" title="K2 (S2A) — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
+                return '<td class="py-1.5 px-1 align-top" style="' + getCellWidthStyle('stochK2') + '" title="K2 S2A — X: 9:30 AM–4:00 PM NY by sample time; Y: %K 0–100">' +
                   '<div class="flex flex-col gap-0.5 w-full min-w-0">' +
                   (svg ? '<div class="leading-none w-full min-w-0 overflow-hidden">' + svg + '</div>' : '') +
                   '<span class="font-mono text-[15px] px-0.5 ' + valCls + '">' + valStr + ' ' + arrow + '</span>' +
@@ -8372,7 +8404,7 @@ Use this to create a new preset filter button that applies these exact filter se
                   const clr = v !== null ? (v > 80 ? 'text-white' : v < 20 ? 'text-red-400' : dir === 'up' ? 'text-green-400' : dir === 'down' ? 'text-red-400' : 'text-muted-foreground') : 'text-muted-foreground';
                   return '<span class="font-semibold ' + clr + '" title="' + label + ': ' + valStr + ' ' + dir + '"><span class="font-mono">' + label + ' ' + valStr + '</span> ' + arrow + '</span>';
                 }
-                const parts = [kCell('K1', t.ovK, t.ovKDirection), kCell('K2', getTriK2Value(t), getTriK2Direction(t))];
+                const parts = [kCell('K1', getTriK1Value(t), getTriK1Direction(t)), kCell('K2', getTriK2Value(t), getTriK2Direction(t))];
                 const unified = getUnifiedStochSuggestion(alert);
                 let suggestionHtml = '';
                 if (unified) {

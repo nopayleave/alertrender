@@ -92,35 +92,21 @@ f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, f
 tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
 
 // S1 = line, S2 = histogram (formerly S3)
-f_stochPair(float s1Mult, float s2Mult) =>
-    pK1 = math.max(1, math.round(kLength * s1Mult))
-    sK1 = math.max(1, math.round(kSmooth * s1Mult))
-    dK1 = math.max(1, math.round(dSmooth * s1Mult))
-    pK2 = math.max(1, math.round(kLength * s2Mult))
-    sK2 = math.max(1, math.round(kSmooth * s2Mult))
-    dK2 = math.max(1, math.round(dSmooth * s2Mult))
-    k1Base = ta.sma(ta.stoch(close, high, low, pK1), sK1)
-    d1Base = ta.sma(k1Base, dK1)
-    k2Base = ta.sma(ta.stoch(close, high, low, pK2), sK2)
-    d2Base = ta.sma(k2Base, dK2)
-    k1 = ta.sma(k1Base, extraSmooth)
-    d1 = ta.sma(d1Base, extraSmooth)
-    k2 = ta.sma(k2Base, extraSmooth)
-    d2 = ta.sma(d2Base, extraSmooth)
-    [k1, d1, k2, d2]
+f_stochKD(float mult) =>
+    pK = math.max(1, math.round(kLength * mult))
+    sK = math.max(1, math.round(kSmooth * mult))
+    dK = math.max(1, math.round(dSmooth * mult))
+    kBase = ta.sma(ta.stoch(close, high, low, pK), sK)
+    dBase = ta.sma(kBase, dK)
+    k = ta.sma(kBase, extraSmooth)
+    d = ta.sma(dBase, extraSmooth)
+    [k, d]
 
-f_stochPairWithSignals(float s1Mult, float s2Mult) =>
-    [k1, d1, k2, d2] = f_stochPair(s1Mult, s2Mult)
-    kUp = k1 >= k1[1]
-    [k1, d1, k2, d2, ta.crossover(k1, d1), ta.crossunder(k1, d1), not kUp[1] and kUp, kUp[1] and not kUp]
-
-f_resolveTfWithSignals(string tf, float s1M, float s2M) =>
-    [k1c, d1c, k2c, d2c, coC, cuC, tuC, tdC] = f_stochPairWithSignals(s1M, s2M)
+f_resolveKD(string tf, float mult) =>
     if tf == ""
-        [k1c, d1c, k2c, d2c, coC, cuC, tuC, tdC]
+        f_stochKD(mult)
     else
-        [k1m, d1m, k2m, d2m, coM, cuM, tuM, tdM] = request.security(syminfo.tickerid, tf, f_stochPairWithSignals(s1M, s2M), lookahead=barmerge.lookahead_off)
-        [k1m, d1m, k2m, d2m, coM, cuM, tuM, tdM]
+        request.security(syminfo.tickerid, tf, f_stochKD(mult), barmerge.gaps_off, barmerge.lookahead_off)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  STOCHASTIC — A
@@ -128,9 +114,15 @@ f_resolveTfWithSignals(string tf, float s1M, float s2M) =>
 s1MultA = f_multVal(baseMultA)
 s2MultA = s1MultA * s2VsS1A
 
-[k1A, d1A, k2A, d2A, k1ACrossOver, k1ACrossUnder, s1aTurnUp, s1aTurnDown] = f_resolveTfWithSignals(timeframeA, s1MultA, s2MultA)
+// S1A and S2A — separate security calls (avoids k1A/k2A aliasing in alert/webhook tuples)
+[k1A, d1A] = f_resolveKD(timeframeA, s1MultA)
+[k2A, d2A] = f_resolveKD(timeframeA, s2MultA)
 
 k1AIsUp = k1A >= k1A[1]
+k1ACrossOver = ta.crossover(k1A, d1A)
+k1ACrossUnder = ta.crossunder(k1A, d1A)
+s1aTurnUp = not k1AIsUp[1] and k1AIsUp
+s1aTurnDown = k1AIsUp[1] and not k1AIsUp
 d1AIsUp = d1A >= d1A[1]
 k1AColor = (k1A < 5 or k1A > 95) ? color.white : f_lineColor(k1A, k1AIsUp, colorUp, colorDown)
 d1AColor = f_lineColor(d1A, d1AIsUp, colorUp, colorDown)
