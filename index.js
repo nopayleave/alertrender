@@ -834,9 +834,24 @@ function parseStochValue(value) {
 }
 
 // Webhook for TradingView POST
+// TradingView times out after ~3s — respond immediately, then process.
 app.post('/webhook', (req, res) => {
+  res.status(200).json({ status: 'ok' })
+
   const alert = req.body
-  
+  if (!alert || typeof alert !== 'object') {
+    console.warn('⚠️ Webhook received empty or invalid body')
+    return
+  }
+
+  try {
+    processWebhookAlert(alert)
+  } catch (error) {
+    console.error('❌ Webhook processing error:', error)
+  }
+})
+
+function processWebhookAlert(alert) {
   // Log incoming webhook for debugging
   console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
   
@@ -2235,9 +2250,7 @@ app.post('/webhook', (req, res) => {
                isDualStochAlert ? 'dual_stoch' : 'main_script',
     timestamp: Date.now()
   })
-  
-  res.json({ status: 'ok' })
-})
+}
 
 // API for frontend - only latest alerts per symbol
 app.get('/alerts', (req, res) => {
