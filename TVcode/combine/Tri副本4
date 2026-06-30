@@ -71,6 +71,9 @@ f_lineColor(val, isUp, colUp, colDown) =>
 f_dir(float v) =>
     v > v[1] ? "up" : v < v[1] ? "down" : "flat"
 
+f_jsonNum(float v) =>
+    na(v) ? "" : str.tostring(v, "#.##")
+
 f_hllhTrend(bool isTurnUp, bool isTurnDown, float pivotVal, float lastTurnUpK, float lastTurnDownK, float minDelta) =>
     string pat = ""
     float patVal = na
@@ -177,10 +180,10 @@ if lhRActive and not na(lastLhK) and k1A < lastLhK
 bullReverse = lhRActive and not na(lastLhK) and lhWasBroken and ta.crossover(k1A, lastLhK)
 bearReverse = hlRActive and not na(lastHlK) and hlWasHeld and ta.crossunder(k1A, lastHlK)
 
-// S2 histogram first (behind), then S1 lines
+// S2 histogram first (behind), then S1 K + D lines (solid, visible by default)
 plot(k2A, "S2A Histogram", style=plot.style_columns, color=color.new(k2AColor, 100 - s2Opacity), linewidth=4, display=display.none)
-plot(k1A, "S1A K", k1AColor, 3, linestyle=plot.linestyle_dotted)
-plot(d1A, "S1A D", d1AColor, 1, display=display.none)
+plot(k1A, "S1A K", k1AColor, 3, linestyle=plot.linestyle_solid)
+plot(d1A, "S1A D", d1AColor, 1, linestyle=plot.linestyle_solid)
 
 hOBx = hline(obExtreme, "Overbought Extreme", color.new(#00e676, 0), hline.style_dashed, 4)
 hOB  = hline(obLevel,   "Overbought",         color.new(#00e676, 0), hline.style_solid,  2)
@@ -252,53 +255,47 @@ d1ADirection = f_dir(d1A)
 k2ADirection = f_dir(k2A)
 d2ADirection = f_dir(d2A)
 
+// Session % change — chart bar price (matches TV watchlist %); prior close from daily RTH bar.
 sessionTZ = "America/New_York"
-inPremarket = not na(time(timeframe.period, "0400-0930", sessionTZ))
-inRTH = not na(time(timeframe.period, "0930-1600", sessionTZ))
-inPostmarket = not na(time(timeframe.period, "1600-2000", sessionTZ))
+prevDayClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
+todayDailyClose = request.security(syminfo.tickerid, "D", close, barmerge.gaps_off, barmerge.lookahead_off)
 
-prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
+px = close
+barTime = time
 
-var float rthCloseToday = na
-var float chgRTH = na
-var float chgPre = na
-var float chgPost = na
-var int lastNyDateKey = na
+nyT = hour(barTime, sessionTZ) * 100 + minute(barTime, sessionTZ)
+inPre = nyT >= 400 and nyT < 930
+inRth = nyT >= 930 and nyT < 1600
+inPost = nyT >= 1600 and nyT < 2000
+hasPrev = not na(prevDayClose) and math.abs(prevDayClose) > 1e-9
+hasDaily = not na(todayDailyClose) and math.abs(todayDailyClose) > 1e-9
 
-nyDateKey = year(time, sessionTZ) * 10000 + month(time, sessionTZ) * 100 + dayofmonth(time, sessionTZ)
-isNewNyDay = na(lastNyDateKey) or nyDateKey != lastNyDateKey
-if isNewNyDay
-    lastNyDateKey := nyDateKey
-    rthCloseToday := na
-    chgRTH := na
-    chgPre := na
-    chgPost := na
+float chgPre = na
+float chgRTH = na
+float chgPost = na
+if inPre and hasPrev
+    chgPre := (px - prevDayClose) / prevDayClose * 100.0
+if inRth and hasPrev
+    chgRTH := (px - prevDayClose) / prevDayClose * 100.0
+if inPost and hasDaily
+    chgPost := (px - todayDailyClose) / todayDailyClose * 100.0
 
-if inPremarket and math.abs(prevDayClose) > 1e-9
-    chgPre := (close - prevDayClose) / prevDayClose * 100.0
-
-if inRTH
-    rthCloseToday := close
-    if math.abs(prevDayClose) > 1e-9
-        chgRTH := (close - prevDayClose) / prevDayClose * 100.0
-
-if inPostmarket and not na(rthCloseToday) and math.abs(rthCloseToday) > 1e-9
-    chgPost := (close - rthCloseToday) / rthCloseToday * 100.0
-
-dayChgPct = chgRTH
-dayVol = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
+dayChgPct = inRth ? chgRTH : inPost and hasPrev and hasDaily ? (todayDailyClose - prevDayClose) / prevDayClose * 100.0 : na
+sessionPhase = inPre ? "pre" : inRth ? "rth" : inPost ? "post" : "closed"
+dayVol = request.security(syminfo.tickerid, "D", volume, barmerge.gaps_off, barmerge.lookahead_off)
 
 if barstate.isconfirmed
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
     alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","
-    alertStr += "\"time\":\"" + str.tostring(time) + "\","
-    alertStr += "\"price\":\"" + str.tostring(close) + "\","
+    alertStr += "\"time\":\"" + str.tostring(barTime) + "\","
+    alertStr += "\"price\":\"" + str.tostring(px) + "\","
     alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
-    alertStr += "\"changeFromPrevDay\":\"" + str.tostring(dayChgPct) + "\","
-    alertStr += "\"changePreMarket\":\"" + str.tostring(chgPre) + "\","
-    alertStr += "\"changePostMarket\":\"" + str.tostring(chgPost) + "\","
+    alertStr += "\"changeFromPrevDay\":\"" + f_jsonNum(dayChgPct) + "\","
+    alertStr += "\"changePreMarket\":\"" + f_jsonNum(chgPre) + "\","
+    alertStr += "\"changePostMarket\":\"" + f_jsonNum(chgPost) + "\","
+    alertStr += "\"sessionPhase\":\"" + sessionPhase + "\","
     alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
     alertStr += "\"k1A\":\"" + str.tostring(k1A) + "\","
     alertStr += "\"d1A\":\"" + str.tostring(d1A) + "\","

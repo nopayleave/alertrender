@@ -1645,6 +1645,7 @@ function processWebhookAlert(alert) {
       if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
       if (alert.changePreMarket !== undefined) alerts[existingIndex].changePreMarket = alert.changePreMarket
       if (alert.changePostMarket !== undefined) alerts[existingIndex].changePostMarket = alert.changePostMarket
+      if (alert.sessionPhase !== undefined) alerts[existingIndex].sessionPhase = alert.sessionPhase
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
@@ -1657,6 +1658,7 @@ function processWebhookAlert(alert) {
         changeFromPrevDay: alert.changeFromPrevDay || null,
         changePreMarket: alert.changePreMarket || null,
         changePostMarket: alert.changePostMarket || null,
+        sessionPhase: alert.sessionPhase || null,
         volume: alert.volume || null,
         triStoch,
         triStochModes,
@@ -4890,35 +4892,53 @@ app.get('/', (req, res) => {
           return sign + body + '%' + (suffix || '');
         }
 
+        function pctFromPrice(alert) {
+          if (!alert.price || !alert.previousClose) return null;
+          const p = parseFloat(alert.price);
+          const prev = parseFloat(alert.previousClose);
+          if (isNaN(p) || isNaN(prev) || prev === 0) return null;
+          return (p - prev) / prev * 100;
+        }
+
         function buildSessionChangeHtml(alert) {
+          const phase = alert.sessionPhase || '';
           const rth = parsePctField(alert.changeFromPrevDay);
           const pre = parsePctField(alert.changePreMarket);
           const post = parsePctField(alert.changePostMarket);
+          const liveFromPrev = pctFromPrice(alert);
 
           // Legacy fallback: no session split fields — compute from price vs prior close
           let rthDisplay = rth;
-          if (rthDisplay === null && pre === null && post === null && alert.price && alert.previousClose) {
-            const close = parseFloat(alert.price);
-            const prev = parseFloat(alert.previousClose);
-            if (!isNaN(close) && !isNaN(prev) && prev !== 0) {
-              rthDisplay = (close - prev) / prev * 100;
-            }
+          if (rthDisplay === null && pre === null && post === null && liveFromPrev !== null) {
+            rthDisplay = liveFromPrev;
           }
 
           const parts = [];
-          const preOnly = pre !== null && (rth === null || (post === null && rth !== null && Math.abs(rth - pre) < 0.05));
-          if (post !== null && rthDisplay !== null) {
-            // Post-market: regular day change + after-hours move
+          if (phase === 'pre' && liveFromPrev !== null) {
+            parts.push({ text: formatSignedPct(liveFromPrev, 'PE'), cls: pctColorClass(liveFromPrev) });
+          } else if (phase === 'pre' && pre !== null) {
+            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          } else if (phase === 'post' && post !== null && rthDisplay !== null) {
             parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
             parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-          } else if (post !== null) {
+          } else if (phase === 'post' && post !== null) {
             parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
-          } else if (preOnly) {
-            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
-          } else if (rthDisplay !== null) {
-            parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
-          } else if (pre !== null) {
-            parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          } else if (phase === 'rth' && (liveFromPrev !== null || rthDisplay !== null)) {
+            parts.push({ text: formatSignedPct(liveFromPrev !== null ? liveFromPrev : rthDisplay, ''), cls: pctColorClass(liveFromPrev !== null ? liveFromPrev : rthDisplay) });
+          } else {
+            const preOnly = pre !== null && (rth === null || (post === null && rth !== null && Math.abs(rth - pre) < 0.05));
+            if (post !== null && rthDisplay !== null) {
+              parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
+              parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+            } else if (post !== null) {
+              parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+            } else if (preOnly) {
+              parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+            } else if (rthDisplay !== null) {
+              parts.push({ text: formatSignedPct(rthDisplay, ''), cls: pctColorClass(rthDisplay) });
+            } else if (pre !== null) {
+              parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+            }
           }
           if (!parts.length) return '';
           return parts.map((p, i) => '<span class="' + p.cls + (i ? ' ml-1' : '') + '">' + p.text + '</span>').join('');
