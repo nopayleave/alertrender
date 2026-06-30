@@ -3925,19 +3925,12 @@ app.get('/', (req, res) => {
         }
         /* K crossed 50 midline this session */
         .kanban-card.kanban-card-cross50 {
-          background: #ffffff;
-          border-color: rgba(0, 0, 0, 0.12);
+          background: hsl(0 0% 22%);
+          border-color: rgba(255, 255, 255, 0.18);
         }
         .kanban-card.kanban-card-cross50:hover {
-          background: #f5f5f5;
-          border-color: rgba(0, 0, 0, 0.2);
-        }
-        .kanban-card.kanban-card-cross50 .font-semibold.text-foreground,
-        .kanban-card.kanban-card-cross50 .text-foreground {
-          color: #111827;
-        }
-        .kanban-card.kanban-card-cross50 .text-muted-foreground {
-          color: #6b7280;
+          background: hsl(0 0% 26%);
+          border-color: rgba(255, 255, 255, 0.28);
         }
         .kanban-card-empty {
           text-align: center;
@@ -5160,7 +5153,7 @@ app.get('/', (req, res) => {
           return { tag: '', bgClass: '', tagClass: '', title: '' };
         }
 
-        /** White card bg when K1 crossed the 50 midline this session (up or down). */
+        /** Dark grey card bg when K1 crossed the 50 midline this session (up or down). */
         function getCardCross50BgClass(alert) {
           const ss = alert && alert.stochSession;
           if (!ss) return '';
