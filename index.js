@@ -4666,6 +4666,9 @@ app.get('/', (req, res) => {
             <button id="cardOrderK2Btn" type="button" onclick="setCardOrderBy('k2')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300" title="Sort cards by K2 (S2A) value">
               K2 <span id="cardOrderK2Arrow" class="text-[10px]">↓</span>
             </button>
+            <button id="cardOnlyFavBtn" type="button" onclick="toggleCardOnlyFav()" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-yellow-500/45 bg-yellow-500/12 hover:bg-yellow-500/20 active:scale-95 transition-all text-yellow-300" title="Show starred cards only">
+              Only Fav
+            </button>
           </div>
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
@@ -4766,6 +4769,7 @@ app.get('/', (req, res) => {
         }
         let cardOrderBy = localStorage.getItem('cardOrderBy') || 'none'; // 'none' | 'volume' | 'pctChg' | 'k1' | 'k2'
         let cardOrderDir = localStorage.getItem('cardOrderDir') || 'desc'; // 'asc' | 'desc'
+        let cardOnlyFav = localStorage.getItem('cardOnlyFav') === 'true';
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
@@ -5942,6 +5946,7 @@ app.get('/', (req, res) => {
           const pctBtn = document.getElementById('cardOrderPctBtn');
           const k1OrderBtn = document.getElementById('cardOrderK1Btn');
           const k2OrderBtn = document.getElementById('cardOrderK2Btn');
+          const onlyFavBtn = document.getElementById('cardOnlyFavBtn');
           const volArrow = document.getElementById('cardOrderVolumeArrow');
           const pctArrow = document.getElementById('cardOrderPctArrow');
           const k1OrderArrow = document.getElementById('cardOrderK1Arrow');
@@ -5952,6 +5957,7 @@ app.get('/', (req, res) => {
           if (pctBtn) pctBtn.classList.toggle('active', cardOrderBy === 'pctChg');
           if (k1OrderBtn) k1OrderBtn.classList.toggle('active', cardOrderBy === 'k1');
           if (k2OrderBtn) k2OrderBtn.classList.toggle('active', cardOrderBy === 'k2');
+          if (onlyFavBtn) onlyFavBtn.classList.toggle('active', cardOnlyFav);
           const arrow = cardOrderDir === 'asc' ? '↑' : '↓';
           if (volArrow) volArrow.textContent = cardOrderBy === 'volume' ? arrow : '↓';
           if (pctArrow) pctArrow.textContent = cardOrderBy === 'pctChg' ? arrow : '↓';
@@ -5977,6 +5983,15 @@ app.get('/', (req, res) => {
           }
           localStorage.setItem('cardOrderBy', cardOrderBy);
           localStorage.setItem('cardOrderDir', cardOrderDir);
+          updateCardSortBarUI();
+          if (currentView === 'masonry') {
+            renderMasonry();
+          }
+        }
+
+        function toggleCardOnlyFav() {
+          cardOnlyFav = !cardOnlyFav;
+          localStorage.setItem('cardOnlyFav', cardOnlyFav);
           updateCardSortBarUI();
           if (currentView === 'masonry') {
             renderMasonry();
@@ -6145,9 +6160,13 @@ app.get('/', (req, res) => {
               !!alert.triStoch && (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
+          if (cardOnlyFav) {
+            displayData = displayData.filter(alert => isStarred(alert.symbol));
+          }
 
           if (displayData.length === 0) {
-            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">No results found</div>';
+            masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">' +
+              (cardOnlyFav ? 'No starred tickers' : 'No results found') + '</div>';
             return;
           }
           
