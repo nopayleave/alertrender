@@ -4588,6 +4588,12 @@ app.get('/', (req, res) => {
             <button id="cardOrderPctBtn" type="button" onclick="setCardOrderBy('pctChg')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-violet-500/45 bg-violet-500/12 hover:bg-violet-500/20 active:scale-95 transition-all text-violet-300" title="Sort cards by displayed % change (same as card label, incl. extended %P)">
               % Chg <span id="cardOrderPctArrow" class="text-[10px]">↓</span>
             </button>
+            <button id="cardOrderK1Btn" type="button" onclick="setCardOrderBy('k1')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-green-500/45 bg-green-500/12 hover:bg-green-500/20 active:scale-95 transition-all text-green-300" title="Sort cards by K1 (S1A) value">
+              K1 <span id="cardOrderK1Arrow" class="text-[10px]">↓</span>
+            </button>
+            <button id="cardOrderK2Btn" type="button" onclick="setCardOrderBy('k2')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300" title="Sort cards by K2 (S2A) value">
+              K2 <span id="cardOrderK2Arrow" class="text-[10px]">↓</span>
+            </button>
           </div>
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
@@ -4686,7 +4692,7 @@ app.get('/', (req, res) => {
           cardSortMode = 'k2Bands';
           localStorage.setItem('cardSortMode', cardSortMode);
         }
-        let cardOrderBy = localStorage.getItem('cardOrderBy') || 'none'; // 'none' | 'volume' | 'pctChg'
+        let cardOrderBy = localStorage.getItem('cardOrderBy') || 'none'; // 'none' | 'volume' | 'pctChg' | 'k1' | 'k2'
         let cardOrderDir = localStorage.getItem('cardOrderDir') || 'desc'; // 'asc' | 'desc'
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
@@ -5481,6 +5487,13 @@ app.get('/', (req, res) => {
           return rangeOrbFilter.length > 0 || rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeVwapPct.active || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
         }
 
+        function hasActiveCardFilters() {
+          return stochFilterPercentChange.length > 0 ||
+            volumeFilter.length > 0 ||
+            hasRangeFilters() ||
+            hasStochDirFilters();
+        }
+
         function getAlertVwapPct(alert) {
           const p = parseFloat(alert.price);
           const vwap = parseFloat(alert.vwap);
@@ -5793,15 +5806,23 @@ app.get('/', (req, res) => {
           const k2Btn = document.getElementById('cardSortK2BandsBtn');
           const volBtn = document.getElementById('cardOrderVolumeBtn');
           const pctBtn = document.getElementById('cardOrderPctBtn');
+          const k1OrderBtn = document.getElementById('cardOrderK1Btn');
+          const k2OrderBtn = document.getElementById('cardOrderK2Btn');
           const volArrow = document.getElementById('cardOrderVolumeArrow');
           const pctArrow = document.getElementById('cardOrderPctArrow');
+          const k1OrderArrow = document.getElementById('cardOrderK1Arrow');
+          const k2OrderArrow = document.getElementById('cardOrderK2Arrow');
           if (k1Btn) k1Btn.classList.toggle('active', cardSortMode === 'k1Bands');
           if (k2Btn) k2Btn.classList.toggle('active', cardSortMode === 'k2Bands');
           if (volBtn) volBtn.classList.toggle('active', cardOrderBy === 'volume');
           if (pctBtn) pctBtn.classList.toggle('active', cardOrderBy === 'pctChg');
+          if (k1OrderBtn) k1OrderBtn.classList.toggle('active', cardOrderBy === 'k1');
+          if (k2OrderBtn) k2OrderBtn.classList.toggle('active', cardOrderBy === 'k2');
           const arrow = cardOrderDir === 'asc' ? '↑' : '↓';
           if (volArrow) volArrow.textContent = cardOrderBy === 'volume' ? arrow : '↓';
           if (pctArrow) pctArrow.textContent = cardOrderBy === 'pctChg' ? arrow : '↓';
+          if (k1OrderArrow) k1OrderArrow.textContent = cardOrderBy === 'k1' ? arrow : '↓';
+          if (k2OrderArrow) k2OrderArrow.textContent = cardOrderBy === 'k2' ? arrow : '↓';
         }
 
         function setCardSortMode(mode, el) {
@@ -5840,6 +5861,18 @@ app.get('/', (req, res) => {
 
         function getCardPctChgValue(alert) {
           return getSessionDisplayPct(alert);
+        }
+
+        function getCardK1Value(alert) {
+          if (alert == null || !alert.triStoch) return null;
+          const v = getTriK1Value(alert.triStoch);
+          return v != null && !isNaN(v) ? v : null;
+        }
+
+        function getCardK2Value(alert) {
+          if (alert == null || !alert.triStoch) return null;
+          const v = getTriK2Value(alert.triStoch);
+          return v != null && !isNaN(v) ? v : null;
         }
 
         function compareCardOrderValues(aVal, bVal, dir) {
@@ -5984,7 +6017,7 @@ app.get('/', (req, res) => {
             return;
           }
           
-          // Build matched subset from current filters; unmatched cards stay visible but dimmed.
+          // Build matched subset from current filters; unmatched cards stay visible (dimmed) but sort to bottom.
           let matchedData = displayData;
 
           // Apply Other Filters (Price %, Volume) - same predicates as table
@@ -6037,6 +6070,7 @@ app.get('/', (req, res) => {
             });
           }
           const matchedSet = new Set(matchedData);
+          const cardFiltersActive = hasActiveCardFilters();
           
           // Sort display data - starred items always come first
           if (currentSortField) {
@@ -6115,16 +6149,31 @@ app.get('/', (req, res) => {
             }
           });
 
-          // Sort each column: explicit Order (% / volume) first, then starred, crossings, band/D2/alpha
+          // Sort each column: filter matches first, then explicit Order (% / volume), starred, crossings, band/D2/alpha
           Object.keys(columnBuckets).forEach(columnId => {
             const d2Dir = kanbanD2SortByColumn[columnId];
             columnBuckets[columnId].sort((a, b) => {
+              if (cardFiltersActive) {
+                const aMatch = matchedSet.has(a);
+                const bMatch = matchedSet.has(b);
+                if (aMatch && !bMatch) return -1;
+                if (!aMatch && bMatch) return 1;
+              }
+
               if (cardOrderBy === 'volume') {
                 const cmp = compareCardOrderValues(getCardVolumeValue(a), getCardVolumeValue(b), cardOrderDir);
                 if (cmp !== 0) return cmp;
               }
               if (cardOrderBy === 'pctChg') {
                 const cmp = compareCardOrderValues(getCardPctChgValue(a), getCardPctChgValue(b), cardOrderDir);
+                if (cmp !== 0) return cmp;
+              }
+              if (cardOrderBy === 'k1') {
+                const cmp = compareCardOrderValues(getCardK1Value(a), getCardK1Value(b), cardOrderDir);
+                if (cmp !== 0) return cmp;
+              }
+              if (cardOrderBy === 'k2') {
+                const cmp = compareCardOrderValues(getCardK2Value(a), getCardK2Value(b), cardOrderDir);
                 if (cmp !== 0) return cmp;
               }
 
@@ -6246,7 +6295,11 @@ app.get('/', (req, res) => {
               ? 'Vol'
               : cardOrderBy === 'pctChg'
                 ? '%'
-                : (cardSortMode === 'k1Bands' ? 'K1' : cardSortMode === 'k2Bands' ? 'K2' : '');
+                : cardOrderBy === 'k1'
+                  ? 'K1'
+                  : cardOrderBy === 'k2'
+                    ? 'K2'
+                    : (cardSortMode === 'k1Bands' ? 'K1' : cardSortMode === 'k2Bands' ? 'K2' : '');
             const sortControlHtml = isBandSortMode || cardOrderBy !== 'none'
               ? '<span class="text-xs text-cyan-400/80">' + orderLabel + (cardOrderBy !== 'none' ? (cardOrderDir === 'asc' ? '↑' : '↓') : '') + '</span>'
               : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
