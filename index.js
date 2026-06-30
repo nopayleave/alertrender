@@ -3862,6 +3862,7 @@ app.get('/', (req, res) => {
           border-radius: 10px;
           padding: 10px 12px;
           transition: all 0.2s;
+          cursor: pointer;
         }
         .kanban-card:hover {
           background: hsl(0 0% 14%);
@@ -6407,9 +6408,14 @@ app.get('/', (req, res) => {
                   const pineLabelBg = pineLabel.bgClass;
                   const pineLabelClass = pineLabel.tagClass;
                   const pineLabelTitle = pineLabel.title;
+                  const cardTitle = [
+                    pineLabelTitle,
+                    'Click: star/unstar',
+                    'Right-click: open TradingView chart'
+                  ].filter(Boolean).join(' · ');
             
             return \`
-              <div class="\${cardClass} \${pineLabelBg}"\${pineLabelTitle ? \` title="\${pineLabelTitle}"\` : ''} onclick="toggleStar('\${symbol}')">
+              <div class="\${cardClass} \${pineLabelBg}" title="\${cardTitle.replace(/"/g, '&quot;')}" onclick="toggleStar(\${JSON.stringify(symbol)})" oncontextmenu="onKanbanCardContextMenu(event, \${JSON.stringify(symbol)})">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
@@ -7449,6 +7455,34 @@ Use this to create a new preset filter button that applies these exact filter se
           syncStarredSymbolsToBackend();
           
           renderTable();
+        }
+
+        const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
+
+        function normalizeTvChartSymbol(symbol) {
+          if (symbol == null || symbol === '' || symbol === 'N/A') return null;
+          const raw = String(symbol).trim();
+          if (!raw) return null;
+          if (raw.includes(':')) return raw.toUpperCase();
+          return 'NASDAQ:' + raw.toUpperCase();
+        }
+
+        function getTradingViewChartUrl(symbol) {
+          const tvSymbol = normalizeTvChartSymbol(symbol);
+          if (!tvSymbol) return null;
+          const layoutId = localStorage.getItem('tvChartLayoutId') || TV_CHART_LAYOUT_ID;
+          return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tvSymbol);
+        }
+
+        function openTradingViewChart(symbol) {
+          const url = getTradingViewChartUrl(symbol);
+          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        }
+
+        function onKanbanCardContextMenu(event, symbol) {
+          event.preventDefault();
+          event.stopPropagation();
+          openTradingViewChart(symbol);
         }
         
         // Sync starred symbols to backend
