@@ -928,13 +928,6 @@ function normalizeTickerForLookup(symbol) {
   return String(symbol || '').trim().toUpperCase().replace(/\./g, '/')
 }
 
-function extractTvPrefix(tvSymbol) {
-  if (tvSymbol == null || tvSymbol === '') return null
-  const raw = String(tvSymbol).trim()
-  if (!raw.includes(':')) return null
-  return raw.slice(0, raw.indexOf(':')).trim().toUpperCase()
-}
-
 function isGenericTvPrefix(prefix) {
   return prefix != null && GENERIC_TV_PREFIXES.has(String(prefix).trim().toUpperCase())
 }
@@ -968,24 +961,15 @@ function resolveUsListingExchange(symbol) {
   return usListingBySymbol.get(key) || null
 }
 
-function resolveTvChartSymbol(symbol, tvSymbol, exchange) {
-  const sym = String(symbol || '').trim()
-  if (!sym) return null
+function stripTvExchangePrefix(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return null
+  if (raw.includes(':')) return raw.slice(raw.indexOf(':') + 1).trim().toUpperCase()
+  return raw.toUpperCase()
+}
 
-  const prefixFromTv = extractTvPrefix(tvSymbol)
-  const exNorm = exchange ? String(exchange).trim().toUpperCase() : null
-  const goodPrefix = prefixFromTv && !isGenericTvPrefix(prefixFromTv)
-    ? prefixFromTv
-    : exNorm && !isGenericTvPrefix(exNorm)
-      ? exNorm
-      : null
-
-  if (goodPrefix) return `${goodPrefix}:${sym.toUpperCase()}`
-
-  const listing = resolveUsListingExchange(sym)
-  if (listing) return `${listing}:${sym.toUpperCase()}`
-
-  return sym.toUpperCase()
+function resolveTvChartSymbol(symbol, tvSymbol) {
+  return stripTvExchangePrefix(symbol) || stripTvExchangePrefix(tvSymbol)
 }
 
 function refreshAllTvSymbols() {
@@ -1011,19 +995,15 @@ function normalizeTvExchange(exchange) {
   return ex
 }
 
-function buildTvSymbolFromParts(symbol, exchange) {
-  return resolveTvChartSymbol(symbol, null, exchange)
-}
-
 function pickTvSymbolFields(webhook) {
   const symbol = webhook.symbol
   const direct = webhook.tvSymbol || webhook.tv_symbol || null
   const exchange = webhook.exchange || webhook.tvExchange || webhook.prefix || null
-  const tvSymbol = resolveTvChartSymbol(symbol, direct, exchange)
-  const resolvedExchange = extractTvPrefix(tvSymbol) || resolveUsListingExchange(symbol)
+  const tvSymbol = resolveTvChartSymbol(symbol, direct)
+  const resolvedExchange = resolveUsListingExchange(symbol) || normalizeTvExchange(exchange)
   return {
     tvSymbol: tvSymbol || null,
-    exchange: resolvedExchange || normalizeTvExchange(exchange)
+    exchange: resolvedExchange || null
   }
 }
 
@@ -6287,7 +6267,7 @@ app.get('/', (req, res) => {
             if (!card || !card.dataset.symbol) return;
             e.preventDefault();
             e.stopPropagation();
-            openTradingViewChart(card.dataset.symbol, card.dataset.tvSymbol, card.dataset.exchange);
+            openTradingViewChart(card.dataset.symbol);
           });
         }
 
@@ -7704,57 +7684,36 @@ Use this to create a new preset filter button that applies these exact filter se
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
 
-        const GENERIC_TV_PREFIXES = new Set(['BATS', 'CBOE', 'OTC', 'PINK', 'OTCQX', 'OTCMKTS']);
-
-        function extractTvPrefixClient(tvSymbol) {
-          if (tvSymbol == null || tvSymbol === '') return null;
-          const raw = String(tvSymbol).trim();
-          if (!raw.includes(':')) return null;
-          return raw.slice(0, raw.indexOf(':')).trim().toUpperCase();
-        }
-
-        function normalizeTvChartSymbol(symbol, tvSymbol, exchange) {
+        function normalizeTvChartSymbol(symbol, tvSymbol) {
+          if (symbol != null && symbol !== '' && symbol !== 'N/A') {
+            const raw = String(symbol).trim();
+            if (raw) {
+              if (raw.includes(':')) return raw.slice(raw.indexOf(':') + 1).trim().toUpperCase();
+              return raw.toUpperCase();
+            }
+          }
           if (tvSymbol != null && String(tvSymbol).trim()) {
             const tv = String(tvSymbol).trim();
-            const prefix = extractTvPrefixClient(tv);
-            if (prefix && !GENERIC_TV_PREFIXES.has(prefix)) {
-              return tv.toUpperCase();
-            }
+            if (tv.includes(':')) return tv.slice(tv.indexOf(':') + 1).trim().toUpperCase();
+            return tv.toUpperCase();
           }
-          if (exchange && String(exchange).trim()) {
-            const ex = String(exchange).trim().toUpperCase();
-            if (!GENERIC_TV_PREFIXES.has(ex) && symbol) {
-              return ex + ':' + String(symbol).trim().toUpperCase();
-            }
-          }
-          if (symbol == null || symbol === '' || symbol === 'N/A') return null;
-          const raw = String(symbol).trim();
-          if (!raw) return null;
-          if (raw.includes(':')) {
-            const prefix = extractTvPrefixClient(raw);
-            if (prefix && !GENERIC_TV_PREFIXES.has(prefix)) return raw.toUpperCase();
-          }
-          return raw.toUpperCase();
+          return null;
         }
 
-        function getTradingViewChartUrl(symbol, tvSymbol, exchange) {
-          let resolvedTv = tvSymbol;
-          let resolvedEx = exchange;
-          if ((!resolvedTv || !String(resolvedTv).trim()) && symbol) {
+        function getTradingViewChartUrl(symbol, tvSymbol) {
+          let resolved = tvSymbol;
+          if ((!resolved || !String(resolved).trim()) && symbol) {
             const row = alertsData.find(a => a.symbol === symbol);
-            if (row) {
-              if (row.tvSymbol) resolvedTv = row.tvSymbol;
-              if (row.exchange) resolvedEx = row.exchange;
-            }
+            if (row?.tvSymbol) resolved = row.tvSymbol;
           }
-          const tv = normalizeTvChartSymbol(symbol, resolvedTv, resolvedEx);
+          const tv = normalizeTvChartSymbol(symbol, resolved);
           if (!tv) return null;
           const layoutId = localStorage.getItem('tvChartLayoutId') || TV_CHART_LAYOUT_ID;
           return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tv);
         }
 
-        function openTradingViewChart(symbol, tvSymbol, exchange) {
-          const url = getTradingViewChartUrl(symbol, tvSymbol, exchange);
+        function openTradingViewChart(symbol, tvSymbol) {
+          const url = getTradingViewChartUrl(symbol, tvSymbol);
           if (url) window.open(url, '_blank', 'noopener,noreferrer');
         }
         
