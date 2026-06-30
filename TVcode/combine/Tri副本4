@@ -121,6 +121,14 @@ f_dimHllhBeforeR(label[] lbls, int[] bars, int rBar, color baseCol) =>
 
 tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
 
+// syminfo.prefix is often BATS (free data feed), not NYSE/NASDAQ listing — server resolves listing.
+f_tvStandardId() =>
+    ticker.standard(syminfo.tickerid)
+
+f_tvExchangeFromId(string id) =>
+    pos = str.pos(id, ":")
+    pos >= 0 ? str.substring(id, 0, pos) : syminfo.prefix
+
 // S1 = line, S2 = histogram — compute K1/K2 in ONE pass (avoids request.security dedup aliasing K1=K2 over long runs)
 f_stochPair(float s1Mult, float s2Mult) =>
     pK1 = math.max(1, math.round(kLength * s1Mult))
@@ -383,10 +391,12 @@ if barstate.isconfirmed
     whD1Dir = d1ADirection
     whK2Dir = k2ADirection
     whD2Dir = d2ADirection
+    tvSymStd = f_tvStandardId()
+    tvExStd = f_tvExchangeFromId(tvSymStd)
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
-    alertStr += "\"exchange\":\"" + syminfo.prefix + "\","
-    alertStr += "\"tvSymbol\":\"" + syminfo.tickerid + "\","
+    alertStr += "\"exchange\":\"" + tvExStd + "\","
+    alertStr += "\"tvSymbol\":\"" + tvSymStd + "\","
     alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
     alertStr += "\"timeframe\":\"" + timeframe.period + "\","
     alertStr += "\"time\":\"" + str.tostring(extTime) + "\","

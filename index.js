@@ -912,32 +912,118 @@ function parseStochValue(value) {
   return isNaN(num) ? null : num
 }
 
-/** Normalize TV exchange prefix (syminfo.prefix) for chart URLs. */
+/** Generic TV data-feed prefixes (not listing exchanges). */
+const GENERIC_TV_PREFIXES = new Set(['BATS', 'CBOE', 'OTC', 'PINK', 'OTCQX', 'OTCMKTS'])
+
+const US_LISTING_EXCHANGE_URLS = {
+  NYSE: 'https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/nyse/nyse_tickers.json',
+  NASDAQ: 'https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/nasdaq/nasdaq_tickers.json',
+  AMEX: 'https://raw.githubusercontent.com/rreichel3/US-Stock-Symbols/main/amex/amex_tickers.json'
+}
+
+/** @type {Map<string, 'NYSE'|'NASDAQ'|'AMEX'>} */
+const usListingBySymbol = new Map()
+
+function normalizeTickerForLookup(symbol) {
+  return String(symbol || '').trim().toUpperCase().replace(/\./g, '/')
+}
+
+function extractTvPrefix(tvSymbol) {
+  if (tvSymbol == null || tvSymbol === '') return null
+  const raw = String(tvSymbol).trim()
+  if (!raw.includes(':')) return null
+  return raw.slice(0, raw.indexOf(':')).trim().toUpperCase()
+}
+
+function isGenericTvPrefix(prefix) {
+  return prefix != null && GENERIC_TV_PREFIXES.has(String(prefix).trim().toUpperCase())
+}
+
+async function loadUsListingSymbols() {
+  for (const [exchange, url] of Object.entries(US_LISTING_EXCHANGE_URLS)) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) {
+        console.warn(`⚠️ Could not load ${exchange} ticker list (${res.status})`)
+        continue
+      }
+      const tickers = await res.json()
+      if (!Array.isArray(tickers)) continue
+      for (const ticker of tickers) {
+        const sym = normalizeTickerForLookup(ticker)
+        if (sym && !usListingBySymbol.has(sym)) {
+          usListingBySymbol.set(sym, exchange)
+        }
+      }
+    } catch (err) {
+      console.warn(`⚠️ Could not load ${exchange} ticker list:`, err.message)
+    }
+  }
+  console.log(`📈 US listing lookup loaded (${usListingBySymbol.size} symbols)`)
+}
+
+function resolveUsListingExchange(symbol) {
+  const key = normalizeTickerForLookup(symbol)
+  if (!key) return null
+  return usListingBySymbol.get(key) || null
+}
+
+function resolveTvChartSymbol(symbol, tvSymbol, exchange) {
+  const sym = String(symbol || '').trim()
+  if (!sym) return null
+
+  const prefixFromTv = extractTvPrefix(tvSymbol)
+  const exNorm = exchange ? String(exchange).trim().toUpperCase() : null
+  const goodPrefix = prefixFromTv && !isGenericTvPrefix(prefixFromTv)
+    ? prefixFromTv
+    : exNorm && !isGenericTvPrefix(exNorm)
+      ? exNorm
+      : null
+
+  if (goodPrefix) return `${goodPrefix}:${sym.toUpperCase()}`
+
+  const listing = resolveUsListingExchange(sym)
+  if (listing) return `${listing}:${sym.toUpperCase()}`
+
+  return sym.toUpperCase()
+}
+
+function refreshAllTvSymbols() {
+  let updated = 0
+  for (const alert of alerts) {
+    if (!alert?.symbol) continue
+    const before = alert.tvSymbol
+    const tv = pickTvSymbolFields(alert)
+    if (tv.tvSymbol) alert.tvSymbol = tv.tvSymbol
+    if (tv.exchange) alert.exchange = tv.exchange
+    if (alert.tvSymbol !== before) updated++
+  }
+  if (updated > 0) {
+    console.log(`📈 Resolved TV symbols for ${updated} alert(s)`)
+  }
+}
+
+/** Normalize TV exchange prefix for chart URLs. */
 function normalizeTvExchange(exchange) {
   if (exchange == null || exchange === '') return null
   const ex = String(exchange).trim().toUpperCase()
-  if (!ex) return null
-  if (ex === 'BATS') return 'NASDAQ'
+  if (!ex || isGenericTvPrefix(ex)) return null
   return ex
 }
 
 function buildTvSymbolFromParts(symbol, exchange) {
-  const raw = String(symbol || '').trim()
-  if (!raw) return null
-  if (raw.includes(':')) return raw
-  const ex = normalizeTvExchange(exchange) || 'NASDAQ'
-  return `${ex}:${raw.toUpperCase()}`
+  return resolveTvChartSymbol(symbol, null, exchange)
 }
 
 function pickTvSymbolFields(webhook) {
+  const symbol = webhook.symbol
   const direct = webhook.tvSymbol || webhook.tv_symbol || null
   const exchange = webhook.exchange || webhook.tvExchange || webhook.prefix || null
-  const tvSymbol = direct
-    ? String(direct).trim()
-    : buildTvSymbolFromParts(webhook.symbol, exchange)
+  const tvSymbol = resolveTvChartSymbol(symbol, direct, exchange)
+  const resolvedExchange = extractTvPrefix(tvSymbol) || resolveUsListingExchange(symbol)
   return {
     tvSymbol: tvSymbol || null,
-    exchange: exchange ? normalizeTvExchange(exchange) : null
+    exchange: resolvedExchange || normalizeTvExchange(exchange)
   }
 }
 
@@ -7618,19 +7704,37 @@ Use this to create a new preset filter button that applies these exact filter se
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
 
+        const GENERIC_TV_PREFIXES = new Set(['BATS', 'CBOE', 'OTC', 'PINK', 'OTCQX', 'OTCMKTS']);
+
+        function extractTvPrefixClient(tvSymbol) {
+          if (tvSymbol == null || tvSymbol === '') return null;
+          const raw = String(tvSymbol).trim();
+          if (!raw.includes(':')) return null;
+          return raw.slice(0, raw.indexOf(':')).trim().toUpperCase();
+        }
+
         function normalizeTvChartSymbol(symbol, tvSymbol, exchange) {
           if (tvSymbol != null && String(tvSymbol).trim()) {
             const tv = String(tvSymbol).trim();
-            return tv.includes(':') ? tv.toUpperCase() : tv;
+            const prefix = extractTvPrefixClient(tv);
+            if (prefix && !GENERIC_TV_PREFIXES.has(prefix)) {
+              return tv.toUpperCase();
+            }
+          }
+          if (exchange && String(exchange).trim()) {
+            const ex = String(exchange).trim().toUpperCase();
+            if (!GENERIC_TV_PREFIXES.has(ex) && symbol) {
+              return ex + ':' + String(symbol).trim().toUpperCase();
+            }
           }
           if (symbol == null || symbol === '' || symbol === 'N/A') return null;
           const raw = String(symbol).trim();
           if (!raw) return null;
-          if (raw.includes(':')) return raw.toUpperCase();
-          const ex = (exchange && String(exchange).trim())
-            ? String(exchange).trim().toUpperCase()
-            : 'NASDAQ';
-          return ex + ':' + raw.toUpperCase();
+          if (raw.includes(':')) {
+            const prefix = extractTvPrefixClient(raw);
+            if (prefix && !GENERIC_TV_PREFIXES.has(prefix)) return raw.toUpperCase();
+          }
+          return raw.toUpperCase();
         }
 
         function getTradingViewChartUrl(symbol, tvSymbol, exchange) {
@@ -9996,6 +10100,10 @@ if (initDatabase()) {
 } else {
   console.log('⚠️  Database initialization failed, starting with empty data')
 }
+
+loadUsListingSymbols()
+  .then(() => refreshAllTvSymbols())
+  .catch(err => console.warn('⚠️ US listing symbol load failed:', err.message))
 
 // Set up periodic auto-save
 let autoSaveInterval = setInterval(() => {
