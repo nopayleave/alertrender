@@ -320,9 +320,41 @@ dtDDir  = dtSource == "S1" ? d1Direction : dtSource == "S2" ? d2Direction : d3Di
 dtPat   = dtSource == "S1" ? d1Pat : dtSource == "S2" ? d2Pat : d3Pat
 dtPatV  = dtSource == "S1" ? d1PatVal : dtSource == "S2" ? d2PatVal : d3PatVal
 
-// Day change % and daily volume for webhook
+// Day change % split by session (RTH vs pre/post extended) for webhook
+sessionTZ = "America/New_York"
+inPremarket = not na(time(timeframe.period, "0400-0930", sessionTZ))
+inRTH = not na(time(timeframe.period, "0930-1600", sessionTZ))
+inPostmarket = not na(time(timeframe.period, "1600-2000", sessionTZ))
+
 prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
-dayChgPct = math.abs(prevDayClose) > 1e-9 ? (close - prevDayClose) / prevDayClose * 100.0 : na
+
+var float rthCloseToday = na
+var float chgRTH = na
+var float chgPre = na
+var float chgPost = na
+var int lastNyDateKey = na
+
+nyDateKey = year(time, sessionTZ) * 10000 + month(time, sessionTZ) * 100 + dayofmonth(time, sessionTZ)
+isNewNyDay = na(lastNyDateKey) or nyDateKey != lastNyDateKey
+if isNewNyDay
+    lastNyDateKey := nyDateKey
+    rthCloseToday := na
+    chgRTH := na
+    chgPre := na
+    chgPost := na
+
+if inPremarket and math.abs(prevDayClose) > 1e-9
+    chgPre := (close - prevDayClose) / prevDayClose * 100.0
+
+if inRTH
+    rthCloseToday := close
+    if math.abs(prevDayClose) > 1e-9
+        chgRTH := (close - prevDayClose) / prevDayClose * 100.0
+
+if inPostmarket and not na(rthCloseToday) and math.abs(rthCloseToday) > 1e-9
+    chgPost := (close - rthCloseToday) / rthCloseToday * 100.0
+
+dayChgPct = chgRTH
 dayVol = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
 
 if barstate.isconfirmed
@@ -333,6 +365,8 @@ if barstate.isconfirmed
     alertStr += "\"price\":\"" + str.tostring(close) + "\","
     alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
     alertStr += "\"changeFromPrevDay\":\"" + str.tostring(dayChgPct) + "\","
+    alertStr += "\"changePreMarket\":\"" + str.tostring(chgPre) + "\","
+    alertStr += "\"changePostMarket\":\"" + str.tostring(chgPost) + "\","
     alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
     // Overview
     alertStr += "\"ovK\":\"" + str.tostring(ovK) + "\","

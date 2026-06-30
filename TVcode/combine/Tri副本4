@@ -182,10 +182,10 @@ plot(k2A, "S2A Histogram", style=plot.style_columns, color=color.new(k2AColor, 1
 plot(k1A, "S1A K", k1AColor, 3, linestyle=plot.linestyle_dotted)
 plot(d1A, "S1A D", d1AColor, 1, display=display.none)
 
-hOBx = hline(obExtreme, "Overbought Extreme", color.new(color.white, 0),  hline.style_dashed)
-hOB  = hline(obLevel,   "Overbought",         color.new(color.white, 70), hline.style_dashed)
-hOS  = hline(osLevel,   "Oversold",           color.new(color.white, 70), hline.style_dashed)
-hOSx = hline(osExtreme, "Oversold Extreme",   color.new(color.white, 0),  hline.style_dashed)
+hOBx = hline(obExtreme, "Overbought Extreme", color.new(#00e676, 0), hline.style_dashed, 4)
+hOB  = hline(obLevel,   "Overbought",         color.new(#00e676, 0), hline.style_solid,  2)
+hOS  = hline(osLevel,   "Oversold",           color.new(#ff3355, 0), hline.style_solid,  2)
+hOSx = hline(osExtreme, "Oversold Extreme",   color.new(#ff3355, 0), hline.style_dashed, 4)
 hline(60, "Mid 60", color.new(color.yellow, 0), hline.style_solid)
 hline(40, "Mid 40", color.new(color.yellow, 0), hline.style_solid)
 hline(50, "Mid 50", color.new(color.yellow, 0), hline.style_dashed)
@@ -252,8 +252,40 @@ d1ADirection = f_dir(d1A)
 k2ADirection = f_dir(k2A)
 d2ADirection = f_dir(d2A)
 
+sessionTZ = "America/New_York"
+inPremarket = not na(time(timeframe.period, "0400-0930", sessionTZ))
+inRTH = not na(time(timeframe.period, "0930-1600", sessionTZ))
+inPostmarket = not na(time(timeframe.period, "1600-2000", sessionTZ))
+
 prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
-dayChgPct = math.abs(prevDayClose) > 1e-9 ? (close - prevDayClose) / prevDayClose * 100.0 : na
+
+var float rthCloseToday = na
+var float chgRTH = na
+var float chgPre = na
+var float chgPost = na
+var int lastNyDateKey = na
+
+nyDateKey = year(time, sessionTZ) * 10000 + month(time, sessionTZ) * 100 + dayofmonth(time, sessionTZ)
+isNewNyDay = na(lastNyDateKey) or nyDateKey != lastNyDateKey
+if isNewNyDay
+    lastNyDateKey := nyDateKey
+    rthCloseToday := na
+    chgRTH := na
+    chgPre := na
+    chgPost := na
+
+if inPremarket and math.abs(prevDayClose) > 1e-9
+    chgPre := (close - prevDayClose) / prevDayClose * 100.0
+
+if inRTH
+    rthCloseToday := close
+    if math.abs(prevDayClose) > 1e-9
+        chgRTH := (close - prevDayClose) / prevDayClose * 100.0
+
+if inPostmarket and not na(rthCloseToday) and math.abs(rthCloseToday) > 1e-9
+    chgPost := (close - rthCloseToday) / rthCloseToday * 100.0
+
+dayChgPct = chgRTH
 dayVol = request.security(syminfo.tickerid, "D", volume, lookahead=barmerge.lookahead_off)
 
 if barstate.isconfirmed
@@ -265,6 +297,8 @@ if barstate.isconfirmed
     alertStr += "\"price\":\"" + str.tostring(close) + "\","
     alertStr += "\"previousClose\":\"" + str.tostring(prevDayClose) + "\","
     alertStr += "\"changeFromPrevDay\":\"" + str.tostring(dayChgPct) + "\","
+    alertStr += "\"changePreMarket\":\"" + str.tostring(chgPre) + "\","
+    alertStr += "\"changePostMarket\":\"" + str.tostring(chgPost) + "\","
     alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
     alertStr += "\"k1A\":\"" + str.tostring(k1A) + "\","
     alertStr += "\"d1A\":\"" + str.tostring(d1A) + "\","

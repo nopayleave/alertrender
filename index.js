@@ -1643,6 +1643,8 @@ function processWebhookAlert(alert) {
       if (alert.price) alerts[existingIndex].price = alert.price
       if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
       if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.changePreMarket !== undefined) alerts[existingIndex].changePreMarket = alert.changePreMarket
+      if (alert.changePostMarket !== undefined) alerts[existingIndex].changePostMarket = alert.changePostMarket
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
@@ -1653,6 +1655,8 @@ function processWebhookAlert(alert) {
         price: alert.price || null,
         previousClose: alert.previousClose || null,
         changeFromPrevDay: alert.changeFromPrevDay || null,
+        changePreMarket: alert.changePreMarket || null,
+        changePostMarket: alert.changePostMarket || null,
         volume: alert.volume || null,
         triStoch,
         triStochModes,
@@ -4547,6 +4551,13 @@ app.get('/', (req, res) => {
               K2 Bands
             </button>
             <span class="text-[10px] text-muted-foreground">Cols: &lt;10 | &lt;20 | 21-80 | &gt;80 | &gt;90</span>
+            <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground ml-2 pl-2 border-l border-border">Order</span>
+            <button id="cardOrderVolumeBtn" type="button" onclick="setCardOrderBy('volume')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-amber-500/45 bg-amber-500/12 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-300" title="Sort cards by volume (day)">
+              Volume <span id="cardOrderVolumeArrow" class="text-[10px]">↓</span>
+            </button>
+            <button id="cardOrderPctBtn" type="button" onclick="setCardOrderBy('pctChg')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-violet-500/45 bg-violet-500/12 hover:bg-violet-500/20 active:scale-95 transition-all text-violet-300" title="Sort cards by % change from previous day">
+              % Chg <span id="cardOrderPctArrow" class="text-[10px]">↓</span>
+            </button>
           </div>
           <!-- Table View — fills all remaining space -->
           <div id="tableView" class="flex-1 overflow-hidden">
@@ -4645,6 +4656,8 @@ app.get('/', (req, res) => {
           cardSortMode = 'k2Bands';
           localStorage.setItem('cardSortMode', cardSortMode);
         }
+        let cardOrderBy = localStorage.getItem('cardOrderBy') || 'none'; // 'none' | 'volume' | 'pctChg'
+        let cardOrderDir = localStorage.getItem('cardOrderDir') || 'desc'; // 'asc' | 'desc'
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
@@ -4856,6 +4869,37 @@ app.get('/', (req, res) => {
               return '$' + num.toFixed(0);
             }
           }
+        }
+
+        function parsePctField(val) {
+          if (val === null || val === undefined || val === '') return null;
+          const v = parseFloat(val);
+          return isNaN(v) ? null : v;
+        }
+
+        function pctColorClass(v) {
+          if (v === null) return 'text-muted-foreground';
+          return v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-muted-foreground';
+        }
+
+        function formatSignedPct(v, suffix) {
+          if (v === null) return '';
+          const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+          const abs = Math.abs(v);
+          const body = abs >= 10 ? abs.toFixed(1).replace(/\.0$/, '') : abs.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+          return sign + body + '%' + (suffix || '');
+        }
+
+        function buildSessionChangeHtml(alert, rthOverride) {
+          const rth = rthOverride !== undefined ? rthOverride : parsePctField(alert.changeFromPrevDay);
+          const pre = parsePctField(alert.changePreMarket);
+          const post = parsePctField(alert.changePostMarket);
+          const parts = [];
+          if (rth !== null) parts.push({ text: formatSignedPct(rth, ''), cls: pctColorClass(rth) });
+          if (pre !== null) parts.push({ text: formatSignedPct(pre, 'PE'), cls: pctColorClass(pre) });
+          if (post !== null) parts.push({ text: formatSignedPct(post, 'PS'), cls: pctColorClass(post) });
+          if (!parts.length) return '';
+          return parts.map((p, i) => '<span class="' + p.cls + (i ? ' ml-1' : '') + '">' + p.text + '</span>').join('');
         }
         
         // Format regular numbers with k notation for values over 1000
@@ -5638,8 +5682,17 @@ app.get('/', (req, res) => {
         function updateCardSortBarUI() {
           const k1Btn = document.getElementById('cardSortK1BandsBtn');
           const k2Btn = document.getElementById('cardSortK2BandsBtn');
+          const volBtn = document.getElementById('cardOrderVolumeBtn');
+          const pctBtn = document.getElementById('cardOrderPctBtn');
+          const volArrow = document.getElementById('cardOrderVolumeArrow');
+          const pctArrow = document.getElementById('cardOrderPctArrow');
           if (k1Btn) k1Btn.classList.toggle('active', cardSortMode === 'k1Bands');
           if (k2Btn) k2Btn.classList.toggle('active', cardSortMode === 'k2Bands');
+          if (volBtn) volBtn.classList.toggle('active', cardOrderBy === 'volume');
+          if (pctBtn) pctBtn.classList.toggle('active', cardOrderBy === 'pctChg');
+          const arrow = cardOrderDir === 'asc' ? '↑' : '↓';
+          if (volArrow) volArrow.textContent = cardOrderBy === 'volume' ? arrow : '↓';
+          if (pctArrow) pctArrow.textContent = cardOrderBy === 'pctChg' ? arrow : '↓';
         }
 
         function setCardSortMode(mode, el) {
@@ -5649,6 +5702,43 @@ app.get('/', (req, res) => {
           if (currentView === 'masonry') {
             renderMasonry();
           }
+        }
+
+        function setCardOrderBy(field) {
+          if (field === cardOrderBy) {
+            cardOrderDir = cardOrderDir === 'desc' ? 'asc' : 'desc';
+          } else {
+            cardOrderBy = field;
+            cardOrderDir = 'desc';
+          }
+          localStorage.setItem('cardOrderBy', cardOrderBy);
+          localStorage.setItem('cardOrderDir', cardOrderDir);
+          updateCardSortBarUI();
+          if (currentView === 'masonry') {
+            renderMasonry();
+          }
+        }
+
+        function getCardVolumeValue(alert) {
+          if (alert == null || alert.volume == null || alert.volume === '') return null;
+          const v = parseInt(alert.volume, 10);
+          return isNaN(v) ? null : v;
+        }
+
+        function getCardPctChgValue(alert) {
+          if (alert == null || alert.changeFromPrevDay == null || alert.changeFromPrevDay === '') return null;
+          const v = parseFloat(alert.changeFromPrevDay);
+          return isNaN(v) ? null : v;
+        }
+
+        function compareCardOrderValues(aVal, bVal, dir) {
+          const aNull = aVal == null || isNaN(aVal);
+          const bNull = bVal == null || isNaN(bVal);
+          if (aNull && bNull) return 0;
+          if (aNull) return 1;
+          if (bNull) return -1;
+          const cmp = aVal - bVal;
+          return dir === 'asc' ? cmp : -cmp;
         }
 
         let presetTooltipEl = null;
@@ -5936,7 +6026,17 @@ app.get('/', (req, res) => {
               if (aCross && !bCross) return -1;
               if (!aCross && bCross) return 1;
               
-              // Then by K1/K2 band value in band mode, else optional D2 sort/alphabetical.
+              // Then by order (volume / % chg), K band value, D2, or alphabetical.
+              if (cardOrderBy === 'volume') {
+                const cmp = compareCardOrderValues(getCardVolumeValue(a), getCardVolumeValue(b), cardOrderDir);
+                if (cmp !== 0) return cmp;
+                return (a.symbol || '').localeCompare(b.symbol || '');
+              }
+              if (cardOrderBy === 'pctChg') {
+                const cmp = compareCardOrderValues(getCardPctChgValue(a), getCardPctChgValue(b), cardOrderDir);
+                if (cmp !== 0) return cmp;
+                return (a.symbol || '').localeCompare(b.symbol || '');
+              }
               if (isBandSortMode) {
                 const aBand = getCardBandValue(a);
                 const bBand = getCardBandValue(b);
@@ -5985,7 +6085,8 @@ app.get('/', (req, res) => {
                   const isMatched = matchedSet.has(alert);
                   const cardClass = (starred ? 'kanban-card starred' : 'kanban-card') + (isMatched ? '' : ' unmatched');
                   
-                  // Change percentage (from previous day's close)
+                  // Change percentage (RTH + optional pre/post extended)
+                  const sessionChangeHtml = buildSessionChangeHtml(alert);
                   const changePercentRaw = alert.changeFromPrevDay;
                   const changePercent = changePercentRaw !== null && changePercentRaw !== undefined
                     ? parseFloat(changePercentRaw)
@@ -6024,7 +6125,7 @@ app.get('/', (req, res) => {
             return \`
               <div class="\${cardClass} \${levelCrossBg}" onclick="toggleStar('\${symbol}')">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : ''}</span>
+                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     \${d2PatternTag ? \`<span class="\${d2PatternClass} font-bold">\${d2PatternTag}</span><span class="text-muted-foreground">|</span>\` : ''}
@@ -6039,8 +6140,13 @@ app.get('/', (req, res) => {
                   \`;
                 }).join('');
 
-            const sortControlHtml = isBandSortMode
-              ? '<span class="text-xs text-cyan-400/80">' + (cardSortMode === 'k1Bands' ? 'K1' : 'K2') + '</span>'
+            const orderLabel = cardOrderBy === 'volume'
+              ? 'Vol'
+              : cardOrderBy === 'pctChg'
+                ? '%'
+                : (cardSortMode === 'k1Bands' ? 'K1' : cardSortMode === 'k2Bands' ? 'K2' : '');
+            const sortControlHtml = isBandSortMode || cardOrderBy !== 'none'
+              ? '<span class="text-xs text-cyan-400/80">' + orderLabel + (cardOrderBy !== 'none' ? (cardOrderDir === 'asc' ? '↑' : '↓') : '') + '</span>'
               : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
 
             return \`
@@ -7369,6 +7475,13 @@ Use this to create a new preset filter button that applies these exact filter se
               // Change % color: green if >0%, red if <0%, gray if 0
               priceChangeClass = change > 0 ? 'text-green-400' : change < 0 ? 'text-red-400' : 'text-muted-foreground';
             }
+
+            let rthPctForDisplay = parsePctField(alert.changeFromPrevDay);
+            if (rthPctForDisplay === null && priceChangeDisplay !== 'N/A') {
+              const parsed = parseFloat(priceChangeDisplay);
+              rthPctForDisplay = isNaN(parsed) ? null : parsed;
+            }
+            const sessionChangeHtml = buildSessionChangeHtml(alert, rthPctForDisplay);
             
             // Calculate VWAP percentage difference
             let vwapDiffDisplay = '';
@@ -8073,7 +8186,7 @@ Use this to create a new preset filter button that applies these exact filter se
               price: \`
                 <td class="py-1.5 px-2 font-mono font-medium \${priceClass}" style="\${getCellWidthStyle('price')}">
                   \${alert.price ? formatCurrency(alert.price) : 'N/A'}
-                  <span class="text-sm ml-2 \${priceChangeClass}">\${priceChangeDisplay !== 'N/A' ? '(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)' : ''}</span>
+                  <span class="text-sm ml-2">\${sessionChangeHtml || (priceChangeDisplay !== 'N/A' ? '<span class="' + priceChangeClass + '">(' + (parseFloat(priceChangeDisplay) >= 0 ? '+' : '') + priceChangeDisplay + '%)</span>' : '')}</span>
                 </td>
               \`,
               sessionRange: (() => {
