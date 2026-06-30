@@ -3839,61 +3839,25 @@ app.get('/', (req, res) => {
           border-color: rgba(251, 191, 36, 0.5);
           background: hsl(0 0% 14%);
         }
-        /* Pine label colors — Tri副本4: HL #00ff00, LH #ff6600, R↑ #2196f3, R↓ #9c27b0, L #089981, S #f23645 */
-        .kanban-card.kanban-card-label-hl {
-          background: rgba(0, 255, 0, 0.1);
-          border-color: rgba(0, 255, 0, 0.35);
+        /* Pine label — green (bull) / red (bear) */
+        .kanban-card.kanban-card-label-green {
+          background: rgba(34, 197, 94, 0.12);
+          border-color: rgba(34, 197, 94, 0.35);
         }
-        .kanban-card.kanban-card-label-hl:hover {
-          background: rgba(0, 255, 0, 0.16);
-          border-color: rgba(0, 255, 0, 0.45);
+        .kanban-card.kanban-card-label-green:hover {
+          background: rgba(34, 197, 94, 0.18);
+          border-color: rgba(34, 197, 94, 0.45);
         }
-        .kanban-card.kanban-card-label-lh {
-          background: rgba(255, 102, 0, 0.1);
-          border-color: rgba(255, 102, 0, 0.35);
+        .kanban-card.kanban-card-label-red {
+          background: rgba(239, 68, 68, 0.12);
+          border-color: rgba(239, 68, 68, 0.35);
         }
-        .kanban-card.kanban-card-label-lh:hover {
-          background: rgba(255, 102, 0, 0.16);
-          border-color: rgba(255, 102, 0, 0.45);
+        .kanban-card.kanban-card-label-red:hover {
+          background: rgba(239, 68, 68, 0.18);
+          border-color: rgba(239, 68, 68, 0.45);
         }
-        .kanban-card.kanban-card-label-r-bull {
-          background: rgba(33, 150, 243, 0.12);
-          border-color: rgba(33, 150, 243, 0.4);
-        }
-        .kanban-card.kanban-card-label-r-bull:hover {
-          background: rgba(33, 150, 243, 0.18);
-          border-color: rgba(33, 150, 243, 0.5);
-        }
-        .kanban-card.kanban-card-label-r-bear {
-          background: rgba(156, 39, 176, 0.12);
-          border-color: rgba(156, 39, 176, 0.4);
-        }
-        .kanban-card.kanban-card-label-r-bear:hover {
-          background: rgba(156, 39, 176, 0.18);
-          border-color: rgba(156, 39, 176, 0.5);
-        }
-        .kanban-card.kanban-card-label-long {
-          background: rgba(8, 153, 129, 0.14);
-          border-color: rgba(8, 153, 129, 0.4);
-        }
-        .kanban-card.kanban-card-label-long:hover {
-          background: rgba(8, 153, 129, 0.2);
-          border-color: rgba(8, 153, 129, 0.5);
-        }
-        .kanban-card.kanban-card-label-short {
-          background: rgba(242, 54, 69, 0.14);
-          border-color: rgba(242, 54, 69, 0.4);
-        }
-        .kanban-card.kanban-card-label-short:hover {
-          background: rgba(242, 54, 69, 0.2);
-          border-color: rgba(242, 54, 69, 0.5);
-        }
-        .kanban-card.starred.kanban-card-label-hl,
-        .kanban-card.starred.kanban-card-label-lh,
-        .kanban-card.starred.kanban-card-label-r-bull,
-        .kanban-card.starred.kanban-card-label-r-bear,
-        .kanban-card.starred.kanban-card-label-long,
-        .kanban-card.starred.kanban-card-label-short {
+        .kanban-card.starred.kanban-card-label-green,
+        .kanban-card.starred.kanban-card-label-red {
           box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
         }
         .kanban-card-empty {
@@ -4422,12 +4386,12 @@ app.get('/', (req, res) => {
                     <div class="mb-4">
                       <label class="block text-xs font-medium text-muted-foreground mb-1.5 px-1">Label</label>
                       <div class="filter-group flex flex-wrap gap-1.5">
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'HL', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#00ff00]/45 bg-[#00ff00]/12 hover:bg-[#00ff00]/20 active:scale-95 transition-all text-[#00ff00]" data-filter="stoch_pine_label" data-value="HL" title="Higher Low">HL</button>
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'LH', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#ff6600]/45 bg-[#ff6600]/12 hover:bg-[#ff6600]/20 active:scale-95 transition-all text-[#ff6600]" data-filter="stoch_pine_label" data-value="LH" title="Lower High">LH</button>
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bull', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#2196f3]/45 bg-[#2196f3]/12 hover:bg-[#2196f3]/20 active:scale-95 transition-all text-[#2196f3]" data-filter="stoch_pine_label" data-value="R_bull" title="Reverse up (cross above LH)">R↑</button>
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bear', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#9c27b0]/45 bg-[#9c27b0]/12 hover:bg-[#9c27b0]/20 active:scale-95 transition-all text-[#9c27b0]" data-filter="stoch_pine_label" data-value="R_bear" title="Reverse down (cross below HL)">R↓</button>
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'L', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#089981]/45 bg-[#089981]/12 hover:bg-[#089981]/20 active:scale-95 transition-all text-[#089981]" data-filter="stoch_pine_label" data-value="L" title="Long entry (Set 1 or 2)">L</button>
-                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'S', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-[#f23645]/45 bg-[#f23645]/12 hover:bg-[#f23645]/20 active:scale-95 transition-all text-[#f23645]" data-filter="stoch_pine_label" data-value="S" title="Short entry (Set 1 or 2)">S</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'HL', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_pine_label" data-value="HL" title="Higher Low">HL</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'LH', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_pine_label" data-value="LH" title="Lower High">LH</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bull', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_pine_label" data-value="R_bull" title="Reverse up (cross above LH)">R↑</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'R_bear', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_pine_label" data-value="R_bear" title="Reverse down (cross below HL)">R↓</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'L', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-green-500/50 bg-green-500/20 hover:bg-green-500/30 active:scale-95 transition-all text-green-400" data-filter="stoch_pine_label" data-value="L" title="Long entry (Set 1 or 2)">L</button>
+                        <button type="button" onclick="toggleFilterChip('stoch_pine_label', 'S', this)" class="filter-chip px-3 py-1.5 text-xs font-medium border border-red-500/50 bg-red-500/20 hover:bg-red-500/30 active:scale-95 transition-all text-red-400" data-filter="stoch_pine_label" data-value="S" title="Short entry (Set 1 or 2)">S</button>
                       </div>
                     </div>
                     <div class="mb-4">
@@ -5082,34 +5046,26 @@ app.get('/', (req, res) => {
           return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, suffix) + '</span>';
         }
 
-        // Card bg + tag aligned with Tri Pine labels (HL/LH/R/L/S)
+        // Card bg + tag — green (bull) / red (bear)
         function getCardPineLabelInfo(alert) {
           if (alert == null) return { tag: '', bgClass: '', tagClass: '', title: '' };
+          const green = { bgClass: 'kanban-card-label-green', tagClass: 'text-green-400 font-bold' };
+          const red = { bgClass: 'kanban-card-label-red', tagClass: 'text-red-400 font-bold' };
           const sig = String(alert.entrySignal || '').toLowerCase();
           if (sig === 'long') {
             const setLbl = alert.entrySignalSet ? alert.entrySignalSet : '';
-            return {
-              tag: 'L' + setLbl,
-              bgClass: 'kanban-card-label-long',
-              tagClass: 'text-[#089981] font-bold',
-              title: 'Long entry (Set ' + (setLbl || '?') + ')'
-            };
+            return { tag: 'L' + setLbl, ...green, title: 'Long entry (Set ' + (setLbl || '?') + ')' };
           }
           if (sig === 'short') {
             const setLbl = alert.entrySignalSet ? alert.entrySignalSet : '';
-            return {
-              tag: 'S' + setLbl,
-              bgClass: 'kanban-card-label-short',
-              tagClass: 'text-[#f23645] font-bold',
-              title: 'Short entry (Set ' + (setLbl || '?') + ')'
-            };
+            return { tag: 'S' + setLbl, ...red, title: 'Short entry (Set ' + (setLbl || '?') + ')' };
           }
           const rev = String(alert.reverseSignal || '').toLowerCase();
           if (rev === 'bull') {
-            return { tag: 'R', bgClass: 'kanban-card-label-r-bull', tagClass: 'text-[#2196f3] font-bold', title: 'Reverse up (cross above LH)' };
+            return { tag: 'R', ...green, title: 'Reverse up (cross above LH)' };
           }
           if (rev === 'bear') {
-            return { tag: 'R', bgClass: 'kanban-card-label-r-bear', tagClass: 'text-[#9c27b0] font-bold', title: 'Reverse down (cross below HL)' };
+            return { tag: 'R', ...red, title: 'Reverse down (cross below HL)' };
           }
           const pat = alert.s1aPattern ||
             alert.soloStochD2Pattern ||
@@ -5117,10 +5073,10 @@ app.get('/', (req, res) => {
             alert.d2Pattern ||
             '';
           if (pat === 'Higher Low') {
-            return { tag: 'HL', bgClass: 'kanban-card-label-hl', tagClass: 'text-[#00ff00] font-bold', title: 'Higher Low' };
+            return { tag: 'HL', ...green, title: 'Higher Low' };
           }
           if (pat === 'Lower High') {
-            return { tag: 'LH', bgClass: 'kanban-card-label-lh', tagClass: 'text-[#ff6600] font-bold', title: 'Lower High' };
+            return { tag: 'LH', ...red, title: 'Lower High' };
           }
           return { tag: '', bgClass: '', tagClass: '', title: '' };
         }
