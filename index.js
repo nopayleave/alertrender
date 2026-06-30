@@ -310,21 +310,41 @@ function buildTriModePayload(k1, d1, k2, d2, k1Dir, d1Dir, k2Dir, d2Dir, mode) {
 }
 
 function buildTriDualModePayload(alert) {
-  const hasDualTf = alert.k1A != null || alert.stochTimeframeA != null
-  if (!hasDualTf) return null
+  const hasA = alert.k1A != null || alert.stochTimeframeA != null
+  if (!hasA) return null
   const modeA = normalizeTriTimeframeMode(alert.stochTimeframeA || 'Interday')
+  const modeAPayload = buildTriModePayload(
+    alert.k1A, alert.d1A, alert.k2A, alert.d2A,
+    alert.k1ADirection, alert.d1ADirection, alert.k2ADirection, alert.d2ADirection,
+    modeA
+  )
+  const hasB = alert.k1B != null || alert.stochTimeframeB != null
+  if (!hasB) {
+    return { [modeA]: modeAPayload }
+  }
   const modeB = normalizeTriTimeframeMode(alert.stochTimeframeB || 'Swing')
   return {
-    [modeA]: buildTriModePayload(
-      alert.k1A, alert.d1A, alert.k2A, alert.d2A,
-      alert.k1ADirection, alert.d1ADirection, alert.k2ADirection, alert.d2ADirection,
-      modeA
-    ),
+    [modeA]: modeAPayload,
     [modeB]: buildTriModePayload(
       alert.k1B, alert.d1B, alert.k2B, alert.d2B,
       alert.k1BDirection, alert.d1BDirection, alert.k2BDirection, alert.d2BDirection,
       modeB
     )
+  }
+}
+
+/** Reject likely Pine K1/K2 security aliasing (identical values when K2 was distinct before). */
+function sanitizeTriK1K2Webhook(alert, existingTriStoch) {
+  const k1 = parseTriWebhookVal(alert.k1A ?? alert.k1 ?? alert.ovK)
+  const k2 = parseTriWebhookVal(alert.k2A ?? alert.k2)
+  if (k1 == null || k2 == null || k1 !== k2) return
+  if (!existingTriStoch) return
+  const prevK2 = getTriK2Value(existingTriStoch)
+  if (prevK2 == null || prevK2 === k2) return
+  console.log(`⚠️ Tri K1/K2 alias guard for ${alert.symbol}: webhook K1=K2=${k1}, keeping K2=${prevK2}`)
+  alert.k2A = String(prevK2)
+  if (existingTriStoch.k2Direction) {
+    alert.k2ADirection = existingTriStoch.k2Direction
   }
 }
 
@@ -1562,6 +1582,8 @@ function processWebhookAlert(alert) {
     }
   } else if (isTriStochAlert) {
     // Tri Stoch: legacy single-TF (k1/k2/k3) or dual-TF (k1A/k1B + stochTimeframeA/B)
+    const existingTriRow = alerts.find(a => a.symbol === alert.symbol)
+    sanitizeTriK1K2Webhook(alert, existingTriRow?.triStoch)
     const dualModes = buildTriDualModePayload(alert)
     let triStochModes = null
     let triStoch = null
@@ -1621,8 +1643,12 @@ function processWebhookAlert(alert) {
       }
       triStochModes = { [triMode]: triStoch }
       stochOverviewDataStorage[alert.symbol] = {
+        k1: triStoch.k1,
+        k2: triStoch.k2,
         k: triStoch.ovK, d: triStoch.ovD, d2: triStoch.ovD,
         kDirection: triStoch.ovKDirection, dDirection: triStoch.ovDDirection, d2Direction: triStoch.ovDDirection,
+        k1Direction: triStoch.k1Direction,
+        k2Direction: triStoch.k2Direction,
         d2Pattern: triStoch.ovD2Pattern || '', d2PatternValue: triStoch.ovD2PatternValue,
         k3: triStoch.k3, k3Direction: triStoch.k3Direction,
         timestamp: Date.now()
@@ -2689,7 +2715,8 @@ app.get('/events', (req, res) => {
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
+    'Access-Control-Allow-Headers': 'Cache-Control',
+    'X-Accel-Buffering': 'no'
   })
   
   // Add client to list
@@ -2700,9 +2727,20 @@ app.get('/events', (req, res) => {
   
   // Send initial connection message
   res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`)
+
+  // Keepalive — prevents proxy/host idle timeout (common on starter plans)
+  const heartbeatMs = 25000
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n')
+    } catch (error) {
+      clearInterval(heartbeat)
+    }
+  }, heartbeatMs)
   
   // Handle client disconnect
   req.on('close', () => {
+    clearInterval(heartbeat)
     clients = clients.filter(client => client.id !== clientId)
     console.log(`📡 SSE client disconnected: ${clientId} (${clients.length} remaining)`)
   })
@@ -8986,17 +9024,24 @@ Use this to create a new preset filter button that applies these exact filter se
         // Fetch alerts once on page load
         fetchAlerts();
         
-        // Auto-refresh every 2 minutes (120 seconds) as fallback
-        setInterval(fetchAlerts, 120000);
+        // Auto-refresh fallback (tightened when SSE drops)
+        let fetchAlertsIntervalMs = 120000
+        let fetchAlertsTimer = setInterval(fetchAlerts, fetchAlertsIntervalMs)
+        function setFetchAlertsInterval(ms) {
+          fetchAlertsIntervalMs = ms
+          clearInterval(fetchAlertsTimer)
+          fetchAlertsTimer = setInterval(fetchAlerts, fetchAlertsIntervalMs)
+        }
         
         // Real-time updates using Server-Sent Events (SSE)
-        const eventSource = new EventSource('/events');
+        let eventSource = new EventSource('/events')
         const connectionIndicator = document.getElementById('connectionIndicator');
         const connectionText = document.getElementById('connectionText');
         const realtimeIndicator = document.getElementById('realtimeIndicator');
         
         eventSource.onopen = function(event) {
           console.log('📡 SSE connection opened');
+          setFetchAlertsInterval(120000);
           connectionIndicator.className = 'w-1.5 h-1.5 rounded-full bg-green-500';
           connectionText.textContent = 'LIVE';
           connectionText.className = 'font-terminal text-[9px] tracking-widest text-green-400';
@@ -9071,6 +9116,7 @@ Use this to create a new preset filter button that applies these exact filter se
         
         eventSource.onerror = function(event) {
           console.log('⚠️ SSE connection error, falling back to polling');
+          setFetchAlertsInterval(30000);
           connectionIndicator.className = 'w-1.5 h-1.5 rounded-full bg-red-500';
           connectionText.textContent = 'OFFLINE';
           connectionText.className = 'font-terminal text-[9px] tracking-widest text-red-400';

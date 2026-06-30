@@ -102,11 +102,24 @@ f_stochKD(float mult) =>
     d = ta.sma(dBase, extraSmooth)
     [k, d]
 
-f_resolveKD(string tf, float mult) =>
-    if tf == ""
-        f_stochKD(mult)
+// Separate zero-arg wrappers — TV request.security dedupes identical expressions; distinct functions avoid K1/K2 aliasing over long runs.
+f_stochKD_s1A() =>
+    f_stochKD(f_multVal(baseMultA))
+
+f_stochKD_s2A() =>
+    f_stochKD(f_multVal(baseMultA) * s2VsS1A)
+
+f_resolveS1A() =>
+    if timeframeA == ""
+        f_stochKD_s1A()
     else
-        request.security(syminfo.tickerid, tf, f_stochKD(mult), barmerge.gaps_off, barmerge.lookahead_off)
+        request.security(syminfo.tickerid, timeframeA, f_stochKD_s1A(), barmerge.gaps_off, barmerge.lookahead_off)
+
+f_resolveS2A() =>
+    if timeframeA == ""
+        f_stochKD_s2A()
+    else
+        request.security(syminfo.tickerid, timeframeA, f_stochKD_s2A(), barmerge.gaps_off, barmerge.lookahead_off)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  STOCHASTIC — A
@@ -114,9 +127,8 @@ f_resolveKD(string tf, float mult) =>
 s1MultA = f_multVal(baseMultA)
 s2MultA = s1MultA * s2VsS1A
 
-// S1A and S2A — separate security calls (avoids k1A/k2A aliasing in alert/webhook tuples)
-[k1A, d1A] = f_resolveKD(timeframeA, s1MultA)
-[k2A, d2A] = f_resolveKD(timeframeA, s2MultA)
+[k1A, d1A] = f_resolveS1A()
+[k2A, d2A] = f_resolveS2A()
 
 k1AIsUp = k1A >= k1A[1]
 k1ACrossOver = ta.crossover(k1A, d1A)
@@ -301,6 +313,15 @@ sessionPhase = inPost ? "post" : inPre ? "pre" : inRth ? "rth" : "closed"
 dayVol = request.security(syminfo.tickerid, "D", volume, barmerge.gaps_off, barmerge.lookahead_off)
 
 if barstate.isconfirmed
+    // Snap before alert() — avoids tuple / series aliasing in webhook JSON
+    whK1 = k1A
+    whD1 = d1A
+    whK2 = k2A
+    whD2 = d2A
+    whK1Dir = k1ADirection
+    whD1Dir = d1ADirection
+    whK2Dir = k2ADirection
+    whD2Dir = d2ADirection
     alertStr = "{"
     alertStr += "\"symbol\":\"" + syminfo.ticker + "\","
     alertStr += "\"stochTimeframeA\":\"" + stochTagA + "\","
@@ -316,14 +337,14 @@ if barstate.isconfirmed
     alertStr += "\"changePostMarket\":\"" + f_jsonNum(chgPost) + "\","
     alertStr += "\"sessionPhase\":\"" + sessionPhase + "\","
     alertStr += "\"volume\":\"" + str.tostring(dayVol) + "\","
-    alertStr += "\"k1A\":\"" + str.tostring(k1A) + "\","
-    alertStr += "\"d1A\":\"" + str.tostring(d1A) + "\","
-    alertStr += "\"k2A\":\"" + str.tostring(k2A) + "\","
-    alertStr += "\"d2A\":\"" + str.tostring(d2A) + "\","
-    alertStr += "\"k1ADirection\":\"" + k1ADirection + "\","
-    alertStr += "\"d1ADirection\":\"" + d1ADirection + "\","
-    alertStr += "\"k2ADirection\":\"" + k2ADirection + "\","
-    alertStr += "\"d2ADirection\":\"" + d2ADirection + "\","
+    alertStr += "\"k1A\":\"" + str.tostring(whK1) + "\","
+    alertStr += "\"d1A\":\"" + str.tostring(whD1) + "\","
+    alertStr += "\"k2A\":\"" + str.tostring(whK2) + "\","
+    alertStr += "\"d2A\":\"" + str.tostring(whD2) + "\","
+    alertStr += "\"k1ADirection\":\"" + whK1Dir + "\","
+    alertStr += "\"d1ADirection\":\"" + whD1Dir + "\","
+    alertStr += "\"k2ADirection\":\"" + whK2Dir + "\","
+    alertStr += "\"d2ADirection\":\"" + whD2Dir + "\","
     alertStr += "\"entrySignal\":\"" + entrySignal + "\","
     alertStr += "\"entrySet\":\"" + entrySet + "\","
     alertStr += "\"s1aPattern\":\"" + lastS1aPattern + "\","
