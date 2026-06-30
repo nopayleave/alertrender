@@ -161,6 +161,8 @@ let stochSessionTracker = {}
 //   prevKDir: string,             — previous K direction
 //   bounced50: boolean,           — K dipped toward 50 from above and turned up
 //   rejected50: boolean,          — K rose toward 50 from below and turned down
+//   crossedAbove50: boolean,      — K crossed up through 50 this session
+//   crossedBelow50: boolean,      — K crossed down through 50 this session
 //   wasBelow20: boolean,          — K was below 20 at some point today
 //   wasAbove80: boolean,          — K was above 80 at some point today
 //   kCrossedAboveD: boolean,      — K crossed above D this session
@@ -185,6 +187,8 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
       prevKDir: kDir || 'flat',
       bounced50: false,
       rejected50: false,
+      crossedAbove50: false,
+      crossedBelow50: false,
       wasBelow20: k < 20,
       wasAbove80: k > 80,
       kCrossedAboveD: false,
@@ -204,6 +208,12 @@ function updateStochSession(symbol, kVal, dVal, kDir, dDir) {
   if (s.prevK !== null && s.prevD !== null && !isNaN(d)) {
     if (s.prevK <= s.prevD && k > d) s.kCrossedAboveD = true
     if (s.prevK >= s.prevD && k < d) s.kCrossedBelowD = true
+  }
+
+  // Midline 50 cross detection
+  if (s.prevK !== null) {
+    if (s.prevK < 50 && k >= 50) s.crossedAbove50 = true
+    if (s.prevK > 50 && k <= 50) s.crossedBelow50 = true
   }
 
   // 50-level bounce / rejection detection
@@ -1682,6 +1692,18 @@ function processWebhookAlert(alert) {
       ? { entrySignal: entrySig, entrySignalSet: alert.entrySet || null, entrySignalAt: Date.now() }
       : {}
 
+    const k1Sess = parseTriWebhookVal(alert.k1A ?? alert.k1)
+    const d1Sess = parseTriWebhookVal(alert.d1A ?? alert.d1)
+    if (k1Sess != null) {
+      updateStochSession(
+        alert.symbol,
+        k1Sess,
+        d1Sess,
+        alert.k1ADirection || alert.k1Direction,
+        alert.d1ADirection || alert.d1Direction
+      )
+    }
+
     const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
     if (existingIndex !== -1) {
       alerts[existingIndex].triStoch = triStoch
@@ -2402,6 +2424,8 @@ app.get('/alerts', (req, res) => {
         openK: sess.openK,
         bounced50: sess.bounced50,
         rejected50: sess.rejected50,
+        crossedAbove50: sess.crossedAbove50,
+        crossedBelow50: sess.crossedBelow50,
         wasBelow20: sess.wasBelow20,
         wasAbove80: sess.wasAbove80,
         kCrossedAboveD: sess.kCrossedAboveD,
@@ -3899,6 +3923,22 @@ app.get('/', (req, res) => {
         .kanban-card.starred.kanban-card-label-red {
           box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
         }
+        /* K crossed 50 midline this session */
+        .kanban-card.kanban-card-cross50 {
+          background: #ffffff;
+          border-color: rgba(0, 0, 0, 0.12);
+        }
+        .kanban-card.kanban-card-cross50:hover {
+          background: #f5f5f5;
+          border-color: rgba(0, 0, 0, 0.2);
+        }
+        .kanban-card.kanban-card-cross50 .font-semibold.text-foreground,
+        .kanban-card.kanban-card-cross50 .text-foreground {
+          color: #111827;
+        }
+        .kanban-card.kanban-card-cross50 .text-muted-foreground {
+          color: #6b7280;
+        }
         .kanban-card-empty {
           text-align: center;
           font-size: 12px;
@@ -5118,6 +5158,14 @@ app.get('/', (req, res) => {
             return { tag: 'LH', ...red, title: 'Lower High' };
           }
           return { tag: '', bgClass: '', tagClass: '', title: '' };
+        }
+
+        /** White card bg when K1 crossed the 50 midline this session (up or down). */
+        function getCardCross50BgClass(alert) {
+          const ss = alert && alert.stochSession;
+          if (!ss) return '';
+          if (ss.crossedAbove50 || ss.crossedBelow50) return 'kanban-card-cross50';
+          return '';
         }
 
         function getAlertPineLabelFilterKey(alert) {
@@ -6431,10 +6479,15 @@ app.get('/', (req, res) => {
                   // Pine label bg + tag (HL/LH/R/L/S — matches Tri副本4 colors)
                   const pineLabel = getCardPineLabelInfo(alert);
                   const pineLabelTag = pineLabel.tag;
-                  const pineLabelBg = pineLabel.bgClass;
+                  const cross50Bg = getCardCross50BgClass(alert);
+                  const pineLabelBg = cross50Bg || pineLabel.bgClass;
                   const pineLabelClass = pineLabel.tagClass;
+                  const cross50Title = cross50Bg
+                    ? (alert.stochSession.crossedAbove50 ? 'K1 crossed above 50' : 'K1 crossed below 50')
+                    : '';
                   const pineLabelTitle = pineLabel.title;
                   const cardTitle = [
+                    cross50Title,
                     pineLabelTitle,
                     'Click: star/unstar',
                     'Right-click: open TradingView chart'
