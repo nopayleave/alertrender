@@ -172,6 +172,16 @@ if lhRActive and not na(lastLhK) and k1A < lastLhK
 bullReverse = lhRActive and not na(lastLhK) and lhWasBroken and ta.crossover(k1A, lastLhK)
 bearReverse = hlRActive and not na(lastHlK) and hlWasHeld and ta.crossunder(k1A, lastHlK)
 
+var string lastS1aPattern = ""
+if s1aPat != ""
+    lastS1aPattern := s1aPat
+
+var string lastReverseSignal = "none"
+if bullReverse
+    lastReverseSignal := "bull"
+else if bearReverse
+    lastReverseSignal := "bear"
+
 // S2 histogram first (behind), then S1 K + D lines (solid, visible by default)
 plot(k2A, "S2A Histogram", style=plot.style_columns, color=color.new(k2AColor, 100 - s2Opacity), linewidth=4, display=display.none)
 plot(k1A, "S1A K", k1AColor, 3, linestyle=plot.linestyle_solid)
@@ -316,6 +326,8 @@ if barstate.isconfirmed
     alertStr += "\"d2ADirection\":\"" + d2ADirection + "\","
     alertStr += "\"entrySignal\":\"" + entrySignal + "\","
     alertStr += "\"entrySet\":\"" + entrySet + "\","
+    alertStr += "\"s1aPattern\":\"" + lastS1aPattern + "\","
+    alertStr += "\"reverseSignal\":\"" + lastReverseSignal + "\","
     alertStr += "\"d2Signal\":\"Tri\""
     alertStr += "}"
     alert(alertStr, alert.freq_once_per_bar_close)

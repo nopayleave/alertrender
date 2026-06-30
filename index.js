@@ -1670,6 +1670,8 @@ function processWebhookAlert(alert) {
       if (alert.regClose !== undefined) alerts[existingIndex].regClose = alert.regClose
       if (alert.extPrice !== undefined) alerts[existingIndex].extPrice = alert.extPrice
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      if (alert.s1aPattern !== undefined) alerts[existingIndex].s1aPattern = alert.s1aPattern || null
+      if (alert.reverseSignal !== undefined) alerts[existingIndex].reverseSignal = alert.reverseSignal || null
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
     } else {
@@ -1686,6 +1688,8 @@ function processWebhookAlert(alert) {
         regClose: alert.regClose || null,
         extPrice: alert.extPrice || null,
         volume: alert.volume || null,
+        s1aPattern: alert.s1aPattern || null,
+        reverseSignal: alert.reverseSignal || null,
         triStoch,
         triStochModes,
         ...entryUpdate,
@@ -3835,6 +3839,63 @@ app.get('/', (req, res) => {
           border-color: rgba(251, 191, 36, 0.5);
           background: hsl(0 0% 14%);
         }
+        /* Pine label colors — Tri副本4: HL #00ff00, LH #ff6600, R↑ #2196f3, R↓ #9c27b0, L #089981, S #f23645 */
+        .kanban-card.kanban-card-label-hl {
+          background: rgba(0, 255, 0, 0.1);
+          border-color: rgba(0, 255, 0, 0.35);
+        }
+        .kanban-card.kanban-card-label-hl:hover {
+          background: rgba(0, 255, 0, 0.16);
+          border-color: rgba(0, 255, 0, 0.45);
+        }
+        .kanban-card.kanban-card-label-lh {
+          background: rgba(255, 102, 0, 0.1);
+          border-color: rgba(255, 102, 0, 0.35);
+        }
+        .kanban-card.kanban-card-label-lh:hover {
+          background: rgba(255, 102, 0, 0.16);
+          border-color: rgba(255, 102, 0, 0.45);
+        }
+        .kanban-card.kanban-card-label-r-bull {
+          background: rgba(33, 150, 243, 0.12);
+          border-color: rgba(33, 150, 243, 0.4);
+        }
+        .kanban-card.kanban-card-label-r-bull:hover {
+          background: rgba(33, 150, 243, 0.18);
+          border-color: rgba(33, 150, 243, 0.5);
+        }
+        .kanban-card.kanban-card-label-r-bear {
+          background: rgba(156, 39, 176, 0.12);
+          border-color: rgba(156, 39, 176, 0.4);
+        }
+        .kanban-card.kanban-card-label-r-bear:hover {
+          background: rgba(156, 39, 176, 0.18);
+          border-color: rgba(156, 39, 176, 0.5);
+        }
+        .kanban-card.kanban-card-label-long {
+          background: rgba(8, 153, 129, 0.14);
+          border-color: rgba(8, 153, 129, 0.4);
+        }
+        .kanban-card.kanban-card-label-long:hover {
+          background: rgba(8, 153, 129, 0.2);
+          border-color: rgba(8, 153, 129, 0.5);
+        }
+        .kanban-card.kanban-card-label-short {
+          background: rgba(242, 54, 69, 0.14);
+          border-color: rgba(242, 54, 69, 0.4);
+        }
+        .kanban-card.kanban-card-label-short:hover {
+          background: rgba(242, 54, 69, 0.2);
+          border-color: rgba(242, 54, 69, 0.5);
+        }
+        .kanban-card.starred.kanban-card-label-hl,
+        .kanban-card.starred.kanban-card-label-lh,
+        .kanban-card.starred.kanban-card-label-r-bull,
+        .kanban-card.starred.kanban-card-label-r-bear,
+        .kanban-card.starred.kanban-card-label-long,
+        .kanban-card.starred.kanban-card-label-short {
+          box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+        }
         .kanban-card-empty {
           text-align: center;
           font-size: 12px;
@@ -5003,6 +5064,49 @@ app.get('/', (req, res) => {
           if (v === null) return '';
           const suffix = sessionDisplayPctUsesExtendedSuffix(alert) ? 'P' : '';
           return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, suffix) + '</span>';
+        }
+
+        // Card bg + tag aligned with Tri Pine labels (HL/LH/R/L/S)
+        function getCardPineLabelInfo(alert) {
+          if (alert == null) return { tag: '', bgClass: '', tagClass: '', title: '' };
+          const sig = String(alert.entrySignal || '').toLowerCase();
+          if (sig === 'long') {
+            const setLbl = alert.entrySignalSet ? alert.entrySignalSet : '';
+            return {
+              tag: 'L' + setLbl,
+              bgClass: 'kanban-card-label-long',
+              tagClass: 'text-[#089981] font-bold',
+              title: 'Long entry (Set ' + (setLbl || '?') + ')'
+            };
+          }
+          if (sig === 'short') {
+            const setLbl = alert.entrySignalSet ? alert.entrySignalSet : '';
+            return {
+              tag: 'S' + setLbl,
+              bgClass: 'kanban-card-label-short',
+              tagClass: 'text-[#f23645] font-bold',
+              title: 'Short entry (Set ' + (setLbl || '?') + ')'
+            };
+          }
+          const rev = String(alert.reverseSignal || '').toLowerCase();
+          if (rev === 'bull') {
+            return { tag: 'R', bgClass: 'kanban-card-label-r-bull', tagClass: 'text-[#2196f3] font-bold', title: 'Reverse up (cross above LH)' };
+          }
+          if (rev === 'bear') {
+            return { tag: 'R', bgClass: 'kanban-card-label-r-bear', tagClass: 'text-[#9c27b0] font-bold', title: 'Reverse down (cross below HL)' };
+          }
+          const pat = alert.s1aPattern ||
+            alert.soloStochD2Pattern ||
+            alert.dualStochD1Pattern ||
+            alert.d2Pattern ||
+            '';
+          if (pat === 'Higher Low') {
+            return { tag: 'HL', bgClass: 'kanban-card-label-hl', tagClass: 'text-[#00ff00] font-bold', title: 'Higher Low' };
+          }
+          if (pat === 'Lower High') {
+            return { tag: 'LH', bgClass: 'kanban-card-label-lh', tagClass: 'text-[#ff6600] font-bold', title: 'Lower High' };
+          }
+          return { tag: '', bgClass: '', tagClass: '', title: '' };
         }
         
         // Format regular numbers with k notation for values over 1000
@@ -6254,32 +6358,20 @@ app.get('/', (req, res) => {
                   const crossTag = kCross === 'cross_over' ? 'C↑' : kCross === 'cross_under' ? 'C↓' : '';
                   const crossClass = kCross === 'cross_over' ? 'text-green-400' : kCross === 'cross_under' ? 'text-red-400' : '';
                   
-                  // HL/LH pattern (Higher Low / Lower High)
-                  const d2Pattern = alert.soloStochD2Pattern || alert.dualStochD1Pattern || alert.d2Pattern || '';
-                  const d2PatternTag = d2Pattern === 'Higher Low' ? 'HL' : d2Pattern === 'Lower High' ? 'LH' : '';
-                  const d2PatternClass = d2Pattern === 'Higher Low' ? 'text-cyan-400' : d2Pattern === 'Lower High' ? 'text-orange-400' : '';
-                  
-                  // D1 crossing 90/10 levels - use bg color instead of tag
-                  let levelCrossBg = '';
-                  if (k1Val !== null && !isNaN(k1Val)) {
-                    if (k1Val >= 90 && k1Dir === 'up') {
-                      levelCrossBg = 'bg-yellow-500/20';
-                    } else if (k1Val > 85 && k1Val < 90 && k1Dir === 'down') {
-                      levelCrossBg = 'bg-orange-500/20';
-                    } else if (k1Val <= 10 && k1Dir === 'down') {
-                      levelCrossBg = 'bg-purple-500/20';
-                    } else if (k1Val > 10 && k1Val <= 15 && k1Dir === 'up') {
-                      levelCrossBg = 'bg-cyan-500/20';
-                    }
-                  }
+                  // Pine label bg + tag (HL/LH/R/L/S — matches Tri副本4 colors)
+                  const pineLabel = getCardPineLabelInfo(alert);
+                  const pineLabelTag = pineLabel.tag;
+                  const pineLabelBg = pineLabel.bgClass;
+                  const pineLabelClass = pineLabel.tagClass;
+                  const pineLabelTitle = pineLabel.title;
             
             return \`
-              <div class="\${cardClass} \${levelCrossBg}" onclick="toggleStar('\${symbol}')">
+              <div class="\${cardClass} \${pineLabelBg}"\${pineLabelTitle ? \` title="\${pineLabelTitle}"\` : ''} onclick="toggleStar('\${symbol}')">
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
-                    \${d2PatternTag ? \`<span class="\${d2PatternClass} font-bold">\${d2PatternTag}</span><span class="text-muted-foreground">|</span>\` : ''}
+                    \${pineLabelTag ? \`<span class="\${pineLabelClass}">\${pineLabelTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     <span class="text-muted-foreground">K1</span>
                     <span class="\${k1Class} font-semibold ml-1">\${k1Display}\${k1Arrow}</span>
                     <span class="text-muted-foreground mx-1">|</span>
