@@ -4930,14 +4930,14 @@ app.get('/', (req, res) => {
           if (phase === 'post' || (phase === 'pre' && rthCompletedToday(alert))) {
             const v = post !== null ? post : extPct;
             if (v !== null) {
-              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'PS') + '</span>';
+              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'P') + '</span>';
             }
             return '';
           }
           if (phase === 'pre') {
             const v = pre !== null ? pre : extPct;
             if (v !== null) {
-              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'PE') + '</span>';
+              return '<span class="' + pctColorClass(v) + '">' + formatSignedPct(v, 'P') + '</span>';
             }
             return '';
           }
@@ -4956,16 +4956,16 @@ app.get('/', (req, res) => {
 
           // Legacy alerts
           if (rthCompletedToday(alert) && extPct !== null) {
-            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'PS') + '</span>';
+            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'P') + '</span>';
           }
           if (pre !== null && !rthCompletedToday(alert)) {
-            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'PE') + '</span>';
+            return '<span class="' + pctColorClass(pre) + '">' + formatSignedPct(pre, 'P') + '</span>';
           }
           if (rth !== null) {
             return '<span class="' + pctColorClass(rth) + '">' + formatSignedPct(rth, '') + '</span>';
           }
           if (extPct !== null) {
-            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'PE') + '</span>';
+            return '<span class="' + pctColorClass(extPct) + '">' + formatSignedPct(extPct, 'P') + '</span>';
           }
           return '';
         }
