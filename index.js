@@ -4201,6 +4201,11 @@ app.get('/', (req, res) => {
           height: calc(4 * 38px + 3 * 10px);
           cursor: grab;
           user-select: none;
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .kanban-board-vertical .kanban-column-cards-wrap::-webkit-scrollbar {
+          display: none;
         }
         .kanban-board-vertical .kanban-column-cards-wrap.is-dragging {
           cursor: grabbing;
@@ -4281,15 +4286,12 @@ app.get('/', (req, res) => {
           overflow-x: hidden;
           flex: 1;
           min-height: 0;
-          scrollbar-width: thin;
           padding-top: 8px;
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
         .kanban-board:not(.kanban-board-vertical) .kanban-column-cards::-webkit-scrollbar {
-          width: 4px;
-        }
-        .kanban-board:not(.kanban-board-vertical) .kanban-column-cards::-webkit-scrollbar-thumb {
-          background: hsl(0 0% 28%);
-          border-radius: 2px;
+          display: none;
         }
         .preset-strip-search {
           position: relative;
@@ -5312,7 +5314,7 @@ app.get('/', (req, res) => {
             </div>
           </div>
           <div class="tv-chart-frame-wrap">
-            <iframe id="tvChartIframe" title="TradingView chart" allowfullscreen></iframe>
+            <iframe id="tvChartIframe" title="TradingView chart" allowfullscreen allow="clipboard-write; fullscreen; storage-access *"></iframe>
           </div>
         </div>
       </div>
@@ -8316,18 +8318,6 @@ Use this to create a new preset filter button that applies these exact filter se
           return null;
         }
 
-        function getTradingViewChartUrl(symbol, tvSymbol) {
-          let resolved = tvSymbol;
-          if ((!resolved || !String(resolved).trim()) && symbol) {
-            const row = alertsData.find(a => a.symbol === symbol);
-            if (row?.tvSymbol) resolved = row.tvSymbol;
-          }
-          const tv = normalizeTvChartSymbol(symbol, resolved);
-          if (!tv) return null;
-          const layoutId = localStorage.getItem('tvChartLayoutId') || TV_CHART_LAYOUT_ID;
-          return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tv);
-        }
-
         function resolveTvEmbedSymbol(symbol, tvSymbol, exchange) {
           let resolved = tvSymbol;
           let ex = exchange;
@@ -8346,32 +8336,16 @@ Use this to create a new preset filter button that applies these exact filter se
           return bare;
         }
 
-        function getTradingViewEmbedUrl(symbol, tvSymbol, exchange) {
+        function getTradingViewChartUrl(symbol, tvSymbol, exchange) {
           const sym = resolveTvEmbedSymbol(symbol, tvSymbol, exchange);
           if (!sym) return null;
-          const config = {
-            autosize: true,
-            symbol: sym,
-            interval: '5',
-            timezone: 'America/New_York',
-            theme: 'dark',
-            style: '1',
-            locale: 'en',
-            enable_publishing: false,
-            allow_symbol_change: true,
-            save_image: false,
-            calendar: false,
-            hide_top_toolbar: false,
-            hide_legend: false,
-            support_host: 'https://www.tradingview.com'
-          };
-          return 'https://s.tradingview.com/embed-widget/advanced-chart/?locale=en#' + encodeURIComponent(JSON.stringify(config));
+          const layoutId = localStorage.getItem('tvChartLayoutId') || TV_CHART_LAYOUT_ID;
+          return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(sym);
         }
 
         function openTradingViewChart(symbol, tvSymbol, exchange) {
-          const embedUrl = getTradingViewEmbedUrl(symbol, tvSymbol, exchange);
-          const externalUrl = getTradingViewChartUrl(symbol, tvSymbol);
-          if (!embedUrl) return;
+          const chartUrl = getTradingViewChartUrl(symbol, tvSymbol, exchange);
+          if (!chartUrl) return;
 
           const overlay = document.getElementById('tvChartOverlay');
           const panel = overlay?.querySelector('.tv-chart-panel');
@@ -8382,15 +8356,10 @@ Use this to create a new preset filter button that applies these exact filter se
 
           if (title) title.textContent = symbol || 'TradingView';
           if (link) {
-            if (externalUrl) {
-              link.href = externalUrl;
-              link.classList.remove('hidden');
-            } else {
-              link.href = '#';
-              link.classList.add('hidden');
-            }
+            link.href = chartUrl;
+            link.classList.remove('hidden');
           }
-          iframe.src = embedUrl;
+          iframe.src = chartUrl;
           overlay.classList.add('open');
           panel.classList.add('open');
           document.body.style.overflow = 'hidden';
