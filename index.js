@@ -313,8 +313,7 @@ let previousTriK2Values = {} // { 'SYMBOL:Interday': number }
 
 function k2CrossHistoryDedupeKey(item) {
   const d = item.eventData || {}
-  const bucket = Math.floor((item.timestamp || 0) / 300000)
-  return [item.symbol, d.level, d.direction, d.stochTimeframe || 'Interday', bucket].join('|')
+  return [item.symbol, d.level, d.direction, d.stochTimeframe || 'Interday', item.timestamp || 0].join('|')
 }
 
 function trimK2CrossHistory() {
@@ -1932,8 +1931,8 @@ function processWebhookAlert(alert) {
         k2: k2Hist,
         timestamp: tsTri
       })
-      if (triStochK1K2History[alert.symbol].length > 50) {
-        triStochK1K2History[alert.symbol] = triStochK1K2History[alert.symbol].slice(-50)
+      if (triStochK1K2History[alert.symbol].length > 250) {
+        triStochK1K2History[alert.symbol] = triStochK1K2History[alert.symbol].slice(-250)
       }
     }
 
@@ -2717,6 +2716,7 @@ app.get('/alerts/history', (req, res) => {
 })
 
 app.get('/k2-cross-history', (req, res) => {
+  backfillK2CrossHistoryFromTriSamples()
   const dayAgo = Date.now() - K2_CROSS_RETENTION_MS
   const mode = req.query.mode ? normalizeTriTimeframeMode(req.query.mode) : null
   let items = k2CrossHistory.filter(item => item.timestamp >= dayAgo)
@@ -5300,7 +5300,7 @@ app.get('/', (req, res) => {
           <div class="orb-history-header">
             <h3 id="tvChartPanelTitle">TradingView</h3>
             <div class="tv-chart-header-actions">
-              <a id="tvChartExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="tv-chart-external-link">Open in TradingView ↗</a>
+              <a id="tvChartExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="tv-chart-external-link">Your layout ↗</a>
               <button type="button" class="orb-history-close" onclick="closeTradingViewChart()">×</button>
             </div>
           </div>
@@ -5421,12 +5421,13 @@ app.get('/', (req, res) => {
         const K2_CROSS_LEVELS = [10, 20, 50, 80, 90];
         const STOCH_HISTORY_K2_STORAGE_KEY = 'stochHistoryK2Cross';
         const STOCH_HISTORY_K2_RETENTION_MS = 24 * 60 * 60 * 1000;
-        const STOCH_HISTORY_RENDER_MAX = 250;
+        const STOCH_HISTORY_RENDER_MAX = 500;
         
         // K2 cross history only
         let stochHistory = [];
         let stochHistoryFetchInFlight = null;
         let stochHistoryFetchTimer = null;
+        let stochHistoryBackgroundSyncAt = 0;
         let stochHistorySymbolsKey = '';
         
         let stochHistoryFilters = {
@@ -8335,9 +8336,36 @@ Use this to create a new preset filter button that applies these exact filter se
           return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(sym);
         }
 
+        function getTradingViewEmbedUrl(symbol, tvSymbol, exchange) {
+          const sym = resolveTvEmbedSymbol(symbol, tvSymbol, exchange);
+          if (!sym) return null;
+          const config = {
+            autosize: true,
+            symbol: sym,
+            interval: '5',
+            timezone: 'America/New_York',
+            theme: 'dark',
+            style: '1',
+            locale: 'en',
+            enable_publishing: false,
+            allow_symbol_change: true,
+            save_image: false,
+            calendar: false,
+            hide_top_toolbar: false,
+            hide_legend: false,
+            hide_side_toolbar: false,
+            withdateranges: true,
+            details: true,
+            hotlist: false,
+            support_host: 'https://www.tradingview.com'
+          };
+          return 'https://s.tradingview.com/embed-widget/advanced-chart/?locale=en#' + encodeURIComponent(JSON.stringify(config));
+        }
+
         function openTradingViewChart(symbol, tvSymbol, exchange) {
+          const embedUrl = getTradingViewEmbedUrl(symbol, tvSymbol, exchange);
           const chartUrl = getTradingViewChartUrl(symbol, tvSymbol, exchange);
-          if (!chartUrl) return;
+          if (!embedUrl) return;
 
           const overlay = document.getElementById('tvChartOverlay');
           const panel = overlay?.querySelector('.tv-chart-panel');
@@ -8347,11 +8375,11 @@ Use this to create a new preset filter button that applies these exact filter se
           if (!overlay || !panel || !iframe) return;
 
           if (title) title.textContent = symbol || 'TradingView';
-          if (link) {
+          if (link && chartUrl) {
             link.href = chartUrl;
             link.classList.remove('hidden');
           }
-          iframe.src = chartUrl;
+          iframe.src = embedUrl;
           overlay.classList.add('open');
           panel.classList.add('open');
           document.body.style.overflow = 'hidden';
@@ -9646,22 +9674,17 @@ Use this to create a new preset filter button that applies these exact filter se
           });
           if (added > 0) {
             stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+            trimStochHistory();
             stochHistorySymbolsKey = '';
           }
           return added > 0;
         }
 
-        function applyServerK2CrossHistory(items) {
-          if (!Array.isArray(items)) return;
-          const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
-          const kept = stochHistory.filter(item => {
-            const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
-            return tf !== mode;
-          });
-          stochHistory = [...kept, ...items.filter(item => item && item.eventType === 'k2_cross')];
-          stochHistory.sort((a, b) => b.timestamp - a.timestamp);
-          trimStochHistory();
-          stochHistorySymbolsKey = '';
+        function maybeSyncK2CrossHistoryBackground() {
+          const now = Date.now();
+          if (now - stochHistoryBackgroundSyncAt < 90000) return;
+          stochHistoryBackgroundSyncAt = now;
+          fetchK2CrossHistoryFromServer();
         }
 
         function scheduleK2CrossHistoryFetch() {
@@ -9680,7 +9703,7 @@ Use this to create a new preset filter button that applies these exact filter se
               const res = await fetch('/k2-cross-history?mode=' + mode);
               if (!res.ok) return;
               const items = await res.json();
-              applyServerK2CrossHistory(items);
+              mergeK2CrossHistoryItems(items);
               persistK2CrossHistory();
               refreshStochHistoryIfOpen();
             } catch (err) {
@@ -9694,8 +9717,7 @@ Use this to create a new preset filter button that applies these exact filter se
 
         function stochHistoryDedupeKey(item) {
           const d = item.eventData || {};
-          const bucket = Math.floor((item.timestamp || 0) / 300000);
-          return [item.symbol, item.eventType, d.level, d.direction, d.stochTimeframe || 'Interday', bucket].join('|');
+          return [item.symbol, d.level, d.direction, d.stochTimeframe || 'Interday', item.timestamp || 0].join('|');
         }
 
         function persistK2CrossHistory() {
@@ -9970,6 +9992,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             renderTable();
             startCountdown();
+            maybeSyncK2CrossHistoryBackground();
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
