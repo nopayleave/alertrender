@@ -5034,6 +5034,7 @@ app.get('/', (req, res) => {
                 <button onclick="toggleStochHistoryFilter('eventType', 'direction_change', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="eventType" data-value="direction_change">Direction Change</button>
                 <button onclick="toggleStochHistoryFilter('eventType', 'preset_match', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="eventType" data-value="preset_match">Preset Match</button>
                 <button onclick="toggleStochHistoryFilter('eventType', 'trend_change', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="eventType" data-value="trend_change">Trend Change</button>
+                <button onclick="toggleStochHistoryFilter('eventType', 'k2_cross', this)" class="orb-history-filter-chip orb-filter-cross-mid-up" data-filter="eventType" data-value="k2_cross">K2 Cross</button>
               </div>
             </div>
           </div>
@@ -5161,7 +5162,7 @@ app.get('/', (req, res) => {
         
         // Stoch history filter state
         let stochHistoryFilters = {
-          eventType: 'all' // 'all', 'direction_change', 'preset_match', 'trend_change'
+          eventType: 'all' // 'all', 'direction_change', 'preset_match', 'trend_change', 'k2_cross'
         };
 
         // Column order - stored in localStorage
@@ -9298,6 +9299,29 @@ Use this to create a new preset filter button that applies these exact filter se
           }, 5000);
         }
 
+        function recordK2CrossHistory(symbol, level, direction, alert, k2, prevK2) {
+          const t = getActiveTriStoch(alert) || alert.triStoch;
+          const k1 = getTriK1Value(t);
+          const isCrossover = direction === 'crossover';
+          stochHistory.unshift({
+            symbol: symbol,
+            eventType: 'k2_cross',
+            eventData: {
+              description: isCrossover ? 'K2 Crossover ' + level : 'K2 Crossunder ' + level,
+              level: level,
+              direction: direction,
+              k1Value: k1,
+              k2Value: k2,
+              prevK2Value: prevK2,
+              d1Value: k1,
+              d2Value: k2,
+              isBullish: isCrossover
+            },
+            price: alert.price,
+            timestamp: Date.now()
+          });
+        }
+
         function checkK2CrossToasts(alert) {
           if (!alert || !alert.symbol) return;
 
@@ -9312,16 +9336,30 @@ Use this to create a new preset filter button that applies these exact filter se
             return;
           }
 
+          let recorded = false;
           K2_CROSS_LEVELS.forEach(level => {
             if (prevK2 < level && k2 >= level) {
               showK2CrossToast(symbol, level, 'crossover', alert.price, k2);
+              recordK2CrossHistory(symbol, level, 'crossover', alert, k2, prevK2);
+              recorded = true;
             }
             if (prevK2 > level && k2 <= level) {
               showK2CrossToast(symbol, level, 'crossunder', alert.price, k2);
+              recordK2CrossHistory(symbol, level, 'crossunder', alert, k2, prevK2);
+              recorded = true;
             }
           });
 
           previousK2Values[symbol] = k2;
+
+          if (recorded) {
+            if (stochHistory.length > 100) {
+              stochHistory = stochHistory.slice(0, 100);
+            }
+            if (document.getElementById('stochHistoryOverlay')?.classList.contains('open')) {
+              renderStochHistory();
+            }
+          }
         }
         
         // Toggle Stoch history overlay
@@ -9399,10 +9437,15 @@ Use this to create a new preset filter button that applies these exact filter se
             let eventText = '';
             let itemClass = 'cross-high';
             
-            // Get D1/D2 values for display
+            // Get D1/D2 or K1/K2 values for display
             const d1Value = item.eventData.d1Value !== null && item.eventData.d1Value !== undefined ? parseFloat(item.eventData.d1Value).toFixed(1) : 'N/A';
             const d2Value = item.eventData.d2Value !== null && item.eventData.d2Value !== undefined ? parseFloat(item.eventData.d2Value).toFixed(1) : 'N/A';
-            const d1D2Display = \`D1:\${d1Value} D2:\${d2Value}\`;
+            const prevK2Str = item.eventData.prevK2Value != null && !isNaN(item.eventData.prevK2Value)
+              ? parseFloat(item.eventData.prevK2Value).toFixed(1)
+              : null;
+            const d1D2Display = item.eventType === 'k2_cross'
+              ? (prevK2Str != null ? 'K1:' + d1Value + ' K2:' + d2Value + ' (was ' + prevK2Str + ')' : 'K1:' + d1Value + ' K2:' + d2Value)
+              : 'D1:' + d1Value + ' D2:' + d2Value;
             
             switch(item.eventType) {
               case 'direction_change':
@@ -9415,6 +9458,10 @@ Use this to create a new preset filter button that applies these exact filter se
                 break;
               case 'trend_change':
                 eventText = item.eventData.trendMessage || 'Trend Changed';
+                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
+                break;
+              case 'k2_cross':
+                eventText = item.eventData.description || 'K2 Cross';
                 itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
                 break;
               default:
