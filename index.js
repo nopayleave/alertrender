@@ -5057,7 +5057,26 @@ app.get('/', (req, res) => {
                 <button onclick="toggleStochHistoryFilter('eventType', 'direction_change', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="eventType" data-value="direction_change">Direction Change</button>
                 <button onclick="toggleStochHistoryFilter('eventType', 'preset_match', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="eventType" data-value="preset_match">Preset Match</button>
                 <button onclick="toggleStochHistoryFilter('eventType', 'trend_change', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="eventType" data-value="trend_change">Trend Change</button>
-                <button onclick="toggleStochHistoryFilter('eventType', 'k2_cross', this)" class="orb-history-filter-chip orb-filter-cross-mid-up" data-filter="eventType" data-value="k2_cross">K2 Cross</button>
+              </div>
+            </div>
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">K2 Crossover:</label>
+              <div class="orb-history-filter-chips">
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 10, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_10">10</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 20, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_20">20</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 50, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_50">50</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 80, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_80">80</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 90, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_90">90</button>
+              </div>
+            </div>
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">K2 Crossunder:</label>
+              <div class="orb-history-filter-chips">
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 10, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_10">10</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 20, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_20">20</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 50, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_50">50</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 80, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_80">80</button>
+                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 90, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_90">90</button>
               </div>
             </div>
             <div class="orb-history-filter-group">
@@ -5194,7 +5213,8 @@ app.get('/', (req, res) => {
         
         // Stoch history filter state
         let stochHistoryFilters = {
-          eventType: 'all', // 'all', 'direction_change', 'preset_match', 'trend_change', 'k2_cross'
+          eventType: 'all', // 'all', 'direction_change', 'preset_match', 'trend_change'
+          k2Cross: null, // null or 'crossover_10', 'crossunder_50', etc.
           tickers: new Set()
         };
 
@@ -9478,16 +9498,33 @@ Use this to create a new preset filter button that applies these exact filter se
         }
         
         // Toggle Stoch history filter chip
+        function clearStochHistoryK2FilterChips() {
+          document.querySelectorAll('[data-filter="k2Cross"]').forEach(chip => chip.classList.remove('active'));
+        }
+
         function toggleStochHistoryFilter(filterType, value, element) {
-          // Update active state
           const chips = element.parentElement.querySelectorAll('.orb-history-filter-chip');
           chips.forEach(chip => chip.classList.remove('active'));
           element.classList.add('active');
           
-          // Update filter state
           stochHistoryFilters[filterType] = value;
+          if (filterType === 'eventType') {
+            stochHistoryFilters.k2Cross = null;
+            clearStochHistoryK2FilterChips();
+          }
           
-          // Apply filters
+          applyStochHistoryFilters();
+        }
+
+        function toggleStochHistoryK2Filter(direction, level, element) {
+          const filterKey = direction + '_' + level;
+          clearStochHistoryK2FilterChips();
+          document.querySelectorAll('[data-filter="eventType"]').forEach(chip => chip.classList.remove('active'));
+          
+          stochHistoryFilters.k2Cross = filterKey;
+          stochHistoryFilters.eventType = 'all';
+          element.classList.add('active');
+          
           applyStochHistoryFilters();
         }
         
@@ -9561,7 +9598,14 @@ Use this to create a new preset filter button that applies these exact filter se
           
           // Apply filters
           let filteredHistory = stochHistory.filter(item => {
-            if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
+            if (stochHistoryFilters.k2Cross) {
+              if (item.eventType !== 'k2_cross') return false;
+              const d = item.eventData || {};
+              const parts = stochHistoryFilters.k2Cross.split('_');
+              const level = parseInt(parts[parts.length - 1], 10);
+              const dir = parts.slice(0, -1).join('_');
+              if (d.direction !== dir || d.level !== level) return false;
+            } else if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
               return false;
             }
             if (stochHistoryFilters.tickers.size > 0 && !stochHistoryFilters.tickers.has(item.symbol)) {
