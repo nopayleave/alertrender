@@ -5153,6 +5153,9 @@ app.get('/', (req, res) => {
         // Track previous K2 values to detect level crosses
         let previousK2Values = {}; // { symbol: number }
         const K2_CROSS_LEVELS = [10, 20, 50, 80, 90];
+        const STOCH_HISTORY_K2_STORAGE_KEY = 'stochHistoryK2Cross';
+        const STOCH_HISTORY_K2_RETENTION_MS = 24 * 60 * 60 * 1000;
+        const STOCH_HISTORY_OTHER_MAX = 100;
         
         // Stochastic history
         let stochHistory = []; // Array of { symbol, eventType, eventData, price, timestamp }
@@ -6576,6 +6579,7 @@ app.get('/', (req, res) => {
           initPresetStripTooltips();
           initKanbanCardHandlers();
           updateCardSortBarUI();
+          loadStochHistoryFromStorage();
           applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
           initializeView(); // Initialize view mode
         });
@@ -9299,6 +9303,60 @@ Use this to create a new preset filter button that applies these exact filter se
           }, 5000);
         }
 
+        function loadStochHistoryFromStorage() {
+          try {
+            const raw = localStorage.getItem(STOCH_HISTORY_K2_STORAGE_KEY);
+            if (!raw) return;
+            const dayAgo = Date.now() - STOCH_HISTORY_K2_RETENTION_MS;
+            const saved = JSON.parse(raw).filter(item =>
+              item && item.eventType === 'k2_cross' && item.timestamp >= dayAgo
+            );
+            const seen = new Set(stochHistory.map(stochHistoryDedupeKey));
+            saved.forEach(item => {
+              const key = stochHistoryDedupeKey(item);
+              if (!seen.has(key)) {
+                stochHistory.push(item);
+                seen.add(key);
+              }
+            });
+            stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+          } catch (err) {
+            console.warn('Could not load K2 cross history:', err);
+          }
+        }
+
+        function stochHistoryDedupeKey(item) {
+          const d = item.eventData || {};
+          return [item.symbol, item.eventType, item.timestamp, d.level, d.direction].join('|');
+        }
+
+        function persistK2CrossHistory() {
+          try {
+            const dayAgo = Date.now() - STOCH_HISTORY_K2_RETENTION_MS;
+            const k2Only = stochHistory.filter(item =>
+              item.eventType === 'k2_cross' && item.timestamp >= dayAgo
+            );
+            localStorage.setItem(STOCH_HISTORY_K2_STORAGE_KEY, JSON.stringify(k2Only));
+          } catch (err) {
+            console.warn('Could not persist K2 cross history:', err);
+          }
+        }
+
+        function trimStochHistory() {
+          const dayAgo = Date.now() - STOCH_HISTORY_K2_RETENTION_MS;
+          let otherCount = 0;
+          stochHistory = stochHistory.filter(item => {
+            if (item.eventType === 'k2_cross') return item.timestamp >= dayAgo;
+            if (otherCount < STOCH_HISTORY_OTHER_MAX) {
+              otherCount++;
+              return true;
+            }
+            return false;
+          });
+          stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+          persistK2CrossHistory();
+        }
+
         function recordK2CrossHistory(symbol, level, direction, alert, k2, prevK2) {
           const t = getActiveTriStoch(alert) || alert.triStoch;
           const k1 = getTriK1Value(t);
@@ -9353,9 +9411,7 @@ Use this to create a new preset filter button that applies these exact filter se
           previousK2Values[symbol] = k2;
 
           if (recorded) {
-            if (stochHistory.length > 100) {
-              stochHistory = stochHistory.slice(0, 100);
-            }
+            trimStochHistory();
             if (document.getElementById('stochHistoryOverlay')?.classList.contains('open')) {
               renderStochHistory();
             }
@@ -9579,10 +9635,8 @@ Use this to create a new preset filter button that applies these exact filter se
             presetMatches: currentPresetMatches
           };
           
-          // Keep only last 100 entries
-          if (stochHistory.length > 100) {
-            stochHistory = stochHistory.slice(0, 100);
-          }
+          // Trim: K2 crosses kept 24h; other events capped at 100
+          trimStochHistory();
           
           // Update history display if open
           if (document.getElementById('stochHistoryOverlay').classList.contains('open')) {
