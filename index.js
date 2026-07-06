@@ -3994,12 +3994,14 @@ app.get('/', (req, res) => {
           gap: 12px;
         }
         .kanban-board-vertical .kanban-column-header {
-          flex: 0 0 56px;
+          flex: 0 0 auto;
+          width: max-content;
+          min-width: 96px;
           flex-direction: column;
           align-items: flex-start;
           justify-content: space-between;
           gap: 0;
-          padding: 0 10px 0 0;
+          padding: 0 12px 0 0;
           border-right: 1px solid rgba(255, 255, 255, 0.08);
           align-self: stretch;
           height: calc(4 * 38px + 3 * 10px);
@@ -4007,22 +4009,30 @@ app.get('/', (req, res) => {
         }
         .kanban-stack-title-block {
           display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 4px;
-          line-height: 1.1;
+          flex-direction: row;
+          align-items: center;
+          flex-wrap: nowrap;
+          white-space: nowrap;
+          gap: 6px;
+          line-height: 1.2;
+          width: max-content;
+          max-width: 100%;
         }
         .kanban-stack-band-title {
-          font-size: 14px;
+          font-size: 13px;
           font-weight: 700;
           letter-spacing: 0.02em;
           color: hsl(40 10% 92%);
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .kanban-stack-sort-indicator {
           font-size: 12px;
           font-weight: 600;
           color: #22d3ee;
           letter-spacing: 0.02em;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .kanban-board-vertical .kanban-column-count.kanban-stack-count {
           align-self: flex-start;
@@ -4037,6 +4047,7 @@ app.get('/', (req, res) => {
           flex: 1;
           min-width: 0;
           container-type: inline-size;
+          container-name: kanban-stack;
           overflow-x: auto;
           overflow-y: hidden;
           height: calc(4 * 38px + 3 * 10px);
@@ -4055,6 +4066,11 @@ app.get('/', (req, res) => {
           min-width: 100%;
           height: 100%;
           align-content: start;
+        }
+        @container kanban-stack (min-width: 1200px) {
+          .kanban-board-vertical .kanban-column-cards {
+            grid-auto-columns: calc((100cqw - 50px) / 6);
+          }
         }
         .kanban-board-vertical .kanban-column-cards .kanban-card {
           min-width: 0;
@@ -5031,7 +5047,6 @@ app.get('/', (req, res) => {
         let cardOnlyFav = localStorage.getItem('cardOnlyFav') === 'true';
         let cardBandLayout = localStorage.getItem('cardBandLayout') || 'horizontal'; // 'horizontal' | 'vertical'
         const KANBAN_STACK_MAX_ROWS = 4;
-        const KANBAN_STACK_COLS_PER_VIEW = 5;
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
