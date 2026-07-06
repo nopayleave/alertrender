@@ -4321,8 +4321,7 @@ app.get('/', (req, res) => {
           position: fixed;
           top: 0;
           right: 0;
-          width: 100%;
-          max-width: 600px;
+          width: 80vw;
           height: 100vh;
           background: hsl(0 0% 5%);
           border-left: 1px solid rgba(255, 255, 255, 0.1);
