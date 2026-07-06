@@ -3974,10 +3974,8 @@ app.get('/', (req, res) => {
           gap: 16px;
           align-items: start;
         }
-        .kanban-board.kanban-board-stack {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
+        .kanban-board.kanban-board-vertical {
+          grid-template-columns: 1fr;
         }
         .kanban-column {
           background: hsl(0 0% 10%);
@@ -3989,38 +3987,22 @@ app.get('/', (req, res) => {
           flex-direction: column;
           gap: 10px;
         }
-        .kanban-board-stack .kanban-column {
-          flex-direction: row;
-          align-items: stretch;
-          gap: 12px;
+        .kanban-board-vertical .kanban-column {
           min-height: auto;
-          padding: 10px 12px;
         }
-        .kanban-board-stack .kanban-column-header {
-          flex: 0 0 64px;
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: center;
-          gap: 4px;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
-          padding-right: 10px;
-        }
-        .kanban-board-stack .kanban-column-cards {
-          flex: 1;
+        .kanban-column-cards {
           display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .kanban-board-vertical .kanban-column-cards {
+          flex-direction: row;
           flex-wrap: wrap;
-          gap: 8px;
-          align-items: stretch;
-          min-width: 0;
         }
-        .kanban-board-stack .kanban-card {
-          flex: 1 1 240px;
+        .kanban-board-vertical .kanban-column-cards .kanban-card,
+        .kanban-board-vertical .kanban-column-cards .kanban-card-empty {
+          flex: 1 1 220px;
           max-width: 100%;
-        }
-        .kanban-board-stack .kanban-card-empty {
-          flex: 1;
-          text-align: left;
-          padding: 8px 0;
         }
         .kanban-column-header {
           display: flex;
@@ -4848,6 +4830,9 @@ app.get('/', (req, res) => {
             <button id="cardSortK2BandsBtn" type="button" onclick="setCardSortMode('k2Bands', this)" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300">
               K2 Bands
             </button>
+            <button id="cardBandLayoutBtn" type="button" onclick="toggleCardBandLayout()" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-slate-500/45 bg-slate-500/12 hover:bg-slate-500/20 active:scale-95 transition-all text-slate-300" title="Toggle band layout: horizontal columns vs vertical stack">
+              <span id="cardBandLayoutLabel">↕ Stack</span>
+            </button>
             <span class="text-[10px] text-muted-foreground">Cols: 0-20 | 21-40 | 41-60 | 61-80 | &gt;81</span>
             <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground ml-2 pl-2 border-l border-border">Order</span>
             <button id="cardOrderVolumeBtn" type="button" onclick="setCardOrderBy('volume')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-amber-500/45 bg-amber-500/12 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-300" title="Sort cards by volume (day)">
@@ -4966,6 +4951,7 @@ app.get('/', (req, res) => {
         let cardOrderBy = localStorage.getItem('cardOrderBy') || 'none'; // 'none' | 'volume' | 'pctChg' | 'k1' | 'k2'
         let cardOrderDir = localStorage.getItem('cardOrderDir') || 'desc'; // 'asc' | 'desc'
         let cardOnlyFav = localStorage.getItem('cardOnlyFav') === 'true';
+        let cardBandLayout = localStorage.getItem('cardBandLayout') || 'horizontal'; // 'horizontal' | 'vertical'
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
@@ -6188,6 +6174,28 @@ app.get('/', (req, res) => {
           if (pctArrow) pctArrow.textContent = cardOrderBy === 'pctChg' ? arrow : '↓';
           if (k1OrderArrow) k1OrderArrow.textContent = cardOrderBy === 'k1' ? arrow : '↓';
           if (k2OrderArrow) k2OrderArrow.textContent = cardOrderBy === 'k2' ? arrow : '↓';
+          const layoutBtn = document.getElementById('cardBandLayoutBtn');
+          const layoutLabel = document.getElementById('cardBandLayoutLabel');
+          const inBandMode = cardSortMode === 'k1Bands' || cardSortMode === 'k2Bands';
+          if (layoutBtn) {
+            layoutBtn.classList.toggle('active', inBandMode && cardBandLayout === 'vertical');
+            layoutBtn.disabled = !inBandMode;
+            layoutBtn.classList.toggle('opacity-40', !inBandMode);
+            layoutBtn.classList.toggle('pointer-events-none', !inBandMode);
+          }
+          if (layoutLabel) {
+            layoutLabel.textContent = cardBandLayout === 'vertical' ? '↔ Cols' : '↕ Stack';
+          }
+        }
+
+        function toggleCardBandLayout() {
+          if (cardSortMode !== 'k1Bands' && cardSortMode !== 'k2Bands') return;
+          cardBandLayout = cardBandLayout === 'vertical' ? 'horizontal' : 'vertical';
+          localStorage.setItem('cardBandLayout', cardBandLayout);
+          updateCardSortBarUI();
+          if (currentView === 'masonry') {
+            renderMasonry();
+          }
         }
 
         function setCardSortMode(mode, el) {
@@ -6516,24 +6524,27 @@ app.get('/', (req, res) => {
           }
 
           const isBandSortMode = cardSortMode === 'k1Bands' || cardSortMode === 'k2Bands';
+          const isVerticalBandLayout = isBandSortMode && cardBandLayout === 'vertical';
+
+          const bandColumns = [
+            { id: 'band_0_20', title: '0-20', bgColor: 'bg-card' },
+            { id: 'band_21_40', title: '21-40', bgColor: 'bg-card' },
+            { id: 'band_41_60', title: '41-60', bgColor: 'bg-card' },
+            { id: 'band_61_80', title: '61-80', bgColor: 'bg-card' },
+            { id: 'band_gt81', title: '>81', bgColor: 'bg-card' }
+          ];
 
           const kanbanColumns = isBandSortMode
-            ? [
-                { id: 'band_gt81', title: '>81', bgColor: 'bg-card' },
-                { id: 'band_61_80', title: '61-80', bgColor: 'bg-card' },
-                { id: 'band_41_60', title: '41-60', bgColor: 'bg-card' },
-                { id: 'band_21_40', title: '21-40', bgColor: 'bg-card' },
-                { id: 'band_0_20', title: '0-20', bgColor: 'bg-card' }
-              ]
+            ? (isVerticalBandLayout ? [...bandColumns].reverse() : bandColumns)
             : [
                 { id: 'all', title: 'All', bgColor: 'bg-card' }
               ];
 
           const columnBuckets = {};
           kanbanColumns.forEach(col => { columnBuckets[col.id] = []; });
-          masonryContainer.classList.toggle('kanban-board-stack', isBandSortMode);
+          masonryContainer.classList.toggle('kanban-board-vertical', isVerticalBandLayout);
           masonryContainer.style.gridTemplateColumns = isBandSortMode
-            ? ''
+            ? (isVerticalBandLayout ? '1fr' : 'repeat(5, minmax(220px, 1fr))')
             : 'repeat(auto-fit, minmax(220px, 1fr))';
           displayData.forEach(alert => {
             if (isBandSortMode) {
@@ -6719,8 +6730,10 @@ app.get('/', (req, res) => {
                     \${sortControlHtml}
                   </span>
                   <span class="kanban-column-count">\${cards.length}</span>
+                  </div>
+                <div class="kanban-column-cards">
+                  \${cardsHtml}
                 </div>
-                <div class="kanban-column-cards">\${cardsHtml}</div>
               </div>
             \`;
           }).join('');
