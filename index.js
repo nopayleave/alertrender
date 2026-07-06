@@ -4525,6 +4525,9 @@ app.get('/', (req, res) => {
           <span class="font-terminal text-xs font-bold tracking-widest text-black">ALERTS</span>
           <button id="triTimeframeToggle" onclick="toggleTriTimeframeMode()" class="ml-1 px-2 py-0.5 rounded border border-black/30 bg-black/10 hover:bg-black/20 text-[10px] font-terminal font-bold tracking-wide text-black" title="Toggle Stoch Timeframe Mode">INTERDAY</button>
         </div>
+        <button id="filterSidebarToggle" onclick="toggleFilterSidebar()" class="flex items-center justify-center w-9 h-full border-r border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Toggle filter panel">
+          <span id="filterSidebarToggleIcon" class="text-sm">☰</span>
+        </button>
         <div class="flex items-center gap-1.5 px-2.5 h-full border-r border-border">
           <div id="connectionIndicator" class="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
           <span id="connectionText" class="font-terminal text-[9px] tracking-widest text-muted-foreground">CONNECTING</span>
@@ -4540,9 +4543,6 @@ app.get('/', (req, res) => {
           <span id="tickerCount" class="font-terminal text-[10px] font-bold text-amber-400 px-2.5">0</span>
         </div>
         <div class="flex-1"></div>
-        <button id="filterSidebarToggle" onclick="toggleFilterSidebar()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Toggle filter panel">
-          <span id="filterSidebarToggleIcon" class="text-sm">☰</span>
-        </button>
         <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Switch to Card View">
           <span id="viewIcon" class="text-sm">📋</span>
         </button>
@@ -4853,6 +4853,9 @@ app.get('/', (req, res) => {
         <main class="flex-1 min-w-0 flex flex-col overflow-hidden">
           <!-- Quick preset strip (compact) -->
           <div class="flex flex-wrap items-center gap-1.5 px-2 py-1 bg-[hsl(0,0%,4%)] border-b border-border shrink-0 preset-filter-group">
+            <button id="filterSidebarTogglePreset" onclick="toggleFilterSidebar()" class="px-2 py-1 text-sm font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors mr-1" title="Toggle filters panel">
+              <span id="filterSidebarTogglePresetLabel">☰ FILTERS</span>
+            </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 pr-0.5">VWAP</span>
             <button id="presetAboveVwap" data-preset-group="vwap" onclick="applyPresetFilter('aboveVwap')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Above VWAP">
               ABV <span id="presetAboveVwapCount" class="ml-0.5 text-green-300 font-bold">0</span>
@@ -4910,10 +4913,6 @@ app.get('/', (req, res) => {
             </button>
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="Clear all presets and filters">
               CLEAR
-            </button>
-            <div class="flex-1"></div>
-            <button id="filterSidebarTogglePreset" onclick="toggleFilterSidebar()" class="px-2 py-1 text-sm font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
-              <span id="filterSidebarTogglePresetLabel">☰ FILTERS</span>
             </button>
           </div>
           <div id="cardSortBar" class="hidden items-center gap-2 px-2 py-1.5 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
