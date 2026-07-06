@@ -3974,6 +3974,11 @@ app.get('/', (req, res) => {
           gap: 16px;
           align-items: start;
         }
+        .kanban-board.kanban-board-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
         .kanban-column {
           background: hsl(0 0% 10%);
           border: 1px solid rgba(255, 255, 255, 0.08);
@@ -3983,6 +3988,39 @@ app.get('/', (req, res) => {
           display: flex;
           flex-direction: column;
           gap: 10px;
+        }
+        .kanban-board-stack .kanban-column {
+          flex-direction: row;
+          align-items: stretch;
+          gap: 12px;
+          min-height: auto;
+          padding: 10px 12px;
+        }
+        .kanban-board-stack .kanban-column-header {
+          flex: 0 0 64px;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: center;
+          gap: 4px;
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          padding-right: 10px;
+        }
+        .kanban-board-stack .kanban-column-cards {
+          flex: 1;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: stretch;
+          min-width: 0;
+        }
+        .kanban-board-stack .kanban-card {
+          flex: 1 1 240px;
+          max-width: 100%;
+        }
+        .kanban-board-stack .kanban-card-empty {
+          flex: 1;
+          text-align: left;
+          padding: 8px 0;
         }
         .kanban-column-header {
           display: flex;
@@ -6481,11 +6519,11 @@ app.get('/', (req, res) => {
 
           const kanbanColumns = isBandSortMode
             ? [
-                { id: 'band_0_20', title: '0-20', bgColor: 'bg-card' },
-                { id: 'band_21_40', title: '21-40', bgColor: 'bg-card' },
-                { id: 'band_41_60', title: '41-60', bgColor: 'bg-card' },
+                { id: 'band_gt81', title: '>81', bgColor: 'bg-card' },
                 { id: 'band_61_80', title: '61-80', bgColor: 'bg-card' },
-                { id: 'band_gt81', title: '>81', bgColor: 'bg-card' }
+                { id: 'band_41_60', title: '41-60', bgColor: 'bg-card' },
+                { id: 'band_21_40', title: '21-40', bgColor: 'bg-card' },
+                { id: 'band_0_20', title: '0-20', bgColor: 'bg-card' }
               ]
             : [
                 { id: 'all', title: 'All', bgColor: 'bg-card' }
@@ -6493,8 +6531,9 @@ app.get('/', (req, res) => {
 
           const columnBuckets = {};
           kanbanColumns.forEach(col => { columnBuckets[col.id] = []; });
+          masonryContainer.classList.toggle('kanban-board-stack', isBandSortMode);
           masonryContainer.style.gridTemplateColumns = isBandSortMode
-            ? 'repeat(5, minmax(220px, 1fr))'
+            ? ''
             : 'repeat(auto-fit, minmax(220px, 1fr))';
           displayData.forEach(alert => {
             if (isBandSortMode) {
@@ -6680,8 +6719,8 @@ app.get('/', (req, res) => {
                     \${sortControlHtml}
                   </span>
                   <span class="kanban-column-count">\${cards.length}</span>
-                  </div>
-                \${cardsHtml}
+                </div>
+                <div class="kanban-column-cards">\${cardsHtml}</div>
               </div>
             \`;
           }).join('');
