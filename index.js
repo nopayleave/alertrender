@@ -4810,7 +4810,7 @@ app.get('/', (req, res) => {
             <button id="cardSortK2BandsBtn" type="button" onclick="setCardSortMode('k2Bands', this)" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-cyan-500/45 bg-cyan-500/12 hover:bg-cyan-500/20 active:scale-95 transition-all text-cyan-300">
               K2 Bands
             </button>
-            <span class="text-[10px] text-muted-foreground">Cols: &lt;10 | &lt;20 | 21-80 | &gt;80 | &gt;90</span>
+            <span class="text-[10px] text-muted-foreground">Cols: 0-20 | 21-40 | 41-60 | 61-80 | &gt;81</span>
             <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground ml-2 pl-2 border-l border-border">Order</span>
             <button id="cardOrderVolumeBtn" type="button" onclick="setCardOrderBy('volume')" class="filter-chip px-2 py-1 text-xs font-terminal font-medium border border-amber-500/45 bg-amber-500/12 hover:bg-amber-500/20 active:scale-95 transition-all text-amber-300" title="Sort cards by volume (day)">
               Volume <span id="cardOrderVolumeArrow" class="text-[10px]">↓</span>
@@ -4988,8 +4988,9 @@ app.get('/', (req, res) => {
         // Track previous prices for price direction calculation (fallback)
         let previousPrices = {};
         
-        // Track previous preset filter matches to detect new matches
-        let previousPresetMatches = {}; // { symbol: ['down', 'up', 'trendDownBig'] }
+        // Track previous K2 values to detect level crosses
+        let previousK2Values = {}; // { symbol: number }
+        const K2_CROSS_LEVELS = [10, 20, 50, 80, 90];
         
         // Stochastic history
         let stochHistory = []; // Array of { symbol, eventType, eventData, price, timestamp }
@@ -6480,11 +6481,11 @@ app.get('/', (req, res) => {
 
           const kanbanColumns = isBandSortMode
             ? [
-                { id: 'k3_lt10', title: '<10', bgColor: 'bg-card' },
-                { id: 'k3_lt20', title: '<20', bgColor: 'bg-card' },
-                { id: 'k3_21_80', title: '21-80', bgColor: 'bg-card' },
-                { id: 'k3_gt80', title: '>80', bgColor: 'bg-card' },
-                { id: 'k3_gt90', title: '>90', bgColor: 'bg-card' }
+                { id: 'band_0_20', title: '0-20', bgColor: 'bg-card' },
+                { id: 'band_21_40', title: '21-40', bgColor: 'bg-card' },
+                { id: 'band_41_60', title: '41-60', bgColor: 'bg-card' },
+                { id: 'band_61_80', title: '61-80', bgColor: 'bg-card' },
+                { id: 'band_gt81', title: '>81', bgColor: 'bg-card' }
               ]
             : [
                 { id: 'all', title: 'All', bgColor: 'bg-card' }
@@ -6498,16 +6499,18 @@ app.get('/', (req, res) => {
           displayData.forEach(alert => {
             if (isBandSortMode) {
               const bandVal = getCardBandValue(alert);
-              if (bandVal !== null && bandVal < 10) {
-                columnBuckets.k3_lt10.push(alert);
-              } else if (bandVal !== null && bandVal < 20) {
-                columnBuckets.k3_lt20.push(alert);
-              } else if (bandVal !== null && bandVal > 90) {
-                columnBuckets.k3_gt90.push(alert);
-              } else if (bandVal !== null && bandVal > 80) {
-                columnBuckets.k3_gt80.push(alert);
+              if (bandVal !== null && bandVal <= 20) {
+                columnBuckets.band_0_20.push(alert);
+              } else if (bandVal !== null && bandVal <= 40) {
+                columnBuckets.band_21_40.push(alert);
+              } else if (bandVal !== null && bandVal <= 60) {
+                columnBuckets.band_41_60.push(alert);
+              } else if (bandVal !== null && bandVal <= 80) {
+                columnBuckets.band_61_80.push(alert);
+              } else if (bandVal !== null && bandVal >= 81) {
+                columnBuckets.band_gt81.push(alert);
               } else {
-                columnBuckets.k3_21_80.push(alert);
+                columnBuckets.band_41_60.push(alert);
               }
             } else {
               columnBuckets.all.push(alert);
@@ -8930,51 +8933,18 @@ Use this to create a new preset filter button that applies these exact filter se
           return matches;
         }
         
-        // Show toast notification for preset filter match
-        function showPresetMatchToast(symbol, presetName, price) {
+        function showK2CrossToast(symbol, level, direction, price, k2Value) {
           if (!notificationsEnabled) return;
           const toastContainer = document.getElementById('toastContainer');
           if (!toastContainer) return;
-          
-          // Get preset display name and styling
-          let title = '';
-          let toastClass = '';
-          let icon = '';
-          
-          switch(presetName) {
-            case 'down':
-              title = 'Down Signal';
-              toastClass = 'cross-low';
-              icon = '🔻';
-              break;
-            case 'up':
-              title = 'Up Signal';
-              toastClass = 'cross-high';
-              icon = '🚀';
-              break;
-            case 'extBull':
-              title = 'Ext. Bull Signal';
-              toastClass = 'cross-high';
-              icon = '📈';
-              break;
-            case 'extBear':
-              title = 'Ext. Bear Signal';
-              toastClass = 'cross-low';
-              icon = '📉';
-              break;
-            case 'breakHigh':
-              title = 'Break day high (Range)';
-              toastClass = 'cross-high';
-              icon = '⬆';
-              break;
-            default:
-              title = 'Preset Match';
-              toastClass = 'cross-high';
-              icon = '📊';
-          }
-          
-          const message = \`\${symbol} matches \${title}\${price ? ' at ' + formatCurrency(price) : ''}\`;
-          
+
+          const isCrossover = direction === 'crossover';
+          const title = isCrossover ? \`K2 Crossover \${level}\` : \`K2 Crossunder \${level}\`;
+          const toastClass = isCrossover ? 'cross-high' : 'cross-low';
+          const icon = isCrossover ? '⬆' : '⬇';
+          const k2Str = k2Value != null && !isNaN(k2Value) ? k2Value.toFixed(1) : '–';
+          const message = \`\${symbol} K2 \${k2Str}\${price ? ' · ' + formatCurrency(price) : ''}\`;
+
           const toast = document.createElement('div');
           toast.className = \`toast \${toastClass}\`;
           toast.innerHTML = \`
@@ -8985,10 +8955,9 @@ Use this to create a new preset filter button that applies these exact filter se
             </div>
             <button class="toast-close" onclick="this.parentElement.remove()">×</button>
           \`;
-          
+
           toastContainer.appendChild(toast);
-          
-          // Auto-remove after 5 seconds
+
           setTimeout(() => {
             toast.classList.add('hiding');
             setTimeout(() => {
@@ -8997,6 +8966,32 @@ Use this to create a new preset filter button that applies these exact filter se
               }
             }, 300);
           }, 5000);
+        }
+
+        function checkK2CrossToasts(alert) {
+          if (!alert || !alert.symbol) return;
+
+          const symbol = alert.symbol;
+          const t = getActiveTriStoch(alert) || alert.triStoch;
+          const k2 = getTriK2Value(t);
+          if (k2 === null) return;
+
+          const prevK2 = previousK2Values[symbol];
+          if (prevK2 === undefined) {
+            previousK2Values[symbol] = k2;
+            return;
+          }
+
+          K2_CROSS_LEVELS.forEach(level => {
+            if (prevK2 < level && k2 >= level) {
+              showK2CrossToast(symbol, level, 'crossover', alert.price, k2);
+            }
+            if (prevK2 > level && k2 <= level) {
+              showK2CrossToast(symbol, level, 'crossunder', alert.price, k2);
+            }
+          });
+
+          previousK2Values[symbol] = k2;
         }
         
         // Toggle Stoch history overlay
@@ -9223,34 +9218,9 @@ Use this to create a new preset filter button that applies these exact filter se
             const response = await fetch('/alerts');
             const data = await response.json();
             
-            // Check for preset matches in the fetched data
             if (Array.isArray(data)) {
               data.forEach(alert => {
-                // Check preset filter matches
-                const currentMatches = checkPresetMatches(alert);
-                const symbol = alert.symbol;
-                
-                // Initialize previous matches for this symbol if not exists
-                if (!previousPresetMatches[symbol]) {
-                  previousPresetMatches[symbol] = [];
-                }
-                
-                const prevMatches = previousPresetMatches[symbol];
-                
-                // Check for new matches (presets that weren't matched before)
-                currentMatches.forEach(preset => {
-                  if (!prevMatches.includes(preset)) {
-                    // New match detected - show toast (skip frequent / high-volume presets)
-                    if (preset !== 'up' && preset !== 'down' && preset !== 'breakHigh' && preset !== 'breakLow' && preset !== 'belowEmas' && preset !== 'aboveEmas') {
-                      showPresetMatchToast(symbol, preset, alert.price);
-                    }
-                  }
-                });
-                
-                // Update previous matches
-                previousPresetMatches[symbol] = currentMatches;
-                
-                // Check for stochastic events
+                checkK2CrossToasts(alert);
                 checkStochEvents(alert);
               });
             }
@@ -9318,7 +9288,7 @@ Use this to create a new preset filter button that applies these exact filter se
         eventSource.onmessage = function(event) {
           console.log('📡 Received real-time update:', event.data);
           
-          // Parse the event data to check for ORB crossovers and preset matches
+          // Parse the event data to check for K2 level crosses and stoch events
           try {
             const update = JSON.parse(event.data);
             
@@ -9338,32 +9308,8 @@ Use this to create a new preset filter button that applies these exact filter se
             }
 
             if (update.type === 'alert' && update.data) {
-              // Check preset filter matches
-              const currentMatches = checkPresetMatches(update.data);
-              const symbol = update.data.symbol;
-              
-              if (symbol) {
-                // Initialize previous matches for this symbol if not exists
-                if (!previousPresetMatches[symbol]) {
-                  previousPresetMatches[symbol] = [];
-                }
-                
-                const prevMatches = previousPresetMatches[symbol];
-                
-                // Check for new matches (presets that weren't matched before)
-                currentMatches.forEach(preset => {
-                  if (!prevMatches.includes(preset)) {
-                    // New match detected - show toast (skip 'up' and 'down' presets)
-                    if (preset !== 'up' && preset !== 'down') {
-                      showPresetMatchToast(symbol, preset, update.data.price);
-                    }
-                  }
-                });
-                
-                // Update previous matches
-                previousPresetMatches[symbol] = currentMatches;
-                
-                // Check for stochastic events
+              if (update.data.symbol) {
+                checkK2CrossToasts(update.data);
                 checkStochEvents(update.data);
               }
             }

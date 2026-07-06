@@ -71,6 +71,18 @@ enableMidZone  = input.bool(true, "啟用 40-60 中軸入場", group=grpEntry)
 midZoneLo      = input.int(40, "中軸下限", minval=0, maxval=100, group=grpEntry)
 midZoneHi      = input.int(60, "中軸上限", minval=0, maxval=100, group=grpEntry)
 inMidZone      = stochK >= midZoneLo and stochK <= midZoneHi and stochD >= midZoneLo and stochD <= midZoneHi
+shortFirstOnly = input.bool(true, "Short 僅首日 crossunder", group=grpEntry,
+     tooltip="盤前 crossunder 優先於開盤後第一個；每日只入場一次")
+pmStartH       = input.int(4,  "盤前開始 (ET 時)", minval=0, maxval=23, group=grpEntry)
+pmStartM       = input.int(0,  "盤前開始 (ET 分)", minval=0, maxval=59, group=grpEntry)
+pmEndH         = input.int(9,  "盤前結束 (ET 時)", minval=0, maxval=23, group=grpEntry)
+pmEndM         = input.int(30, "盤前結束 (ET 分)", minval=0, maxval=59, group=grpEntry)
+
+curHM     = hour(time, sessionTZ) * 100 + minute(time, sessionTZ)
+pmStart   = pmStartH * 100 + pmStartM
+pmEnd     = pmEndH * 100 + pmEndM
+inPM      = curHM >= pmStart and curHM < pmEnd
+isFirstRTH = inRTH and not inRTH[1]
 
 longExtreme    = ta.crossover(stochK, stochD) and stochK > 80 and stochD > 80
 longMid        = enableMidZone and ta.crossover(stochK, stochD) and inMidZone
@@ -80,11 +92,34 @@ shortExtreme   = ta.crossunder(stochK, stochD) and stochK < 20 and stochD < 20
 shortMid       = enableMidZone and ta.crossunder(stochK, stochD) and inMidZone
 shortCondition = shortExtreme or shortMid
 
+dayKey = year(time, sessionTZ) * 10000 + month(time, sessionTZ) * 100 + dayofmonth(time, sessionTZ)
+var int  shortDayKey       = na
+var bool pmShortCrossToday = false
+var bool pmShortWasExtreme = false
+var bool shortFirstTaken   = false
+
+if dayKey != shortDayKey
+    shortDayKey       := dayKey
+    pmShortCrossToday := false
+    pmShortWasExtreme := false
+    shortFirstTaken   := false
+
+if inPM and shortCondition
+    pmShortCrossToday := true
+    pmShortWasExtreme := shortExtreme
+
+pmOpenShort   = shortFirstOnly and isFirstRTH and pmShortCrossToday and canEnter and not shortFirstTaken
+rthFirstShort = shortFirstOnly and shortCondition and canEnter and not pmShortCrossToday and not shortFirstTaken
+legacyShort   = not shortFirstOnly and shortCondition and canEnter
+shortEntry    = pmOpenShort or rthFirstShort or legacyShort
+shortComment  = pmOpenShort ? (pmShortWasExtreme ? "Short PM OS" : "Short PM Mid") : shortExtreme ? "Short OS" : "Short Mid"
+
 if (longCondition and canEnter)
     strategy.entry("Long", strategy.long, comment=longExtreme ? "Long OB" : "Long Mid")
 
-if (shortCondition and canEnter)
-    strategy.entry("Short", strategy.short, comment=shortExtreme ? "Short OS" : "Short Mid")
+if shortEntry
+    shortFirstTaken := true
+    strategy.entry("Short", strategy.short, comment=shortComment)
 
 // === 階梯止盈執行（入場後）===
 inLong   = strategy.position_size > 0
@@ -230,13 +265,14 @@ if (useTrendFilter)
 bgcolor(not canTrade ? color.new(color.gray, 92) : na, title="盤外時段")
 bgcolor(canTrade and useDayRules and not inEntryWindow ? color.new(color.gray, 88) : na, title="14:30 後禁入場")
 bgcolor(canEnter and longCondition ? color.new(color.green, 85) : na)
-bgcolor(canEnter and shortCondition ? color.new(color.red, 85) : na)
+bgcolor(canEnter and shortEntry ? color.new(color.red, 85) : na)
 
 // 警報
 alertcondition(longExtreme and canEnter, "Long 入場 OB", "Stoch Long 超買區")
 alertcondition(longMid and canEnter, "Long 入場 Mid", "Stoch Long 40-60")
-alertcondition(shortExtreme and canEnter, "Short 入場 OS", "Stoch Short 超賣區")
-alertcondition(shortMid and canEnter, "Short 入場 Mid", "Stoch Short 40-60")
+alertcondition(shortEntry and shortExtreme, "Short 入場 OS", "Stoch Short 超賣區")
+alertcondition(shortEntry and shortMid, "Short 入場 Mid", "Stoch Short 40-60")
+alertcondition(pmOpenShort, "Short 開盤 PM", "Stoch Short 盤前 crossunder 開盤入場")
 alertcondition(useDayRules and is3pmExit and strategy.position_size != 0, "15:00 平倉", "15:00 全部平倉")
 alertcondition(useStopLoss and strategy.position_size > 0 and low <= strategy.position_avg_price * (1.0 - stopLossPct / 100.0), "Long 止損", "Long SL")
 alertcondition(useStopLoss and strategy.position_size < 0 and high >= strategy.position_avg_price * (1.0 + stopLossPct / 100.0), "Short 止損", "Short SL")
