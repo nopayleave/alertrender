@@ -6644,7 +6644,7 @@ app.get('/', (req, res) => {
             return \`
               <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}"\${tvSymbolAttr ? \` data-tv-symbol="\${tvSymbolAttr}"\` : ''}\${exchangeAttr ? \` data-exchange="\${exchangeAttr}"\` : ''} title="\${escapeHtmlAttr(cardTitle)}">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
+                  <span class="text-xs font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
                     \${crossTag ? \`<span class="\${crossClass} font-bold">\${crossTag}</span><span class="text-muted-foreground">|</span>\` : ''}
                     \${pineLabelTag ? \`<span class="\${pineLabelClass}">\${pineLabelTag}</span><span class="text-muted-foreground">|</span>\` : ''}
