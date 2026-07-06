@@ -4603,28 +4603,6 @@ app.get('/', (req, res) => {
         <!-- Filters sidebar — fixed width, scrollable -->
         <aside id="filterSidebar" class="w-64 bg-[hsl(0,0%,4%)] border-r border-border flex flex-col shrink-0 overflow-y-auto scrollbar-thin">
           <div class="p-2">
-                <!-- Search input - iOS style -->
-                <div class="relative mb-2">
-                  <input 
-                    type="text" 
-                    id="searchInput" 
-                    placeholder="SEARCH TICKER..." 
-                    class="w-full pl-2 pr-8 py-1.5 bg-background border border-border text-xs font-terminal text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                    onkeyup="filterAlerts()"
-                    oninput="toggleClearButton()"
-                  />
-                  <button 
-                    id="clearButton" 
-                    onclick="clearSearch()" 
-                    class="absolute right-3 top-1/2 transform -translate-y-1/2 min-w-[22px] min-h-[22px] w-5 h-5 flex items-center justify-center rounded-sm bg-muted-foreground/20 hover:bg-muted-foreground/30 text-muted-foreground hover:text-foreground transition-all hidden"
-                    aria-label="Clear search"
-                  >
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                </div>
-                
                 <!-- Range column (ORB / VWAP / bands) -->
                 <div class="mb-2 filter-section">
                   <div class="flex items-center justify-between mb-3">
@@ -4948,6 +4926,27 @@ app.get('/', (req, res) => {
             <button id="presetClear" onclick="clearAllFilters()" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-border hover:bg-white/5 active:scale-95 transition-all text-muted-foreground" title="Clear all presets and filters">
               CLEAR
             </button>
+            <div class="flex-1 min-w-2"></div>
+            <div class="relative shrink-0 w-44 sm:w-52">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="SEARCH TICKER..."
+                class="w-full pl-2 pr-8 py-1 bg-background border border-border text-xs font-terminal text-foreground placeholder-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
+                onkeyup="filterAlerts()"
+                oninput="toggleClearButton()"
+              />
+              <button
+                id="clearButton"
+                onclick="clearSearch()"
+                class="absolute right-2 top-1/2 transform -translate-y-1/2 min-w-[22px] min-h-[22px] w-5 h-5 flex items-center justify-center rounded-sm bg-muted-foreground/20 hover:bg-muted-foreground/30 text-muted-foreground hover:text-foreground transition-all hidden"
+                aria-label="Clear search"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
           </div>
           <div id="cardSortBar" class="hidden items-center gap-2 px-2 py-1.5 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
             <span class="text-[10px] font-terminal uppercase tracking-wide text-muted-foreground">Card Sort</span>
@@ -6432,7 +6431,7 @@ app.get('/', (req, res) => {
           const container = document.getElementById('masonryContainer');
           if (!container || container.dataset.kanbanHandlersBound === '1') return;
           container.dataset.kanbanHandlersBound = '1';
-          const kanbanDragState = { active: false, moved: false, wrap: null, startX: 0, scrollLeft: 0 };
+          const kanbanDragState = { active: false, moved: false, wrap: null, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 };
 
           function endKanbanDrag() {
             if (kanbanDragState.wrap) kanbanDragState.wrap.classList.remove('is-dragging');
@@ -6446,17 +6445,21 @@ app.get('/', (req, res) => {
             kanbanDragState.moved = false;
             kanbanDragState.wrap = wrap;
             kanbanDragState.startX = e.pageX;
+            kanbanDragState.startY = e.pageY;
             kanbanDragState.scrollLeft = wrap.scrollLeft;
+            kanbanDragState.scrollTop = wrap.scrollTop;
             wrap.classList.add('is-dragging');
           });
 
           document.addEventListener('mousemove', (e) => {
             if (!kanbanDragState.active || !kanbanDragState.wrap) return;
             const dx = e.pageX - kanbanDragState.startX;
-            if (Math.abs(dx) > 3) kanbanDragState.moved = true;
+            const dy = e.pageY - kanbanDragState.startY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) kanbanDragState.moved = true;
             if (!kanbanDragState.moved) return;
             e.preventDefault();
             kanbanDragState.wrap.scrollLeft = kanbanDragState.scrollLeft - dx;
+            kanbanDragState.wrap.scrollTop = kanbanDragState.scrollTop - dy;
           });
 
           document.addEventListener('mouseup', endKanbanDrag);
@@ -6468,16 +6471,20 @@ app.get('/', (req, res) => {
             kanbanDragState.moved = false;
             kanbanDragState.wrap = wrap;
             kanbanDragState.startX = e.touches[0].pageX;
+            kanbanDragState.startY = e.touches[0].pageY;
             kanbanDragState.scrollLeft = wrap.scrollLeft;
+            kanbanDragState.scrollTop = wrap.scrollTop;
             wrap.classList.add('is-dragging');
           }, { passive: true });
 
           document.addEventListener('touchmove', (e) => {
             if (!kanbanDragState.active || !kanbanDragState.wrap || !e.touches[0]) return;
             const dx = e.touches[0].pageX - kanbanDragState.startX;
-            if (Math.abs(dx) > 3) kanbanDragState.moved = true;
+            const dy = e.touches[0].pageY - kanbanDragState.startY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) kanbanDragState.moved = true;
             if (!kanbanDragState.moved) return;
             kanbanDragState.wrap.scrollLeft = kanbanDragState.scrollLeft - dx;
+            kanbanDragState.wrap.scrollTop = kanbanDragState.scrollTop - dy;
           }, { passive: true });
 
           document.addEventListener('touchend', endKanbanDrag);
