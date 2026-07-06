@@ -4114,14 +4114,16 @@ app.get('/', (req, res) => {
           align-self: start;
           max-height: calc(100vh - 36px - 108px - 16px);
           overflow: hidden;
+          padding: 0 12px 12px;
+          gap: 0;
         }
         .kanban-board:not(.kanban-board-vertical) .kanban-column-header {
           position: sticky;
           top: 0;
           z-index: 10;
           flex-shrink: 0;
-          margin: -12px -12px 0;
-          padding: 12px 12px 8px;
+          margin: 0 -12px 0;
+          padding: 8px 12px 8px;
           background: hsl(0 0% 10%);
           border-radius: 12px 12px 0 0;
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -4132,6 +4134,7 @@ app.get('/', (req, res) => {
           flex: 1;
           min-height: 0;
           scrollbar-width: thin;
+          padding-top: 8px;
         }
         .kanban-board:not(.kanban-board-vertical) .kanban-column-cards::-webkit-scrollbar {
           width: 4px;
@@ -6619,22 +6622,34 @@ app.get('/', (req, res) => {
           return 'grid-column:' + col + ';grid-row:' + row + ';';
         }
 
-        function captureKanbanStackScrollPositions(container) {
-          const positions = {};
+        function captureKanbanScrollPositions(container) {
+          const positions = { stack: {}, column: {}, view: 0 };
           if (!container) return positions;
           container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
             const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
-            if (colId) positions[colId] = wrap.scrollLeft;
+            if (colId) positions.stack[colId] = wrap.scrollLeft;
           });
+          container.querySelectorAll('.kanban-column > .kanban-column-cards').forEach(cards => {
+            const colId = cards.closest('[data-column-id]')?.dataset.columnId;
+            if (colId) positions.column[colId] = cards.scrollTop;
+          });
+          const masonryView = document.getElementById('masonryView');
+          if (masonryView) positions.view = masonryView.scrollTop;
           return positions;
         }
 
-        function restoreKanbanStackScrollPositions(container, positions) {
+        function restoreKanbanScrollPositions(container, positions) {
           if (!container || !positions) return;
           container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
             const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
-            if (colId != null && positions[colId] != null) wrap.scrollLeft = positions[colId];
+            if (colId != null && positions.stack[colId] != null) wrap.scrollLeft = positions.stack[colId];
           });
+          container.querySelectorAll('.kanban-column > .kanban-column-cards').forEach(cards => {
+            const colId = cards.closest('[data-column-id]')?.dataset.columnId;
+            if (colId != null && positions.column[colId] != null) cards.scrollTop = positions.column[colId];
+          });
+          const masonryView = document.getElementById('masonryView');
+          if (masonryView && positions.view != null) masonryView.scrollTop = positions.view;
         }
 
         function sortKanbanByD2(columnId) {
@@ -6646,7 +6661,7 @@ app.get('/', (req, res) => {
         function renderMasonry() {
           const masonryContainer = document.getElementById('masonryContainer');
           const lastUpdate = document.getElementById('lastUpdate');
-          const kanbanStackScroll = captureKanbanStackScrollPositions(masonryContainer);
+          const kanbanScrollPositions = captureKanbanScrollPositions(masonryContainer);
           applyTriTimeframeModeToAlerts();
           
           if (alertsData.length === 0) {
@@ -6998,7 +7013,7 @@ app.get('/', (req, res) => {
           }).join('');
           
           requestAnimationFrame(() => {
-            restoreKanbanStackScrollPositions(masonryContainer, kanbanStackScroll);
+            restoreKanbanScrollPositions(masonryContainer, kanbanScrollPositions);
           });
           
           // Update last update time
