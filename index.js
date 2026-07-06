@@ -306,6 +306,136 @@ function getTriK2Direction(t) {
   return t.k2Direction || t.k3Direction || null
 }
 
+const K2_CROSS_LEVELS = [10, 20, 50, 80, 90]
+const K2_CROSS_RETENTION_MS = 24 * 60 * 60 * 1000
+let k2CrossHistory = [] // [{ symbol, eventType, eventData, price, timestamp }, ...]
+let previousTriK2Values = {} // { 'SYMBOL:Interday': number }
+
+function k2CrossHistoryDedupeKey(item) {
+  const d = item.eventData || {}
+  const bucket = Math.floor((item.timestamp || 0) / 300000)
+  return [item.symbol, d.level, d.direction, d.stochTimeframe || 'Interday', bucket].join('|')
+}
+
+function trimK2CrossHistory() {
+  const dayAgo = Date.now() - K2_CROSS_RETENTION_MS
+  k2CrossHistory = k2CrossHistory.filter(item => item.timestamp >= dayAgo)
+}
+
+function buildK2CrossHistoryItem(symbol, level, direction, prevK2, k2, meta) {
+  const isCrossover = direction === 'crossover'
+  return {
+    symbol,
+    eventType: 'k2_cross',
+    eventData: {
+      description: isCrossover ? `K2 Crossover ${level}` : `K2 Crossunder ${level}`,
+      level,
+      direction,
+      k1Value: meta.k1,
+      k2Value: k2,
+      prevK2Value: prevK2,
+      d1Value: meta.k1,
+      d2Value: k2,
+      isBullish: isCrossover,
+      stochTimeframe: meta.stochTimeframe || 'Interday'
+    },
+    price: meta.price != null ? meta.price : null,
+    timestamp: meta.timestamp || Date.now()
+  }
+}
+
+function recordK2CrossesForSymbol(symbol, prevK2, k2, meta) {
+  if (prevK2 == null || k2 == null || prevK2 === k2) return []
+  const recorded = []
+  const seen = new Set(k2CrossHistory.map(k2CrossHistoryDedupeKey))
+  K2_CROSS_LEVELS.forEach(level => {
+    const tryAdd = (direction) => {
+      const item = buildK2CrossHistoryItem(symbol, level, direction, prevK2, k2, meta)
+      const key = k2CrossHistoryDedupeKey(item)
+      if (!seen.has(key)) {
+        k2CrossHistory.unshift(item)
+        seen.add(key)
+        recorded.push(item)
+      }
+    }
+    if (prevK2 < level && k2 >= level) tryAdd('crossover')
+    if (prevK2 > level && k2 <= level) tryAdd('crossunder')
+  })
+  if (recorded.length) {
+    k2CrossHistory.sort((a, b) => b.timestamp - a.timestamp)
+    trimK2CrossHistory()
+  }
+  return recorded
+}
+
+function processTriK2CrossDetection(alert, triStochModes, triStoch, existingTriRow) {
+  if (!alert?.symbol) return
+  const ts = Date.now()
+  const modesToCheck = []
+
+  if (triStochModes) {
+    for (const [mode, payload] of Object.entries(triStochModes)) {
+      const k2 = getTriK2Value(payload)
+      if (k2 != null) modesToCheck.push({ mode, k2, k1: getTriK1Value(payload) })
+    }
+  } else if (triStoch) {
+    const k2 = getTriK2Value(triStoch)
+    const mode = normalizeTriTimeframeMode(triStoch.stochTimeframe || 'Interday')
+    if (k2 != null) modesToCheck.push({ mode, k2, k1: getTriK1Value(triStoch) })
+  }
+
+  modesToCheck.forEach(({ mode, k2, k1 }) => {
+    const stateKey = `${alert.symbol}:${mode}`
+    let prevK2 = previousTriK2Values[stateKey]
+    if (prevK2 == null && existingTriRow) {
+      const existingModes = existingTriRow.triStochModes
+      let existingPayload = existingModes?.[mode] || null
+      if (!existingPayload && existingTriRow.triStoch) {
+        const legacyMode = normalizeTriTimeframeMode(existingTriRow.triStoch.stochTimeframe || 'Interday')
+        if (legacyMode === mode) existingPayload = existingTriRow.triStoch
+      }
+      prevK2 = getTriK2Value(existingPayload)
+    }
+    const recorded = recordK2CrossesForSymbol(alert.symbol, prevK2, k2, {
+      k1,
+      price: alert.price,
+      timestamp: ts,
+      stochTimeframe: mode
+    })
+    if (recorded.length) {
+      console.log(`📊 K2 cross recorded for ${alert.symbol} (${mode}): ${prevK2} → ${k2} (${recorded.length} event(s))`)
+    }
+    previousTriK2Values[stateKey] = k2
+  })
+}
+
+function backfillK2CrossHistoryFromTriSamples() {
+  if (!triStochK1K2History || typeof triStochK1K2History !== 'object') return
+  let added = 0
+  for (const [symbol, history] of Object.entries(triStochK1K2History)) {
+    const sorted = [...(history || [])]
+      .filter(s => getTriK2Value({ k2: s.k2, k3: s.k3 }) != null)
+      .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+    for (let i = 1; i < sorted.length; i++) {
+      const prevK2 = getTriK2Value({ k2: sorted[i - 1].k2, k3: sorted[i - 1].k3 })
+      const k2 = getTriK2Value({ k2: sorted[i].k2, k3: sorted[i].k3 })
+      const k1 = getTriK1Value({ k1: sorted[i].k1, ovK: sorted[i].k1 })
+      const ts = sorted[i].timestamp || Date.now()
+      const recorded = recordK2CrossesForSymbol(symbol, prevK2, k2, {
+        k1,
+        timestamp: ts,
+        stochTimeframe: 'Interday'
+      })
+      added += recorded.length
+    }
+    if (sorted.length > 0) {
+      const lastK2 = getTriK2Value({ k2: sorted[sorted.length - 1].k2, k3: sorted[sorted.length - 1].k3 })
+      if (lastK2 != null) previousTriK2Values[`${symbol}:Interday`] = lastK2
+    }
+  }
+  if (added > 0) console.log(`📊 Backfilled ${added} K2 cross event(s) from tri stoch samples`)
+}
+
 function buildTriModePayload(k1, d1, k2, d2, k1Dir, d1Dir, k2Dir, d2Dir, mode) {
   const k1n = parseTriWebhookVal(k1)
   const d1n = parseTriWebhookVal(d1)
@@ -492,6 +622,8 @@ function saveDataToDatabase() {
         dualStochDataStorage,
         dualStochHistory,
         triStochK1K2History,
+        k2CrossHistory,
+        previousTriK2Values,
         bigTrendDay,
         starredSymbols,
         previousTrends,
@@ -558,6 +690,8 @@ function loadDataFromDatabase() {
           case 'dualStochHistory': dualStochHistory = value; break
           case 'triStochK1K2History': triStochK1K2History = value; break
           case 'triStochK1K3History': triStochK1K2History = value; break
+          case 'k2CrossHistory': k2CrossHistory = value; break
+          case 'previousTriK2Values': previousTriK2Values = value; break
           case 'bigTrendDay': bigTrendDay = value; break
           case 'starredSymbols': starredSymbols = value; break
           case 'previousTrends': previousTrends = value; break
@@ -1803,6 +1937,8 @@ function processWebhookAlert(alert) {
       }
     }
 
+    processTriK2CrossDetection(alert, triStochModes, triStoch, existingTriRow)
+
     const entrySig = String(alert.entrySignal || '').toLowerCase()
     const entryUpdate = (entrySig === 'long' || entrySig === 'short')
       ? { entrySignal: entrySig, entrySignalSet: alert.entrySet || null, entrySignalAt: Date.now() }
@@ -2580,6 +2716,16 @@ app.get('/alerts/history', (req, res) => {
   res.json(alertsHistory)
 })
 
+app.get('/k2-cross-history', (req, res) => {
+  const dayAgo = Date.now() - K2_CROSS_RETENTION_MS
+  const mode = req.query.mode ? normalizeTriTimeframeMode(req.query.mode) : null
+  let items = k2CrossHistory.filter(item => item.timestamp >= dayAgo)
+  if (mode) {
+    items = items.filter(item => (item.eventData?.stochTimeframe || 'Interday') === mode)
+  }
+  res.json(items)
+})
+
 // Debug endpoint - check what data is stored
 app.get('/debug', (req, res) => {
   res.json({
@@ -2615,6 +2761,8 @@ app.post('/reset-alerts', (req, res) => {
   stochDetailDataStorage = {}
   dualStochDataStorage = {}
   triStochK1K2History = {}
+  k2CrossHistory = []
+  previousTriK2Values = {}
   bigTrendDay = {}
   patternData = {}
   stochSessionTracker = {}
@@ -5061,21 +5209,21 @@ app.get('/', (req, res) => {
             <div class="orb-history-filter-group">
               <label class="orb-history-filter-label">K2 Crossover:</label>
               <div class="orb-history-filter-chips">
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 10, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_10">10</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 20, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_20">20</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 50, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_50">50</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 80, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_80">80</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossover', 90, this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_90">90</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_10">10</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_20">20</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_50">50</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_80">80</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="k2Cross" data-value="crossover_90">90</button>
               </div>
             </div>
             <div class="orb-history-filter-group">
               <label class="orb-history-filter-label">K2 Crossunder:</label>
               <div class="orb-history-filter-chips">
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 10, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_10">10</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 20, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_20">20</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 50, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_50">50</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 80, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_80">80</button>
-                <button type="button" onclick="toggleStochHistoryK2Filter('crossunder', 90, this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_90">90</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_10">10</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_20">20</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_50">50</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_80">80</button>
+                <button type="button" onclick="toggleStochHistoryK2FilterFromEl(this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="k2Cross" data-value="crossunder_90">90</button>
               </div>
             </div>
             <div class="orb-history-filter-group">
@@ -5213,7 +5361,7 @@ app.get('/', (req, res) => {
         // Stoch history filter state
         let stochHistoryFilters = {
           eventType: 'all', // 'all', 'direction_change', 'preset_match', 'trend_change'
-          k2Cross: null, // null or 'crossover_10', 'crossunder_50', etc.
+          k2Cross: new Set(), // e.g. 'crossover_10', 'crossunder_50'
           tickers: new Set()
         };
 
@@ -5620,6 +5768,7 @@ app.get('/', (req, res) => {
           activeTriTimeframeMode = normalizeTriTimeframeMode(activeTriTimeframeMode) === 'Interday' ? 'Swing' : 'Interday';
           localStorage.setItem('triTimeframeMode', activeTriTimeframeMode);
           updateTriTimeframeToggleUI();
+          fetchK2CrossHistoryFromServer();
           renderTable();
         }
 
@@ -6629,6 +6778,7 @@ app.get('/', (req, res) => {
           initKanbanCardHandlers();
           updateCardSortBarUI();
           loadStochHistoryFromStorage();
+          fetchK2CrossHistoryFromServer();
           applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
           initializeView(); // Initialize view mode
         });
@@ -9361,23 +9511,45 @@ Use this to create a new preset filter button that applies these exact filter se
             const saved = JSON.parse(raw).filter(item =>
               item && item.eventType === 'k2_cross' && item.timestamp >= dayAgo
             );
-            const seen = new Set(stochHistory.map(stochHistoryDedupeKey));
-            saved.forEach(item => {
-              const key = stochHistoryDedupeKey(item);
-              if (!seen.has(key)) {
-                stochHistory.push(item);
-                seen.add(key);
-              }
-            });
-            stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+            mergeK2CrossHistoryItems(saved);
           } catch (err) {
             console.warn('Could not load K2 cross history:', err);
           }
         }
 
+        function mergeK2CrossHistoryItems(items) {
+          if (!Array.isArray(items) || items.length === 0) return;
+          const seen = new Set(stochHistory.map(stochHistoryDedupeKey));
+          items.forEach(item => {
+            if (!item || item.eventType !== 'k2_cross') return;
+            const key = stochHistoryDedupeKey(item);
+            if (!seen.has(key)) {
+              stochHistory.push(item);
+              seen.add(key);
+            }
+          });
+          stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+        }
+
+        async function fetchK2CrossHistoryFromServer() {
+          try {
+            const mode = encodeURIComponent(normalizeTriTimeframeMode(activeTriTimeframeMode));
+            const res = await fetch('/k2-cross-history?mode=' + mode);
+            if (!res.ok) return;
+            const items = await res.json();
+            mergeK2CrossHistoryItems(items);
+            trimStochHistory();
+            persistK2CrossHistory();
+            refreshStochHistoryIfOpen();
+          } catch (err) {
+            console.warn('Could not fetch K2 cross history:', err);
+          }
+        }
+
         function stochHistoryDedupeKey(item) {
           const d = item.eventData || {};
-          return [item.symbol, item.eventType, item.timestamp, d.level, d.direction].join('|');
+          const bucket = Math.floor((item.timestamp || 0) / 300000);
+          return [item.symbol, item.eventType, d.level, d.direction, d.stochTimeframe || 'Interday', bucket].join('|');
         }
 
         function persistK2CrossHistory() {
@@ -9407,29 +9579,6 @@ Use this to create a new preset filter button that applies these exact filter se
           persistK2CrossHistory();
         }
 
-        function recordK2CrossHistory(symbol, level, direction, alert, k2, prevK2) {
-          const t = getActiveTriStoch(alert) || alert.triStoch;
-          const k1 = getTriK1Value(t);
-          const isCrossover = direction === 'crossover';
-          stochHistory.unshift({
-            symbol: symbol,
-            eventType: 'k2_cross',
-            eventData: {
-              description: isCrossover ? 'K2 Crossover ' + level : 'K2 Crossunder ' + level,
-              level: level,
-              direction: direction,
-              k1Value: k1,
-              k2Value: k2,
-              prevK2Value: prevK2,
-              d1Value: k1,
-              d2Value: k2,
-              isBullish: isCrossover
-            },
-            price: alert.price,
-            timestamp: Date.now()
-          });
-        }
-
         function checkK2CrossToasts(alert) {
           if (!alert || !alert.symbol) return;
 
@@ -9448,12 +9597,10 @@ Use this to create a new preset filter button that applies these exact filter se
           K2_CROSS_LEVELS.forEach(level => {
             if (prevK2 < level && k2 >= level) {
               showK2CrossToast(symbol, level, 'crossover', alert.price, k2);
-              recordK2CrossHistory(symbol, level, 'crossover', alert, k2, prevK2);
               recorded = true;
             }
             if (prevK2 > level && k2 <= level) {
               showK2CrossToast(symbol, level, 'crossunder', alert.price, k2);
-              recordK2CrossHistory(symbol, level, 'crossunder', alert, k2, prevK2);
               recorded = true;
             }
           });
@@ -9461,8 +9608,7 @@ Use this to create a new preset filter button that applies these exact filter se
           previousK2Values[symbol] = k2;
 
           if (recorded) {
-            trimStochHistory();
-            refreshStochHistoryIfOpen();
+            fetchK2CrossHistoryFromServer();
           }
         }
         
@@ -9483,8 +9629,10 @@ Use this to create a new preset filter button that applies these exact filter se
           } else {
             overlay.classList.add('open');
             panel.classList.add('open');
-            renderStochHistoryTickerFilters();
-            renderStochHistory();
+            fetchK2CrossHistoryFromServer().then(() => {
+              renderStochHistoryTickerFilters();
+              renderStochHistory();
+            });
           }
         }
         
@@ -9497,8 +9645,19 @@ Use this to create a new preset filter button that applies these exact filter se
         }
         
         // Toggle Stoch history filter chip
+        function syncStochHistoryK2FilterChips() {
+          document.querySelectorAll('[data-filter="k2Cross"]').forEach(chip => {
+            chip.classList.toggle('active', stochHistoryFilters.k2Cross.has(chip.dataset.value));
+          });
+          if (stochHistoryFilters.k2Cross.size === 0) {
+            const allBtn = document.querySelector('[data-filter="eventType"][data-value="all"]');
+            if (allBtn) allBtn.classList.add('active');
+          }
+        }
+
         function clearStochHistoryK2FilterChips() {
-          document.querySelectorAll('[data-filter="k2Cross"]').forEach(chip => chip.classList.remove('active'));
+          stochHistoryFilters.k2Cross.clear();
+          syncStochHistoryK2FilterChips();
         }
 
         function toggleStochHistoryFilter(filterType, value, element) {
@@ -9508,22 +9667,25 @@ Use this to create a new preset filter button that applies these exact filter se
           
           stochHistoryFilters[filterType] = value;
           if (filterType === 'eventType') {
-            stochHistoryFilters.k2Cross = null;
             clearStochHistoryK2FilterChips();
           }
           
           applyStochHistoryFilters();
         }
 
-        function toggleStochHistoryK2Filter(direction, level, element) {
-          const filterKey = direction + '_' + level;
-          clearStochHistoryK2FilterChips();
-          document.querySelectorAll('[data-filter="eventType"]').forEach(chip => chip.classList.remove('active'));
-          
-          stochHistoryFilters.k2Cross = filterKey;
-          stochHistoryFilters.eventType = 'all';
-          element.classList.add('active');
-          
+        function toggleStochHistoryK2FilterFromEl(element) {
+          toggleStochHistoryK2Filter(element.dataset.value);
+        }
+
+        function toggleStochHistoryK2Filter(filterKey) {
+          if (stochHistoryFilters.k2Cross.has(filterKey)) {
+            stochHistoryFilters.k2Cross.delete(filterKey);
+          } else {
+            stochHistoryFilters.k2Cross.add(filterKey);
+            document.querySelectorAll('[data-filter="eventType"]').forEach(chip => chip.classList.remove('active'));
+            stochHistoryFilters.eventType = 'all';
+          }
+          syncStochHistoryK2FilterChips();
           applyStochHistoryFilters();
         }
         
@@ -9557,7 +9719,7 @@ Use this to create a new preset filter button that applies these exact filter se
             const isActive = stochHistoryFilters.tickers.has(symbol);
             const starred = isStarred(symbol);
             const safeSymbol = symbol.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-            const label = starred ? '★ ' + safeSymbol : safeSymbol;
+            const label = safeSymbol;
             html += '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-ticker' + (isActive ? ' active' : '') + (starred ? ' orb-filter-ticker-starred' : '') + '" data-filter="ticker" data-value="' + safeSymbol + '">' + label + '</button>';
           });
 
@@ -9597,13 +9759,15 @@ Use this to create a new preset filter button that applies these exact filter se
           
           // Apply filters
           let filteredHistory = stochHistory.filter(item => {
-            if (stochHistoryFilters.k2Cross) {
+            if (item.eventType === 'k2_cross') {
+              const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
+              if (tf !== normalizeTriTimeframeMode(activeTriTimeframeMode)) return false;
+            }
+            if (stochHistoryFilters.k2Cross.size > 0) {
               if (item.eventType !== 'k2_cross') return false;
               const d = item.eventData || {};
-              const parts = stochHistoryFilters.k2Cross.split('_');
-              const level = parseInt(parts[parts.length - 1], 10);
-              const dir = parts.slice(0, -1).join('_');
-              if (d.direction !== dir || d.level !== level) return false;
+              const key = d.direction + '_' + d.level;
+              if (!stochHistoryFilters.k2Cross.has(key)) return false;
             } else if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
               return false;
             }
@@ -9799,6 +9963,7 @@ Use this to create a new preset filter button that applies these exact filter se
             
             renderTable();
             startCountdown();
+            fetchK2CrossHistoryFromServer();
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
@@ -10562,6 +10727,7 @@ console.log('🔄 Initializing database...')
 if (initDatabase()) {
   console.log('🔄 Loading persisted data...')
   loadDataFromDatabase()
+  backfillK2CrossHistoryFromTriSamples()
   loadNotificationSettingsFromDb()
 } else {
   console.log('⚠️  Database initialization failed, starting with empty data')
