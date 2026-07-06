@@ -8294,6 +8294,24 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
+        // Built-in TV studies only (custom Pine from your layout cannot load in embed).
+        // Override anytime: localStorage.setItem('tvEmbedStudies', JSON.stringify([...]))
+        const TV_EMBED_DEFAULT_STUDIES = [
+          { id: 'Stochastic@tv-basicstudies', inputs: { length: 39, smoothK: 5, smoothD: 4 } },
+          { id: 'MASimple@tv-basicstudies', inputs: { length: 50 } },
+          { id: 'MASimple@tv-basicstudies', inputs: { length: 200 } }
+        ];
+
+        function getTradingViewEmbedStudies() {
+          try {
+            const raw = localStorage.getItem('tvEmbedStudies');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed) && parsed.length) return parsed;
+            }
+          } catch (_) {}
+          return TV_EMBED_DEFAULT_STUDIES;
+        }
 
         function normalizeTvChartSymbol(symbol, tvSymbol) {
           if (symbol != null && symbol !== '' && symbol !== 'N/A') {
@@ -8357,6 +8375,12 @@ Use this to create a new preset filter button that applies these exact filter se
             withdateranges: true,
             details: true,
             hotlist: false,
+            studies: getTradingViewEmbedStudies(),
+            studies_overrides: {
+              'stochastic.%k.color': '#22c55e',
+              'stochastic.%d.color': '#f59e0b',
+              'stochastic.hlines background': '#00000000'
+            },
             support_host: 'https://www.tradingview.com'
           };
           return 'https://s.tradingview.com/embed-widget/advanced-chart/?locale=en#' + encodeURIComponent(JSON.stringify(config));
