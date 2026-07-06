@@ -3994,14 +3994,39 @@ app.get('/', (req, res) => {
           gap: 12px;
         }
         .kanban-board-vertical .kanban-column-header {
-          flex: 0 0 72px;
+          flex: 0 0 56px;
           flex-direction: column;
           align-items: flex-start;
-          justify-content: flex-start;
-          gap: 6px;
-          padding-right: 10px;
+          justify-content: space-between;
+          gap: 0;
+          padding: 0 10px 0 0;
           border-right: 1px solid rgba(255, 255, 255, 0.08);
           align-self: stretch;
+          height: calc(4 * 38px + 3 * 10px);
+          box-sizing: border-box;
+        }
+        .kanban-stack-title-block {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+          line-height: 1.1;
+        }
+        .kanban-stack-band-title {
+          font-size: 14px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: hsl(40 10% 92%);
+        }
+        .kanban-stack-sort-indicator {
+          font-size: 12px;
+          font-weight: 600;
+          color: #22d3ee;
+          letter-spacing: 0.02em;
+        }
+        .kanban-board-vertical .kanban-column-count.kanban-stack-count {
+          align-self: flex-start;
+          margin-top: auto;
         }
         .kanban-column-cards {
           display: flex;
@@ -4015,6 +4040,11 @@ app.get('/', (req, res) => {
           overflow-x: auto;
           overflow-y: hidden;
           height: calc(4 * 38px + 3 * 10px);
+          cursor: grab;
+          user-select: none;
+        }
+        .kanban-board-vertical .kanban-column-cards-wrap.is-dragging {
+          cursor: grabbing;
         }
         .kanban-board-vertical .kanban-column-cards {
           display: grid;
@@ -4494,6 +4524,9 @@ app.get('/', (req, res) => {
           <span id="tickerCount" class="font-terminal text-[10px] font-bold text-amber-400 px-2.5">0</span>
         </div>
         <div class="flex-1"></div>
+        <button id="filterSidebarToggle" onclick="toggleFilterSidebar()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Toggle filter panel">
+          <span id="filterSidebarToggleIcon" class="text-sm">☰</span>
+        </button>
         <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Switch to Card View">
           <span id="viewIcon" class="text-sm">📋</span>
         </button>
@@ -4863,8 +4896,8 @@ app.get('/', (req, res) => {
               CLEAR
             </button>
             <div class="flex-1"></div>
-            <button onclick="document.getElementById('filterSidebar').classList.toggle('hidden')" class="px-2 py-1 text-sm font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
-              ☰ FILTERS
+            <button id="filterSidebarTogglePreset" onclick="toggleFilterSidebar()" class="px-2 py-1 text-sm font-terminal text-muted-foreground hover:text-foreground border border-border hover:bg-white/5 transition-colors" title="Toggle filters panel">
+              <span id="filterSidebarTogglePresetLabel">☰ FILTERS</span>
             </button>
           </div>
           <div id="cardSortBar" class="hidden items-center gap-2 px-2 py-1.5 bg-[hsl(0,0%,4%)] border-b border-border shrink-0">
@@ -6351,7 +6384,63 @@ app.get('/', (req, res) => {
           const container = document.getElementById('masonryContainer');
           if (!container || container.dataset.kanbanHandlersBound === '1') return;
           container.dataset.kanbanHandlersBound = '1';
+          const kanbanDragState = { active: false, moved: false, wrap: null, startX: 0, scrollLeft: 0 };
+
+          function endKanbanDrag() {
+            if (kanbanDragState.wrap) kanbanDragState.wrap.classList.remove('is-dragging');
+            kanbanDragState.active = false;
+          }
+
+          container.addEventListener('mousedown', (e) => {
+            const wrap = e.target.closest('.kanban-column-cards-wrap');
+            if (!wrap || e.button !== 0) return;
+            kanbanDragState.active = true;
+            kanbanDragState.moved = false;
+            kanbanDragState.wrap = wrap;
+            kanbanDragState.startX = e.pageX;
+            kanbanDragState.scrollLeft = wrap.scrollLeft;
+            wrap.classList.add('is-dragging');
+          });
+
+          document.addEventListener('mousemove', (e) => {
+            if (!kanbanDragState.active || !kanbanDragState.wrap) return;
+            const dx = e.pageX - kanbanDragState.startX;
+            if (Math.abs(dx) > 3) kanbanDragState.moved = true;
+            if (!kanbanDragState.moved) return;
+            e.preventDefault();
+            kanbanDragState.wrap.scrollLeft = kanbanDragState.scrollLeft - dx;
+          });
+
+          document.addEventListener('mouseup', endKanbanDrag);
+
+          container.addEventListener('touchstart', (e) => {
+            const wrap = e.target.closest('.kanban-column-cards-wrap');
+            if (!wrap || !e.touches[0]) return;
+            kanbanDragState.active = true;
+            kanbanDragState.moved = false;
+            kanbanDragState.wrap = wrap;
+            kanbanDragState.startX = e.touches[0].pageX;
+            kanbanDragState.scrollLeft = wrap.scrollLeft;
+            wrap.classList.add('is-dragging');
+          }, { passive: true });
+
+          document.addEventListener('touchmove', (e) => {
+            if (!kanbanDragState.active || !kanbanDragState.wrap || !e.touches[0]) return;
+            const dx = e.touches[0].pageX - kanbanDragState.startX;
+            if (Math.abs(dx) > 3) kanbanDragState.moved = true;
+            if (!kanbanDragState.moved) return;
+            kanbanDragState.wrap.scrollLeft = kanbanDragState.scrollLeft - dx;
+          }, { passive: true });
+
+          document.addEventListener('touchend', endKanbanDrag);
+
           container.addEventListener('click', (e) => {
+            if (kanbanDragState.moved) {
+              e.preventDefault();
+              e.stopPropagation();
+              kanbanDragState.moved = false;
+              return;
+            }
             const card = e.target.closest('.kanban-card');
             if (!card || !card.dataset.symbol) return;
             toggleStar(card.dataset.symbol);
@@ -6363,6 +6452,34 @@ app.get('/', (req, res) => {
             e.stopPropagation();
             openTradingViewChart(card.dataset.symbol);
           });
+        }
+
+        function applyFilterSidebarState(hidden) {
+          const sidebar = document.getElementById('filterSidebar');
+          if (!sidebar) return;
+          sidebar.classList.toggle('hidden', hidden);
+          localStorage.setItem('filterSidebarHidden', hidden ? 'true' : 'false');
+          updateFilterSidebarToggleUI();
+        }
+
+        function toggleFilterSidebar() {
+          const sidebar = document.getElementById('filterSidebar');
+          if (!sidebar) return;
+          applyFilterSidebarState(!sidebar.classList.contains('hidden'));
+        }
+
+        function updateFilterSidebarToggleUI() {
+          const hidden = document.getElementById('filterSidebar')?.classList.contains('hidden');
+          const icon = document.getElementById('filterSidebarToggleIcon');
+          const presetLabel = document.getElementById('filterSidebarTogglePresetLabel');
+          const topBtn = document.getElementById('filterSidebarToggle');
+          const presetBtn = document.getElementById('filterSidebarTogglePreset');
+          if (icon) icon.textContent = hidden ? '☰' : '◧';
+          if (presetLabel) presetLabel.textContent = hidden ? '☰ FILTERS' : '◧ FILTERS';
+          if (topBtn) topBtn.title = hidden ? 'Show filter panel' : 'Hide filter panel';
+          if (presetBtn) presetBtn.title = hidden ? 'Show filter panel' : 'Hide filter panel';
+          if (topBtn) topBtn.classList.toggle('text-amber-400', !hidden);
+          if (presetBtn) presetBtn.classList.toggle('text-amber-400', !hidden);
         }
 
         function initPresetStripTooltips() {
@@ -6401,6 +6518,7 @@ app.get('/', (req, res) => {
           initPresetStripTooltips();
           initKanbanCardHandlers();
           updateCardSortBarUI();
+          applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
           initializeView(); // Initialize view mode
         });
         
@@ -6795,15 +6913,29 @@ app.get('/', (req, res) => {
               ? '<span class="text-xs text-cyan-400/80">' + orderLabel + (cardOrderBy !== 'none' ? (cardOrderDir === 'asc' ? '↑' : '↓') : '') + '</span>'
               : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
 
-            return \`
-              <div class="kanban-column \${column.bgColor || ''}" data-column-id="\${column.id}">
-                <div class="kanban-column-header">
+            const stackSortText = cardOrderBy !== 'none'
+              ? orderLabel + (cardOrderDir === 'asc' ? ' ↑' : ' ↓')
+              : (isBandSortMode ? (cardSortMode === 'k1Bands' ? 'K1 ↓' : 'K2 ↓') : '');
+
+            const headerHtml = isVerticalBandLayout
+              ? \`<div class="kanban-column-header kanban-column-header-stack">
+                  <div class="kanban-stack-title-block">
+                    <span class="kanban-stack-band-title">\${column.title}</span>
+                    \${stackSortText ? \`<span class="kanban-stack-sort-indicator">\${stackSortText}</span>\` : ''}
+                  </div>
+                  <span class="kanban-column-count kanban-stack-count">\${cards.length}</span>
+                </div>\`
+              : \`<div class="kanban-column-header">
                   <span class="flex items-center gap-1.5">
                     \${column.title}
                     \${sortControlHtml}
                   </span>
                   <span class="kanban-column-count">\${cards.length}</span>
-                  </div>
+                </div>\`;
+
+            return \`
+              <div class="kanban-column \${column.bgColor || ''}" data-column-id="\${column.id}">
+                \${headerHtml}
                 \${isVerticalBandLayout
                   ? \`<div class="kanban-column-cards-wrap"><div class="kanban-column-cards">\${cardsHtml}</div></div>\`
                   : \`<div class="kanban-column-cards">\${cardsHtml}</div>\`}
