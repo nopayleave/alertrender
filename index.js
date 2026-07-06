@@ -4028,7 +4028,14 @@ app.get('/', (req, res) => {
         }
         .kanban-board-vertical .kanban-column-cards .kanban-card {
           min-width: 0;
-          padding: 8px 10px;
+          height: 100%;
+          padding: 0 10px;
+          display: flex;
+          align-items: center;
+        }
+        .kanban-board-vertical .kanban-column-cards .kanban-card > .flex {
+          width: 100%;
+          min-height: 0;
         }
         .kanban-board-vertical .kanban-column-cards .kanban-card-empty {
           grid-column: 1;
@@ -4061,6 +4068,12 @@ app.get('/', (req, res) => {
           padding: 10px 12px;
           transition: all 0.2s;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          box-sizing: border-box;
+        }
+        .kanban-card > .flex {
+          width: 100%;
         }
         .kanban-card:hover {
           background: hsl(0 0% 14%);
@@ -6434,6 +6447,24 @@ app.get('/', (req, res) => {
           return 'grid-column:' + col + ';grid-row:' + row + ';';
         }
 
+        function captureKanbanStackScrollPositions(container) {
+          const positions = {};
+          if (!container) return positions;
+          container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
+            const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
+            if (colId) positions[colId] = wrap.scrollLeft;
+          });
+          return positions;
+        }
+
+        function restoreKanbanStackScrollPositions(container, positions) {
+          if (!container || !positions) return;
+          container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
+            const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
+            if (colId != null && positions[colId] != null) wrap.scrollLeft = positions[colId];
+          });
+        }
+
         function sortKanbanByD2(columnId) {
           const cur = kanbanD2SortByColumn[columnId];
           kanbanD2SortByColumn[columnId] = cur === null || cur === undefined ? 'asc' : cur === 'asc' ? 'desc' : null;
@@ -6443,6 +6474,7 @@ app.get('/', (req, res) => {
         function renderMasonry() {
           const masonryContainer = document.getElementById('masonryContainer');
           const lastUpdate = document.getElementById('lastUpdate');
+          const kanbanStackScroll = captureKanbanStackScrollPositions(masonryContainer);
           applyTriTimeframeModeToAlerts();
           
           if (alertsData.length === 0) {
@@ -6607,10 +6639,15 @@ app.get('/', (req, res) => {
             }
           });
 
-          // Sort each column: filter matches first, then explicit Order (% / volume), starred, crossings, band/D2/alpha
+          // Sort each column: starred first, then filter matches, order, crossings, band/D2/alpha
           Object.keys(columnBuckets).forEach(columnId => {
             const d2Dir = kanbanD2SortByColumn[columnId];
             columnBuckets[columnId].sort((a, b) => {
+              const aStarred = isStarred(a.symbol);
+              const bStarred = isStarred(b.symbol);
+              if (aStarred && !bStarred) return -1;
+              if (!aStarred && bStarred) return 1;
+
               if (cardFiltersActive) {
                 const aMatch = matchedSet.has(a);
                 const bMatch = matchedSet.has(b);
@@ -6634,11 +6671,6 @@ app.get('/', (req, res) => {
                 const cmp = compareCardOrderValues(getCardK2Value(a), getCardK2Value(b), cardOrderDir);
                 if (cmp !== 0) return cmp;
               }
-
-              const aStarred = isStarred(a.symbol);
-              const bStarred = isStarred(b.symbol);
-              if (aStarred && !bStarred) return -1;
-              if (!aStarred && bStarred) return 1;
 
               const aCross = a.kCross && a.kCross !== 'none';
               const bCross = b.kCross && b.kCross !== 'none';
@@ -6764,7 +6796,7 @@ app.get('/', (req, res) => {
               : '<button type="button" onclick="event.stopPropagation(); sortKanbanByD2(\\'' + column.id + '\\')" class="p-0.5 rounded hover:bg-white/10 transition-colors" title="Sort by D2 value"><span class="text-xs text-muted-foreground">' + (kanbanD2SortByColumn[column.id] === 'asc' ? '↑' : kanbanD2SortByColumn[column.id] === 'desc' ? '↓' : '⇅') + '</span></button>';
 
             return \`
-              <div class="kanban-column \${column.bgColor || ''}">
+              <div class="kanban-column \${column.bgColor || ''}" data-column-id="\${column.id}">
                 <div class="kanban-column-header">
                   <span class="flex items-center gap-1.5">
                     \${column.title}
@@ -6778,6 +6810,10 @@ app.get('/', (req, res) => {
               </div>
             \`;
           }).join('');
+          
+          requestAnimationFrame(() => {
+            restoreKanbanStackScrollPositions(masonryContainer, kanbanStackScroll);
+          });
           
           // Update last update time
           const now = new Date();
