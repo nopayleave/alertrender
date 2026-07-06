@@ -6430,7 +6430,7 @@ app.get('/', (req, res) => {
         // Render masonry layout
         function getKanbanStackGridStyle(index) {
           const col = Math.floor(index / KANBAN_STACK_MAX_ROWS) + 1;
-          const row = KANBAN_STACK_MAX_ROWS - (index % KANBAN_STACK_MAX_ROWS);
+          const row = (index % KANBAN_STACK_MAX_ROWS) + 1;
           return 'grid-column:' + col + ';grid-row:' + row + ';';
         }
 
