@@ -4560,6 +4560,29 @@ app.get('/', (req, res) => {
         .orb-history-search-input::placeholder {
           color: hsl(0 0% 45%);
         }
+        .orb-filter-ticker {
+          border-color: rgba(96, 165, 250, 0.35);
+          color: #93c5fd;
+        }
+        .orb-filter-ticker.active {
+          background: rgba(59, 130, 246, 0.25);
+          border-color: rgba(59, 130, 246, 0.6);
+          color: #60a5fa;
+        }
+        .orb-filter-ticker-starred {
+          border-color: rgba(250, 204, 21, 0.45);
+          color: #fde047;
+        }
+        .orb-filter-ticker-starred.active {
+          background: rgba(250, 204, 21, 0.2);
+          border-color: rgba(250, 204, 21, 0.65);
+          color: #fde047;
+        }
+        .orb-history-filter-empty {
+          font-size: 12px;
+          color: hsl(0 0% 45%);
+          padding: 6px 0;
+        }
       </style>
     </head>
     <body class="bg-background h-screen overflow-hidden antialiased">
@@ -5037,6 +5060,12 @@ app.get('/', (req, res) => {
                 <button onclick="toggleStochHistoryFilter('eventType', 'k2_cross', this)" class="orb-history-filter-chip orb-filter-cross-mid-up" data-filter="eventType" data-value="k2_cross">K2 Cross</button>
               </div>
             </div>
+            <div class="orb-history-filter-group">
+              <label class="orb-history-filter-label">Ticker:</label>
+              <div class="orb-history-filter-chips" id="stochHistoryTickerChips">
+                <button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-all active" data-filter="ticker" data-value="all">All</button>
+              </div>
+            </div>
           </div>
           <div class="orb-history-content" id="stochHistoryContent">
             <div class="orb-history-empty">No stochastic events recorded yet</div>
@@ -5165,7 +5194,8 @@ app.get('/', (req, res) => {
         
         // Stoch history filter state
         let stochHistoryFilters = {
-          eventType: 'all' // 'all', 'direction_change', 'preset_match', 'trend_change', 'k2_cross'
+          eventType: 'all', // 'all', 'direction_change', 'preset_match', 'trend_change', 'k2_cross'
+          tickers: new Set()
         };
 
         // Column order - stored in localStorage
@@ -8018,6 +8048,7 @@ Use this to create a new preset filter button that applies these exact filter se
           syncStarredSymbolsToBackend();
           
           renderTable();
+          refreshStochHistoryIfOpen();
         }
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
@@ -9412,9 +9443,14 @@ Use this to create a new preset filter button that applies these exact filter se
 
           if (recorded) {
             trimStochHistory();
-            if (document.getElementById('stochHistoryOverlay')?.classList.contains('open')) {
-              renderStochHistory();
-            }
+            refreshStochHistoryIfOpen();
+          }
+        }
+        
+        function refreshStochHistoryIfOpen() {
+          if (document.getElementById('stochHistoryOverlay')?.classList.contains('open')) {
+            renderStochHistoryTickerFilters();
+            renderStochHistory();
           }
         }
         
@@ -9428,6 +9464,7 @@ Use this to create a new preset filter button that applies these exact filter se
           } else {
             overlay.classList.add('open');
             panel.classList.add('open');
+            renderStochHistoryTickerFilters();
             renderStochHistory();
           }
         }
@@ -9456,8 +9493,60 @@ Use this to create a new preset filter button that applies these exact filter se
         
         // Apply Stoch history filters
         function applyStochHistoryFilters() {
-          // Render with filters
           renderStochHistory();
+        }
+
+        function getStochHistorySymbols() {
+          const symbols = new Set();
+          stochHistory.forEach(item => {
+            if (item.symbol) symbols.add(item.symbol);
+          });
+          return Array.from(symbols).sort((a, b) => {
+            const aStarred = isStarred(a);
+            const bStarred = isStarred(b);
+            if (aStarred !== bStarred) return aStarred ? -1 : 1;
+            return a.localeCompare(b);
+          });
+        }
+
+        function renderStochHistoryTickerFilters() {
+          const container = document.getElementById('stochHistoryTickerChips');
+          if (!container) return;
+
+          const symbols = getStochHistorySymbols();
+          const hasSelection = stochHistoryFilters.tickers.size > 0;
+          let html = '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-all' + (hasSelection ? '' : ' active') + '" data-filter="ticker" data-value="all">All</button>';
+
+          symbols.forEach(symbol => {
+            const isActive = stochHistoryFilters.tickers.has(symbol);
+            const starred = isStarred(symbol);
+            const safeSymbol = symbol.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            const label = starred ? '★ ' + safeSymbol : safeSymbol;
+            html += '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-ticker' + (isActive ? ' active' : '') + (starred ? ' orb-filter-ticker-starred' : '') + '" data-filter="ticker" data-value="' + safeSymbol + '">' + label + '</button>';
+          });
+
+          if (symbols.length === 0) {
+            html += '<span class="orb-history-filter-empty">No tickers yet</span>';
+          }
+
+          container.innerHTML = html;
+        }
+
+        function toggleStochHistoryTickerFilterFromEl(element) {
+          const value = element.dataset.value;
+          toggleStochHistoryTickerFilter(value === 'all' ? null : value);
+        }
+
+        function toggleStochHistoryTickerFilter(symbol) {
+          if (symbol === null) {
+            stochHistoryFilters.tickers.clear();
+          } else if (stochHistoryFilters.tickers.has(symbol)) {
+            stochHistoryFilters.tickers.delete(symbol);
+          } else {
+            stochHistoryFilters.tickers.add(symbol);
+          }
+          renderStochHistoryTickerFilters();
+          applyStochHistoryFilters();
         }
         
         // Render Stoch history list
@@ -9472,11 +9561,12 @@ Use this to create a new preset filter button that applies these exact filter se
           
           // Apply filters
           let filteredHistory = stochHistory.filter(item => {
-            // Event type filter
             if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
               return false;
             }
-            
+            if (stochHistoryFilters.tickers.size > 0 && !stochHistoryFilters.tickers.has(item.symbol)) {
+              return false;
+            }
             return true;
           });
           
@@ -9638,10 +9728,7 @@ Use this to create a new preset filter button that applies these exact filter se
           // Trim: K2 crosses kept 24h; other events capped at 100
           trimStochHistory();
           
-          // Update history display if open
-          if (document.getElementById('stochHistoryOverlay').classList.contains('open')) {
-            renderStochHistory();
-          }
+          refreshStochHistoryIfOpen();
         }
         
         async function fetchAlerts() {
