@@ -4730,6 +4730,68 @@ app.get('/', (req, res) => {
           color: hsl(0 0% 45%);
           padding: 6px 0;
         }
+        /* TradingView slide-in panel */
+        .tv-chart-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 10000;
+          opacity: 0;
+          visibility: hidden;
+          transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .tv-chart-overlay.open {
+          opacity: 1;
+          visibility: visible;
+        }
+        .tv-chart-panel {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 80vw;
+          height: 100vh;
+          background: hsl(0 0% 5%);
+          border-left: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5);
+          z-index: 10001;
+          transform: translateX(100%);
+          transition: transform 0.3s ease;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .tv-chart-panel.open {
+          transform: translateX(0);
+        }
+        .tv-chart-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .tv-chart-external-link {
+          font-size: 12px;
+          font-weight: 500;
+          color: #fbbf24;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .tv-chart-external-link:hover {
+          color: #fde68a;
+        }
+        .tv-chart-frame-wrap {
+          flex: 1;
+          min-height: 0;
+          background: hsl(0 0% 9%);
+        }
+        .tv-chart-frame-wrap iframe {
+          width: 100%;
+          height: 100%;
+          border: 0;
+          display: block;
+        }
       </style>
     </head>
     <body class="bg-background h-screen overflow-hidden antialiased">
@@ -5235,6 +5297,22 @@ app.get('/', (req, res) => {
           </div>
           <div class="orb-history-content" id="stochHistoryContent">
             <div class="orb-history-empty">No stochastic events recorded yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TradingView Chart Overlay -->
+      <div id="tvChartOverlay" class="tv-chart-overlay" onclick="closeTradingViewChart()">
+        <div class="tv-chart-panel" onclick="event.stopPropagation()">
+          <div class="orb-history-header">
+            <h3 id="tvChartPanelTitle">TradingView</h3>
+            <div class="tv-chart-header-actions">
+              <a id="tvChartExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="tv-chart-external-link">Open in TradingView ↗</a>
+              <button type="button" class="orb-history-close" onclick="closeTradingViewChart()">×</button>
+            </div>
+          </div>
+          <div class="tv-chart-frame-wrap">
+            <iframe id="tvChartIframe" title="TradingView chart" allowfullscreen></iframe>
           </div>
         </div>
       </div>
@@ -6709,7 +6787,7 @@ app.get('/', (req, res) => {
             if (!card || !card.dataset.symbol) return;
             e.preventDefault();
             e.stopPropagation();
-            openTradingViewChart(card.dataset.symbol);
+            openTradingViewChart(card.dataset.symbol, card.dataset.tvSymbol, card.dataset.exchange);
           });
         }
 
@@ -7149,7 +7227,7 @@ app.get('/', (req, res) => {
                     cross50Title,
                     pineLabelTitle,
                     'Click: star/unstar',
-                    'Right-click: open TradingView chart'
+                    'Right-click: TradingView chart panel'
                   ].filter(Boolean).join(' · ');
                   const tvSymbolAttr = alert.tvSymbol ? escapeHtmlAttr(alert.tvSymbol) : '';
                   const exchangeAttr = alert.exchange ? escapeHtmlAttr(alert.exchange) : '';
@@ -8250,9 +8328,82 @@ Use this to create a new preset filter button that applies these exact filter se
           return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(tv);
         }
 
-        function openTradingViewChart(symbol, tvSymbol) {
-          const url = getTradingViewChartUrl(symbol, tvSymbol);
-          if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        function resolveTvEmbedSymbol(symbol, tvSymbol, exchange) {
+          let resolved = tvSymbol;
+          let ex = exchange;
+          if (symbol) {
+            const row = alertsData.find(a => a.symbol === symbol);
+            if ((!resolved || !String(resolved).trim()) && row?.tvSymbol) resolved = row.tvSymbol;
+            if (!ex && row?.exchange) ex = row.exchange;
+          }
+          if (resolved && String(resolved).includes(':')) return String(resolved).trim().toUpperCase();
+          const bare = normalizeTvChartSymbol(symbol, resolved);
+          if (!bare) return null;
+          if (ex) {
+            const exUp = String(ex).trim().toUpperCase();
+            if (exUp) return exUp + ':' + bare;
+          }
+          return bare;
+        }
+
+        function getTradingViewEmbedUrl(symbol, tvSymbol, exchange) {
+          const sym = resolveTvEmbedSymbol(symbol, tvSymbol, exchange);
+          if (!sym) return null;
+          const config = {
+            autosize: true,
+            symbol: sym,
+            interval: '5',
+            timezone: 'America/New_York',
+            theme: 'dark',
+            style: '1',
+            locale: 'en',
+            enable_publishing: false,
+            allow_symbol_change: true,
+            save_image: false,
+            calendar: false,
+            hide_top_toolbar: false,
+            hide_legend: false,
+            support_host: 'https://www.tradingview.com'
+          };
+          return 'https://s.tradingview.com/embed-widget/advanced-chart/?locale=en#' + encodeURIComponent(JSON.stringify(config));
+        }
+
+        function openTradingViewChart(symbol, tvSymbol, exchange) {
+          const embedUrl = getTradingViewEmbedUrl(symbol, tvSymbol, exchange);
+          const externalUrl = getTradingViewChartUrl(symbol, tvSymbol);
+          if (!embedUrl) return;
+
+          const overlay = document.getElementById('tvChartOverlay');
+          const panel = overlay?.querySelector('.tv-chart-panel');
+          const iframe = document.getElementById('tvChartIframe');
+          const title = document.getElementById('tvChartPanelTitle');
+          const link = document.getElementById('tvChartExternalLink');
+          if (!overlay || !panel || !iframe) return;
+
+          if (title) title.textContent = symbol || 'TradingView';
+          if (link) {
+            if (externalUrl) {
+              link.href = externalUrl;
+              link.classList.remove('hidden');
+            } else {
+              link.href = '#';
+              link.classList.add('hidden');
+            }
+          }
+          iframe.src = embedUrl;
+          overlay.classList.add('open');
+          panel.classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function closeTradingViewChart() {
+          const overlay = document.getElementById('tvChartOverlay');
+          const panel = overlay?.querySelector('.tv-chart-panel');
+          const iframe = document.getElementById('tvChartIframe');
+          overlay?.classList.remove('open');
+          panel?.classList.remove('open');
+          if (iframe) iframe.src = 'about:blank';
+          document.body.style.overflow = '';
         }
         
         // Sync starred symbols to backend
