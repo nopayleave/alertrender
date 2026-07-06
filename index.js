@@ -3989,20 +3989,52 @@ app.get('/', (req, res) => {
         }
         .kanban-board-vertical .kanban-column {
           min-height: auto;
+          flex-direction: row;
+          align-items: stretch;
+          gap: 12px;
+        }
+        .kanban-board-vertical .kanban-column-header {
+          flex: 0 0 72px;
+          flex-direction: column;
+          align-items: flex-start;
+          justify-content: flex-start;
+          gap: 6px;
+          padding-right: 10px;
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          align-self: stretch;
         }
         .kanban-column-cards {
           display: flex;
           flex-direction: column;
           gap: 10px;
         }
-        .kanban-board-vertical .kanban-column-cards {
-          flex-direction: row;
-          flex-wrap: wrap;
+        .kanban-board-vertical .kanban-column-cards-wrap {
+          flex: 1;
+          min-width: 0;
+          container-type: inline-size;
+          overflow-x: auto;
+          overflow-y: hidden;
+          height: calc(4 * 38px + 3 * 10px);
         }
-        .kanban-board-vertical .kanban-column-cards .kanban-card,
+        .kanban-board-vertical .kanban-column-cards {
+          display: grid;
+          grid-template-rows: repeat(4, 38px);
+          grid-auto-columns: calc((100cqw - 40px) / 5);
+          gap: 10px;
+          width: max-content;
+          min-width: 100%;
+          height: 100%;
+          align-content: start;
+        }
+        .kanban-board-vertical .kanban-column-cards .kanban-card {
+          min-width: 0;
+          padding: 8px 10px;
+        }
         .kanban-board-vertical .kanban-column-cards .kanban-card-empty {
-          flex: 1 1 220px;
-          max-width: 100%;
+          grid-column: 1;
+          grid-row: 1 / span 4;
+          align-self: center;
+          width: 100%;
         }
         .kanban-column-header {
           display: flex;
@@ -4952,6 +4984,8 @@ app.get('/', (req, res) => {
         let cardOrderDir = localStorage.getItem('cardOrderDir') || 'desc'; // 'asc' | 'desc'
         let cardOnlyFav = localStorage.getItem('cardOnlyFav') === 'true';
         let cardBandLayout = localStorage.getItem('cardBandLayout') || 'horizontal'; // 'horizontal' | 'vertical'
+        const KANBAN_STACK_MAX_ROWS = 4;
+        const KANBAN_STACK_COLS_PER_VIEW = 5;
         
         // Kanban per-column D2 sort: { columnId: 'asc'|'desc'|null }
         let kanbanD2SortByColumn = {};
@@ -6394,6 +6428,12 @@ app.get('/', (req, res) => {
         }
         
         // Render masonry layout
+        function getKanbanStackGridStyle(index) {
+          const col = Math.floor(index / KANBAN_STACK_MAX_ROWS) + 1;
+          const row = KANBAN_STACK_MAX_ROWS - (index % KANBAN_STACK_MAX_ROWS);
+          return 'grid-column:' + col + ';grid-row:' + row + ';';
+        }
+
         function sortKanbanByD2(columnId) {
           const cur = kanbanD2SortByColumn[columnId];
           kanbanD2SortByColumn[columnId] = cur === null || cur === undefined ? 'asc' : cur === 'asc' ? 'desc' : null;
@@ -6637,7 +6677,7 @@ app.get('/', (req, res) => {
             const cards = columnBuckets[column.id] || [];
             const cardsHtml = cards.length === 0
               ? '<div class="kanban-card-empty">No tickers</div>'
-              : cards.map(alert => {
+              : cards.map((alert, cardIndex) => {
                   const symbol = alert.symbol || alert.ticker || 'N/A';
                   const t = alert.triStoch || {};
                   const k1Val = getTriK1Value(t);
@@ -6690,9 +6730,10 @@ app.get('/', (req, res) => {
                   ].filter(Boolean).join(' · ');
                   const tvSymbolAttr = alert.tvSymbol ? escapeHtmlAttr(alert.tvSymbol) : '';
                   const exchangeAttr = alert.exchange ? escapeHtmlAttr(alert.exchange) : '';
+                  const stackGridStyle = isVerticalBandLayout ? getKanbanStackGridStyle(cardIndex) : '';
             
             return \`
-              <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}"\${tvSymbolAttr ? \` data-tv-symbol="\${tvSymbolAttr}"\` : ''}\${exchangeAttr ? \` data-exchange="\${exchangeAttr}"\` : ''} title="\${escapeHtmlAttr(cardTitle)}">
+              <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}"\${tvSymbolAttr ? \` data-tv-symbol="\${tvSymbolAttr}"\` : ''}\${exchangeAttr ? \` data-exchange="\${exchangeAttr}"\` : ''}\${stackGridStyle ? \` style="\${stackGridStyle}"\` : ''} title="\${escapeHtmlAttr(cardTitle)}">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-xs font-semibold text-foreground whitespace-nowrap">\${starred ? '⭐ ' : ''}\${symbol}\${sessionChangeHtml ? ' ' + sessionChangeHtml : (changeDisplay ? \` <span class="\${changeClass}">\${changeDisplay}</span>\` : '')}</span>
                   <div class="text-xs whitespace-nowrap flex items-center gap-1">
@@ -6731,9 +6772,9 @@ app.get('/', (req, res) => {
                   </span>
                   <span class="kanban-column-count">\${cards.length}</span>
                   </div>
-                <div class="kanban-column-cards">
-                  \${cardsHtml}
-                </div>
+                \${isVerticalBandLayout
+                  ? \`<div class="kanban-column-cards-wrap"><div class="kanban-column-cards">\${cardsHtml}</div></div>\`
+                  : \`<div class="kanban-column-cards">\${cardsHtml}</div>\`}
               </div>
             \`;
           }).join('');
