@@ -4824,7 +4824,7 @@ app.get('/', (req, res) => {
         <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Switch to Card View">
           <span id="viewIcon" class="text-sm">📋</span>
         </button>
-        <button onclick="toggleStochHistory()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Stoch History">
+        <button onclick="toggleStochHistory()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="K2 Cross History">
           <span class="text-sm">📈</span>
         </button>
         <button id="notificationToggle" onclick="toggleNotifications()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Notifications">
@@ -5257,19 +5257,10 @@ app.get('/', (req, res) => {
       <div id="stochHistoryOverlay" class="orb-history-overlay" onclick="closeStochHistory()">
         <div class="orb-history-panel" onclick="event.stopPropagation()">
           <div class="orb-history-header">
-            <h3>Stochastic History</h3>
+            <h3>K2 Cross History</h3>
             <button class="orb-history-close" onclick="closeStochHistory()">×</button>
           </div>
           <div class="orb-history-filters">
-            <div class="orb-history-filter-group">
-              <label class="orb-history-filter-label">Event Type:</label>
-              <div class="orb-history-filter-chips">
-                <button onclick="toggleStochHistoryFilter('eventType', 'all', this)" class="orb-history-filter-chip orb-filter-all active" data-filter="eventType" data-value="all">All</button>
-                <button onclick="toggleStochHistoryFilter('eventType', 'direction_change', this)" class="orb-history-filter-chip orb-filter-cross-high" data-filter="eventType" data-value="direction_change">Direction Change</button>
-                <button onclick="toggleStochHistoryFilter('eventType', 'preset_match', this)" class="orb-history-filter-chip orb-filter-cross-low" data-filter="eventType" data-value="preset_match">Preset Match</button>
-                <button onclick="toggleStochHistoryFilter('eventType', 'trend_change', this)" class="orb-history-filter-chip orb-filter-cross-bottom" data-filter="eventType" data-value="trend_change">Trend Change</button>
-              </div>
-            </div>
             <div class="orb-history-filter-group">
               <label class="orb-history-filter-label">K2 Crossover:</label>
               <div class="orb-history-filter-chips">
@@ -5298,7 +5289,7 @@ app.get('/', (req, res) => {
             </div>
           </div>
           <div class="orb-history-content" id="stochHistoryContent">
-            <div class="orb-history-empty">No stochastic events recorded yet</div>
+            <div class="orb-history-empty">No K2 crosses recorded yet</div>
           </div>
         </div>
       </div>
@@ -5430,18 +5421,16 @@ app.get('/', (req, res) => {
         const K2_CROSS_LEVELS = [10, 20, 50, 80, 90];
         const STOCH_HISTORY_K2_STORAGE_KEY = 'stochHistoryK2Cross';
         const STOCH_HISTORY_K2_RETENTION_MS = 24 * 60 * 60 * 1000;
-        const STOCH_HISTORY_OTHER_MAX = 100;
+        const STOCH_HISTORY_RENDER_MAX = 250;
         
-        // Stochastic history
-        let stochHistory = []; // Array of { symbol, eventType, eventData, price, timestamp }
+        // K2 cross history only
+        let stochHistory = [];
+        let stochHistoryFetchInFlight = null;
+        let stochHistoryFetchTimer = null;
+        let stochHistorySymbolsKey = '';
         
-        // Track previous stochastic states
-        let previousStochStates = {}; // { symbol: { d1Direction, d2Direction, trendMessage, presetMatches } }
-        
-        // Stoch history filter state
         let stochHistoryFilters = {
-          eventType: 'all', // 'all', 'direction_change', 'preset_match', 'trend_change'
-          k2Cross: new Set(), // e.g. 'crossover_10', 'crossunder_50'
+          k2Cross: new Set(),
           tickers: new Set()
         };
 
@@ -5848,7 +5837,11 @@ app.get('/', (req, res) => {
           activeTriTimeframeMode = normalizeTriTimeframeMode(activeTriTimeframeMode) === 'Interday' ? 'Swing' : 'Interday';
           localStorage.setItem('triTimeframeMode', activeTriTimeframeMode);
           updateTriTimeframeToggleUI();
-          fetchK2CrossHistoryFromServer();
+          if (document.getElementById('stochHistoryOverlay')?.classList.contains('open')) {
+            fetchK2CrossHistoryFromServer();
+          } else {
+            renderStochHistory();
+          }
           renderTable();
         }
 
@@ -6858,7 +6851,6 @@ app.get('/', (req, res) => {
           initKanbanCardHandlers();
           updateCardSortBarUI();
           loadStochHistoryFromStorage();
-          fetchK2CrossHistoryFromServer();
           applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
           initializeView(); // Initialize view mode
         });
@@ -9631,39 +9623,73 @@ Use this to create a new preset filter button that applies these exact filter se
             const saved = JSON.parse(raw).filter(item =>
               item && item.eventType === 'k2_cross' && item.timestamp >= dayAgo
             );
-            mergeK2CrossHistoryItems(saved);
+            if (mergeK2CrossHistoryItems(saved)) {
+              trimStochHistory();
+            }
           } catch (err) {
             console.warn('Could not load K2 cross history:', err);
           }
         }
 
         function mergeK2CrossHistoryItems(items) {
-          if (!Array.isArray(items) || items.length === 0) return;
+          if (!Array.isArray(items) || items.length === 0) return false;
           const seen = new Set(stochHistory.map(stochHistoryDedupeKey));
+          let added = 0;
           items.forEach(item => {
             if (!item || item.eventType !== 'k2_cross') return;
             const key = stochHistoryDedupeKey(item);
             if (!seen.has(key)) {
               stochHistory.push(item);
               seen.add(key);
+              added++;
             }
           });
+          if (added > 0) {
+            stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+            stochHistorySymbolsKey = '';
+          }
+          return added > 0;
+        }
+
+        function applyServerK2CrossHistory(items) {
+          if (!Array.isArray(items)) return;
+          const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
+          const kept = stochHistory.filter(item => {
+            const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
+            return tf !== mode;
+          });
+          stochHistory = [...kept, ...items.filter(item => item && item.eventType === 'k2_cross')];
           stochHistory.sort((a, b) => b.timestamp - a.timestamp);
+          trimStochHistory();
+          stochHistorySymbolsKey = '';
+        }
+
+        function scheduleK2CrossHistoryFetch() {
+          if (stochHistoryFetchTimer) clearTimeout(stochHistoryFetchTimer);
+          stochHistoryFetchTimer = setTimeout(() => {
+            stochHistoryFetchTimer = null;
+            fetchK2CrossHistoryFromServer();
+          }, 600);
         }
 
         async function fetchK2CrossHistoryFromServer() {
-          try {
-            const mode = encodeURIComponent(normalizeTriTimeframeMode(activeTriTimeframeMode));
-            const res = await fetch('/k2-cross-history?mode=' + mode);
-            if (!res.ok) return;
-            const items = await res.json();
-            mergeK2CrossHistoryItems(items);
-            trimStochHistory();
-            persistK2CrossHistory();
-            refreshStochHistoryIfOpen();
-          } catch (err) {
-            console.warn('Could not fetch K2 cross history:', err);
-          }
+          if (stochHistoryFetchInFlight) return stochHistoryFetchInFlight;
+          stochHistoryFetchInFlight = (async () => {
+            try {
+              const mode = encodeURIComponent(normalizeTriTimeframeMode(activeTriTimeframeMode));
+              const res = await fetch('/k2-cross-history?mode=' + mode);
+              if (!res.ok) return;
+              const items = await res.json();
+              applyServerK2CrossHistory(items);
+              persistK2CrossHistory();
+              refreshStochHistoryIfOpen();
+            } catch (err) {
+              console.warn('Could not fetch K2 cross history:', err);
+            } finally {
+              stochHistoryFetchInFlight = null;
+            }
+          })();
+          return stochHistoryFetchInFlight;
         }
 
         function stochHistoryDedupeKey(item) {
@@ -9686,17 +9712,10 @@ Use this to create a new preset filter button that applies these exact filter se
 
         function trimStochHistory() {
           const dayAgo = Date.now() - STOCH_HISTORY_K2_RETENTION_MS;
-          let otherCount = 0;
-          stochHistory = stochHistory.filter(item => {
-            if (item.eventType === 'k2_cross') return item.timestamp >= dayAgo;
-            if (otherCount < STOCH_HISTORY_OTHER_MAX) {
-              otherCount++;
-              return true;
-            }
-            return false;
-          });
+          stochHistory = stochHistory.filter(item =>
+            item.eventType === 'k2_cross' && item.timestamp >= dayAgo
+          );
           stochHistory.sort((a, b) => b.timestamp - a.timestamp);
-          persistK2CrossHistory();
         }
 
         function checkK2CrossToasts(alert) {
@@ -9728,7 +9747,7 @@ Use this to create a new preset filter button that applies these exact filter se
           previousK2Values[symbol] = k2;
 
           if (recorded) {
-            fetchK2CrossHistoryFromServer();
+            scheduleK2CrossHistoryFetch();
           }
         }
         
@@ -9769,28 +9788,6 @@ Use this to create a new preset filter button that applies these exact filter se
           document.querySelectorAll('[data-filter="k2Cross"]').forEach(chip => {
             chip.classList.toggle('active', stochHistoryFilters.k2Cross.has(chip.dataset.value));
           });
-          if (stochHistoryFilters.k2Cross.size === 0) {
-            const allBtn = document.querySelector('[data-filter="eventType"][data-value="all"]');
-            if (allBtn) allBtn.classList.add('active');
-          }
-        }
-
-        function clearStochHistoryK2FilterChips() {
-          stochHistoryFilters.k2Cross.clear();
-          syncStochHistoryK2FilterChips();
-        }
-
-        function toggleStochHistoryFilter(filterType, value, element) {
-          const chips = element.parentElement.querySelectorAll('.orb-history-filter-chip');
-          chips.forEach(chip => chip.classList.remove('active'));
-          element.classList.add('active');
-          
-          stochHistoryFilters[filterType] = value;
-          if (filterType === 'eventType') {
-            clearStochHistoryK2FilterChips();
-          }
-          
-          applyStochHistoryFilters();
         }
 
         function toggleStochHistoryK2FilterFromEl(element) {
@@ -9802,22 +9799,18 @@ Use this to create a new preset filter button that applies these exact filter se
             stochHistoryFilters.k2Cross.delete(filterKey);
           } else {
             stochHistoryFilters.k2Cross.add(filterKey);
-            document.querySelectorAll('[data-filter="eventType"]').forEach(chip => chip.classList.remove('active'));
-            stochHistoryFilters.eventType = 'all';
           }
           syncStochHistoryK2FilterChips();
-          applyStochHistoryFilters();
-        }
-        
-        // Apply Stoch history filters
-        function applyStochHistoryFilters() {
           renderStochHistory();
         }
 
         function getStochHistorySymbols() {
           const symbols = new Set();
+          const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
           stochHistory.forEach(item => {
-            if (item.symbol) symbols.add(item.symbol);
+            if (!item.symbol || item.eventType !== 'k2_cross') return;
+            const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
+            if (tf === mode) symbols.add(item.symbol);
           });
           return Array.from(symbols).sort((a, b) => {
             const aStarred = isStarred(a);
@@ -9832,6 +9825,19 @@ Use this to create a new preset filter button that applies these exact filter se
           if (!container) return;
 
           const symbols = getStochHistorySymbols();
+          const symbolsKey = symbols.join('|') + ':' + stochHistoryFilters.tickers.size;
+          if (symbolsKey === stochHistorySymbolsKey && container.childElementCount > 1) {
+            container.querySelectorAll('[data-filter="ticker"]').forEach(chip => {
+              if (chip.dataset.value === 'all') {
+                chip.classList.toggle('active', stochHistoryFilters.tickers.size === 0);
+              } else {
+                chip.classList.toggle('active', stochHistoryFilters.tickers.has(chip.dataset.value));
+              }
+            });
+            return;
+          }
+          stochHistorySymbolsKey = symbolsKey;
+
           const hasSelection = stochHistoryFilters.tickers.size > 0;
           let html = '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-all' + (hasSelection ? '' : ' active') + '" data-filter="ticker" data-value="all">All</button>';
 
@@ -9839,8 +9845,7 @@ Use this to create a new preset filter button that applies these exact filter se
             const isActive = stochHistoryFilters.tickers.has(symbol);
             const starred = isStarred(symbol);
             const safeSymbol = symbol.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-            const label = safeSymbol;
-            html += '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-ticker' + (isActive ? ' active' : '') + (starred ? ' orb-filter-ticker-starred' : '') + '" data-filter="ticker" data-value="' + safeSymbol + '">' + label + '</button>';
+            html += '<button type="button" onclick="toggleStochHistoryTickerFilterFromEl(this)" class="orb-history-filter-chip orb-filter-ticker' + (isActive ? ' active' : '') + (starred ? ' orb-filter-ticker-starred' : '') + '" data-filter="ticker" data-value="' + safeSymbol + '">' + safeSymbol + '</button>';
           });
 
           if (symbols.length === 0) {
@@ -9863,199 +9868,82 @@ Use this to create a new preset filter button that applies these exact filter se
           } else {
             stochHistoryFilters.tickers.add(symbol);
           }
-          renderStochHistoryTickerFilters();
-          applyStochHistoryFilters();
+          document.querySelectorAll('[data-filter="ticker"]').forEach(chip => {
+            if (chip.dataset.value === 'all') {
+              chip.classList.toggle('active', stochHistoryFilters.tickers.size === 0);
+            } else {
+              chip.classList.toggle('active', stochHistoryFilters.tickers.has(chip.dataset.value));
+            }
+          });
+          renderStochHistory();
         }
         
-        // Render Stoch history list
+        // Render K2 cross history list
         function renderStochHistory() {
           const content = document.getElementById('stochHistoryContent');
           if (!content) return;
+
+          const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
           
           if (stochHistory.length === 0) {
-            content.innerHTML = '<div class="orb-history-empty">No stochastic events recorded yet</div>';
+            content.innerHTML = '<div class="orb-history-empty">No K2 crosses recorded yet</div>';
             return;
           }
           
-          // Apply filters
           let filteredHistory = stochHistory.filter(item => {
-            if (item.eventType === 'k2_cross') {
-              const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
-              if (tf !== normalizeTriTimeframeMode(activeTriTimeframeMode)) return false;
-            }
+            if (item.eventType !== 'k2_cross') return false;
+            const tf = normalizeTriTimeframeMode(item.eventData?.stochTimeframe || 'Interday');
+            if (tf !== mode) return false;
             if (stochHistoryFilters.k2Cross.size > 0) {
-              if (item.eventType !== 'k2_cross') return false;
               const d = item.eventData || {};
               const key = d.direction + '_' + d.level;
               if (!stochHistoryFilters.k2Cross.has(key)) return false;
-            } else if (stochHistoryFilters.eventType !== 'all' && item.eventType !== stochHistoryFilters.eventType) {
-              return false;
             }
             if (stochHistoryFilters.tickers.size > 0 && !stochHistoryFilters.tickers.has(item.symbol)) {
               return false;
             }
             return true;
           });
+
+          const total = filteredHistory.length;
+          if (total > STOCH_HISTORY_RENDER_MAX) {
+            filteredHistory = filteredHistory.slice(0, STOCH_HISTORY_RENDER_MAX);
+          }
           
-          if (filteredHistory.length === 0) {
+          if (total === 0) {
             content.innerHTML = '<div class="orb-history-empty">No events match the current filters</div>';
             return;
           }
           
-          content.innerHTML = filteredHistory.map(item => {
+          const rows = filteredHistory.map(item => {
             const time = new Date(item.timestamp);
             const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
             const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const d = item.eventData || {};
+            const d1Value = d.d1Value != null ? parseFloat(d.d1Value).toFixed(1) : 'N/A';
+            const d2Value = d.d2Value != null ? parseFloat(d.d2Value).toFixed(1) : 'N/A';
+            const prevK2Str = d.prevK2Value != null && !isNaN(d.prevK2Value) ? parseFloat(d.prevK2Value).toFixed(1) : null;
+            const d1D2Display = prevK2Str != null
+              ? 'K1:' + d1Value + ' K2:' + d2Value + ' (was ' + prevK2Str + ')'
+              : 'K1:' + d1Value + ' K2:' + d2Value;
+            const eventText = d.description || 'K2 Cross';
+            const itemClass = d.isBullish ? 'cross-high' : 'cross-low';
             
-            let eventText = '';
-            let itemClass = 'cross-high';
-            
-            // Get D1/D2 or K1/K2 values for display
-            const d1Value = item.eventData.d1Value !== null && item.eventData.d1Value !== undefined ? parseFloat(item.eventData.d1Value).toFixed(1) : 'N/A';
-            const d2Value = item.eventData.d2Value !== null && item.eventData.d2Value !== undefined ? parseFloat(item.eventData.d2Value).toFixed(1) : 'N/A';
-            const prevK2Str = item.eventData.prevK2Value != null && !isNaN(item.eventData.prevK2Value)
-              ? parseFloat(item.eventData.prevK2Value).toFixed(1)
-              : null;
-            const d1D2Display = item.eventType === 'k2_cross'
-              ? (prevK2Str != null ? 'K1:' + d1Value + ' K2:' + d2Value + ' (was ' + prevK2Str + ')' : 'K1:' + d1Value + ' K2:' + d2Value)
-              : 'D1:' + d1Value + ' D2:' + d2Value;
-            
-            switch(item.eventType) {
-              case 'direction_change':
-                eventText = item.eventData.description || 'Direction Changed';
-                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
-                break;
-              case 'preset_match':
-                eventText = item.eventData.presetName || 'Preset Match';
-                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
-                break;
-              case 'trend_change':
-                eventText = item.eventData.trendMessage || 'Trend Changed';
-                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
-                break;
-              case 'k2_cross':
-                eventText = item.eventData.description || 'K2 Cross';
-                itemClass = item.eventData.isBullish ? 'cross-high' : 'cross-low';
-                break;
-              default:
-                eventText = 'Stochastic Event';
-                itemClass = 'cross-high';
-            }
-            
-            return \`
-              <div class="orb-history-item \${itemClass}">
-                <div class="orb-history-item-content">
-                  <span class="orb-history-symbol">\${item.symbol}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-crossover">\${eventText}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-crossover">\${d1D2Display}</span>
-                  <span class="orb-history-separator">|</span>
-                  <span class="orb-history-time">\${dateStr} at \${timeStr}</span>
-                </div>
-              </div>
-            \`;
+            return '<div class="orb-history-item ' + itemClass + '">' +
+              '<div class="orb-history-item-content">' +
+              '<span class="orb-history-symbol">' + item.symbol + '</span>' +
+              '<span class="orb-history-separator">|</span>' +
+              '<span class="orb-history-crossover">' + eventText + '</span>' +
+              '<span class="orb-history-separator">|</span>' +
+              '<span class="orb-history-crossover">' + d1D2Display + '</span>' +
+              '<span class="orb-history-separator">|</span>' +
+              '<span class="orb-history-time">' + dateStr + ' at ' + timeStr + '</span>' +
+              '</div></div>';
           }).join('');
-        }
-        
-        // Check for stochastic events and add to history
-        function checkStochEvents(alert) {
-          if (!alert || !alert.symbol) return;
-          
-          const symbol = alert.symbol;
-          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
-          const d1Value = kValue;
-          const d2Value = dValue;
-          const d1Direction = kDirection;
-          const d2Direction = dDirection;
-          
-          // Initialize previous state for this symbol if not exists
-          if (!previousStochStates[symbol]) {
-            previousStochStates[symbol] = {
-              d1Direction: d1Direction,
-              d2Direction: d2Direction,
-              trendMessage: '',
-              presetMatches: []
-            };
-            return; // Don't record initial state
-          }
-          
-          const prevState = previousStochStates[symbol];
-          
-          // Check for direction changes
-          if (d1Direction !== prevState.d1Direction || d2Direction !== prevState.d2Direction) {
-            const isBullish = (d1Direction === 'up' && d2Direction === 'up') || (d1Direction === 'up' && prevState.d1Direction !== 'up');
-            stochHistory.unshift({
-              symbol: symbol,
-              eventType: 'direction_change',
-              eventData: {
-                description: \`D1: \${prevState.d1Direction} → \${d1Direction}, D2: \${prevState.d2Direction} → \${d2Direction}\`,
-                d1Direction: d1Direction,
-                d2Direction: d2Direction,
-                prevD1Direction: prevState.d1Direction,
-                prevD2Direction: prevState.d2Direction,
-                d1Value: d1Value,
-                d2Value: d2Value,
-                isBullish: isBullish
-              },
-              price: alert.price,
-              timestamp: Date.now()
-            });
-          }
-          
-          // Check for preset matches (already handled in checkPresetMatches, but we can add to history here)
-          const currentPresetMatches = checkPresetMatches(alert);
-          const newPresetMatches = currentPresetMatches.filter(p => !prevState.presetMatches.includes(p));
-          
-          newPresetMatches.forEach(preset => {
-            const isBullish = preset === 'up';
-            stochHistory.unshift({
-              symbol: symbol,
-              eventType: 'preset_match',
-              eventData: {
-                presetName: preset === 'down' ? 'Down' : preset === 'up' ? 'Up' : 'Trend Down Big',
-                preset: preset,
-                d1Value: d1Value,
-                d2Value: d2Value,
-                isBullish: isBullish
-              },
-              price: alert.price,
-              timestamp: Date.now()
-            });
-          });
-          
-          // Check for K/D trend message changes
-          const kdTrend = getUnifiedStochSuggestion(alert);
-          const currentTrendText = kdTrend ? kdTrend.text : '';
-          if (currentTrendText && currentTrendText !== prevState.trendMessage) {
-            const isBullish = kdTrend.type === 'long';
-            stochHistory.unshift({
-              symbol: symbol,
-              eventType: 'trend_change',
-              eventData: {
-                trendMessage: currentTrendText,
-                prevTrendMessage: prevState.trendMessage,
-                d1Value: d1Value,
-                d2Value: d2Value,
-                isBullish: isBullish
-              },
-              price: alert.price,
-              timestamp: Date.now()
-            });
-          }
 
-          // Update previous state
-          previousStochStates[symbol] = {
-            d1Direction: d1Direction,
-            d2Direction: d2Direction,
-            trendMessage: currentTrendText,
-            presetMatches: currentPresetMatches
-          };
-          
-          // Trim: K2 crosses kept 24h; other events capped at 100
-          trimStochHistory();
-          
-          refreshStochHistoryIfOpen();
+          content.innerHTML = total > STOCH_HISTORY_RENDER_MAX
+            ? '<div class="orb-history-empty" style="padding:12px 24px">Showing latest ' + STOCH_HISTORY_RENDER_MAX + ' of ' + total + '</div>' + rows
+            : rows;
         }
         
         async function fetchAlerts() {
@@ -10066,7 +9954,6 @@ Use this to create a new preset filter button that applies these exact filter se
             if (Array.isArray(data)) {
               data.forEach(alert => {
                 checkK2CrossToasts(alert);
-                checkStochEvents(alert);
               });
             }
             
@@ -10083,7 +9970,6 @@ Use this to create a new preset filter button that applies these exact filter se
             
             renderTable();
             startCountdown();
-            fetchK2CrossHistoryFromServer();
             
           } catch (error) {
             console.error('Error fetching alerts:', error);
@@ -10156,7 +10042,6 @@ Use this to create a new preset filter button that applies these exact filter se
             if (update.type === 'alert' && update.data) {
               if (update.data.symbol) {
                 checkK2CrossToasts(update.data);
-                checkStochEvents(update.data);
               }
             }
           } catch (e) {
