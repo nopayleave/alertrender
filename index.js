@@ -3989,23 +3989,51 @@ app.get('/', (req, res) => {
         }
         .kanban-board-vertical .kanban-column {
           min-height: auto;
-          flex-direction: row;
+          flex-direction: column;
           align-items: stretch;
-          gap: 12px;
+          gap: 0;
+          position: sticky;
+          top: 0;
+          z-index: var(--stack-panel-z, 1);
+          background: hsl(0 0% 10%);
+          padding: 0;
+          overflow: hidden;
+          margin-bottom: 10px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+        }
+        .kanban-board-vertical .kanban-column:last-child {
+          margin-bottom: 0;
+        }
+        .kanban-stack-panel-header {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 8px 12px;
+          position: sticky;
+          top: 0;
+          z-index: 4;
+          background: hsl(0 0% 10%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          flex-shrink: 0;
         }
         .kanban-board-vertical .kanban-column-header {
           flex: 0 0 auto;
-          width: max-content;
-          min-width: 96px;
-          flex-direction: column;
-          align-items: flex-start;
+          width: auto;
+          min-width: 0;
+          flex-direction: row;
+          align-items: center;
           justify-content: space-between;
-          gap: 0;
-          padding: 0 12px 0 0;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
-          align-self: stretch;
-          height: calc(4 * 38px + 3 * 10px);
+          gap: 10px;
+          padding: 0;
+          border-right: none;
+          align-self: auto;
+          height: auto;
           box-sizing: border-box;
+        }
+        .kanban-board-vertical .kanban-column-header.kanban-column-header-stack {
+          display: none;
         }
         .kanban-stack-title-block {
           display: flex;
@@ -4035,8 +4063,9 @@ app.get('/', (req, res) => {
           flex-shrink: 0;
         }
         .kanban-board-vertical .kanban-column-count.kanban-stack-count {
-          align-self: flex-start;
-          margin-top: auto;
+          align-self: auto;
+          margin-top: 0;
+          flex-shrink: 0;
         }
         .kanban-column-cards {
           display: flex;
@@ -4046,25 +4075,30 @@ app.get('/', (req, res) => {
         .kanban-board-vertical .kanban-column-cards-wrap {
           flex: 1;
           min-width: 0;
+          min-height: 0;
           container-type: inline-size;
           container-name: kanban-stack;
           overflow-x: auto;
-          overflow-y: hidden;
-          height: calc(4 * 38px + 3 * 10px);
+          overflow-y: auto;
+          max-height: calc(4 * 38px + 3 * 10px);
+          padding: 10px 12px 12px;
           cursor: grab;
           user-select: none;
+        }
+        .kanban-board-vertical .kanban-column-cards-wrap.has-extra-rows {
+          max-height: min(calc(4 * 38px + 3 * 10px), calc(100vh - 220px));
         }
         .kanban-board-vertical .kanban-column-cards-wrap.is-dragging {
           cursor: grabbing;
         }
         .kanban-board-vertical .kanban-column-cards {
           display: grid;
-          grid-template-rows: repeat(4, 38px);
+          grid-template-rows: repeat(var(--stack-rows, 4), 38px);
           grid-auto-columns: calc((100cqw - 40px) / 5);
           gap: 10px;
           width: max-content;
           min-width: 100%;
-          height: 100%;
+          height: max-content;
           align-content: start;
         }
         @container kanban-stack (min-width: 1200px) {
@@ -4085,7 +4119,7 @@ app.get('/', (req, res) => {
         }
         .kanban-board-vertical .kanban-column-cards .kanban-card-empty {
           grid-column: 1;
-          grid-row: 1 / span 4;
+          grid-row: 1 / span var(--stack-rows, 4);
           align-self: center;
           width: 100%;
         }
@@ -6573,10 +6607,16 @@ app.get('/', (req, res) => {
         }
         
         // Render masonry layout
-        function getKanbanStackGridStyle(index) {
-          const col = Math.floor(index / KANBAN_STACK_MAX_ROWS) + 1;
-          const row = (index % KANBAN_STACK_MAX_ROWS) + 1;
+        function getKanbanStackGridStyle(index, maxRows) {
+          const rows = maxRows || KANBAN_STACK_MAX_ROWS;
+          const col = Math.floor(index / rows) + 1;
+          const row = (index % rows) + 1;
           return 'grid-column:' + col + ';grid-row:' + row + ';';
+        }
+
+        function getKanbanStackGridRows(cardCount) {
+          if (cardCount <= 0) return KANBAN_STACK_MAX_ROWS;
+          return Math.max(KANBAN_STACK_MAX_ROWS, Math.ceil(cardCount / 5));
         }
 
         function captureKanbanStackScrollPositions(container) {
@@ -6584,7 +6624,9 @@ app.get('/', (req, res) => {
           if (!container) return positions;
           container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
             const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
-            if (colId) positions[colId] = wrap.scrollLeft;
+            if (colId) {
+              positions[colId] = { left: wrap.scrollLeft, top: wrap.scrollTop };
+            }
           });
           return positions;
         }
@@ -6593,7 +6635,11 @@ app.get('/', (req, res) => {
           if (!container || !positions) return;
           container.querySelectorAll('.kanban-column-cards-wrap').forEach(wrap => {
             const colId = wrap.closest('[data-column-id]')?.dataset.columnId;
-            if (colId != null && positions[colId] != null) wrap.scrollLeft = positions[colId];
+            const pos = colId != null ? positions[colId] : null;
+            if (pos) {
+              if (pos.left != null) wrap.scrollLeft = pos.left;
+              if (pos.top != null) wrap.scrollTop = pos.top;
+            }
           });
         }
 
@@ -6605,8 +6651,10 @@ app.get('/', (req, res) => {
         
         function renderMasonry() {
           const masonryContainer = document.getElementById('masonryContainer');
+          const masonryView = document.getElementById('masonryView');
           const lastUpdate = document.getElementById('lastUpdate');
           const kanbanStackScroll = captureKanbanStackScrollPositions(masonryContainer);
+          const masonryScrollTop = masonryView ? masonryView.scrollTop : 0;
           applyTriTimeframeModeToAlerts();
           
           if (alertsData.length === 0) {
@@ -6837,8 +6885,10 @@ app.get('/', (req, res) => {
             return 'text-white';
           };
 
-          masonryContainer.innerHTML = kanbanColumns.map(column => {
+          masonryContainer.innerHTML = kanbanColumns.map((column, panelIndex) => {
             const cards = columnBuckets[column.id] || [];
+            const stackGridRows = isVerticalBandLayout ? getKanbanStackGridRows(cards.length) : KANBAN_STACK_MAX_ROWS;
+            const hasExtraRows = isVerticalBandLayout && stackGridRows > KANBAN_STACK_MAX_ROWS;
             const cardsHtml = cards.length === 0
               ? '<div class="kanban-card-empty">No tickers</div>'
               : cards.map((alert, cardIndex) => {
@@ -6894,7 +6944,7 @@ app.get('/', (req, res) => {
                   ].filter(Boolean).join(' · ');
                   const tvSymbolAttr = alert.tvSymbol ? escapeHtmlAttr(alert.tvSymbol) : '';
                   const exchangeAttr = alert.exchange ? escapeHtmlAttr(alert.exchange) : '';
-                  const stackGridStyle = isVerticalBandLayout ? getKanbanStackGridStyle(cardIndex) : '';
+                  const stackGridStyle = isVerticalBandLayout ? getKanbanStackGridStyle(cardIndex, stackGridRows) : '';
             
             return \`
               <div class="\${cardClass} \${pineLabelBg}" data-symbol="\${escapeHtmlAttr(symbol)}"\${tvSymbolAttr ? \` data-tv-symbol="\${tvSymbolAttr}"\` : ''}\${exchangeAttr ? \` data-exchange="\${exchangeAttr}"\` : ''}\${stackGridStyle ? \` style="\${stackGridStyle}"\` : ''} title="\${escapeHtmlAttr(cardTitle)}">
@@ -6932,7 +6982,7 @@ app.get('/', (req, res) => {
               : (isBandSortMode ? (cardSortMode === 'k1Bands' ? 'K1 ↓' : 'K2 ↓') : '');
 
             const headerHtml = isVerticalBandLayout
-              ? \`<div class="kanban-column-header kanban-column-header-stack">
+              ? \`<div class="kanban-stack-panel-header">
                   <div class="kanban-stack-title-block">
                     <span class="kanban-stack-band-title">\${column.title}</span>
                     \${stackSortText ? \`<span class="kanban-stack-sort-indicator">\${stackSortText}</span>\` : ''}
@@ -6947,11 +6997,15 @@ app.get('/', (req, res) => {
                   <span class="kanban-column-count">\${cards.length}</span>
                 </div>\`;
 
+            const panelStackStyle = isVerticalBandLayout ? \` style="--stack-panel-z: \${panelIndex + 1};"\` : '';
+            const cardsWrapClass = 'kanban-column-cards-wrap' + (hasExtraRows ? ' has-extra-rows' : '');
+            const cardsGridStyle = isVerticalBandLayout ? \` style="--stack-rows: \${stackGridRows};"\` : '';
+
             return \`
-              <div class="kanban-column \${column.bgColor || ''}" data-column-id="\${column.id}">
+              <div class="kanban-column \${column.bgColor || ''}\${isVerticalBandLayout ? ' kanban-stack-panel' : ''}" data-column-id="\${column.id}"\${panelStackStyle}>
                 \${headerHtml}
                 \${isVerticalBandLayout
-                  ? \`<div class="kanban-column-cards-wrap"><div class="kanban-column-cards">\${cardsHtml}</div></div>\`
+                  ? \`<div class="\${cardsWrapClass}"><div class="kanban-column-cards"\${cardsGridStyle}>\${cardsHtml}</div></div>\`
                   : \`<div class="kanban-column-cards">\${cardsHtml}</div>\`}
               </div>
             \`;
@@ -6959,6 +7013,7 @@ app.get('/', (req, res) => {
           
           requestAnimationFrame(() => {
             restoreKanbanStackScrollPositions(masonryContainer, kanbanStackScroll);
+            if (masonryView) masonryView.scrollTop = masonryScrollTop;
           });
           
           // Update last update time
