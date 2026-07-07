@@ -408,6 +408,38 @@ function processTriK2CrossDetection(alert, triStochModes, triStoch, existingTriR
   })
 }
 
+/** Track reverse-bear (cross below HL): blocks stale HL until a new HL forms after the reverse. */
+function computeReverseBearHlState(prevRow, incoming) {
+  const prevRev = String(prevRow?.reverseSignal || '').toLowerCase()
+  const newRev = incoming.reverseSignal != null ? String(incoming.reverseSignal || '').toLowerCase() : prevRev
+  const prevPat = prevRow?.s1aPattern || ''
+  const newPat = incoming.s1aPattern != null ? (incoming.s1aPattern || '') : prevPat
+  const now = Date.now()
+
+  let bearAt = prevRow?.reverseBearAt ?? null
+  let clearedByHl = prevRow?.reverseBearClearedByHl === true
+  let lastHlAt = prevRow?.lastHlAt ?? null
+
+  if (incoming.reverseSignal != null) {
+    if (newRev === 'bear' && prevRev !== 'bear') {
+      bearAt = now
+      clearedByHl = false
+    } else if (newRev === 'bull') {
+      bearAt = null
+      clearedByHl = true
+    }
+  }
+
+  if (incoming.s1aPattern != null && newPat === 'Higher Low' && prevPat !== 'Higher Low') {
+    lastHlAt = now
+    if (bearAt && lastHlAt > bearAt) {
+      clearedByHl = true
+    }
+  }
+
+  return { reverseBearAt: bearAt, reverseBearClearedByHl: clearedByHl, lastHlAt }
+}
+
 function backfillK2CrossHistoryFromTriSamples() {
   if (!triStochK1K2History || typeof triStochK1K2History !== 'object') return
   let added = 0
@@ -1969,8 +2001,10 @@ function processWebhookAlert(alert) {
       if (alert.regClose !== undefined) alerts[existingIndex].regClose = alert.regClose
       if (alert.extPrice !== undefined) alerts[existingIndex].extPrice = alert.extPrice
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
+      const reverseHlState = computeReverseBearHlState(alerts[existingIndex], alert)
       if (alert.s1aPattern !== undefined) alerts[existingIndex].s1aPattern = alert.s1aPattern || null
       if (alert.reverseSignal !== undefined) alerts[existingIndex].reverseSignal = alert.reverseSignal || null
+      Object.assign(alerts[existingIndex], reverseHlState)
       if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
       alerts[existingIndex].receivedAt = Date.now()
     } else {
@@ -1989,6 +2023,7 @@ function processWebhookAlert(alert) {
         volume: alert.volume || null,
         s1aPattern: alert.s1aPattern || null,
         reverseSignal: alert.reverseSignal || null,
+        ...computeReverseBearHlState({}, alert),
         triStoch,
         triStochModes,
         ...entryUpdate,
@@ -5432,6 +5467,13 @@ app.get('/', (req, res) => {
         let currentSortField = 'symbol'; // Default to alphabetical sorting
         let currentSortDirection = 'asc';
         let alertsData = [];
+        const EMA12_CROSS_RECENT_MS = 15 * 60 * 1000;
+        const ema12PrevBySymbol = {};
+        const ema12LastCrossBySymbol = {};
+        const VWAP_NEAR_PCT = 0.35;
+        const VWAP_APPROACH_RECENT_MS = 15 * 60 * 1000;
+        const vwapPrevBySymbol = {};
+        const vwapApproachBySymbol = {};
         
         // Search state
         let searchTerm = '';
@@ -6311,6 +6353,379 @@ app.get('/', (req, res) => {
           if (code === 'ema_UU') return 'P>' + e1 + '>' + e2;
           if (code === 'ema_UD') return e1 + '<P<' + e2;
           return e2 + '<P<' + e1;
+        }
+
+        function getEma12Stack(e1, e2) {
+          if (isNaN(e1) || isNaN(e2)) return null;
+          if (e1 > e2) return 'bull';
+          if (e1 < e2) return 'bear';
+          return 'flat';
+        }
+
+        function trackEma12Benchmark(alerts) {
+          if (!Array.isArray(alerts)) return;
+          const now = Date.now();
+          alerts.forEach(alert => {
+            const sym = alert.symbol;
+            if (!sym) return;
+            const e1 = parseFloat(alert.ema1);
+            const e2 = parseFloat(alert.ema2);
+            const stack = getEma12Stack(e1, e2);
+            if (!stack) return;
+            const prev = ema12PrevBySymbol[sym];
+            if (prev && prev.stack !== stack && stack !== 'flat' && prev.stack !== 'flat') {
+              ema12LastCrossBySymbol[sym] = {
+                type: stack === 'bull' ? 'crossover' : 'crossunder',
+                at: now
+              };
+            }
+            ema12PrevBySymbol[sym] = { stack, e1, e2, at: now };
+          });
+        }
+
+        function getEma12Benchmark(alert) {
+          const e1 = parseFloat(alert.ema1);
+          const e2 = parseFloat(alert.ema2);
+          const stack = getEma12Stack(e1, e2);
+          if (!stack) return null;
+          const sym = alert.symbol;
+          const cross = sym ? ema12LastCrossBySymbol[sym] : null;
+          let recentCross = null;
+          if (cross && (Date.now() - cross.at) < EMA12_CROSS_RECENT_MS) {
+            recentCross = cross.type;
+          }
+          return {
+            stack,
+            e1,
+            e2,
+            n1: getEmaLen1(alert),
+            n2: getEmaLen2(alert),
+            tf1: formatEmaTfLabel(alert.ema1Tf),
+            tf2: formatEmaTfLabel(alert.ema2Tf),
+            recentCross,
+            crossAt: cross ? cross.at : null
+          };
+        }
+
+        function formatEma12BenchmarkHtml(bench) {
+          if (!bench) return '—';
+          const stackLabel = bench.stack === 'bull' ? 'Bull' : bench.stack === 'bear' ? 'Bear' : 'Flat';
+          const stackCls = bench.stack === 'bull' ? 'val-long' : bench.stack === 'bear' ? 'val-short' : 'val-neutral';
+          const rel = bench.stack === 'bull'
+            ? 'EMA1 above EMA2'
+            : bench.stack === 'bear'
+              ? 'EMA1 below EMA2'
+              : 'EMA1 = EMA2';
+          let html = '<span class="' + stackCls + '">' + escapeHtmlText(stackLabel + ' · ' + rel) + '</span>';
+          if (bench.recentCross === 'crossover') {
+            html += ' <span class="val-long">· Cross over</span>';
+          } else if (bench.recentCross === 'crossunder') {
+            html += ' <span class="val-short">· Cross under</span>';
+          }
+          return html;
+        }
+
+        function applyEma12BenchmarkToSuggestion(suggestion, bench) {
+          if (!suggestion || !bench || suggestion.side === 'Neutral') return suggestion;
+          if (suggestion.side === 'Long' && bench.stack === 'bear') {
+            return {
+              side: 'Neutral',
+              label: 'Wait — EMA bear stack',
+              reason: 'Stoch long bias but EMA1 below EMA2 (cross under / bear)',
+              strength: 'weak'
+            };
+          }
+          if (suggestion.side === 'Short' && bench.stack === 'bull') {
+            return {
+              side: 'Neutral',
+              label: 'Wait — EMA bull stack',
+              reason: 'Stoch short bias but EMA1 above EMA2 (cross over / bull)',
+              strength: 'weak'
+            };
+          }
+          if (suggestion.side === 'Long' && bench.stack === 'bull') {
+            return {
+              side: suggestion.side,
+              label: suggestion.label,
+              reason: suggestion.reason + ' · EMA bull (E1>E2) aligned',
+              strength: suggestion.strength
+            };
+          }
+          if (suggestion.side === 'Short' && bench.stack === 'bear') {
+            return {
+              side: suggestion.side,
+              label: suggestion.label,
+              reason: suggestion.reason + ' · EMA bear (E1<E2) aligned',
+              strength: suggestion.strength
+            };
+          }
+          return suggestion;
+        }
+
+        function getVwapSide(alert) {
+          const p = parseFloat(alert.price);
+          const vwap = parseFloat(alert.vwap);
+          if (!isNaN(p) && !isNaN(vwap) && vwap !== 0) {
+            const pct = ((p - vwap) / vwap) * 100;
+            if (Math.abs(pct) <= VWAP_NEAR_PCT) return 'at';
+            return p > vwap ? 'above' : 'below';
+          }
+          const va = alert.vwapAbove === true || alert.vwapAbove === 'true';
+          const vb = alert.vwapAbove === false || alert.vwapAbove === 'false';
+          if (va) return 'above';
+          if (vb) return 'below';
+          const remark = String(alert.vwapRemark || '');
+          if (remark === 'VWAP') return 'at';
+          return null;
+        }
+
+        function getVwapSupportQuality(k2) {
+          if (k2 === null || isNaN(k2)) return 'unclear';
+          if (k2 < 40) return 'weak';
+          if (k2 >= 60) return 'strong';
+          return 'mixed';
+        }
+
+        function k2HasHigherLow(alert) {
+          if (isReverseBearBlocking(alert)) return false;
+          return alert.s1aPattern === 'Higher Low';
+        }
+
+        /** Rising into VWAP: rejection risk unless K2 shows HL or is ≥50. */
+        function buildVwapRejectApproach(alert, pct, at) {
+          const k2 = getTriK2Value(alert.triStoch);
+          const hasHL = k2HasHigherLow(alert);
+          const k2Above50 = k2 !== null && k2 >= 50;
+          if (hasHL || k2Above50) {
+            return {
+              type: 'reject_override',
+              at,
+              pct,
+              k2,
+              hasHL,
+              k2Above50,
+              label: hasHL && k2Above50
+                ? 'At VWAP from below — K2 HL & ≥50, may hold (not rejection)'
+                : hasHL
+                  ? 'At VWAP from below — K2 HL, may hold through VWAP'
+                  : 'At VWAP from below — K2≥50, less rejection risk'
+            };
+          }
+          return {
+            type: 'reject_risk',
+            at,
+            pct,
+            k2,
+            label: 'Rising into VWAP from below — beware rejection (K2<50, no HL)'
+          };
+        }
+
+        function buildVwapSupportApproach(alert, pct, at) {
+          const k2 = getTriK2Value(alert.triStoch);
+          const supportQuality = getVwapSupportQuality(k2);
+          return {
+            type: 'support_test',
+            at,
+            pct,
+            k2,
+            supportQuality,
+            label: supportQuality === 'strong'
+              ? 'Dropped to VWAP from above — K2≥60, likely support'
+              : supportQuality === 'weak'
+                ? 'Dropped to VWAP from above — K2<40, weak support'
+                : 'Dropped to VWAP from above — mixed K2, watch closely'
+          };
+        }
+
+        function trackVwapApproach(alerts) {
+          if (!Array.isArray(alerts)) return;
+          const now = Date.now();
+          alerts.forEach(alert => {
+            const sym = alert.symbol;
+            if (!sym) return;
+            const side = getVwapSide(alert);
+            const pct = getAlertVwapPct(alert);
+            if (side == null || pct === null) return;
+            const prev = vwapPrevBySymbol[sym];
+            const near = side === 'at' || Math.abs(pct) <= VWAP_NEAR_PCT;
+
+            if (prev && near) {
+              const risingFromBelow = (prev.side === 'below' || (prev.pct != null && prev.pct < -VWAP_NEAR_PCT)) &&
+                pct > (prev.pct != null ? prev.pct : -999);
+              const fallingFromAbove = (prev.side === 'above' || (prev.pct != null && prev.pct > VWAP_NEAR_PCT)) &&
+                pct < (prev.pct != null ? prev.pct : 999);
+
+              if (risingFromBelow) {
+                vwapApproachBySymbol[sym] = buildVwapRejectApproach(alert, pct, now);
+              } else if (fallingFromAbove) {
+                vwapApproachBySymbol[sym] = buildVwapSupportApproach(alert, pct, now);
+              }
+            }
+            vwapPrevBySymbol[sym] = { side, pct, at: now };
+          });
+        }
+
+        function getVwapApproachContext(alert, side, pct) {
+          const sym = alert.symbol;
+          const stored = sym ? vwapApproachBySymbol[sym] : null;
+          if (stored && (Date.now() - stored.at) < VWAP_APPROACH_RECENT_MS) return stored;
+
+          const prev = sym ? vwapPrevBySymbol[sym] : null;
+          const near = side === 'at' || (pct !== null && Math.abs(pct) <= VWAP_NEAR_PCT);
+          if (!near || !prev) return null;
+
+          const risingFromBelow = prev.side === 'below' && pct > (prev.pct != null ? prev.pct : -999);
+          const fallingFromAbove = prev.side === 'above' && pct < (prev.pct != null ? prev.pct : 999);
+
+          if (risingFromBelow) {
+            return buildVwapRejectApproach(alert, pct, Date.now());
+          }
+          if (fallingFromAbove) {
+            return buildVwapSupportApproach(alert, pct, Date.now());
+          }
+          return null;
+        }
+
+        function getVwapBenchmark(alert) {
+          const side = getVwapSide(alert);
+          const pct = getAlertVwapPct(alert);
+          if (!side) return null;
+          const stack = side === 'above' ? 'bull' : side === 'below' ? 'bear' : 'neutral';
+          const approach = getVwapApproachContext(alert, side, pct);
+          return {
+            stack,
+            side,
+            pct,
+            approach,
+            vwap: parseFloat(alert.vwap),
+            remark: alert.vwapRemark || ''
+          };
+        }
+
+        function formatVwapBenchmarkHtml(bench) {
+          if (!bench) return '—';
+          const stackLabel = bench.stack === 'bull' ? 'Bull' : bench.stack === 'bear' ? 'Bear' : 'At VWAP';
+          const stackCls = bench.stack === 'bull' ? 'val-long' : bench.stack === 'bear' ? 'val-short' : 'val-neutral';
+          const rel = bench.side === 'above'
+            ? 'Price above VWAP'
+            : bench.side === 'below'
+              ? 'Price below VWAP'
+              : 'Price at VWAP';
+          let html = '<span class="' + stackCls + '">' + escapeHtmlText(stackLabel + ' · ' + rel) + '</span>';
+          if (bench.pct !== null && !isNaN(bench.pct)) {
+            const sign = bench.pct >= 0 ? '+' : '';
+            html += ' <span style="opacity:0.7">(' + escapeHtmlText(sign + bench.pct.toFixed(2) + '%') + ')</span>';
+          }
+          return html;
+        }
+
+        function formatVwapApproachHtml(approach) {
+          if (!approach) return '—';
+          if (approach.type === 'reject_risk') {
+            return '<span class="val-short">' + escapeHtmlText(approach.label) + '</span>';
+          }
+          if (approach.type === 'reject_override') {
+            return '<span class="val-long">' + escapeHtmlText(approach.label) + '</span>';
+          }
+          const cls = approach.supportQuality === 'strong' ? 'val-long'
+            : approach.supportQuality === 'weak' ? 'val-short' : 'val-neutral';
+          return '<span class="' + cls + '">' + escapeHtmlText(approach.label) + '</span>';
+        }
+
+        function applyVwapBenchmarkToSuggestion(suggestion, vwapBench, alert) {
+          if (!suggestion || !vwapBench) return suggestion;
+
+          if (suggestion.side === 'Long' && vwapBench.stack === 'bear') {
+            return {
+              side: 'Neutral',
+              label: 'Wait — below VWAP',
+              reason: 'Long bias but price below VWAP (bear benchmark)',
+              strength: 'weak'
+            };
+          }
+          if (suggestion.side === 'Short' && vwapBench.stack === 'bull') {
+            return {
+              side: 'Neutral',
+              label: 'Wait — above VWAP',
+              reason: 'Short bias but price above VWAP (bull benchmark)',
+              strength: 'weak'
+            };
+          }
+
+          const app = vwapBench.approach;
+          if (app && app.type === 'reject_risk') {
+            if (suggestion.side === 'Long') {
+              return {
+                side: 'Neutral',
+                label: 'Beware — VWAP rejection',
+                reason: 'Rising from below into VWAP, K2<50 & no HL — may reject',
+                strength: 'weak'
+              };
+            }
+            if (suggestion.side === 'Short') {
+              return {
+                side: suggestion.side,
+                label: suggestion.label,
+                reason: suggestion.reason + ' · VWAP rejection risk aligned',
+                strength: suggestion.strength
+              };
+            }
+          }
+          if (app && app.type === 'reject_override' && suggestion.side === 'Long') {
+            return {
+              side: suggestion.side,
+              label: suggestion.label,
+              reason: suggestion.reason + ' · K2 HL/≥50 may hold VWAP',
+              strength: suggestion.strength
+            };
+          }
+
+          if (app && app.type === 'support_test') {
+            if (suggestion.side === 'Long') {
+              if (app.supportQuality === 'weak') {
+                return {
+                  side: 'Neutral',
+                  label: 'VWAP support unlikely',
+                  reason: 'At VWAP from above but K2<40 — probably not support',
+                  strength: 'weak'
+                };
+              }
+              if (app.supportQuality === 'strong') {
+                return {
+                  side: suggestion.side,
+                  label: suggestion.label,
+                  reason: suggestion.reason + ' · VWAP support likely (K2≥60)',
+                  strength: suggestion.strength
+                };
+              }
+            }
+            if (suggestion.side === 'Short' && app.supportQuality === 'strong') {
+              return {
+                side: 'Neutral',
+                label: 'Wait — VWAP support',
+                reason: 'Short into VWAP with K2≥60 — support may hold',
+                strength: 'weak'
+              };
+            }
+          }
+
+          if (suggestion.side === 'Long' && vwapBench.stack === 'bull') {
+            return {
+              side: suggestion.side,
+              label: suggestion.label,
+              reason: suggestion.reason + ' · above VWAP aligned',
+              strength: suggestion.strength
+            };
+          }
+          if (suggestion.side === 'Short' && vwapBench.stack === 'bear') {
+            return {
+              side: suggestion.side,
+              label: suggestion.label,
+              reason: suggestion.reason + ' · below VWAP aligned',
+              strength: suggestion.strength
+            };
+          }
+          return suggestion;
         }
 
         function formatEmaTfLabel(tf) {
@@ -8425,6 +8840,12 @@ Use this to create a new preset filter button that applies these exact filter se
           return bare;
         }
 
+        function isReverseBearBlocking(alert) {
+          if (!alert) return false;
+          if (String(alert.reverseSignal || '').toLowerCase() !== 'bear') return false;
+          return alert.reverseBearClearedByHl !== true;
+        }
+
         function getTrendFollowContext(alert) {
           const t = alert.triStoch || {};
           const k1 = getTriK1Value(t);
@@ -8432,6 +8853,9 @@ Use this to create a new preset filter button that applies these exact filter se
           const k1Dir = getTriK1Direction(t);
           const k2Dir = getTriK2Direction(t);
           const pat = alert.s1aPattern || '';
+          const reverseBearActive = isReverseBearBlocking(alert);
+          const isHL = pat === 'Higher Low';
+          const isLH = pat === 'Lower High';
           return {
             k1,
             k2,
@@ -8439,8 +8863,11 @@ Use this to create a new preset filter button that applies these exact filter se
             k1Up: k1Dir === 'up',
             k2Down: k2Dir === 'down',
             k2Up: k2Dir === 'up',
-            isLH: pat === 'Lower High',
-            isHL: pat === 'Higher Low',
+            isLH,
+            isHL,
+            effectiveHL: isHL && !reverseBearActive,
+            effectiveHlAbove50: isHL && !reverseBearActive && k1 !== null && k1 > 50,
+            reverseBearActive,
             k2Below50: k2 !== null && k2 < 50,
             k2Above50: k2 !== null && k2 > 50,
             k1Below40: k1 !== null && k1 < 40,
@@ -8455,8 +8882,17 @@ Use this to create a new preset filter button that applies these exact filter se
           const c = getTrendFollowContext(alert);
           if (!c.hasData) return null;
 
+          if (c.reverseBearActive) {
+            return {
+              side: 'Short',
+              label: 'Reverse down · cross below HL',
+              reason: 'Bear reverse active — overrides prior K1 HL until new HL forms',
+              strength: 'strong'
+            };
+          }
+
           if (c.k2Below50) {
-            if (c.isHL && c.k1Above50 && c.k1Up) {
+            if (c.effectiveHL && c.k1Above50 && c.k1Up) {
               return {
                 side: 'Long',
                 label: 'Reversal long · HL above 50',
@@ -8484,7 +8920,9 @@ Use this to create a new preset filter button that applies these exact filter se
               return {
                 side: 'Neutral',
                 label: 'Wait — no real reversal yet',
-                reason: 'K2<50: need K1 HL above 50 before trusting a long',
+                reason: c.isHL && !c.effectiveHL
+                  ? 'K2<50: prior HL invalidated by reverse down — need new HL>50'
+                  : 'K2<50: need K1 HL above 50 before trusting a long',
                 strength: 'weak'
               };
             }
@@ -8514,7 +8952,7 @@ Use this to create a new preset filter button that applies these exact filter se
               };
             }
             if (c.k2Up && c.k1Up) {
-              if (c.isHL && c.k1Above50) {
+              if (c.effectiveHL && c.k1Above50) {
                 return {
                   side: 'Long',
                   label: 'Strong long · HL above 50',
@@ -8574,26 +9012,66 @@ Use this to create a new preset filter button that applies these exact filter se
             return summarySection('Trend Follow', summaryRow('Setup', '—') + summaryRow('Note', escapeHtmlText('Need K1/K2 data')));
           }
 
-          const note = '<div class="ticker-summary-note">K2 = trend · K1 = short-term (volatile). ' +
-            'Short: K2↓&lt;50 + K1↓ (best LH&lt;40). Long reversal when K2&lt;50 only after HL&gt;50 on K1.</div>';
+          const note = '<div class="ticker-summary-note">K2 = trend · K1 = short-term. Reverse down (R↓) = bear until a <em>new</em> HL forms. ' +
+            'VWAP: above = bull, below = bear. Rise to VWAP: rejection if K2&lt;50 &amp; no HL. Drop: K2&lt;40 weak, K2≥60 support.</div>';
+
+          const bench = getEma12Benchmark(alert);
+          const vwapBench = getVwapBenchmark(alert);
+          let emaBenchRow = bench
+            ? summaryRow('EMA benchmark', formatEma12BenchmarkHtml(bench))
+            : summaryRow('EMA benchmark', '—');
+          let vwapBenchRow = vwapBench
+            ? summaryRow('VWAP benchmark', formatVwapBenchmarkHtml(vwapBench))
+            : summaryRow('VWAP benchmark', '—');
+          let vwapApproachRow = vwapBench && vwapBench.approach
+            ? summaryRow('VWAP approach', formatVwapApproachHtml(vwapBench.approach))
+            : '';
 
           let rows = '';
           if (c.k2Below50) {
             rows =
+              emaBenchRow +
+              vwapBenchRow +
+              vwapApproachRow +
               summaryCheckRow('K2 below 50', c.k2Below50 ? 'pass' : 'fail') +
               summaryCheckRow('K2 trending down', c.k2Down ? 'pass' : 'wait', 'required for short') +
               summaryCheckRow('K1 trending down', c.k1Down ? 'pass' : 'wait', 'align with K2') +
               summaryCheckRow('LH on K1 below 40', c.isLH && c.k1Below40 ? 'pass' : 'wait', 'ideal short') +
-              summaryCheckRow('HL + K1 above 50', c.isHL && c.k1Above50 ? 'pass' : 'wait', 'reversal gate for long');
+              summaryCheckRow('HL + K1 above 50', c.effectiveHlAbove50 ? 'pass' : c.isHL && c.reverseBearActive ? 'fail' : 'wait', c.reverseBearActive ? 'need new HL after R↓' : 'reversal gate for long') +
+              (c.reverseBearActive ? summaryCheckRow('Reverse down (R↓)', 'pass', 'bear — blocks stale HL') : '') +
+              (bench ? summaryCheckRow('EMA1 below EMA2 (bear)', bench.stack === 'bear' ? 'pass' : bench.stack === 'bull' ? 'fail' : 'wait', 'cross under = bear') : '') +
+              (vwapBench ? summaryCheckRow('Price below VWAP (bear)', vwapBench.stack === 'bear' ? 'pass' : vwapBench.stack === 'bull' ? 'fail' : 'wait', 'under = bear') : '') +
+              (vwapBench && vwapBench.approach && vwapBench.approach.type === 'reject_risk'
+                ? summaryCheckRow('VWAP rejection risk', 'pass', 'K2<50, no HL')
+                : vwapBench && vwapBench.approach && vwapBench.approach.type === 'reject_override'
+                  ? summaryCheckRow('K2 HL or ≥50 at VWAP', 'pass', 'may hold, not rejection')
+                  : vwapBench && vwapBench.approach && vwapBench.approach.type === 'support_test'
+                    ? summaryCheckRow('VWAP support test', vwapBench.approach.supportQuality === 'strong' ? 'pass' : vwapBench.approach.supportQuality === 'weak' ? 'fail' : 'wait', 'K2-based')
+                    : '');
           } else if (c.k2Above50) {
             rows =
+              emaBenchRow +
+              vwapBenchRow +
+              vwapApproachRow +
               summaryCheckRow('K2 above 50', c.k2Above50 ? 'pass' : 'fail') +
               summaryCheckRow('K2 trending up', c.k2Up ? 'pass' : 'wait', 'required for long') +
               summaryCheckRow('K1 trending up', c.k1Up ? 'pass' : 'wait', 'align with K2') +
-              summaryCheckRow('HL on K1 above 50', c.isHL && c.k1Above50 ? 'pass' : 'wait', 'ideal long') +
-              summaryCheckRow('LH + K1 below 50', c.isLH && c.k1Below50 ? 'pass' : 'wait', 'reversal gate for short');
+              summaryCheckRow('HL on K1 above 50', c.effectiveHlAbove50 ? 'pass' : 'wait', 'ideal long') +
+              summaryCheckRow('LH + K1 below 50', c.isLH && c.k1Below50 ? 'pass' : 'wait', 'reversal gate for short') +
+              (bench ? summaryCheckRow('EMA1 above EMA2 (bull)', bench.stack === 'bull' ? 'pass' : bench.stack === 'bear' ? 'fail' : 'wait', 'cross over = bull') : '') +
+              (vwapBench ? summaryCheckRow('Price above VWAP (bull)', vwapBench.stack === 'bull' ? 'pass' : vwapBench.stack === 'bear' ? 'fail' : 'wait', 'above = bull') : '') +
+              (vwapBench && vwapBench.approach && vwapBench.approach.type === 'support_test'
+                ? summaryCheckRow('VWAP support test', vwapBench.approach.supportQuality === 'strong' ? 'pass' : vwapBench.approach.supportQuality === 'weak' ? 'fail' : 'wait', 'K2 dropped from above')
+                : vwapBench && vwapBench.approach && vwapBench.approach.type === 'reject_risk'
+                  ? summaryCheckRow('VWAP rejection risk', 'fail', 'K2<50, no HL')
+                  : vwapBench && vwapBench.approach && vwapBench.approach.type === 'reject_override'
+                    ? summaryCheckRow('K2 HL or ≥50 at VWAP', 'pass', 'may hold through VWAP')
+                    : '');
           } else {
             rows =
+              emaBenchRow +
+              vwapBenchRow +
+              vwapApproachRow +
               summaryCheckRow('K2 below 50', 'wait') +
               summaryCheckRow('K2 above 50', 'wait') +
               summaryRow('Note', escapeHtmlText('K2 near 50 — wait for clear side'));
@@ -8613,6 +9091,14 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         function getTickerTradeSuggestion(alert) {
+          if (isReverseBearBlocking(alert)) {
+            return {
+              side: 'Short',
+              label: 'Reverse down · cross below HL',
+              reason: 'Bear reverse active — overrides prior K1 HL until new HL forms',
+              strength: 'strong'
+            };
+          }
           const entry = String(alert.entrySignal || '').toLowerCase();
           if (entry === 'long') {
             return {
@@ -8630,19 +9116,27 @@ Use this to create a new preset filter button that applies these exact filter se
               strength: 'strong'
             };
           }
+          let result;
           const trend = getTrendFollowSuggestion(alert);
-          if (trend) return trend;
-          const sug = getUnifiedStochSuggestion(alert);
-          if (sug) {
-            const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
-            return {
-              side,
-              label: sug.text,
-              reason: 'Fallback K/D analysis',
-              strength: sug.type === 'neutral' ? 'weak' : 'moderate'
-            };
+          if (trend) result = trend;
+          else {
+            const sug = getUnifiedStochSuggestion(alert);
+            if (sug) {
+              const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
+              result = {
+                side,
+                label: sug.text,
+                reason: 'Fallback K/D analysis',
+                strength: sug.type === 'neutral' ? 'weak' : 'moderate'
+              };
+            } else {
+              result = { side: 'Neutral', label: 'No clear setup', reason: 'Insufficient stoch data', strength: 'weak' };
+            }
           }
-          return { side: 'Neutral', label: 'No clear setup', reason: 'Insufficient stoch data', strength: 'weak' };
+          const emaBench = getEma12Benchmark(alert);
+          const vwapBench = getVwapBenchmark(alert);
+          result = applyEma12BenchmarkToSuggestion(result, emaBench);
+          return applyVwapBenchmarkToSuggestion(result, vwapBench, alert);
         }
 
         function fmtSummaryK(val, dir) {
@@ -8717,15 +9211,19 @@ Use this to create a new preset filter button that applies these exact filter se
           const kdStr = (kValue !== null ? kValue.toFixed(1) : '—') + ' / ' + (dValue !== null ? dValue.toFixed(1) : '—');
           const dirStr = kDirection + ' / ' + dDirection;
 
+          const emaBench = getEma12Benchmark(alert);
+          const vwapBench = getVwapBenchmark(alert);
+
           bodyEl.innerHTML =
             summarySection('Price',
               summaryRow('Last', alert.price ? escapeHtmlText(formatCurrency(alert.price)) : '—') +
               summaryRow('Change', changeHtml)
             ) +
             summarySection('Tri Stoch',
-              summaryRow('K1', fmtSummaryK(getTriK1Value(t), getTriK1Direction(t))) +
-              summaryRow('K2', fmtSummaryK(getTriK2Value(t), getTriK2Direction(t)))
+              summaryRow('K1', fmtSummaryK(getTriK1Value(t), getTriK1Direction(t)) + ' <span style="opacity:0.55;font-size:10px">short-term</span>') +
+              summaryRow('K2', fmtSummaryK(getTriK2Value(t), getTriK2Direction(t)) + ' <span style="opacity:0.55;font-size:10px">trend</span>')
             ) +
+            renderTrendFollowSection(alert) +
             summarySection('Session Stoch',
               summaryRow('K / D', escapeHtmlText(kdStr)) +
               summaryRow('Direction', escapeHtmlText(dirStr)) +
@@ -8734,18 +9232,25 @@ Use this to create a new preset filter button that applies these exact filter se
             summarySection('Signals',
               summaryRow('Pattern', pine.title || pine.tag ? '<span class="' + (pine.tagClass || '') + '">' + escapeHtmlText(pine.title || pine.tag) + '</span>' : '—') +
               summaryRow('Entry', alert.entrySignal ? '<span class="' + (String(alert.entrySignal).toLowerCase() === 'long' ? 'val-long' : 'val-short') + '">' + escapeHtmlText(String(alert.entrySignal).toUpperCase() + (alert.entrySignalSet ? ' (Set ' + alert.entrySignalSet + ')' : '')) + '</span>' : '—') +
-              summaryRow('Reverse', alert.reverseSignal ? escapeHtmlText(String(alert.reverseSignal)) : '—')
+              summaryRow('Reverse', alert.reverseSignal
+                ? (String(alert.reverseSignal).toLowerCase() === 'bear' && isReverseBearBlocking(alert)
+                  ? '<span class="val-short">' + escapeHtmlText(String(alert.reverseSignal)) + ' · blocks HL</span>'
+                  : escapeHtmlText(String(alert.reverseSignal)))
+                : '—')
             ) +
             summarySection('Range & VWAP',
+              summaryRow('VWAP benchmark', formatVwapBenchmarkHtml(vwapBench)) +
+              summaryRow('VWAP approach', vwapBench && vwapBench.approach ? formatVwapApproachHtml(vwapBench.approach) : '—') +
               summaryRow('ORB zone', '<span class="' + orbCls + '">' + escapeHtmlText(orb || '—') + '</span>') +
               summaryRow('Range', '<span class="' + rangeCls + '">' + escapeHtmlText(rangeLbl) + '</span>') +
               summaryRow('NY ORB H/L', escapeHtmlText(orbRange)) +
-              summaryRow('VWAP', escapeHtmlText(vw.vwapText || '—') + (vwapNum !== '—' ? ' (' + escapeHtmlText(vwapNum) + ')' : '')) +
+              summaryRow('VWAP level', escapeHtmlText(vw.vwapText || '—') + (vwapNum !== '—' ? ' (' + escapeHtmlText(vwapNum) + ')' : '')) +
               summaryRow('VWAP remark', vwapRemark) +
               summaryRow('Band', escapeHtmlText(vw.bandText || '—'))
             ) +
             summarySection('Structure',
-              summaryRow('EMA stack', emaDisp ? escapeHtmlText(emaDisp) : '—') +
+              summaryRow('EMA benchmark', formatEma12BenchmarkHtml(emaBench)) +
+              summaryRow('EMA stack (price)', emaDisp ? escapeHtmlText(emaDisp) : '—') +
               summaryEmaRow('EMA1', getEmaLen1(alert), alert.ema1Tf, alert.ema1, alert.ema1Above) +
               summaryEmaRow('EMA2', getEmaLen2(alert), alert.ema2Tf, alert.ema2, alert.ema2Above) +
               summaryRow('Volume', alert.volume ? escapeHtmlText(formatVolume(alert.volume)) : '—') +
@@ -10378,6 +10883,8 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             alertsData = data;
+            trackEma12Benchmark(data);
+            trackVwapApproach(data);
             
             // Extract sector data from alerts for frontend use
             if (Array.isArray(data)) {
