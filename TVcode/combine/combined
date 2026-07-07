@@ -19,27 +19,37 @@ ema1Timeframe = input.timeframe("1", title="TF", group=EMA_GROUP, inline="e1", t
 ema1Smooth = input.bool(false, title="Smooth", group=EMA_GROUP, inline="e1")
 ema1VisBelow = input.string("Off", title="Hide Below", group=EMA_GROUP, inline="e1v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is shorter than this.")
 ema1VisAbove = input.string("Off", title="Hide Above", group=EMA_GROUP, inline="e1v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is longer than this.")
+ema1ColorAbove = input.color(#a5d6a7, title="Above", group=EMA_GROUP, inline="e1c")
+ema1ColorBelow = input.color(#ab47bc, title="Below", group=EMA_GROUP, inline="e1c")
 ema2Length = input.int(200, title="Length", group=EMA_GROUP, inline="e2")
 ema2Timeframe = input.timeframe("1", title="TF", group=EMA_GROUP, inline="e2", tooltip="Default 1m.")
 ema2Smooth = input.bool(false, title="Smooth", group=EMA_GROUP, inline="e2")
 ema2VisBelow = input.string("Off", title="Hide Below", group=EMA_GROUP, inline="e2v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is shorter than this.")
 ema2VisAbove = input.string("Off", title="Hide Above", group=EMA_GROUP, inline="e2v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is longer than this.")
+ema2ColorAbove = input.color(#80deea, title="Above", group=EMA_GROUP, inline="e2c")
+ema2ColorBelow = input.color(#2962ff, title="Below", group=EMA_GROUP, inline="e2c")
 ema3Length = input.int(21, title="Length", group=EMA_GROUP, inline="e3")
 ema3Timeframe = input.timeframe("D", title="TF", group=EMA_GROUP, inline="e3", tooltip="Default daily.")
 ema3Smooth = input.bool(true, title="Smooth", group=EMA_GROUP, inline="e3", tooltip="Auto-on when chart is below EMA TF.")
 ema3VisBelow = input.string("D", title="Hide Below", group=EMA_GROUP, inline="e3v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is shorter than this.")
 ema3VisAbove = input.string("Off", title="Hide Above", group=EMA_GROUP, inline="e3v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is longer than this.")
+ema3ColorAbove = input.color(#b39ddb, title="Above", group=EMA_GROUP, inline="e3c")
+ema3ColorBelow = input.color(color.red, title="Below", group=EMA_GROUP, inline="e3c")
 ema4Length = input.int(50, title="Length", group=EMA_GROUP, inline="e4")
 ema4Timeframe = input.timeframe("D", title="TF", group=EMA_GROUP, inline="e4", tooltip="Default daily.")
 ema4Smooth = input.bool(true, title="Smooth", group=EMA_GROUP, inline="e4", tooltip="Auto-on when chart is below EMA TF.")
 ema4VisBelow = input.string("D", title="Hide Below", group=EMA_GROUP, inline="e4v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is shorter than this.")
 ema4VisAbove = input.string("Off", title="Hide Above", group=EMA_GROUP, inline="e4v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is longer than this.")
+ema4ColorAbove = input.color(#81c784, title="Above", group=EMA_GROUP, inline="e4c")
+ema4ColorBelow = input.color(color.red, title="Below", group=EMA_GROUP, inline="e4c")
 ema5Length = input.int(200, title="Length", group=EMA_GROUP, inline="e5")
 ema5Timeframe = input.timeframe("D", title="TF", group=EMA_GROUP, inline="e5", tooltip="Default daily.")
 ema5Smooth = input.bool(true, title="Smooth", group=EMA_GROUP, inline="e5", tooltip="Auto-on when chart is below EMA TF.")
 ema5VisBelow = input.string("D", title="Hide Below", group=EMA_GROUP, inline="e5v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is shorter than this.")
 ema5VisAbove = input.string("Off", title="Hide Above", group=EMA_GROUP, inline="e5v", options=["Off", "30S", "1", "3", "5", "15", "30", "60", "240", "D"], tooltip="Hide when chart TF is longer than this.")
-emaVwapZoneColor = input.bool(true, title="Color EMAs by VWAP Band Zone", group=EMA_GROUP, tooltip="On: EMA color shows which VWAP band zone the EMA itself sits in (uses the band line colors). Off: green/purple by price above/below EMA.")
+ema5ColorAbove = input.color(#4dd0e1, title="Above", group=EMA_GROUP, inline="e5c")
+ema5ColorBelow = input.color(color.red, title="Below", group=EMA_GROUP, inline="e5c")
+emaVwapZoneColor = input.bool(true, title="Color EMA 3/4/5 by VWAP Band Zone", group=EMA_GROUP, tooltip="On: EMA 3/4/5 color shows which VWAP band zone the EMA sits in (band line colors). EMA 1/2 always use their Above/Below colors.")
 showEmaSr = input.bool(true, title="Show EMA Support/Resistance Lines", group=EMA_GROUP)
 emaSrLen = input.int(20, title="EMA S/R Line Length (bars)", minval=1, group=EMA_GROUP)
 emaSlopeLen = input.int(10, title="EMA Slope Lookback (bars)", minval=1, group=EMA_GROUP, tooltip="Bars used to measure EMA slope. Rising EMA reinforces support; falling EMA reinforces resistance.")
@@ -427,17 +437,17 @@ f_vwapZoneColor(float v, color fallback) =>
          v < lowerBandValue1 ? band2LoLine :
          band1LoLine
 
-// EMA colors — EMA 1/2: solid/dotted by price position; EMA 3/4/5: always solid, red when below.
-chartEma1PriceColor = aboveChartEma1 ? #a5d6a7 : #ab47bc
-chartEma2PriceColor = aboveChartEma2 ? #80deea : #2962ff
-chartEma3PriceColor = aboveChartEma3 ? #b39ddb : color.red
-chartEma4PriceColor = aboveChartEma4 ? #81c784 : color.red
-chartEma5PriceColor = aboveChartEma5 ? #4dd0e1 : color.red
-chartEma1Color = emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma1Value, chartEma1PriceColor) : chartEma1PriceColor
-chartEma2Color = emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma2Value, chartEma2PriceColor) : chartEma2PriceColor
-chartEma3Color = not aboveChartEma3 ? color.red : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma3Value, chartEma3PriceColor) : chartEma3PriceColor
-chartEma4Color = not aboveChartEma4 ? color.red : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma4Value, chartEma4PriceColor) : chartEma4PriceColor
-chartEma5Color = not aboveChartEma5 ? color.red : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma5Value, chartEma5PriceColor) : chartEma5PriceColor
+// EMA colors — EMA 1/2: solid/dotted by price position; EMA 3/4/5: always solid, below color when price is below.
+chartEma1PriceColor = aboveChartEma1 ? ema1ColorAbove : ema1ColorBelow
+chartEma2PriceColor = aboveChartEma2 ? ema2ColorAbove : ema2ColorBelow
+chartEma3PriceColor = aboveChartEma3 ? ema3ColorAbove : ema3ColorBelow
+chartEma4PriceColor = aboveChartEma4 ? ema4ColorAbove : ema4ColorBelow
+chartEma5PriceColor = aboveChartEma5 ? ema5ColorAbove : ema5ColorBelow
+chartEma1Color = chartEma1PriceColor
+chartEma2Color = chartEma2PriceColor
+chartEma3Color = not aboveChartEma3 ? ema3ColorBelow : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma3Value, chartEma3PriceColor) : chartEma3PriceColor
+chartEma4Color = not aboveChartEma4 ? ema4ColorBelow : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma4Value, chartEma4PriceColor) : chartEma4PriceColor
+chartEma5Color = not aboveChartEma5 ? ema5ColorBelow : emaVwapZoneColor and showVwapOnChart ? f_vwapZoneColor(chartEma5Value, chartEma5PriceColor) : chartEma5PriceColor
 trendIndicator = aboveEma1 and aboveEma2 ? "↑ ↑" :
      not aboveEma1 and not aboveEma2 ? "↓ ↓" :
      aboveEma2 and not aboveEma1 ? "- ↑" :

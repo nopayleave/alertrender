@@ -20,7 +20,7 @@ s2Opacity   = input.int(50,  "S2 Histogram Opacity", minval=0, maxval=100, group
 
 grp_a = "Timeframe A"
 timeframeA  = input.timeframe("", "Timeframe A", group=grp_a, tooltip="Leave empty for chart timeframe")
-baseMultA   = input.string("1x", "Base (S1A)", options=["0.25x", "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "4x", "6x", "8x", "10x", "12x", "14x", "16x", "18x", "20x"], group=grp_a)
+baseMultA   = input.string("1x", "Base (S1A)", options=["0.25x", "0.5x", "1x", "1.5x", "2x", "2.5x", "3x", "3.5x", "4x", "4.5x", "5x", "5.5x", "6x", "8x", "10x", "12x", "14x", "16x", "18x", "20x"], group=grp_a)
 s2VsS1A     = input.float(8.0, "S2A vs S1A (x)", minval=0.25, step=0.25, group=grp_a)
 stochTagA   = input.string("Interday", "Stoch Label (webhook)", options=["Interday", "Swing"], group=grp_a)
 
@@ -72,7 +72,7 @@ hllhDimTransp = input.int(70, "Dim transparency", minval=0, maxval=95, group=grp
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 f_multVal(s) =>
-    s == "0.25x" ? 0.25 : s == "0.5x" ? 0.5 : s == "1x" ? 1.0 : s == "1.5x" ? 1.5 : s == "2x" ? 2.0 : s == "2.5x" ? 2.5 : s == "3x" ? 3.0 : s == "4x" ? 4.0 : s == "6x" ? 6.0 : s == "8x" ? 8.0 : s == "10x" ? 10.0 : s == "12x" ? 12.0 : s == "14x" ? 14.0 : s == "16x" ? 16.0 : s == "18x" ? 18.0 : s == "20x" ? 20.0 : 1.0
+    s == "0.25x" ? 0.25 : s == "0.5x" ? 0.5 : s == "1x" ? 1.0 : s == "1.5x" ? 1.5 : s == "2x" ? 2.0 : s == "2.5x" ? 2.5 : s == "3x" ? 3.0 : s == "3.5x" ? 3.5 : s == "4x" ? 4.0 : s == "4.5x" ? 4.5 : s == "5x" ? 5.0 : s == "5.5x" ? 5.5 : s == "6x" ? 6.0 : s == "8x" ? 8.0 : s == "10x" ? 10.0 : s == "12x" ? 12.0 : s == "14x" ? 14.0 : s == "16x" ? 16.0 : s == "18x" ? 18.0 : s == "20x" ? 20.0 : 1.0
 
 f_lineColor(val, isUp, colUp, colDown) =>
     (val < 10 and isUp) ? colorWarnLow : (val > 90 and not isUp) ? colorWarnHigh : val > 90 ? colorExHigh : val < 10 ? colorExLow : isUp ? colUp : colDown
@@ -218,14 +218,21 @@ bullReverse = lhRActive and not na(lastLhK) and lhWasBroken and ta.crossover(k1A
 bearReverse = hlRActive and not na(lastHlK) and hlWasHeld and ta.crossunder(k1A, lastHlK)
 
 var string lastS1aPattern = ""
+var float lastS1aPatternValue = na
+var int lastS1aPatternTime = na
 if s1aPat != ""
     lastS1aPattern := s1aPat
+    lastS1aPatternValue := s1aPatVal
+    lastS1aPatternTime := time
 
 var string lastReverseSignal = "none"
+var int lastReverseTime = na
 if bullReverse
     lastReverseSignal := "bull"
+    lastReverseTime := time
 else if bearReverse
     lastReverseSignal := "bear"
+    lastReverseTime := time
 
 // EMA1 + 1m price — HL dim when price > band below EMA1; LH dim when > band above (also used in webhook)
 ema1Calc = ta.ema(close, ema1Length)
@@ -421,7 +428,10 @@ if barstate.isconfirmed
     alertStr += "\"entrySignal\":\"" + entrySignal + "\","
     alertStr += "\"entrySet\":\"" + entrySet + "\","
     alertStr += "\"s1aPattern\":\"" + lastS1aPattern + "\","
+    alertStr += "\"s1aPatternValue\":\"" + f_jsonNum(lastS1aPatternValue) + "\","
+    alertStr += "\"s1aPatternTime\":\"" + (na(lastS1aPatternTime) ? "" : str.tostring(lastS1aPatternTime)) + "\","
     alertStr += "\"reverseSignal\":\"" + lastReverseSignal + "\","
+    alertStr += "\"reverseTime\":\"" + (na(lastReverseTime) ? "" : str.tostring(lastReverseTime)) + "\","
     alertStr += "\"d2Signal\":\"Tri\""
     alertStr += "}"
     alert(alertStr, alert.freq_once_per_bar_close)

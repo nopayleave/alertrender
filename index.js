@@ -408,36 +408,83 @@ function processTriK2CrossDetection(alert, triStochModes, triStoch, existingTriR
   })
 }
 
-/** Track reverse-bear (cross below HL): blocks stale HL until a new HL forms after the reverse. */
-function computeReverseBearHlState(prevRow, incoming) {
+/**
+ * Track reverse signals against stale pivots, symmetrically:
+ * - reverse bear (cross below HL) blocks the stale HL until a NEW HL forms after it
+ * - reverse bull (cross above LH) blocks the stale LH until a NEW LH forms after it
+ * Uses webhook timestamps (reverseTime / s1aPatternTime) when present so repeated
+ * events of the same type (e.g. bear → bear) are still detected as new.
+ */
+function computeReverseHlLhState(prevRow, incoming) {
   const prevRev = String(prevRow?.reverseSignal || '').toLowerCase()
   const newRev = incoming.reverseSignal != null ? String(incoming.reverseSignal || '').toLowerCase() : prevRev
   const prevPat = prevRow?.s1aPattern || ''
   const newPat = incoming.s1aPattern != null ? (incoming.s1aPattern || '') : prevPat
   const now = Date.now()
+  const whRevAt = parseInt(incoming.reverseTime, 10)
+  const whPatAt = parseInt(incoming.s1aPatternTime, 10)
+  const whPatVal = parseFloat(incoming.s1aPatternValue)
 
   let bearAt = prevRow?.reverseBearAt ?? null
   let clearedByHl = prevRow?.reverseBearClearedByHl === true
+  let bullAt = prevRow?.reverseBullAt ?? null
+  let clearedByLh = prevRow?.reverseBullClearedByLh === true
   let lastHlAt = prevRow?.lastHlAt ?? null
+  let lastLhAt = prevRow?.lastLhAt ?? null
+  let reverseSignalAt = prevRow?.reverseSignalAt ?? null
+  let s1aPatternAt = prevRow?.s1aPatternAt ?? null
+  let s1aPatternValue = prevRow?.s1aPatternValue ?? null
 
-  if (incoming.reverseSignal != null) {
-    if (newRev === 'bear' && prevRev !== 'bear') {
-      bearAt = now
-      clearedByHl = false
-    } else if (newRev === 'bull') {
-      bearAt = null
-      clearedByHl = true
+  if (incoming.reverseSignal != null && (newRev === 'bear' || newRev === 'bull')) {
+    // New event when the side flips, or same side but a newer webhook timestamp
+    const isNewEvent = newRev !== prevRev ||
+      (!isNaN(whRevAt) && whRevAt !== (prevRow?.reverseSignalAt ?? null))
+    if (isNewEvent) {
+      reverseSignalAt = !isNaN(whRevAt) ? whRevAt : now
+      if (newRev === 'bear') {
+        bearAt = reverseSignalAt
+        clearedByHl = false
+        bullAt = null
+        clearedByLh = true
+      } else {
+        bullAt = reverseSignalAt
+        clearedByLh = false
+        bearAt = null
+        clearedByHl = true
+      }
     }
   }
 
-  if (incoming.s1aPattern != null && newPat === 'Higher Low' && prevPat !== 'Higher Low') {
-    lastHlAt = now
-    if (bearAt && lastHlAt > bearAt) {
-      clearedByHl = true
+  if (incoming.s1aPattern != null && (newPat === 'Higher Low' || newPat === 'Lower High')) {
+    const isNewPattern = newPat !== prevPat ||
+      (!isNaN(whPatAt) && whPatAt !== (prevRow?.s1aPatternAt ?? null))
+    if (isNewPattern) {
+      const patAt = !isNaN(whPatAt) ? whPatAt : now
+      s1aPatternAt = patAt
+      s1aPatternValue = !isNaN(whPatVal) ? whPatVal : null
+      if (newPat === 'Higher Low') {
+        lastHlAt = patAt
+        if (bearAt && patAt > bearAt) clearedByHl = true
+      } else {
+        lastLhAt = patAt
+        if (bullAt && patAt > bullAt) clearedByLh = true
+      }
+    } else if (s1aPatternValue == null && !isNaN(whPatVal)) {
+      s1aPatternValue = whPatVal
     }
   }
 
-  return { reverseBearAt: bearAt, reverseBearClearedByHl: clearedByHl, lastHlAt }
+  return {
+    reverseBearAt: bearAt,
+    reverseBearClearedByHl: clearedByHl,
+    reverseBullAt: bullAt,
+    reverseBullClearedByLh: clearedByLh,
+    lastHlAt,
+    lastLhAt,
+    reverseSignalAt,
+    s1aPatternAt,
+    s1aPatternValue
+  }
 }
 
 function backfillK2CrossHistoryFromTriSamples() {
@@ -2001,7 +2048,7 @@ function processWebhookAlert(alert) {
       if (alert.regClose !== undefined) alerts[existingIndex].regClose = alert.regClose
       if (alert.extPrice !== undefined) alerts[existingIndex].extPrice = alert.extPrice
       if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      const reverseHlState = computeReverseBearHlState(alerts[existingIndex], alert)
+      const reverseHlState = computeReverseHlLhState(alerts[existingIndex], alert)
       if (alert.s1aPattern !== undefined) alerts[existingIndex].s1aPattern = alert.s1aPattern || null
       if (alert.reverseSignal !== undefined) alerts[existingIndex].reverseSignal = alert.reverseSignal || null
       Object.assign(alerts[existingIndex], reverseHlState)
@@ -2023,7 +2070,7 @@ function processWebhookAlert(alert) {
         volume: alert.volume || null,
         s1aPattern: alert.s1aPattern || null,
         reverseSignal: alert.reverseSignal || null,
-        ...computeReverseBearHlState({}, alert),
+        ...computeReverseHlLhState({}, alert),
         triStoch,
         triStochModes,
         ...entryUpdate,
@@ -4853,6 +4900,31 @@ app.get('/', (req, res) => {
           font-size: 11px;
           color: hsl(0 0% 55%);
         }
+        .ticker-summary-verdict .verdict-strength {
+          display: inline-block;
+          vertical-align: middle;
+          margin-left: 8px;
+          padding: 2px 8px;
+          border-radius: 9999px;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+        }
+        .ticker-summary-verdict .verdict-strength.strength-strong {
+          background: rgba(34, 197, 94, 0.18);
+          border: 1px solid rgba(34, 197, 94, 0.45);
+          color: #4ade80;
+        }
+        .ticker-summary-verdict .verdict-strength.strength-moderate {
+          background: rgba(251, 191, 36, 0.15);
+          border: 1px solid rgba(251, 191, 36, 0.4);
+          color: #fbbf24;
+        }
+        .ticker-summary-verdict .verdict-strength.strength-weak {
+          background: rgba(148, 163, 184, 0.12);
+          border: 1px solid rgba(148, 163, 184, 0.35);
+          color: #94a3b8;
+        }
         .ticker-summary-body {
           flex: 1;
           min-height: 0;
@@ -5474,6 +5546,11 @@ app.get('/', (req, res) => {
         const VWAP_APPROACH_RECENT_MS = 15 * 60 * 1000;
         const vwapPrevBySymbol = {};
         const vwapApproachBySymbol = {};
+        // Tri signal staleness: fresh keeps full strength, then one downgrade, then weak
+        const TRI_SIGNAL_FRESH_MS = 15 * 60 * 1000;
+        const TRI_SIGNAL_STALE_MS = 45 * 60 * 1000;
+        // Webhook entry signals stop acting as the verdict after this long
+        const ENTRY_SIGNAL_ACTIVE_MS = 30 * 60 * 1000;
         
         // Search state
         let searchTerm = '';
@@ -6428,6 +6505,13 @@ app.get('/', (req, res) => {
         function applyEma12BenchmarkToSuggestion(suggestion, bench) {
           if (!suggestion || !bench || suggestion.side === 'Neutral') return suggestion;
           if (suggestion.side === 'Long' && bench.stack === 'bear') {
+            if (suggestion.isReversal) {
+              // Reversals fire against the prevailing structure by definition — warn, don't erase
+              return Object.assign({}, suggestion, {
+                strength: 'weak',
+                reason: suggestion.reason + ' · caution: EMA still bear (E1<E2)'
+              });
+            }
             return {
               side: 'Neutral',
               label: 'Wait — EMA bear stack',
@@ -6436,6 +6520,12 @@ app.get('/', (req, res) => {
             };
           }
           if (suggestion.side === 'Short' && bench.stack === 'bull') {
+            if (suggestion.isReversal) {
+              return Object.assign({}, suggestion, {
+                strength: 'weak',
+                reason: suggestion.reason + ' · caution: EMA still bull (E1>E2)'
+              });
+            }
             return {
               side: 'Neutral',
               label: 'Wait — EMA bull stack',
@@ -6636,6 +6726,13 @@ app.get('/', (req, res) => {
           if (!suggestion || !vwapBench) return suggestion;
 
           if (suggestion.side === 'Long' && vwapBench.stack === 'bear') {
+            if (suggestion.isReversal) {
+              // Reversal longs start below VWAP by nature — keep the signal, flag the risk
+              return Object.assign({}, suggestion, {
+                strength: 'weak',
+                reason: suggestion.reason + ' · caution: still below VWAP'
+              });
+            }
             return {
               side: 'Neutral',
               label: 'Wait — below VWAP',
@@ -6644,6 +6741,12 @@ app.get('/', (req, res) => {
             };
           }
           if (suggestion.side === 'Short' && vwapBench.stack === 'bull') {
+            if (suggestion.isReversal) {
+              return Object.assign({}, suggestion, {
+                strength: 'weak',
+                reason: suggestion.reason + ' · caution: still above VWAP'
+              });
+            }
             return {
               side: 'Neutral',
               label: 'Wait — above VWAP',
@@ -6655,6 +6758,12 @@ app.get('/', (req, res) => {
           const app = vwapBench.approach;
           if (app && app.type === 'reject_risk') {
             if (suggestion.side === 'Long') {
+              if (suggestion.isReversal) {
+                return Object.assign({}, suggestion, {
+                  strength: 'weak',
+                  reason: suggestion.reason + ' · caution: VWAP rejection risk'
+                });
+              }
               return {
                 side: 'Neutral',
                 label: 'Beware — VWAP rejection',
@@ -6683,6 +6792,12 @@ app.get('/', (req, res) => {
           if (app && app.type === 'support_test') {
             if (suggestion.side === 'Long') {
               if (app.supportQuality === 'weak') {
+                if (suggestion.isReversal) {
+                  return Object.assign({}, suggestion, {
+                    strength: 'weak',
+                    reason: suggestion.reason + ' · caution: weak VWAP support (K2<40)'
+                  });
+                }
                 return {
                   side: 'Neutral',
                   label: 'VWAP support unlikely',
@@ -8846,6 +8961,21 @@ Use this to create a new preset filter button that applies these exact filter se
           return alert.reverseBearClearedByHl !== true;
         }
 
+        function isReverseBullBlocking(alert) {
+          if (!alert) return false;
+          if (String(alert.reverseSignal || '').toLowerCase() !== 'bull') return false;
+          return alert.reverseBullClearedByLh !== true;
+        }
+
+        function formatAgeShort(ms) {
+          if (ms == null || isNaN(ms) || ms < 0) return '';
+          const mins = Math.floor(ms / 60000);
+          if (mins < 1) return '<1m';
+          if (mins < 60) return mins + 'm';
+          const h = Math.floor(mins / 60);
+          return h + 'h ' + (mins % 60) + 'm';
+        }
+
         function getTrendFollowContext(alert) {
           const t = alert.triStoch || {};
           const k1 = getTriK1Value(t);
@@ -8854,8 +8984,16 @@ Use this to create a new preset filter button that applies these exact filter se
           const k2Dir = getTriK2Direction(t);
           const pat = alert.s1aPattern || '';
           const reverseBearActive = isReverseBearBlocking(alert);
+          const reverseBullActive = isReverseBullBlocking(alert);
           const isHL = pat === 'Higher Low';
           const isLH = pat === 'Lower High';
+          // Pivot value where the HL/LH actually formed (from webhook); falls back to current K1
+          const pivotRaw = parseFloat(alert.s1aPatternValue);
+          const pivot = !isNaN(pivotRaw) ? pivotRaw : null;
+          const hlGateVal = pivot !== null ? pivot : k1;
+          const lhGateVal = pivot !== null ? pivot : k1;
+          const effectiveHL = isHL && !reverseBearActive;
+          const effectiveLH = isLH && !reverseBullActive;
           return {
             k1,
             k2,
@@ -8865,9 +9003,14 @@ Use this to create a new preset filter button that applies these exact filter se
             k2Up: k2Dir === 'up',
             isLH,
             isHL,
-            effectiveHL: isHL && !reverseBearActive,
-            effectiveHlAbove50: isHL && !reverseBearActive && k1 !== null && k1 > 50,
+            pivot,
+            usesPivot: pivot !== null,
+            effectiveHL,
+            effectiveLH,
+            effectiveHlAbove50: effectiveHL && hlGateVal !== null && hlGateVal > 50,
+            effectiveLhBelow50: effectiveLH && lhGateVal !== null && lhGateVal < 50,
             reverseBearActive,
+            reverseBullActive,
             k2Below50: k2 !== null && k2 < 50,
             k2Above50: k2 !== null && k2 > 50,
             k1Below40: k1 !== null && k1 < 40,
@@ -8877,31 +9020,26 @@ Use this to create a new preset filter button that applies these exact filter se
           };
         }
 
-        /** Trend-following style: K2 = trend, K1 = short-term volatile. */
+        /** Trend-following style: K2 = trend, K1 = short-term volatile.
+         *  Reverse (R) overrides are handled upstream in getTickerTradeSuggestion. */
         function getTrendFollowSuggestion(alert) {
           const c = getTrendFollowContext(alert);
           if (!c.hasData) return null;
 
-          if (c.reverseBearActive) {
-            return {
-              side: 'Short',
-              label: 'Reverse down · cross below HL',
-              reason: 'Bear reverse active — overrides prior K1 HL until new HL forms',
-              strength: 'strong'
-            };
-          }
-
           if (c.k2Below50) {
-            if (c.effectiveHL && c.k1Above50 && c.k1Up) {
+            if (c.effectiveHlAbove50 && c.k1Up) {
               return {
                 side: 'Long',
-                label: 'Reversal long · HL above 50',
-                reason: 'K2 still <50 but K1 HL>50 confirms real bullish turn',
-                strength: 'moderate'
+                label: c.usesPivot ? 'Reversal long · HL pivot above 50' : 'Reversal long · HL above 50',
+                reason: c.usesPivot
+                  ? 'K2 still <50 but K1 HL formed above 50 (' + c.pivot.toFixed(1) + ') — real bullish turn'
+                  : 'K2 still <50 but K1 HL>50 confirms real bullish turn',
+                strength: 'moderate',
+                isReversal: true
               };
             }
             if (c.k2Down && c.k1Down) {
-              if (c.isLH && c.k1Below40) {
+              if (c.effectiveLH && c.k1Below40) {
                 return {
                   side: 'Short',
                   label: 'Strong short · LH below 40',
@@ -8943,16 +9081,19 @@ Use this to create a new preset filter button that applies these exact filter se
           }
 
           if (c.k2Above50) {
-            if (c.isLH && c.k1Below50 && c.k1Down) {
+            if (c.effectiveLhBelow50 && c.k1Down) {
               return {
                 side: 'Short',
-                label: 'Reversal short · LH below 50',
-                reason: 'K2 still >50 but K1 LH<50 confirms real bearish turn',
-                strength: 'moderate'
+                label: c.usesPivot ? 'Reversal short · LH pivot below 50' : 'Reversal short · LH below 50',
+                reason: c.usesPivot
+                  ? 'K2 still >50 but K1 LH formed below 50 (' + c.pivot.toFixed(1) + ') — real bearish turn'
+                  : 'K2 still >50 but K1 LH<50 confirms real bearish turn',
+                strength: 'moderate',
+                isReversal: true
               };
             }
             if (c.k2Up && c.k1Up) {
-              if (c.effectiveHL && c.k1Above50) {
+              if (c.effectiveHlAbove50) {
                 return {
                   side: 'Long',
                   label: 'Strong long · HL above 50',
@@ -8971,7 +9112,9 @@ Use this to create a new preset filter button that applies these exact filter se
               return {
                 side: 'Neutral',
                 label: 'Wait — no real reversal yet',
-                reason: 'K2>50: need K1 LH below 50 before trusting a short',
+                reason: c.isLH && !c.effectiveLH
+                  ? 'K2>50: prior LH invalidated by reverse up — need new LH<50'
+                  : 'K2>50: need K1 LH below 50 before trusting a short',
                 strength: 'weak'
               };
             }
@@ -9012,7 +9155,7 @@ Use this to create a new preset filter button that applies these exact filter se
             return summarySection('Trend Follow', summaryRow('Setup', '—') + summaryRow('Note', escapeHtmlText('Need K1/K2 data')));
           }
 
-          const note = '<div class="ticker-summary-note">K2 = trend · K1 = short-term. Reverse down (R↓) = bear until a <em>new</em> HL forms. ' +
+          const note = '<div class="ticker-summary-note">K2 = trend · K1 = short-term. R↓ = bear until a <em>new</em> HL forms; R↑ = bull until a <em>new</em> LH forms. ' +
             'VWAP: above = bull, below = bear. Rise to VWAP: rejection if K2&lt;50 &amp; no HL. Drop: K2&lt;40 weak, K2≥60 support.</div>';
 
           const bench = getEma12Benchmark(alert);
@@ -9036,9 +9179,10 @@ Use this to create a new preset filter button that applies these exact filter se
               summaryCheckRow('K2 below 50', c.k2Below50 ? 'pass' : 'fail') +
               summaryCheckRow('K2 trending down', c.k2Down ? 'pass' : 'wait', 'required for short') +
               summaryCheckRow('K1 trending down', c.k1Down ? 'pass' : 'wait', 'align with K2') +
-              summaryCheckRow('LH on K1 below 40', c.isLH && c.k1Below40 ? 'pass' : 'wait', 'ideal short') +
-              summaryCheckRow('HL + K1 above 50', c.effectiveHlAbove50 ? 'pass' : c.isHL && c.reverseBearActive ? 'fail' : 'wait', c.reverseBearActive ? 'need new HL after R↓' : 'reversal gate for long') +
+              summaryCheckRow('LH on K1 below 40', c.effectiveLH && c.k1Below40 ? 'pass' : c.isLH && c.reverseBullActive ? 'fail' : 'wait', c.reverseBullActive ? 'need new LH after R↑' : 'ideal short') +
+              summaryCheckRow(c.usesPivot ? 'HL pivot above 50' : 'HL + K1 above 50', c.effectiveHlAbove50 ? 'pass' : c.isHL && c.reverseBearActive ? 'fail' : 'wait', c.reverseBearActive ? 'need new HL after R↓' : c.usesPivot && c.isHL ? 'pivot ' + c.pivot.toFixed(1) : 'reversal gate for long') +
               (c.reverseBearActive ? summaryCheckRow('Reverse down (R↓)', 'pass', 'bear — blocks stale HL') : '') +
+              (c.reverseBullActive ? summaryCheckRow('Reverse up (R↑)', 'pass', 'bull — blocks stale LH') : '') +
               (bench ? summaryCheckRow('EMA1 below EMA2 (bear)', bench.stack === 'bear' ? 'pass' : bench.stack === 'bull' ? 'fail' : 'wait', 'cross under = bear') : '') +
               (vwapBench ? summaryCheckRow('Price below VWAP (bear)', vwapBench.stack === 'bear' ? 'pass' : vwapBench.stack === 'bull' ? 'fail' : 'wait', 'under = bear') : '') +
               (vwapBench && vwapBench.approach && vwapBench.approach.type === 'reject_risk'
@@ -9056,8 +9200,10 @@ Use this to create a new preset filter button that applies these exact filter se
               summaryCheckRow('K2 above 50', c.k2Above50 ? 'pass' : 'fail') +
               summaryCheckRow('K2 trending up', c.k2Up ? 'pass' : 'wait', 'required for long') +
               summaryCheckRow('K1 trending up', c.k1Up ? 'pass' : 'wait', 'align with K2') +
-              summaryCheckRow('HL on K1 above 50', c.effectiveHlAbove50 ? 'pass' : 'wait', 'ideal long') +
-              summaryCheckRow('LH + K1 below 50', c.isLH && c.k1Below50 ? 'pass' : 'wait', 'reversal gate for short') +
+              summaryCheckRow(c.usesPivot ? 'HL pivot above 50' : 'HL on K1 above 50', c.effectiveHlAbove50 ? 'pass' : c.isHL && c.reverseBearActive ? 'fail' : 'wait', c.reverseBearActive ? 'need new HL after R↓' : c.usesPivot && c.isHL ? 'pivot ' + c.pivot.toFixed(1) : 'ideal long') +
+              summaryCheckRow(c.usesPivot ? 'LH pivot below 50' : 'LH + K1 below 50', c.effectiveLhBelow50 ? 'pass' : c.isLH && c.reverseBullActive ? 'fail' : 'wait', c.reverseBullActive ? 'need new LH after R↑' : c.usesPivot && c.isLH ? 'pivot ' + c.pivot.toFixed(1) : 'reversal gate for short') +
+              (c.reverseBearActive ? summaryCheckRow('Reverse down (R↓)', 'pass', 'bear — blocks stale HL') : '') +
+              (c.reverseBullActive ? summaryCheckRow('Reverse up (R↑)', 'pass', 'bull — blocks stale LH') : '') +
               (bench ? summaryCheckRow('EMA1 above EMA2 (bull)', bench.stack === 'bull' ? 'pass' : bench.stack === 'bear' ? 'fail' : 'wait', 'cross over = bull') : '') +
               (vwapBench ? summaryCheckRow('Price above VWAP (bull)', vwapBench.stack === 'bull' ? 'pass' : vwapBench.stack === 'bear' ? 'fail' : 'wait', 'above = bull') : '') +
               (vwapBench && vwapBench.approach && vwapBench.approach.type === 'support_test'
@@ -9090,49 +9236,93 @@ Use this to create a new preset filter button that applies these exact filter se
           return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(sym);
         }
 
-        function getTickerTradeSuggestion(alert) {
+        /** Active reverse (R) override with its event timestamp, or null. */
+        function getReverseOverrideSuggestion(alert) {
           if (isReverseBearBlocking(alert)) {
             return {
               side: 'Short',
               label: 'Reverse down · cross below HL',
               reason: 'Bear reverse active — overrides prior K1 HL until new HL forms',
-              strength: 'strong'
+              strength: 'strong',
+              at: alert.reverseSignalAt || alert.reverseBearAt || null
             };
           }
-          const entry = String(alert.entrySignal || '').toLowerCase();
-          if (entry === 'long') {
+          if (isReverseBullBlocking(alert)) {
             return {
               side: 'Long',
-              label: 'Long entry (Set ' + (alert.entrySignalSet || '?') + ')',
-              reason: 'Tri webhook entrySignal',
-              strength: 'strong'
+              label: 'Reverse up · cross above LH',
+              reason: 'Bull reverse active — overrides prior K1 LH until new LH forms',
+              strength: 'strong',
+              at: alert.reverseSignalAt || alert.reverseBullAt || null
             };
           }
-          if (entry === 'short') {
-            return {
-              side: 'Short',
-              label: 'Short entry (Set ' + (alert.entrySignalSet || '?') + ')',
-              reason: 'Tri webhook entrySignal',
-              strength: 'strong'
-            };
+          return null;
+        }
+
+        /** Webhook entry signal, or null when absent/expired. */
+        function getEntrySignalSuggestion(alert) {
+          const entry = String(alert.entrySignal || '').toLowerCase();
+          if (entry !== 'long' && entry !== 'short') return null;
+          const at = alert.entrySignalAt || null;
+          if (at && (Date.now() - at) > ENTRY_SIGNAL_ACTIVE_MS) return null;
+          const side = entry === 'long' ? 'Long' : 'Short';
+          return {
+            side,
+            label: side + ' entry (Set ' + (alert.entrySignalSet || '?') + ')',
+            reason: 'Tri webhook entrySignal',
+            strength: 'strong',
+            at
+          };
+        }
+
+        /** Downgrade strength as the signal event ages (fresh → -1 level → weak). */
+        function applySignalAgeDecay(suggestion, name) {
+          if (!suggestion || !suggestion.at) return suggestion;
+          const age = Date.now() - suggestion.at;
+          if (age <= TRI_SIGNAL_FRESH_MS) return suggestion;
+          const ageNote = ' · ' + name + ' ' + formatAgeShort(age) + ' ago';
+          if (age > TRI_SIGNAL_STALE_MS) {
+            return Object.assign({}, suggestion, { strength: 'weak', reason: suggestion.reason + ageNote });
           }
-          let result;
-          const trend = getTrendFollowSuggestion(alert);
-          if (trend) result = trend;
-          else {
-            const sug = getUnifiedStochSuggestion(alert);
-            if (sug) {
-              const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
-              result = {
-                side,
-                label: sug.text,
-                reason: 'Fallback K/D analysis',
-                strength: sug.type === 'neutral' ? 'weak' : 'moderate'
-              };
-            } else {
-              result = { side: 'Neutral', label: 'No clear setup', reason: 'Insufficient stoch data', strength: 'weak' };
+          const downgraded = suggestion.strength === 'strong' ? 'moderate' : 'weak';
+          return Object.assign({}, suggestion, { strength: downgraded, reason: suggestion.reason + ageNote });
+        }
+
+        function getTickerTradeSuggestion(alert) {
+          const rev = getReverseOverrideSuggestion(alert);
+          const entry = getEntrySignalSuggestion(alert);
+
+          let result = null;
+          if (rev && entry) {
+            // Newer event wins: a fresh entry after the reverse is not silently swallowed
+            result = (entry.at || 0) >= (rev.at || 0)
+              ? applySignalAgeDecay(entry, 'entry')
+              : applySignalAgeDecay(rev, 'reverse');
+          } else if (rev) {
+            result = applySignalAgeDecay(rev, 'reverse');
+          } else if (entry) {
+            result = applySignalAgeDecay(entry, 'entry');
+          }
+
+          if (!result) {
+            const trend = getTrendFollowSuggestion(alert);
+            if (trend) result = trend;
+            else {
+              const sug = getUnifiedStochSuggestion(alert);
+              if (sug) {
+                const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
+                result = {
+                  side,
+                  label: sug.text,
+                  reason: 'Fallback K/D analysis',
+                  strength: sug.type === 'neutral' ? 'weak' : 'moderate'
+                };
+              } else {
+                result = { side: 'Neutral', label: 'No clear setup', reason: 'Insufficient stoch data', strength: 'weak' };
+              }
             }
           }
+
           const emaBench = getEma12Benchmark(alert);
           const vwapBench = getVwapBenchmark(alert);
           result = applyEma12BenchmarkToSuggestion(result, emaBench);
@@ -9172,8 +9362,10 @@ Use this to create a new preset filter button that applies these exact filter se
           const sideClass = verdict.side === 'Long' ? 'verdict-long'
             : verdict.side === 'Short' ? 'verdict-short' : 'verdict-neutral';
           verdictEl.className = 'ticker-summary-verdict ' + sideClass;
+          const strength = verdict.strength || 'weak';
+          const strengthBadge = '<span class="verdict-strength strength-' + strength + '">' + escapeHtmlText(strength.toUpperCase()) + '</span>';
           verdictEl.innerHTML =
-            '<div class="verdict-side">' + escapeHtmlText(verdict.side) + '</div>' +
+            '<div class="verdict-side">' + escapeHtmlText(verdict.side) + ' ' + strengthBadge + '</div>' +
             '<div class="verdict-label">' + escapeHtmlText(verdict.label) + '</div>' +
             '<div class="verdict-reason">' + escapeHtmlText(verdict.reason) + '</div>';
 
@@ -9230,13 +9422,41 @@ Use this to create a new preset filter button that applies these exact filter se
               summaryRow('K×D cross', '<span class="' + kCrossCls + '">' + escapeHtmlText(kCrossLabel) + '</span>')
             ) +
             summarySection('Signals',
-              summaryRow('Pattern', pine.title || pine.tag ? '<span class="' + (pine.tagClass || '') + '">' + escapeHtmlText(pine.title || pine.tag) + '</span>' : '—') +
-              summaryRow('Entry', alert.entrySignal ? '<span class="' + (String(alert.entrySignal).toLowerCase() === 'long' ? 'val-long' : 'val-short') + '">' + escapeHtmlText(String(alert.entrySignal).toUpperCase() + (alert.entrySignalSet ? ' (Set ' + alert.entrySignalSet + ')' : '')) + '</span>' : '—') +
-              summaryRow('Reverse', alert.reverseSignal
-                ? (String(alert.reverseSignal).toLowerCase() === 'bear' && isReverseBearBlocking(alert)
-                  ? '<span class="val-short">' + escapeHtmlText(String(alert.reverseSignal)) + ' · blocks HL</span>'
-                  : escapeHtmlText(String(alert.reverseSignal)))
-                : '—')
+              summaryRow('Pattern', (function() {
+                if (!pine.title && !pine.tag) return '—';
+                let html = '<span class="' + (pine.tagClass || '') + '">' + escapeHtmlText(pine.title || pine.tag) + '</span>';
+                const pv = parseFloat(alert.s1aPatternValue);
+                if (!isNaN(pv)) html += ' <span style="opacity:0.65;font-size:11px">pivot ' + pv.toFixed(1) + '</span>';
+                if (alert.s1aPatternAt) html += ' <span style="opacity:0.55;font-size:10px">' + escapeHtmlText(formatAgeShort(Date.now() - alert.s1aPatternAt) + ' ago') + '</span>';
+                return html;
+              })()) +
+              summaryRow('Entry', (function() {
+                if (!alert.entrySignal) return '—';
+                const sigLower = String(alert.entrySignal).toLowerCase();
+                const cls = sigLower === 'long' ? 'val-long' : 'val-short';
+                let html = '<span class="' + cls + '">' + escapeHtmlText(String(alert.entrySignal).toUpperCase() + (alert.entrySignalSet ? ' (Set ' + alert.entrySignalSet + ')' : '')) + '</span>';
+                if (alert.entrySignalAt) {
+                  const age = Date.now() - alert.entrySignalAt;
+                  const expired = age > ENTRY_SIGNAL_ACTIVE_MS;
+                  html += ' <span style="opacity:0.55;font-size:10px">' + escapeHtmlText(formatAgeShort(age) + ' ago' + (expired ? ' · expired' : '')) + '</span>';
+                }
+                return html;
+              })()) +
+              summaryRow('Reverse', (function() {
+                if (!alert.reverseSignal) return '—';
+                const rev = String(alert.reverseSignal).toLowerCase();
+                let html;
+                if (rev === 'bear' && isReverseBearBlocking(alert)) {
+                  html = '<span class="val-short">' + escapeHtmlText(String(alert.reverseSignal)) + ' · blocks HL</span>';
+                } else if (rev === 'bull' && isReverseBullBlocking(alert)) {
+                  html = '<span class="val-long">' + escapeHtmlText(String(alert.reverseSignal)) + ' · blocks LH</span>';
+                } else {
+                  html = escapeHtmlText(String(alert.reverseSignal));
+                }
+                const revAt = alert.reverseSignalAt || alert.reverseBearAt || alert.reverseBullAt;
+                if (revAt) html += ' <span style="opacity:0.55;font-size:10px">' + escapeHtmlText(formatAgeShort(Date.now() - revAt) + ' ago') + '</span>';
+                return html;
+              })())
             ) +
             summarySection('Range & VWAP',
               summaryRow('VWAP benchmark', formatVwapBenchmarkHtml(vwapBench)) +
@@ -9261,6 +9481,16 @@ Use this to create a new preset filter button that applies these exact filter se
             );
         }
 
+        let openTickerSummarySymbol = null;
+
+        function refreshOpenTickerSummary() {
+          if (!openTickerSummarySymbol) return;
+          const overlay = document.getElementById('tickerSummaryOverlay');
+          if (!overlay || !overlay.classList.contains('open')) return;
+          const alert = alertsData.find(a => a.symbol === openTickerSummarySymbol);
+          if (alert) renderTickerSummary(alert);
+        }
+
         function openTickerSummary(symbol) {
           const alert = alertsData.find(a => a.symbol === symbol);
           if (!alert) return;
@@ -9269,6 +9499,7 @@ Use this to create a new preset filter button that applies these exact filter se
           const panel = overlay?.querySelector('.ticker-summary-panel');
           if (!overlay || !panel) return;
 
+          openTickerSummarySymbol = symbol;
           const title = document.getElementById('tickerSummaryTitle');
           if (title) title.textContent = symbol || '—';
           renderTickerSummary(alert);
@@ -9291,6 +9522,7 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         function closeTickerSummary() {
+          openTickerSummarySymbol = null;
           const overlay = document.getElementById('tickerSummaryOverlay');
           const panel = overlay?.querySelector('.ticker-summary-panel');
           overlay?.classList.remove('open');
@@ -10896,6 +11128,7 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             renderTable();
+            refreshOpenTickerSummary();
             startCountdown();
             maybeSyncK2CrossHistoryBackground();
             
