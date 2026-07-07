@@ -4732,7 +4732,7 @@ app.get('/', (req, res) => {
           color: hsl(0 0% 45%);
           padding: 6px 0;
         }
-        /* TradingView slide-in panel */
+        /* Ticker summary slide-in panel */
         .tv-chart-overlay {
           position: fixed;
           top: 0;
@@ -4783,17 +4783,80 @@ app.get('/', (req, res) => {
         .tv-chart-external-link:hover {
           color: #fde68a;
         }
-        .tv-chart-frame-wrap {
+        .ticker-summary-verdict {
+          padding: 20px 24px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          text-align: center;
+        }
+        .ticker-summary-verdict.verdict-long {
+          background: linear-gradient(180deg, rgba(34, 197, 94, 0.18) 0%, rgba(34, 197, 94, 0.04) 100%);
+        }
+        .ticker-summary-verdict.verdict-short {
+          background: linear-gradient(180deg, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.04) 100%);
+        }
+        .ticker-summary-verdict.verdict-neutral {
+          background: linear-gradient(180deg, rgba(148, 163, 184, 0.12) 0%, rgba(148, 163, 184, 0.03) 100%);
+        }
+        .ticker-summary-verdict .verdict-side {
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          line-height: 1.1;
+        }
+        .ticker-summary-verdict.verdict-long .verdict-side { color: #4ade80; }
+        .ticker-summary-verdict.verdict-short .verdict-side { color: #f87171; }
+        .ticker-summary-verdict.verdict-neutral .verdict-side { color: #94a3b8; }
+        .ticker-summary-verdict .verdict-label {
+          margin-top: 6px;
+          font-size: 15px;
+          font-weight: 600;
+          color: hsl(0 0% 92%);
+        }
+        .ticker-summary-verdict .verdict-reason {
+          margin-top: 4px;
+          font-size: 11px;
+          color: hsl(0 0% 55%);
+        }
+        .ticker-summary-body {
           flex: 1;
           min-height: 0;
-          background: hsl(0 0% 9%);
+          overflow-y: auto;
+          padding: 16px 24px 24px;
         }
-        .tv-chart-frame-wrap iframe {
-          width: 100%;
-          height: 100%;
-          border: 0;
-          display: block;
+        .ticker-summary-section {
+          margin-bottom: 18px;
         }
+        .ticker-summary-section-title {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #fbbf24;
+          margin-bottom: 8px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .ticker-summary-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          gap: 12px;
+          padding: 4px 0;
+          font-size: 13px;
+        }
+        .ticker-summary-row-label {
+          color: hsl(0 0% 50%);
+          flex-shrink: 0;
+        }
+        .ticker-summary-row-value {
+          color: hsl(0 0% 90%);
+          text-align: right;
+          font-family: ui-monospace, monospace;
+        }
+        .ticker-summary-row-value.val-long { color: #4ade80; font-weight: 600; }
+        .ticker-summary-row-value.val-short { color: #f87171; font-weight: 600; }
+        .ticker-summary-row-value.val-neutral { color: #94a3b8; }
       </style>
     </head>
     <body class="bg-background h-screen overflow-hidden antialiased">
@@ -5294,19 +5357,18 @@ app.get('/', (req, res) => {
         </div>
       </div>
 
-      <!-- TradingView Chart Overlay -->
-      <div id="tvChartOverlay" class="tv-chart-overlay" onclick="closeTradingViewChart()">
-        <div class="tv-chart-panel" onclick="event.stopPropagation()">
+      <!-- Ticker Summary Overlay (right-click kanban card) -->
+      <div id="tickerSummaryOverlay" class="tv-chart-overlay" onclick="closeTickerSummary()">
+        <div class="tv-chart-panel ticker-summary-panel" onclick="event.stopPropagation()">
           <div class="orb-history-header">
-            <h3 id="tvChartPanelTitle">TradingView</h3>
+            <h3 id="tickerSummaryTitle">—</h3>
             <div class="tv-chart-header-actions">
-              <a id="tvChartExternalLink" href="#" target="_blank" rel="noopener noreferrer" class="tv-chart-external-link">Your layout ↗</a>
-              <button type="button" class="orb-history-close" onclick="closeTradingViewChart()">×</button>
+              <a id="tickerSummaryTvLink" href="#" target="_blank" rel="noopener noreferrer" class="tv-chart-external-link">Open in TradingView ↗</a>
+              <button type="button" class="orb-history-close" onclick="closeTickerSummary()">×</button>
             </div>
           </div>
-          <div class="tv-chart-frame-wrap">
-            <iframe id="tvChartIframe" title="TradingView chart" allowfullscreen allow="clipboard-write; fullscreen; storage-access *"></iframe>
-          </div>
+          <div id="tickerSummaryVerdict" class="ticker-summary-verdict verdict-neutral"></div>
+          <div id="tickerSummaryBody" class="ticker-summary-body"></div>
         </div>
       </div>
 
@@ -6783,7 +6845,7 @@ app.get('/', (req, res) => {
             if (!card || !card.dataset.symbol) return;
             e.preventDefault();
             e.stopPropagation();
-            openTradingViewChart(card.dataset.symbol, card.dataset.tvSymbol, card.dataset.exchange);
+            openTickerSummary(card.dataset.symbol);
           });
         }
 
@@ -7222,7 +7284,7 @@ app.get('/', (req, res) => {
                     cross50Title,
                     pineLabelTitle,
                     'Click: star/unstar',
-                    'Right-click: TradingView chart panel'
+                    'Right-click: ticker summary'
                   ].filter(Boolean).join(' · ');
                   const tvSymbolAttr = alert.tvSymbol ? escapeHtmlAttr(alert.tvSymbol) : '';
                   const exchangeAttr = alert.exchange ? escapeHtmlAttr(alert.exchange) : '';
@@ -8294,23 +8356,12 @@ Use this to create a new preset filter button that applies these exact filter se
         }
 
         const TV_CHART_LAYOUT_ID = 'Rd450Vfz';
-        // Built-in TV studies only (custom Pine from your layout cannot load in embed).
-        // Override anytime: localStorage.setItem('tvEmbedStudies', JSON.stringify([...]))
-        const TV_EMBED_DEFAULT_STUDIES = [
-          { id: 'Stochastic@tv-basicstudies', inputs: { length: 39, smoothK: 5, smoothD: 4 } },
-          { id: 'MASimple@tv-basicstudies', inputs: { length: 50 } },
-          { id: 'MASimple@tv-basicstudies', inputs: { length: 200 } }
-        ];
 
-        function getTradingViewEmbedStudies() {
-          try {
-            const raw = localStorage.getItem('tvEmbedStudies');
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed) && parsed.length) return parsed;
-            }
-          } catch (_) {}
-          return TV_EMBED_DEFAULT_STUDIES;
+        function escapeHtmlText(val) {
+          return String(val == null ? '' : val)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
         }
 
         function normalizeTvChartSymbol(symbol, tvSymbol) {
@@ -8354,68 +8405,180 @@ Use this to create a new preset filter button that applies these exact filter se
           return 'https://www.tradingview.com/chart/' + layoutId + '/?symbol=' + encodeURIComponent(sym);
         }
 
-        function getTradingViewEmbedUrl(symbol, tvSymbol, exchange) {
-          const sym = resolveTvEmbedSymbol(symbol, tvSymbol, exchange);
-          if (!sym) return null;
-          const config = {
-            autosize: true,
-            symbol: sym,
-            interval: '5',
-            timezone: 'America/New_York',
-            theme: 'dark',
-            style: '1',
-            locale: 'en',
-            enable_publishing: false,
-            allow_symbol_change: true,
-            save_image: false,
-            calendar: false,
-            hide_top_toolbar: false,
-            hide_legend: false,
-            hide_side_toolbar: false,
-            withdateranges: true,
-            details: true,
-            hotlist: false,
-            studies: getTradingViewEmbedStudies(),
-            studies_overrides: {
-              'stochastic.%k.color': '#22c55e',
-              'stochastic.%d.color': '#f59e0b',
-              'stochastic.hlines background': '#00000000'
-            },
-            support_host: 'https://www.tradingview.com'
-          };
-          return 'https://s.tradingview.com/embed-widget/advanced-chart/?locale=en#' + encodeURIComponent(JSON.stringify(config));
+        function getTickerTradeSuggestion(alert) {
+          const entry = String(alert.entrySignal || '').toLowerCase();
+          if (entry === 'long') {
+            return {
+              side: 'Long',
+              label: 'Long entry (Set ' + (alert.entrySignalSet || '?') + ')',
+              reason: 'Tri webhook entrySignal',
+              strength: 'strong'
+            };
+          }
+          if (entry === 'short') {
+            return {
+              side: 'Short',
+              label: 'Short entry (Set ' + (alert.entrySignalSet || '?') + ')',
+              reason: 'Tri webhook entrySignal',
+              strength: 'strong'
+            };
+          }
+          const sug = getUnifiedStochSuggestion(alert);
+          if (sug) {
+            const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
+            return {
+              side,
+              label: sug.text,
+              reason: 'K/D + K1/K2 analysis',
+              strength: sug.type === 'neutral' ? 'weak' : 'moderate'
+            };
+          }
+          return { side: 'Neutral', label: 'No clear setup', reason: 'Insufficient stoch data', strength: 'weak' };
         }
 
-        function openTradingViewChart(symbol, tvSymbol, exchange) {
-          const embedUrl = getTradingViewEmbedUrl(symbol, tvSymbol, exchange);
-          const chartUrl = getTradingViewChartUrl(symbol, tvSymbol, exchange);
-          if (!embedUrl) return;
+        function fmtSummaryK(val, dir) {
+          if (val === null || val === undefined || isNaN(val)) return '—';
+          const arrow = dir === 'up' ? ' ▲' : dir === 'down' ? ' ▼' : '';
+          let cls = 'val-neutral';
+          if (val < 40) cls = 'val-short';
+          else if (val > 60) cls = 'val-long';
+          return '<span class="' + cls + '">' + val.toFixed(1) + arrow + '</span>';
+        }
 
-          const overlay = document.getElementById('tvChartOverlay');
-          const panel = overlay?.querySelector('.tv-chart-panel');
-          const iframe = document.getElementById('tvChartIframe');
-          const title = document.getElementById('tvChartPanelTitle');
-          const link = document.getElementById('tvChartExternalLink');
-          if (!overlay || !panel || !iframe) return;
+        function summarySection(title, rowsHtml) {
+          if (!rowsHtml) return '';
+          return '<div class="ticker-summary-section">' +
+            '<div class="ticker-summary-section-title">' + escapeHtmlText(title) + '</div>' +
+            rowsHtml +
+            '</div>';
+        }
 
-          if (title) title.textContent = symbol || 'TradingView';
-          if (link && chartUrl) {
-            link.href = chartUrl;
-            link.classList.remove('hidden');
+        function summaryRow(label, valueHtml) {
+          return '<div class="ticker-summary-row">' +
+            '<span class="ticker-summary-row-label">' + escapeHtmlText(label) + '</span>' +
+            '<span class="ticker-summary-row-value">' + (valueHtml || '—') + '</span>' +
+            '</div>';
+        }
+
+        function renderTickerSummary(alert) {
+          const verdict = getTickerTradeSuggestion(alert);
+          const verdictEl = document.getElementById('tickerSummaryVerdict');
+          const bodyEl = document.getElementById('tickerSummaryBody');
+          if (!verdictEl || !bodyEl) return;
+
+          const sideClass = verdict.side === 'Long' ? 'verdict-long'
+            : verdict.side === 'Short' ? 'verdict-short' : 'verdict-neutral';
+          verdictEl.className = 'ticker-summary-verdict ' + sideClass;
+          verdictEl.innerHTML =
+            '<div class="verdict-side">' + escapeHtmlText(verdict.side) + '</div>' +
+            '<div class="verdict-label">' + escapeHtmlText(verdict.label) + '</div>' +
+            '<div class="verdict-reason">' + escapeHtmlText(verdict.reason) + '</div>';
+
+          const t = alert.triStoch || {};
+          const { kValue, dValue, kDirection, dDirection } = getStochValues(alert);
+          const pine = getCardPineLabelInfo(alert);
+          const orb = getRangeCellOrbLabel(alert);
+          const vw = getRangeColumnVwapHtml(alert);
+          const emaDisp = getEmaStackDisplay(alert);
+          const sessionChangeHtml = buildSessionChangeHtml(alert);
+          const pctVal = getSessionDisplayPct(alert);
+          const changeHtml = sessionChangeHtml
+            || (pctVal !== null ? '<span class="' + pctColorClass(pctVal) + '">' + formatSignedPct(pctVal, sessionDisplayPctUsesExtendedSuffix(alert) ? 'P' : '') + '</span>' : '—');
+
+          const kCross = alert.kCross || 'none';
+          const kCrossLabel = kCross === 'cross_over' ? 'Cross over (bullish)' : kCross === 'cross_under' ? 'Cross under (bearish)' : 'None';
+          const kCrossCls = kCross === 'cross_over' ? 'val-long' : kCross === 'cross_under' ? 'val-short' : 'val-neutral';
+
+          const nyH = alert.nyOrbHigh != null && !isNaN(parseFloat(alert.nyOrbHigh)) ? parseFloat(alert.nyOrbHigh).toFixed(2) : null;
+          const nyL = alert.nyOrbLow != null && !isNaN(parseFloat(alert.nyOrbLow)) ? parseFloat(alert.nyOrbLow).toFixed(2) : null;
+          const orbRange = (nyH && nyL) ? nyH + ' / ' + nyL : '—';
+
+          const rangeLbl = alert.sessionRangeLabel || '—';
+          let rangeCls = 'val-neutral';
+          if (rangeLbl === 'Break D.High') rangeCls = 'val-long';
+          else if (rangeLbl === 'Break D.Low') rangeCls = 'val-short';
+
+          let orbCls = 'val-neutral';
+          if (orb === 'Upper ORB') orbCls = 'val-long';
+          else if (orb === 'Lower ORB') orbCls = 'val-short';
+
+          const vwapRemark = alert.vwapRemark ? escapeHtmlText(alert.vwapRemark) : '—';
+          const vwapNum = alert.vwap != null && !isNaN(parseFloat(alert.vwap)) ? formatCurrency(alert.vwap) : '—';
+
+          const kdStr = (kValue !== null ? kValue.toFixed(1) : '—') + ' / ' + (dValue !== null ? dValue.toFixed(1) : '—');
+          const dirStr = kDirection + ' / ' + dDirection;
+
+          bodyEl.innerHTML =
+            summarySection('Price',
+              summaryRow('Last', alert.price ? escapeHtmlText(formatCurrency(alert.price)) : '—') +
+              summaryRow('Change', changeHtml)
+            ) +
+            summarySection('Tri Stoch',
+              summaryRow('K1', fmtSummaryK(getTriK1Value(t), getTriK1Direction(t))) +
+              summaryRow('K2', fmtSummaryK(getTriK2Value(t), getTriK2Direction(t)))
+            ) +
+            summarySection('Session Stoch',
+              summaryRow('K / D', escapeHtmlText(kdStr)) +
+              summaryRow('Direction', escapeHtmlText(dirStr)) +
+              summaryRow('K×D cross', '<span class="' + kCrossCls + '">' + escapeHtmlText(kCrossLabel) + '</span>')
+            ) +
+            summarySection('Signals',
+              summaryRow('Pattern', pine.title || pine.tag ? '<span class="' + (pine.tagClass || '') + '">' + escapeHtmlText(pine.title || pine.tag) + '</span>' : '—') +
+              summaryRow('Entry', alert.entrySignal ? '<span class="' + (String(alert.entrySignal).toLowerCase() === 'long' ? 'val-long' : 'val-short') + '">' + escapeHtmlText(String(alert.entrySignal).toUpperCase() + (alert.entrySignalSet ? ' (Set ' + alert.entrySignalSet + ')' : '')) + '</span>' : '—') +
+              summaryRow('Reverse', alert.reverseSignal ? escapeHtmlText(String(alert.reverseSignal)) : '—')
+            ) +
+            summarySection('Range & VWAP',
+              summaryRow('ORB zone', '<span class="' + orbCls + '">' + escapeHtmlText(orb || '—') + '</span>') +
+              summaryRow('Range', '<span class="' + rangeCls + '">' + escapeHtmlText(rangeLbl) + '</span>') +
+              summaryRow('NY ORB H/L', escapeHtmlText(orbRange)) +
+              summaryRow('VWAP', escapeHtmlText(vw.vwapText || '—') + (vwapNum !== '—' ? ' (' + escapeHtmlText(vwapNum) + ')' : '')) +
+              summaryRow('VWAP remark', vwapRemark) +
+              summaryRow('Band', escapeHtmlText(vw.bandText || '—'))
+            ) +
+            summarySection('Structure',
+              summaryRow('EMA stack', emaDisp ? escapeHtmlText(emaDisp) : '—') +
+              summaryRow('Volume', alert.volume ? escapeHtmlText(formatVolume(alert.volume)) : '—') +
+              summaryRow('Trend', alert.calculatedTrend ? escapeHtmlText(String(alert.calculatedTrend)) : (alert.dualStochHighLevelTrendType ? escapeHtmlText(String(alert.dualStochHighLevelTrendType)) : '—'))
+            ) +
+            summarySection('Meta',
+              summaryRow('Last update', alert.receivedAt ? escapeHtmlText(new Date(alert.receivedAt).toLocaleString()) : '—')
+            );
+        }
+
+        function openTickerSummary(symbol) {
+          const alert = alertsData.find(a => a.symbol === symbol);
+          if (!alert) return;
+
+          const overlay = document.getElementById('tickerSummaryOverlay');
+          const panel = overlay?.querySelector('.ticker-summary-panel');
+          if (!overlay || !panel) return;
+
+          const title = document.getElementById('tickerSummaryTitle');
+          if (title) title.textContent = symbol || '—';
+          renderTickerSummary(alert);
+
+          const chartUrl = getTradingViewChartUrl(symbol, alert.tvSymbol, alert.exchange);
+          const link = document.getElementById('tickerSummaryTvLink');
+          if (link) {
+            if (chartUrl) {
+              link.href = chartUrl;
+              link.classList.remove('hidden');
+            } else {
+              link.href = '#';
+              link.classList.add('hidden');
+            }
           }
-          iframe.src = embedUrl;
+
           overlay.classList.add('open');
           panel.classList.add('open');
           document.body.style.overflow = 'hidden';
         }
 
-        function closeTradingViewChart() {
-          const overlay = document.getElementById('tvChartOverlay');
-          const panel = overlay?.querySelector('.tv-chart-panel');
-          const iframe = document.getElementById('tvChartIframe');
+        function closeTickerSummary() {
+          const overlay = document.getElementById('tickerSummaryOverlay');
+          const panel = overlay?.querySelector('.ticker-summary-panel');
           overlay?.classList.remove('open');
           panel?.classList.remove('open');
-          if (iframe) iframe.src = 'about:blank';
           document.body.style.overflow = '';
         }
         
@@ -10241,11 +10404,14 @@ Use this to create a new preset filter button that applies these exact filter se
             if (e.key === 'Escape') {
               const calculatorPanel = document.getElementById('calculatorPanel');
               const exitLogicPanel = document.getElementById('exitLogicPanel');
+              const tickerSummaryOverlay = document.getElementById('tickerSummaryOverlay');
               
               if (calculatorPanel && calculatorPanel.classList.contains('open')) {
                 closeCalculator();
               } else if (exitLogicPanel && exitLogicPanel.classList.contains('open')) {
                 closeExitLogic();
+              } else if (tickerSummaryOverlay && tickerSummaryOverlay.classList.contains('open')) {
+                closeTickerSummary();
               }
             }
           });
