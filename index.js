@@ -4857,6 +4857,12 @@ app.get('/', (req, res) => {
         .ticker-summary-row-value.val-long { color: #4ade80; font-weight: 600; }
         .ticker-summary-row-value.val-short { color: #f87171; font-weight: 600; }
         .ticker-summary-row-value.val-neutral { color: #94a3b8; }
+        .ticker-summary-note {
+          font-size: 11px;
+          line-height: 1.45;
+          color: hsl(0 0% 48%);
+          margin-bottom: 10px;
+        }
       </style>
     </head>
     <body class="bg-background h-screen overflow-hidden antialiased">
@@ -8419,6 +8425,186 @@ Use this to create a new preset filter button that applies these exact filter se
           return bare;
         }
 
+        function getTrendFollowContext(alert) {
+          const t = alert.triStoch || {};
+          const k1 = getTriK1Value(t);
+          const k2 = getTriK2Value(t);
+          const k1Dir = getTriK1Direction(t);
+          const k2Dir = getTriK2Direction(t);
+          const pat = alert.s1aPattern || '';
+          return {
+            k1,
+            k2,
+            k1Down: k1Dir === 'down',
+            k1Up: k1Dir === 'up',
+            k2Down: k2Dir === 'down',
+            k2Up: k2Dir === 'up',
+            isLH: pat === 'Lower High',
+            isHL: pat === 'Higher Low',
+            k2Below50: k2 !== null && k2 < 50,
+            k2Above50: k2 !== null && k2 > 50,
+            k1Below40: k1 !== null && k1 < 40,
+            k1Above50: k1 !== null && k1 > 50,
+            k1Below50: k1 !== null && k1 < 50,
+            hasData: k1 !== null && k2 !== null
+          };
+        }
+
+        /** Trend-following style: K2 = trend, K1 = short-term volatile. */
+        function getTrendFollowSuggestion(alert) {
+          const c = getTrendFollowContext(alert);
+          if (!c.hasData) return null;
+
+          if (c.k2Below50) {
+            if (c.isHL && c.k1Above50 && c.k1Up) {
+              return {
+                side: 'Long',
+                label: 'Reversal long · HL above 50',
+                reason: 'K2 still <50 but K1 HL>50 confirms real bullish turn',
+                strength: 'moderate'
+              };
+            }
+            if (c.k2Down && c.k1Down) {
+              if (c.isLH && c.k1Below40) {
+                return {
+                  side: 'Short',
+                  label: 'Strong short · LH below 40',
+                  reason: 'K2↓<50 + K1↓ + LH<40 — ideal trend follow',
+                  strength: 'strong'
+                };
+              }
+              return {
+                side: 'Short',
+                label: 'Trend short · K2↓ K1↓',
+                reason: 'K2 downtrend below 50 with K1 also down',
+                strength: 'moderate'
+              };
+            }
+            if (c.k1Up || c.isHL) {
+              return {
+                side: 'Neutral',
+                label: 'Wait — no real reversal yet',
+                reason: 'K2<50: need K1 HL above 50 before trusting a long',
+                strength: 'weak'
+              };
+            }
+            if (c.k2Down) {
+              return {
+                side: 'Short',
+                label: 'Bearish bias · K2↓<50',
+                reason: 'K2 below 50 and falling — wait for K1↓ to align',
+                strength: 'weak'
+              };
+            }
+            return {
+              side: 'Neutral',
+              label: 'K2 below 50',
+              reason: 'Bearish zone — short when K2↓+K1↓; long only after HL>50',
+              strength: 'weak'
+            };
+          }
+
+          if (c.k2Above50) {
+            if (c.isLH && c.k1Below50 && c.k1Down) {
+              return {
+                side: 'Short',
+                label: 'Reversal short · LH below 50',
+                reason: 'K2 still >50 but K1 LH<50 confirms real bearish turn',
+                strength: 'moderate'
+              };
+            }
+            if (c.k2Up && c.k1Up) {
+              if (c.isHL && c.k1Above50) {
+                return {
+                  side: 'Long',
+                  label: 'Strong long · HL above 50',
+                  reason: 'K2↑>50 + K1↑ + HL>50 — ideal trend follow',
+                  strength: 'strong'
+                };
+              }
+              return {
+                side: 'Long',
+                label: 'Trend long · K2↑ K1↑',
+                reason: 'K2 uptrend above 50 with K1 also up',
+                strength: 'moderate'
+              };
+            }
+            if (c.k1Down || c.isLH) {
+              return {
+                side: 'Neutral',
+                label: 'Wait — no real reversal yet',
+                reason: 'K2>50: need K1 LH below 50 before trusting a short',
+                strength: 'weak'
+              };
+            }
+            if (c.k2Up) {
+              return {
+                side: 'Long',
+                label: 'Bullish bias · K2↑>50',
+                reason: 'K2 above 50 and rising — wait for K1↑ to align',
+                strength: 'weak'
+              };
+            }
+            return {
+              side: 'Neutral',
+              label: 'K2 above 50',
+              reason: 'Bullish zone — long when K2↑+K1↑; short only after LH<50',
+              strength: 'weak'
+            };
+          }
+
+          return {
+            side: 'Neutral',
+            label: 'K2 at midline',
+            reason: 'K2 near 50 — choppy, no clear trend follow setup',
+            strength: 'weak'
+          };
+        }
+
+        function summaryCheckRow(label, state, note) {
+          const cls = state === 'pass' ? 'val-long' : state === 'fail' ? 'val-short' : 'val-neutral';
+          const mark = state === 'pass' ? '✓' : state === 'fail' ? '✗' : '·';
+          const noteHtml = note ? ' <span style="opacity:0.65;font-size:11px">' + escapeHtmlText(note) + '</span>' : '';
+          return summaryRow(label, '<span class="' + cls + '">' + mark + noteHtml + '</span>');
+        }
+
+        function renderTrendFollowSection(alert) {
+          const c = getTrendFollowContext(alert);
+          if (!c.hasData) {
+            return summarySection('Trend Follow', summaryRow('Setup', '—') + summaryRow('Note', escapeHtmlText('Need K1/K2 data')));
+          }
+
+          const note = '<div class="ticker-summary-note">K2 = trend · K1 = short-term (volatile). ' +
+            'Short: K2↓&lt;50 + K1↓ (best LH&lt;40). Long reversal when K2&lt;50 only after HL&gt;50 on K1.</div>';
+
+          let rows = '';
+          if (c.k2Below50) {
+            rows =
+              summaryCheckRow('K2 below 50', c.k2Below50 ? 'pass' : 'fail') +
+              summaryCheckRow('K2 trending down', c.k2Down ? 'pass' : 'wait', 'required for short') +
+              summaryCheckRow('K1 trending down', c.k1Down ? 'pass' : 'wait', 'align with K2') +
+              summaryCheckRow('LH on K1 below 40', c.isLH && c.k1Below40 ? 'pass' : 'wait', 'ideal short') +
+              summaryCheckRow('HL + K1 above 50', c.isHL && c.k1Above50 ? 'pass' : 'wait', 'reversal gate for long');
+          } else if (c.k2Above50) {
+            rows =
+              summaryCheckRow('K2 above 50', c.k2Above50 ? 'pass' : 'fail') +
+              summaryCheckRow('K2 trending up', c.k2Up ? 'pass' : 'wait', 'required for long') +
+              summaryCheckRow('K1 trending up', c.k1Up ? 'pass' : 'wait', 'align with K2') +
+              summaryCheckRow('HL on K1 above 50', c.isHL && c.k1Above50 ? 'pass' : 'wait', 'ideal long') +
+              summaryCheckRow('LH + K1 below 50', c.isLH && c.k1Below50 ? 'pass' : 'wait', 'reversal gate for short');
+          } else {
+            rows =
+              summaryCheckRow('K2 below 50', 'wait') +
+              summaryCheckRow('K2 above 50', 'wait') +
+              summaryRow('Note', escapeHtmlText('K2 near 50 — wait for clear side'));
+          }
+
+          return '<div class="ticker-summary-section">' +
+            '<div class="ticker-summary-section-title">Trend Follow</div>' +
+            note + rows +
+            '</div>';
+        }
+
         function getTradingViewChartUrl(symbol, tvSymbol, exchange) {
           const sym = resolveTvEmbedSymbol(symbol, tvSymbol, exchange);
           if (!sym) return null;
@@ -8444,13 +8630,15 @@ Use this to create a new preset filter button that applies these exact filter se
               strength: 'strong'
             };
           }
+          const trend = getTrendFollowSuggestion(alert);
+          if (trend) return trend;
           const sug = getUnifiedStochSuggestion(alert);
           if (sug) {
             const side = sug.type === 'long' ? 'Long' : sug.type === 'short' ? 'Short' : 'Neutral';
             return {
               side,
               label: sug.text,
-              reason: 'K/D + K1/K2 analysis',
+              reason: 'Fallback K/D analysis',
               strength: sug.type === 'neutral' ? 'weak' : 'moderate'
             };
           }
