@@ -6307,6 +6307,27 @@ app.get('/', (req, res) => {
           return e2 + '<P<' + e1;
         }
 
+        function formatEmaTfLabel(tf) {
+          if (tf == null || String(tf).trim() === '') return '1m';
+          const s = String(tf).trim();
+          if (s === 'D' || s === '1D') return 'D';
+          if (/^\d+$/.test(s)) return s + 'm';
+          return s;
+        }
+
+        function summaryEmaRow(name, len, tf, emaVal, above) {
+          const rowLabel = name + ' (' + len + ' ' + formatEmaTfLabel(tf) + ')';
+          const num = parseFloat(emaVal);
+          if (isNaN(num)) return summaryRow(rowLabel, '—');
+          const aboveBool = above === true || above === 'true';
+          const belowBool = above === false || above === 'false';
+          let sideText = '';
+          let cls = 'val-neutral';
+          if (aboveBool) { sideText = ' · Above'; cls = 'val-long'; }
+          else if (belowBool) { sideText = ' · Below'; cls = 'val-short'; }
+          return summaryRow(rowLabel, '<span class="' + cls + '">' + escapeHtmlText(formatCurrency(num) + sideText) + '</span>');
+        }
+
         function hasRangeFilters() {
           return rangeOrbFilter.length > 0 || rangeLabelFilter.length > 0 || rangeVwapFilter.length > 0 || rangeVwapPct.active || rangeBandFilter.length > 0 || rangeEmaFilter.length > 0;
         }
@@ -8537,6 +8558,8 @@ Use this to create a new preset filter button that applies these exact filter se
             ) +
             summarySection('Structure',
               summaryRow('EMA stack', emaDisp ? escapeHtmlText(emaDisp) : '—') +
+              summaryEmaRow('EMA1', getEmaLen1(alert), alert.ema1Tf, alert.ema1, alert.ema1Above) +
+              summaryEmaRow('EMA2', getEmaLen2(alert), alert.ema2Tf, alert.ema2, alert.ema2Above) +
               summaryRow('Volume', alert.volume ? escapeHtmlText(formatVolume(alert.volume)) : '—') +
               summaryRow('Trend', alert.calculatedTrend ? escapeHtmlText(String(alert.calculatedTrend)) : (alert.dualStochHighLevelTrendType ? escapeHtmlText(String(alert.dualStochHighLevelTrendType)) : '—'))
             ) +
