@@ -11,11 +11,26 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 const port = process.env.PORT || 3000
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ''
 
 app.use(cors())
 app.use(express.json())
 
-// Notification settings (configure via environment variables or update here)
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(503).json({
+      status: 'error',
+      message: 'ADMIN_TOKEN is not configured. Set ADMIN_TOKEN in the environment to enable this endpoint.'
+    })
+  }
+  const token = req.headers['x-admin-token'] || req.query.token
+  if (!token || token !== ADMIN_TOKEN) {
+    return res.status(401).json({ status: 'error', message: 'Unauthorized' })
+  }
+  next()
+}
+
+// Notification settings (configure via environment variables)
 const NOTIFICATION_CONFIG = {
   enabled: process.env.NOTIFICATIONS_ENABLED !== 'false', // Global toggle - default to true
   email: {
@@ -33,9 +48,9 @@ const NOTIFICATION_CONFIG = {
     }
   },
   discord: {
-    enabled: process.env.DISCORD_ENABLED !== 'false', // Default to true if webhook URL is set
-    webhookUrl: process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1440117112566710352/O-s1YsYR93f783PEjMhR9fmnan_agrmw8L3Me9F9SAl7rfdMWsxpFuIHHFkDyFrqE0Hq',
-    ttsEnabled: process.env.DISCORD_TTS_ENABLED !== 'false' // Default to true - enable TTS for important alerts
+    enabled: process.env.DISCORD_ENABLED !== 'false' && !!process.env.DISCORD_WEBHOOK_URL,
+    webhookUrl: process.env.DISCORD_WEBHOOK_URL || '',
+    ttsEnabled: process.env.DISCORD_TTS_ENABLED !== 'false'
   }
 }
 
@@ -204,8 +219,10 @@ let triStochK1K2History = {} // Tri-stoch K1/K2 samples for mini charts: { symbo
 let bigTrendDay = {} // Store Big Trend Day status per symbol per trading day: { symbol: { date: 'YYYY-MM-DD', isBigTrendDay: true } }
 let starredSymbols = {} // Store starred symbols (synced from frontend)
 let previousTrends = {} // Store previous trend for each symbol to detect changes
+let previousTriNotifyState = {} // Tri entry/reverse/suggestion snapshot for notifications
 let patternData = {} // Store latest HL/LH pattern per symbol
 let sectorData = {} // Store sector information by symbol (from webhook only)
+let bjTsiDataStorage = {} // Store BJ TSI by symbol with timestamp
 let stochSessionTracker = {}
 // stochSessionTracker[symbol] = {
 //   date: 'YYYY-MM-DD',          — NY trading date
@@ -792,8 +809,10 @@ function saveDataToDatabase() {
         bigTrendDay,
         starredSymbols,
         previousTrends,
+        previousTriNotifyState,
         patternData,
         sectorData,
+        bjTsiDataStorage,
         stochSessionTracker
       }
       
@@ -861,8 +880,10 @@ function loadDataFromDatabase() {
           case 'bigTrendDay': bigTrendDay = value; break
           case 'starredSymbols': starredSymbols = value; break
           case 'previousTrends': previousTrends = value; break
+          case 'previousTriNotifyState': previousTriNotifyState = value; break
           case 'patternData': patternData = value; break
           case 'sectorData': sectorData = value; break
+          case 'bjTsiDataStorage': bjTsiDataStorage = value; break
           case 'stochSessionTracker': stochSessionTracker = value; break
         }
       } catch (e) {
@@ -890,10 +911,147 @@ function loadDataFromDatabase() {
   }
 }
 
-// Helper function to get current date string in YYYY-MM-DD format
-function getCurrentDateString() {
-  const now = new Date()
-  return now.toISOString().split('T')[0]
+// NY trading date (YYYY-MM-DD) — matches session tracker / RTH logic
+function getCurrentDateString(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(date)
+}
+
+function parseStochValueServer(v) {
+  if (v == null || v === '') return null
+  const n = parseFloat(v)
+  return isNaN(n) ? null : n
+}
+
+function getStochValuesForSuggestion(alert) {
+  const kValueRaw = parseStochValueServer(alert.k)
+  const dValueRaw = parseStochValueServer(alert.d)
+  const fallbackK = parseStochValueServer(alert.dualStochD1) || parseStochValueServer(alert.d1)
+  const fallbackD = parseStochValueServer(alert.dualStochD2) || parseStochValueServer(alert.d2)
+  const soloD = parseStochValueServer(alert.soloStochD2)
+  const genericD = parseStochValueServer(alert.d2)
+  const kValue = kValueRaw !== null ? kValueRaw : fallbackK
+  const dValue = dValueRaw !== null ? dValueRaw : (fallbackD !== null ? fallbackD : (soloD !== null ? soloD : genericD))
+  const kDirection = alert.kDirection || alert.dualStochD1Direction || alert.d1Direction || 'flat'
+  const dDirection = alert.dDirection || alert.dualStochD2Direction || alert.soloStochD2Direction || alert.d2Direction || 'flat'
+  return { kValue, dValue, kDirection, dDirection }
+}
+
+/** Session K/D suggestion (same rules as dashboard getKDTrendMessage). */
+function getKDTrendMessageServer(alert) {
+  const { kValue, dValue, kDirection } = getStochValuesForSuggestion(alert)
+  const ss = alert.stochSession || {}
+  if (kValue === null || dValue === null) return null
+
+  const t = alert.triStoch
+  const k1Dir = t ? (t.ovKDirection || '').toLowerCase() : ''
+  const k1Up = k1Dir === 'up'
+  const k1Down = k1Dir === 'down'
+  const k2 = getTriK2Value(t)
+  const k2High = k2 !== null && k2 > 70
+  const k2Low = k2 !== null && k2 < 30
+
+  if (kValue < 15 && dValue < 15) {
+    if (k2Low) return { text: 'No Long ⚠', type: 'short' }
+    return { text: 'No Long', type: 'short' }
+  }
+  if (kValue > 85 && dValue > 85) {
+    if (k2High) return { text: 'No Short ⚠', type: 'long' }
+    return { text: 'No Short', type: 'long' }
+  }
+  if (k2High && k1Up && kDirection === 'up' && kValue > 50) {
+    return { text: 'Strong Long', type: 'long' }
+  }
+  if (k2Low && k1Down && kDirection === 'down' && kValue < 50) {
+    return { text: 'Strong Short', type: 'short' }
+  }
+  if (ss.bounced50 && kDirection === 'up' && kValue > 50 && kValue <= 80) {
+    if (k2High || k1Up) return { text: 'Long Contin. ✦', type: 'long' }
+    return { text: 'Long Contin.', type: 'long' }
+  }
+  if (ss.rejected50 && kDirection === 'down' && kValue < 50 && kValue >= 20) {
+    if (k2Low || k1Down) return { text: 'Short Contin. ✦', type: 'short' }
+    return { text: 'Short Contin.', type: 'short' }
+  }
+  if (ss.wasBelow20 && kDirection === 'up' && kValue >= 20 && kValue < 50 && ss.kCrossedAboveD) {
+    if (k2High || k1Up) return { text: 'Long Reversal ✦', type: 'long' }
+    if (k2Low) return { text: 'Bounce (↓Macro)', type: 'neutral' }
+    return { text: 'Long Reversal', type: 'long' }
+  }
+  if (ss.wasAbove80 && kDirection === 'down' && kValue <= 80 && kValue > 50 && ss.kCrossedBelowD) {
+    if (k2Low || k1Down) return { text: 'Short Reversal ✦', type: 'short' }
+    if (k2High) return { text: 'Pullback (↑Macro)', type: 'neutral' }
+    return { text: 'Short Reversal', type: 'short' }
+  }
+  if (kDirection === 'up' && k1Up && k2Low) return { text: 'Long vs Macro↓', type: 'neutral' }
+  if (kDirection === 'down' && k1Down && k2High) return { text: 'Short vs Macro↑', type: 'neutral' }
+  if (kDirection === 'up' && k1Up && kValue > 20 && kValue <= 50) return { text: 'Try Long', type: 'long' }
+  if (kDirection === 'up' && k1Up && kValue > 50 && kValue <= 80) return { text: 'Long Bias', type: 'long' }
+  if (kDirection === 'down' && k1Down && kValue < 80 && kValue >= 50) return { text: 'Try Short', type: 'short' }
+  if (kDirection === 'down' && k1Down && kValue < 50 && kValue >= 20) return { text: 'Short Bias', type: 'short' }
+  if (kDirection === 'up' && kValue > 20 && kValue <= 80) return { text: 'Lean Long', type: 'long' }
+  if (kDirection === 'down' && kValue >= 20 && kValue < 80) return { text: 'Lean Short', type: 'short' }
+  if (kValue > 80 && kDirection === 'up') return { text: 'Overbought', type: 'neutral' }
+  if (kValue < 20 && kDirection === 'down') return { text: 'Oversold', type: 'neutral' }
+  return null
+}
+
+function getTriStochSuggestionServer(t) {
+  if (!t) return null
+  const k2 = getTriK2Value(t)
+  const d1 = (t.ovKDirection || t.k1Direction || '').toLowerCase()
+  const d2 = (getTriK2Direction(t) || '').toLowerCase()
+  const up = (d) => d === 'up'
+  const down = (d) => d === 'down'
+  const allUp = up(d1) && up(d2) && k2 !== null && k2 < 30
+  const allDown = down(d1) && down(d2) && k2 !== null && k2 > 70
+  if (k2 !== null && k2 < 10 && down(d1) && down(d2)) return { text: 'Strong Short', type: 'short' }
+  if (k2 !== null && k2 > 90 && up(d1) && up(d2)) return { text: 'Strong Long', type: 'long' }
+  if (k2 !== null && k2 < 10 && (up(d1) || up(d2))) return { text: 'Try Long', type: 'long' }
+  if (k2 !== null && k2 > 90 && (down(d1) || down(d2))) return { text: 'Try Short', type: 'short' }
+  if (allUp || (k2 !== null && k2 < 20 && up(d1) && up(d2))) return { text: 'Strong Long', type: 'long' }
+  if (allDown || (k2 !== null && k2 > 80 && down(d1) && down(d2))) return { text: 'Strong Short', type: 'short' }
+  if (up(d1) && up(d2)) return { text: 'Try Long', type: 'long' }
+  if (down(d1) && down(d2)) return { text: 'Try Short', type: 'short' }
+  if (k2 !== null && k2 < 20 && (up(d1) || up(d2))) return { text: 'Try Long', type: 'long' }
+  if (k2 !== null && k2 > 80 && (down(d1) || down(d2))) return { text: 'Try Short', type: 'short' }
+  if (k2 !== null && k2 > 80 && up(d1) && up(d2)) return { text: 'No Short', type: 'neutral' }
+  if (k2 !== null && k2 < 20 && down(d1) && down(d2)) return { text: 'No Long', type: 'neutral' }
+  return null
+}
+
+function getUnifiedStochSuggestionServer(alert) {
+  const kd = getKDTrendMessageServer(alert)
+  if (kd) return kd
+  return getTriStochSuggestionServer(alert && alert.triStoch)
+}
+
+function buildSuggestionByMode(alert) {
+  const byMode = {}
+  const modes = alert.triStochModes || null
+  if (modes) {
+    for (const [mode, payload] of Object.entries(modes)) {
+      const normalized = normalizeTriTimeframeMode(mode)
+      byMode[normalized] = getUnifiedStochSuggestionServer({ ...alert, triStoch: payload })
+    }
+  }
+  if (!byMode.Interday && !byMode.Swing) {
+    const sug = getUnifiedStochSuggestionServer(alert)
+    if (sug) byMode.Interday = sug
+  }
+  return byMode
+}
+
+function attachSuggestionsToAlert(alert) {
+  const suggestionByMode = buildSuggestionByMode(alert)
+  alert.suggestionByMode = suggestionByMode
+  const activeMode = normalizeTriTimeframeMode(alert.triStoch?.stochTimeframe || 'Interday')
+  alert.suggestion = suggestionByMode[activeMode] || suggestionByMode.Interday || suggestionByMode.Swing || null
+  return alert
 }
 
 // Helper function to calculate trend based on alert data
@@ -1122,7 +1280,140 @@ async function sendDiscordNotification(symbol, oldTrend, newTrend, price, d7Valu
   }
 }
 
-// Check and send notifications for trend changes
+const TRI_NOTIFY_STRONG = new Set([
+  'Strong Long', 'Strong Short',
+  'Long Reversal ✦', 'Short Reversal ✦',
+  'Long Contin. ✦', 'Short Contin. ✦',
+  'Long Reversal', 'Short Reversal'
+])
+
+async function sendDiscordTradeAlert({ symbol, title, description, color, price, fields = [], ttsText = null }) {
+  if (!NOTIFICATION_CONFIG.discord.enabled || !NOTIFICATION_CONFIG.discord.webhookUrl) return
+  try {
+    const payload = {
+      embeds: [{
+        title,
+        description,
+        color: color || 0x9E9E9E,
+        fields: [
+          { name: 'Price', value: price != null ? `$${price}` : 'N/A', inline: true },
+          { name: 'Time', value: new Date().toLocaleTimeString(), inline: true },
+          ...fields
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Trading Dashboard · Tri Stoch' }
+      }]
+    }
+    if (NOTIFICATION_CONFIG.discord.ttsEnabled && ttsText) {
+      payload.tts = true
+      payload.content = ttsText
+    }
+    const response = await fetch(NOTIFICATION_CONFIG.discord.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (!response.ok) {
+      console.error(`❌ Discord Tri alert failed for ${symbol}:`, response.statusText)
+    }
+  } catch (error) {
+    console.error(`❌ Failed Discord Tri alert for ${symbol}:`, error.message)
+  }
+}
+
+async function sendEmailTradeAlert(symbol, subject, bodyHtml) {
+  if (!emailTransporter || !NOTIFICATION_CONFIG.email.enabled) return
+  try {
+    await emailTransporter.sendMail({
+      from: NOTIFICATION_CONFIG.email.from,
+      to: NOTIFICATION_CONFIG.email.to,
+      subject,
+      html: bodyHtml
+    })
+  } catch (error) {
+    console.error(`❌ Failed Tri email for ${symbol}:`, error.message)
+  }
+}
+
+function spellTicker(symbol) {
+  return String(symbol || '').split('').join(', ')
+}
+
+/** Notify on Tri entry / reverse / strong suggestion changes (starred; strong signals for all). */
+function checkAndNotifyTriSignals(symbol, alertRow, opts = {}) {
+  if (!NOTIFICATION_CONFIG.enabled || !symbol || !alertRow) return
+
+  const entry = String(alertRow.entrySignal || '').toLowerCase()
+  const reverse = String(alertRow.reverseSignal || '').toLowerCase()
+  const suggestion = getUnifiedStochSuggestionServer(alertRow)
+  const sugText = suggestion?.text || null
+  const prev = previousTriNotifyState[symbol] || {}
+  const isStarred = !!starredSymbols[symbol]
+  const price = alertRow.price
+  const nextState = {
+    entry: entry === 'long' || entry === 'short' ? entry : null,
+    reverse: reverse === 'bull' || reverse === 'bear' ? reverse : null,
+    suggestion: sugText,
+    entryAt: alertRow.entrySignalAt || null,
+    reverseAt: alertRow.reverseSignalAt || null
+  }
+
+  const entryChanged = opts.entryFired && nextState.entry && (
+    nextState.entry !== prev.entry || nextState.entryAt !== prev.entryAt
+  )
+  const reverseChanged = opts.reverseFired && nextState.reverse && (
+    nextState.reverse !== prev.reverse || nextState.reverseAt !== prev.reverseAt
+  )
+  const sugChanged = sugText && sugText !== prev.suggestion
+  const strongSug = sugText && TRI_NOTIFY_STRONG.has(sugText)
+
+  const notify = (title, description, color, tts) => {
+    console.log(`🔔 Tri notify ${symbol}: ${title}`)
+    sendDiscordTradeAlert({ symbol, title, description, color, price, ttsText: tts })
+    sendEmailTradeAlert(
+      symbol,
+      title,
+      `<h2>${title}</h2><p>${description}</p><p><strong>Price:</strong> $${price ?? 'N/A'}</p><p>${new Date().toLocaleString()}</p>`
+    )
+  }
+
+  // Entry + reverse: always notify (actionable Tri setups)
+  if (entryChanged) {
+    const isLong = nextState.entry === 'long'
+    notify(
+      `${isLong ? '🟢' : '🔴'} ${symbol} Entry ${isLong ? 'LONG' : 'SHORT'}`,
+      `Tri entry signal: **${nextState.entry.toUpperCase()}**${alertRow.entrySignalSet ? ` (Set ${alertRow.entrySignalSet})` : ''}`,
+      isLong ? 0x22c55e : 0xef4444,
+      `Ticker ${spellTicker(symbol)}. Entry ${nextState.entry}.`
+    )
+  }
+
+  if (reverseChanged) {
+    const isBull = nextState.reverse === 'bull'
+    notify(
+      `${isBull ? '🟢' : '🔴'} ${symbol} Reverse ${isBull ? 'BULL' : 'BEAR'}`,
+      `Tri reverse signal: **${nextState.reverse.toUpperCase()}**`,
+      isBull ? 0x4ade80 : 0xf87171,
+      `Ticker ${spellTicker(symbol)}. Reverse ${nextState.reverse}.`
+    )
+  }
+
+  // Strong suggestion changes: all symbols; weaker suggestion changes: starred only
+  if (sugChanged && (strongSug || isStarred)) {
+    const type = suggestion?.type || 'neutral'
+    const color = type === 'long' ? 0x22c55e : type === 'short' ? 0xef4444 : 0x94a3b8
+    notify(
+      `${strongSug ? '⚡' : '⭐'} ${symbol} ${sugText}`,
+      `Suggestion: **${prev.suggestion || '—'}** → **${sugText}**`,
+      color,
+      strongSug ? `Ticker ${spellTicker(symbol)}. ${sugText}.` : null
+    )
+  }
+
+  previousTriNotifyState[symbol] = nextState
+}
+
+// Check and send notifications for Octo trend changes
 function checkAndNotifyTrendChange(symbol, alertData) {
   // Check global notification toggle first
   if (!NOTIFICATION_CONFIG.enabled) {
@@ -1378,6 +1669,7 @@ function processWebhookAlert(alert) {
   )
   const isDualStochAlert = alert.d2Signal === 'Dual'
   const isTriStochAlert = alert.d2Signal === 'Tri'
+  const isBjTsiAlert = alert.bjTsi !== undefined && !isTriStochAlert && !isOctoStochAlert && !isQuadStochD4Alert
   
   // Log alert type detection for debugging
   debugLog('📊 Alert type detected:', {
@@ -1391,10 +1683,39 @@ function processWebhookAlert(alert) {
     isSoloStochAlert,
     isDualStochAlert,
     isTriStochAlert,
+    isBjTsiAlert,
     symbol: alert.symbol
   })
   
-  if (isQuadStochD4Alert) {
+  if (isBjTsiAlert) {
+    bjTsiDataStorage[alert.symbol] = {
+      bjTsi: alert.bjTsi,
+      bjTsl: alert.bjTsl,
+      bjTsiIsBull: alert.bjTsiIsBull,
+      bjTslIsBull: alert.bjTslIsBull,
+      timestamp: Date.now()
+    }
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.bjTsi = alert.bjTsi
+      existing.bjTsl = alert.bjTsl
+      existing.bjTsiIsBull = alert.bjTsiIsBull
+      existing.bjTslIsBull = alert.bjTslIsBull
+      if (alert.price) existing.price = alert.price
+      existing.receivedAt = Date.now()
+    } else {
+      prependAlert({
+        symbol: alert.symbol,
+        price: alert.price || null,
+        bjTsi: alert.bjTsi,
+        bjTsl: alert.bjTsl,
+        bjTsiIsBull: alert.bjTsiIsBull,
+        bjTslIsBull: alert.bjTslIsBull,
+        receivedAt: Date.now()
+      })
+    }
+    debugLog(`✅ BJ TSI stored for ${alert.symbol}: ${alert.bjTsi}`)
+  } else if (isQuadStochD4Alert) {
     // Check if values changed compared to previous update
     const prevQS = previousQSValues[alert.symbol] || {}
     const prevDir = previousDirections[alert.symbol] || {}
@@ -2118,6 +2439,9 @@ function processWebhookAlert(alert) {
     }
 
     const existing = getAlertBySymbol(alert.symbol)
+    const reverseFired = alert.reverseSignal !== undefined &&
+      (String(alert.reverseSignal || '').toLowerCase() === 'bull' || String(alert.reverseSignal || '').toLowerCase() === 'bear')
+    const entryFired = !!entryUpdate.entrySignal
     if (existing) {
       existing.triStoch = triStoch
       existing.triStochModes = { ...(existing.triStochModes || {}), ...triStochModes }
@@ -2137,8 +2461,20 @@ function processWebhookAlert(alert) {
       Object.assign(existing, reverseHlState)
       if (entryUpdate.entrySignal) Object.assign(existing, entryUpdate)
       existing.receivedAt = Date.now()
+      const sess = stochSessionTracker[alert.symbol]
+      if (sess && sess.date === getCurrentDateString()) {
+        existing.stochSession = {
+          bounced50: sess.bounced50,
+          rejected50: sess.rejected50,
+          wasBelow20: sess.wasBelow20,
+          wasAbove80: sess.wasAbove80,
+          kCrossedAboveD: sess.kCrossedAboveD,
+          kCrossedBelowD: sess.kCrossedBelowD
+        }
+      }
+      checkAndNotifyTriSignals(alert.symbol, existing, { entryFired, reverseFired })
     } else {
-      prependAlert({
+      const newRow = {
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
         price: alert.price || null,
@@ -2158,7 +2494,20 @@ function processWebhookAlert(alert) {
         triStochModes,
         ...entryUpdate,
         receivedAt: Date.now()
-      })
+      }
+      prependAlert(newRow)
+      const sess = stochSessionTracker[alert.symbol]
+      if (sess && sess.date === getCurrentDateString()) {
+        newRow.stochSession = {
+          bounced50: sess.bounced50,
+          rejected50: sess.rejected50,
+          wasBelow20: sess.wasBelow20,
+          wasAbove80: sess.wasAbove80,
+          kCrossedAboveD: sess.kCrossedAboveD,
+          kCrossedBelowD: sess.kCrossedBelowD
+        }
+      }
+      checkAndNotifyTriSignals(alert.symbol, newRow, { entryFired, reverseFired })
       debugLog(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
     }
   } else if (isSoloStochAlert) {
@@ -2853,6 +3202,7 @@ app.get('/alerts', (req, res) => {
         }
       }
     }
+    attachSuggestionsToAlert(alert)
   })
   
   res.json(result)
@@ -2875,7 +3225,7 @@ app.get('/k2-cross-history', (req, res) => {
 })
 
 // Debug endpoint - check what data is stored
-app.get('/debug', (req, res) => {
+app.get('/debug', requireAdmin, (req, res) => {
   res.json({
     alertsCount: alerts.length,
     historyCount: alertsHistory.length,
@@ -2885,12 +3235,13 @@ app.get('/debug', (req, res) => {
     quadStochData: quadStochData,
     vwapCrossingData: vwapCrossingData,
     macdCrossingData: macdCrossingData,
-    dayChangeData: dayChangeData
+    dayChangeData: dayChangeData,
+    bjTsiDataStorage
   })
 })
 
 // New endpoint to reset/clear all alerts
-app.post('/reset-alerts', (req, res) => {
+app.post('/reset-alerts', requireAdmin, (req, res) => {
   alerts = []
   alertsBySymbol.clear()
   triMiniChartCache.clear()
@@ -2917,12 +3268,14 @@ app.post('/reset-alerts', (req, res) => {
   bigTrendDay = {}
   patternData = {}
   stochSessionTracker = {}
+  bjTsiDataStorage = {}
+  previousTriNotifyState = {}
   saveDataToDatabase() // Save after clearing
   res.json({ status: 'ok', message: 'All alerts cleared and saved' })
 })
 
 // Endpoint to manually save data
-app.post('/save-data', (req, res) => {
+app.post('/save-data', requireAdmin, (req, res) => {
   const success = saveDataToDatabase()
   if (success) {
     res.json({ status: 'ok', message: 'Data saved successfully' })
@@ -2932,7 +3285,7 @@ app.post('/save-data', (req, res) => {
 })
 
 // Endpoint to export database file
-app.get('/export/database', (req, res) => {
+app.get('/export/database', requireAdmin, (req, res) => {
   try {
     if (!db || !fs.existsSync(DB_FILE)) {
       return res.status(404).json({ status: 'error', message: 'Database file not found' })
@@ -2956,7 +3309,7 @@ app.get('/export/database', (req, res) => {
 })
 
 // Endpoint to export all data as JSON
-app.get('/export/json', (req, res) => {
+app.get('/export/json', requireAdmin, (req, res) => {
   try {
     // Save current state before export
     saveDataToDatabase()
@@ -3129,7 +3482,7 @@ app.post('/notification-settings', (req, res) => {
 })
 
 // Test endpoint to verify Discord notifications
-app.post('/test-discord', async (req, res) => {
+app.post('/test-discord', requireAdmin, async (req, res) => {
   try {
     const { symbol = 'TEST', oldTrend = 'Neutral', newTrend = 'Try Long', price = '100.00', d7Value = null } = req.body
     
@@ -5065,6 +5418,12 @@ app.get('/', (req, res) => {
         <div class="flex items-center h-full border-r border-border">
           <span id="tickerCount" class="font-terminal text-[10px] font-bold text-amber-400 px-2.5">0</span>
         </div>
+        <button id="uiModeToggle" onclick="toggleUiMode()" class="flex items-center justify-center px-2.5 h-full border-r border-border hover:bg-white/5 text-muted-foreground hover:text-amber-400" title="Scanner: quick presets. Pro: full filters.">
+          <span id="uiModeLabel" class="font-terminal text-[9px] tracking-widest">SCANNER</span>
+        </button>
+        <button id="triOnlyToggle" onclick="toggleTriOnlyFilter()" class="flex items-center justify-center px-2.5 h-full border-r border-border hover:bg-white/5 text-amber-400" title="Show only symbols with Tri Stoch data">
+          <span id="triOnlyLabel" class="font-terminal text-[9px] tracking-widest">TRI</span>
+        </button>
         <div class="flex-1"></div>
         <button id="viewToggle" onclick="toggleView()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-foreground" title="Switch to Card View">
           <span id="viewIcon" class="text-sm">📋</span>
@@ -5079,7 +5438,7 @@ app.get('/', (req, res) => {
         <button onclick="openCalculator()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Calculator">
           <span class="text-sm">📊</span>
         </button>
-        <button onclick="openExitLogic()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Exit Logic">
+        <button onclick="openExitLogic()" class="flex items-center justify-center w-9 h-full border-l border-border hover:bg-white/5 text-muted-foreground hover:text-[hsl(38,95%,55%)]" title="Exit Playbook (reference)">
           <span class="text-sm">🚪</span>
         </button>
         <div class="flex items-center px-3 h-full font-terminal">
@@ -5365,30 +5724,30 @@ app.get('/', (req, res) => {
               BLW <span id="presetBelowVwapCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">ORB</span>
-            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Upper ORB">
+            <button id="presetAboveOrb" data-preset-group="orb" onclick="applyPresetFilter('aboveOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Upper ORB (inside upper band)">
               UP <span id="presetAboveOrbCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Lower ORB">
+            <button id="presetBelowOrb" data-preset-group="orb" onclick="applyPresetFilter('belowOrb')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Lower ORB (inside lower band)">
               DN <span id="presetBelowOrbCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <button id="presetOrbAbove" data-preset-group="orb" onclick="applyPresetFilter('orbAbove')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Above ORB">
-              ABOVE <span id="presetOrbAboveCount" class="ml-0.5 text-green-300 font-bold">0</span>
+            <button id="presetOrbAbove" data-preset-group="orb" data-pro-only="1" onclick="applyPresetFilter('orbAbove')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400 hidden" title="Price above entire ORB range">
+              ABV ORB <span id="presetOrbAboveCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetOrbBelow" data-preset-group="orb" onclick="applyPresetFilter('orbBelow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Below ORB">
-              BELOW <span id="presetOrbBelowCount" class="ml-0.5 text-red-300 font-bold">0</span>
+            <button id="presetOrbBelow" data-preset-group="orb" data-pro-only="1" onclick="applyPresetFilter('orbBelow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400 hidden" title="Price below entire ORB range">
+              BLW ORB <span id="presetOrbBelowCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">BRK</span>
-            <button id="presetBrkHigh" data-preset-group="brk" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Break D.High">
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5" data-pro-only="1">BRK</span>
+            <button id="presetBrkHigh" data-preset-group="brk" data-pro-only="1" onclick="applyPresetFilter('brkHigh')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400 hidden" title="Break D.High">
               HI <span id="presetBrkHighCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetBrkLow" data-preset-group="brk" onclick="applyPresetFilter('brkLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Break D.Low">
+            <button id="presetBrkLow" data-preset-group="brk" data-pro-only="1" onclick="applyPresetFilter('brkLow')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400 hidden" title="Break D.Low">
               LO <span id="presetBrkLowCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
-            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">TREND</span>
-            <button id="presetTrendUp" data-preset-group="trend" onclick="applyPresetFilter('trendUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400" title="Bull trend">
+            <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5" data-pro-only="1">TREND</span>
+            <button id="presetTrendUp" data-preset-group="trend" data-pro-only="1" onclick="applyPresetFilter('trendUp')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-green-500/40 bg-green-500/10 hover:bg-green-500/20 active:scale-95 transition-all text-green-400 hidden" title="Bull trend">
               BULL <span id="presetTrendUpCount" class="ml-0.5 text-green-300 font-bold">0</span>
             </button>
-            <button id="presetTrendDn" data-preset-group="trend" onclick="applyPresetFilter('trendDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400" title="Bear trend">
+            <button id="presetTrendDn" data-preset-group="trend" data-pro-only="1" onclick="applyPresetFilter('trendDn')" class="preset-filter-chip filter-chip px-2 py-1 text-sm font-terminal font-medium border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 active:scale-95 transition-all text-red-400 hidden" title="Bear trend">
               BEAR <span id="presetTrendDnCount" class="ml-0.5 text-red-300 font-bold">0</span>
             </button>
             <span class="text-[9px] font-terminal uppercase tracking-widest text-muted-foreground/50 px-0.5">MOM</span>
@@ -5589,6 +5948,8 @@ app.get('/', (req, res) => {
         // View state (table or card)
         let currentView = localStorage.getItem('viewMode') || 'table'; // 'table' or 'masonry'
         let activeTriTimeframeMode = localStorage.getItem('triTimeframeMode') || 'Interday';
+        let uiMode = localStorage.getItem('uiMode') || 'scanner'; // 'scanner' | 'pro'
+        let triOnlyFilter = localStorage.getItem('triOnlyFilter') !== 'false'; // default on
         if (currentView === 'card') currentView = 'masonry'; // Backward/forward compatibility
         let cardSortMode = localStorage.getItem('cardSortMode') || 'k2Bands';
         if (cardSortMode === 'k3Bands') {
@@ -7109,11 +7470,62 @@ app.get('/', (req, res) => {
           return null;
         }
 
-        /** One suggestion for table/masonry display and Suggestion chips: session K/D logic first, Tri-K fallback (matches what you see vs what you filter). */
+        /** Prefer server-computed suggestion (single source of truth); fall back to client rules. */
         function getUnifiedStochSuggestion(alert) {
+          if (alert && alert.suggestionByMode) {
+            const mode = normalizeTriTimeframeMode(activeTriTimeframeMode);
+            const byMode = alert.suggestionByMode[mode] || alert.suggestionByMode.Interday || alert.suggestionByMode.Swing;
+            if (byMode) return byMode;
+          }
+          if (alert && alert.suggestion) return alert.suggestion;
           const kd = getKDTrendMessage(alert);
           if (kd) return kd;
           return getTriStochSuggestion(alert && alert.triStoch);
+        }
+
+        function updateUiModeUI() {
+          const label = document.getElementById('uiModeLabel');
+          if (label) label.textContent = uiMode === 'pro' ? 'PRO' : 'SCANNER';
+          document.querySelectorAll('[data-pro-only="1"]').forEach(el => {
+            el.classList.toggle('hidden', uiMode !== 'pro');
+          });
+          // Scanner keeps the dense filter sidebar closed; Pro opens it.
+          applyFilterSidebarState(uiMode === 'scanner');
+        }
+
+        function toggleUiMode() {
+          uiMode = uiMode === 'scanner' ? 'pro' : 'scanner';
+          localStorage.setItem('uiMode', uiMode);
+          updateUiModeUI();
+        }
+
+        function updateTriOnlyUI() {
+          const label = document.getElementById('triOnlyLabel');
+          const btn = document.getElementById('triOnlyToggle');
+          if (label) label.textContent = triOnlyFilter ? 'TRI' : 'ALL';
+          if (btn) {
+            btn.classList.toggle('text-amber-400', triOnlyFilter);
+            btn.classList.toggle('text-muted-foreground', !triOnlyFilter);
+            btn.title = triOnlyFilter
+              ? 'Showing Tri Stoch symbols only — click for all symbols'
+              : 'Showing all symbols — click for Tri only';
+          }
+        }
+
+        function toggleTriOnlyFilter() {
+          triOnlyFilter = !triOnlyFilter;
+          localStorage.setItem('triOnlyFilter', triOnlyFilter ? 'true' : 'false');
+          updateTriOnlyUI();
+          renderTable();
+        }
+
+        function describeEmptyFilterState(opts) {
+          const { searchTerm: st, triOnly, hasFilters, total, triCount } = opts;
+          if (total === 0) return 'No alerts available';
+          if (st) return 'No tickers match your search';
+          if (triOnly && triCount === 0) return 'No Tri Stoch symbols yet — toggle ALL in the top bar to show other alerts';
+          if (hasFilters) return 'No tickers match current filters — CLEAR presets or open PRO filters';
+          return 'No results found';
         }
 
         function sortTable(field) {
@@ -7540,7 +7952,11 @@ app.get('/', (req, res) => {
           initKanbanCardHandlers();
           updateCardSortBarUI();
           loadStochHistoryFromStorage();
-          applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
+          updateTriOnlyUI();
+          updateUiModeUI();
+          if (uiMode !== 'scanner') {
+            applyFilterSidebarState(localStorage.getItem('filterSidebarHidden') === 'true');
+          }
           initializeView(); // Initialize view mode
         });
         
@@ -7635,12 +8051,14 @@ app.get('/', (req, res) => {
             return;
           }
           
-          // Search narrows dataset; filters only decide match-vs-dim in card view.
+          // Search narrows dataset; optional Tri-only gate; filters only decide match-vs-dim in card view.
           let displayData = alertsData;
-          displayData = displayData.filter(alert => !!alert.triStoch);
+          if (triOnlyFilter) {
+            displayData = displayData.filter(alert => !!alert.triStoch);
+          }
           if (searchTerm) {
-            displayData = alertsData.filter(alert => 
-              !!alert.triStoch && (alert.symbol || '').toLowerCase().includes(searchTerm)
+            displayData = displayData.filter(alert =>
+              (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
           if (cardOnlyFav) {
@@ -7648,8 +8066,16 @@ app.get('/', (req, res) => {
           }
 
           if (displayData.length === 0) {
+            const triCount = alertsData.filter(a => !!a.triStoch).length;
+            const emptyMsg = describeEmptyFilterState({
+              searchTerm,
+              triOnly: triOnlyFilter,
+              hasFilters: false,
+              total: alertsData.length,
+              triCount
+            });
             masonryContainer.innerHTML = '<div class="text-center text-muted-foreground py-12 col-span-full">' +
-              (cardOnlyFav ? 'No starred tickers' : 'No results found') + '</div>';
+              (cardOnlyFav ? 'No starred tickers' : emptyMsg) + '</div>';
             return;
           }
           
@@ -9717,12 +10143,14 @@ Use this to create a new preset filter button that applies these exact filter se
             return;
           }
 
-          // Filter data by search term
+          // Filter data by search term / Tri gate
           let filteredData = alertsData;
-          filteredData = filteredData.filter(alert => !!alert.triStoch);
+          if (triOnlyFilter) {
+            filteredData = filteredData.filter(alert => !!alert.triStoch);
+          }
           if (searchTerm) {
-            filteredData = alertsData.filter(alert => 
-              !!alert.triStoch && (alert.symbol || '').toLowerCase().includes(searchTerm)
+            filteredData = filteredData.filter(alert =>
+              (alert.symbol || '').toLowerCase().includes(searchTerm)
             );
           }
           
@@ -9808,12 +10236,21 @@ Use this to create a new preset filter button that applies these exact filter se
             });
           }
 
-          // Show "No results" message if search returns no results
-          if (filteredData.length === 0 && searchTerm) {
-            alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">No tickers match your search</td></tr>\`;
+          // Show empty state with actionable reason
+          if (filteredData.length === 0) {
+            const triCount = alertsData.filter(a => !!a.triStoch).length;
+            const hasFilters = hasRangeFilters() || hasStochDirFilters() ||
+              stochFilterPercentChange.length > 0 || volumeFilter.length > 0;
+            const emptyMsg = describeEmptyFilterState({
+              searchTerm,
+              triOnly: triOnlyFilter,
+              hasFilters,
+              total: alertsData.length,
+              triCount
+            });
+            alertTable.innerHTML = \`<tr><td colspan="\${columnOrder.length}" class="text-center text-muted-foreground py-12 relative">\${emptyMsg}</td></tr>\`;
             lastUpdate.innerHTML = 'Last updated: ' + new Date(Math.max(...alertsData.map(alert => alert.receivedAt || 0))).toLocaleString() + ' <span id="countdown"></span>';
             updateCountdown();
-            // Update ticker count badge
             const tickerCountEl = document.getElementById('tickerCount');
             if (tickerCountEl) tickerCountEl.textContent = '0';
             return;
@@ -11662,8 +12099,8 @@ Use this to create a new preset filter button that applies these exact filter se
           <!-- Header with close button -->
           <div class="flex items-center justify-between mb-6">
             <div>
-              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Exit Logic Strategies</h1>
-              <p class="text-muted-foreground">Trading exit strategies for different market conditions</p>
+              <h1 class="scroll-m-20 text-4xl font-extrabold tracking-tight text-foreground mb-2">Exit Playbook</h1>
+              <p class="text-muted-foreground">Reference exit rules — not live automated signals</p>
             </div>
             <button onclick="closeExitLogic()" class="text-muted-foreground hover:text-foreground transition-colors p-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
