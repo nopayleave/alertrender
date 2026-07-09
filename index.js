@@ -13,6 +13,30 @@ const app = express()
 const port = process.env.PORT || 3000
 
 app.use(cors())
+
+// TradingView times out after ~3s — ack before global JSON parse, then process async.
+app.post('/webhook', express.raw({ type: 'application/json', limit: '256kb' }), (req, res) => {
+  res.status(200).json({ status: 'ok' })
+
+  const rawBody = req.body
+  setImmediate(() => {
+    if (!rawBody?.length) {
+      console.warn('⚠️ Webhook received empty body')
+      return
+    }
+    try {
+      const alert = JSON.parse(rawBody)
+      if (!alert || typeof alert !== 'object') {
+        console.warn('⚠️ Webhook received invalid body')
+        return
+      }
+      processWebhookAlert(alert)
+    } catch (error) {
+      console.error('❌ Webhook processing error:', error)
+    }
+  })
+})
+
 app.use(express.json())
 
 // Notification settings (configure via environment variables or update here)
@@ -1228,27 +1252,8 @@ function syncTvSymbolOnAlert(symbol, webhook) {
   if (tv.exchange) alerts[idx].exchange = tv.exchange
 }
 
-// Webhook for TradingView POST
-// TradingView times out after ~3s — respond immediately, then process.
-app.post('/webhook', (req, res) => {
-  res.status(200).json({ status: 'ok' })
-
-  const alert = req.body
-  if (!alert || typeof alert !== 'object') {
-    console.warn('⚠️ Webhook received empty or invalid body')
-    return
-  }
-
-  try {
-    processWebhookAlert(alert)
-  } catch (error) {
-    console.error('❌ Webhook processing error:', error)
-  }
-})
-
 function processWebhookAlert(alert) {
-  // Log incoming webhook for debugging
-  console.log('📨 Webhook received:', JSON.stringify(alert, null, 2))
+  console.log(`📨 Webhook received: ${alert.symbol || 'unknown'}`)
   
   if (alert.symbol && alert.sector) {
     sectorData[alert.symbol] = alert.sector
