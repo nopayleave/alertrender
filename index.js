@@ -150,9 +150,64 @@ function initDatabase() {
   }
 }
 
+// Verbose webhook dumps — enable with DEBUG_WEBHOOK=true
+const DEBUG_WEBHOOK = process.env.DEBUG_WEBHOOK === 'true'
+function debugLog(...args) {
+  if (DEBUG_WEBHOOK) console.log(...args)
+}
+
 // 儲存 alert JSON
 let alerts = [] // All alerts (not just latest per symbol)
+let alertsBySymbol = new Map() // symbol -> latest alert object (O(1) lookup)
+let triMiniChartCache = new Map() // symbol -> { histLen, lastTs, k1, k2 }
 let alertsHistory = [] // All historical alerts (backup storage)
+
+function rebuildAlertsBySymbolIndex() {
+  alertsBySymbol.clear()
+  for (const alert of alerts) {
+    if (!alert?.symbol) continue
+    if (!alertsBySymbol.has(alert.symbol)) {
+      alertsBySymbol.set(alert.symbol, alert)
+    }
+  }
+}
+
+function trimAlertsArray() {
+  if (alerts.length <= 5000) return
+  alerts = alerts.slice(0, 5000)
+  rebuildAlertsBySymbolIndex()
+}
+
+function getAlertBySymbol(symbol) {
+  if (!symbol) return null
+  return alertsBySymbol.get(symbol) || null
+}
+
+function setLatestAlertForSymbol(symbol, alert) {
+  if (!symbol || !alert) return
+  alertsBySymbol.set(symbol, alert)
+}
+
+function prependAlert(alert) {
+  alerts.unshift(alert)
+  if (alert?.symbol) setLatestAlertForSymbol(alert.symbol, alert)
+  trimAlertsArray()
+  return alert
+}
+
+function getCachedTriMiniCharts(symbol) {
+  const hist = triStochK1K2History[symbol] || []
+  const last = hist.length ? hist[hist.length - 1] : null
+  const lastTs = last?.timestamp ?? 0
+  const cached = triMiniChartCache.get(symbol)
+  if (cached && cached.histLen === hist.length && cached.lastTs === lastTs) {
+    return { k1: cached.k1, k2: cached.k2 }
+  }
+  const k1 = buildTriStochSeriesSvg(hist, 'k1', '#22c55e')
+  const k2 = buildTriStochSeriesSvg(hist, 'k2', '#f59e0b')
+  triMiniChartCache.set(symbol, { histLen: hist.length, lastTs, k1, k2 })
+  return { k1, k2 }
+}
 let dayChangeData = {} // Store day change data by symbol
 let dayVolumeData = {} // Store daily volume data by symbol
 let vwapCrossingData = {} // Store VWAP crossing status by symbol with timestamp
@@ -679,6 +734,29 @@ function buildTriStochSeriesSvg(history, field, strokeHex) {
 }
 
 // Data persistence functions using SQLite
+// Incremental: upsert latest-per-symbol + recent history, skip unchanged app_state blobs
+let lastSavedStateHashes = new Map()
+let preparedStatements = null
+
+function getPreparedStatements() {
+  if (!db) return null
+  if (preparedStatements) return preparedStatements
+  preparedStatements = {
+    insertAlert: db.prepare('INSERT INTO alerts (symbol, data, receivedAt) VALUES (?, ?, ?)'),
+    deleteAllAlerts: db.prepare('DELETE FROM alerts'),
+    insertHistory: db.prepare('INSERT INTO alerts_history (symbol, data, receivedAt) VALUES (?, ?, ?)'),
+    deleteAllHistory: db.prepare('DELETE FROM alerts_history'),
+    deleteOldHistory: db.prepare(`
+      DELETE FROM alerts_history WHERE id NOT IN (
+        SELECT id FROM alerts_history ORDER BY receivedAt DESC LIMIT 10000
+      )
+    `),
+    maxHistoryReceivedAt: db.prepare('SELECT MAX(receivedAt) as maxAt FROM alerts_history'),
+    upsertState: db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
+  }
+  return preparedStatements
+}
+
 function saveDataToDatabase() {
   if (!db) {
     console.error('❌ Database not initialized')
@@ -686,26 +764,35 @@ function saveDataToDatabase() {
   }
   
   try {
+    const stmts = getPreparedStatements()
+    const now = Date.now()
+    const latestBySymbol = [...alertsBySymbol.values()]
+    
     const transaction = db.transaction(() => {
-      const now = Date.now()
-      
-      // Save alerts (keep only recent 5000)
-      const alertsToSave = alerts.slice(0, 5000)
-      db.prepare('DELETE FROM alerts').run()
-      const insertAlert = db.prepare('INSERT INTO alerts (symbol, data, receivedAt) VALUES (?, ?, ?)')
-      for (const alert of alertsToSave) {
-        insertAlert.run(alert.symbol || '', JSON.stringify(alert), alert.receivedAt || now)
+      // Replace alerts table with latest-per-symbol only (much smaller than full history dump)
+      stmts.deleteAllAlerts.run()
+      for (const alert of latestBySymbol) {
+        stmts.insertAlert.run(alert.symbol || '', JSON.stringify(alert), alert.receivedAt || now)
       }
       
-      // Save alerts history (keep only recent 10000)
-      const historyToSave = alertsHistory.slice(0, 10000)
-      db.prepare('DELETE FROM alerts_history').run()
-      const insertHistory = db.prepare('INSERT INTO alerts_history (symbol, data, receivedAt) VALUES (?, ?, ?)')
-      for (const alert of historyToSave) {
-        insertHistory.run(alert.symbol || '', JSON.stringify(alert), alert.receivedAt || now)
+      // Append only new history rows since last max receivedAt (or wipe if cleared)
+      if (alertsHistory.length === 0) {
+        stmts.deleteAllHistory.run()
+      } else {
+        const maxRow = stmts.maxHistoryReceivedAt.get()
+        const maxAt = maxRow?.maxAt || 0
+        const historyToSave = alertsHistory.slice(0, 10000)
+        for (let i = historyToSave.length - 1; i >= 0; i--) {
+          const alert = historyToSave[i]
+          const receivedAt = alert.receivedAt || now
+          if (receivedAt <= maxAt) continue
+          stmts.insertHistory.run(alert.symbol || '', JSON.stringify(alert), receivedAt)
+        }
+        stmts.deleteOldHistory.run()
       }
       
-      // Save all state objects as JSON
+
+      // Save state objects only when JSON changed
       const stateData = {
         dayChangeData,
         dayVolumeData,
@@ -734,18 +821,19 @@ function saveDataToDatabase() {
         stochSessionTracker
       }
       
-      const upsertState = db.prepare('INSERT OR REPLACE INTO app_state (key, value, updatedAt) VALUES (?, ?, ?)')
       for (const [key, value] of Object.entries(stateData)) {
-        upsertState.run(key, JSON.stringify(value), now)
+        const json = JSON.stringify(value)
+        if (lastSavedStateHashes.get(key) === json) continue
+        stmts.upsertState.run(key, json, now)
+        lastSavedStateHashes.set(key, json)
       }
       
-      // Save metadata
-      upsertState.run('_metadata', JSON.stringify({ savedAt: new Date().toISOString() }), now)
+      stmts.upsertState.run('_metadata', JSON.stringify({ savedAt: new Date().toISOString() }), now)
     })
     
     transaction()
     
-    console.log(`💾 Data saved to database (${alerts.length} alerts, ${alertsHistory.length} history entries)`)
+    console.log(`💾 Data saved to database (${latestBySymbol.length} latest alerts, ${alertsHistory.length} history entries)`)
     return true
   } catch (error) {
     console.error('❌ Error saving data to database:', error)
@@ -810,8 +898,12 @@ function loadDataFromDatabase() {
     const metadataRow = db.prepare('SELECT value FROM app_state WHERE key = ?').get('_metadata')
     const savedAt = metadataRow ? JSON.parse(metadataRow.value).savedAt : 'unknown'
     
+    rebuildAlertsBySymbolIndex()
+    triMiniChartCache.clear()
+    lastSavedStateHashes.clear()
+
     console.log(`✅ Data loaded from database (saved at: ${savedAt})`)
-    console.log(`   - ${alerts.length} alerts restored`)
+    console.log(`   - ${alerts.length} alerts restored (${alertsBySymbol.size} symbols)`)
     console.log(`   - ${alertsHistory.length} historical alerts restored`)
     console.log(`   - ${Object.keys(starredSymbols).length} starred symbols restored`)
     return true
@@ -1117,28 +1209,16 @@ function checkAndNotifyTrendChange(symbol, alertData) {
 
 // Helper function to find and update alert by symbol (only for Day script merging)
 function updateAlertData(symbol, newData) {
-  // Find existing alert for this symbol (only look at recent alerts to merge Day script data)
-  const existingIndex = alerts.findIndex(alert => alert.symbol === symbol)
-  
-  if (existingIndex !== -1) {
-    // Merge with existing alert
-    alerts[existingIndex] = {
-      ...alerts[existingIndex],
-      ...newData,
-      receivedAt: Date.now()
-    }
+  const existing = getAlertBySymbol(symbol)
+  if (existing) {
+    Object.assign(existing, newData, { receivedAt: Date.now() })
+    setLatestAlertForSymbol(symbol, existing)
   } else {
-    // Create new alert entry
-    alerts.unshift({
+    prependAlert({
       symbol: symbol,
       ...newData,
       receivedAt: Date.now()
     })
-  }
-  
-  // Keep alerts within reasonable limit (increase to 5000 for more history)
-  if (alerts.length > 5000) {
-    alerts = alerts.slice(0, 5000)
   }
 }
 
@@ -1245,24 +1325,25 @@ function pickTvSymbolFields(webhook) {
 
 function syncTvSymbolOnAlert(symbol, webhook) {
   if (!symbol || !webhook) return
-  const idx = alerts.findIndex(a => a.symbol === symbol)
-  if (idx === -1) return
+  const row = getAlertBySymbol(symbol)
+  if (!row) return
   const tv = pickTvSymbolFields(webhook)
-  if (tv.tvSymbol) alerts[idx].tvSymbol = tv.tvSymbol
-  if (tv.exchange) alerts[idx].exchange = tv.exchange
+  if (tv.tvSymbol) row.tvSymbol = tv.tvSymbol
+  if (tv.exchange) row.exchange = tv.exchange
 }
 
 function processWebhookAlert(alert) {
   console.log(`📨 Webhook received: ${alert.symbol || 'unknown'}`)
+  debugLog('📨 Webhook payload:', JSON.stringify(alert, null, 2))
   
   if (alert.symbol && alert.sector) {
     sectorData[alert.symbol] = alert.sector
-    console.log(`📊 Received sector from webhook for ${alert.symbol}: ${alert.sector}`)
+    debugLog(`📊 Received sector from webhook for ${alert.symbol}: ${alert.sector}`)
   }
   
   // Debug BJ TSI values
   if (alert.bjTsi !== undefined) {
-    console.log('🔍 BJ TSI Debug:', {
+    debugLog('🔍 BJ TSI Debug:', {
       symbol: alert.symbol,
       bjTsi: alert.bjTsi,
       bjTsl: alert.bjTsl,
@@ -1276,6 +1357,9 @@ function processWebhookAlert(alert) {
     ...alert,
     receivedAt: Date.now()
   })
+  if (alertsHistory.length > 10000) {
+    alertsHistory.length = 10000
+  }
   
   // Detect alert type:
   // - Day script: contains changeFromPrevDay and volume but missing price (handles Chg% and Vol columns)
@@ -1303,7 +1387,7 @@ function processWebhookAlert(alert) {
   const isTriStochAlert = alert.d2Signal === 'Tri'
   
   // Log alert type detection for debugging
-  console.log('📊 Alert type detected:', {
+  debugLog('📊 Alert type detected:', {
     isDayChangeAlert,
     isVwapCrossingAlert,
     isQuadStochAlert,
@@ -1428,27 +1512,27 @@ function processWebhookAlert(alert) {
       d4: alert.d4Direction
     }
     
-    console.log(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${changeDirection}/${arrowChangeDirection}`)
+    debugLog(`✅ D4 signal stored for ${alert.symbol}: ${alert.d4Signal}, D4 value: ${alert.d4}, Changed: ${changeDirection}/${arrowChangeDirection}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].quadStochD4Signal = alert.d4Signal
-      alerts[existingIndex].quadStochD1 = alert.d1
-      alerts[existingIndex].quadStochD2 = alert.d2
-      alerts[existingIndex].quadStochD3 = alert.d3
-      alerts[existingIndex].quadStochD4 = alert.d4
-      alerts[existingIndex].d1Direction = alert.d1Direction
-      alerts[existingIndex].d2Direction = alert.d2Direction
-      alerts[existingIndex].d3Direction = alert.d3Direction
-      alerts[existingIndex].d4Direction = alert.d4Direction
-      alerts[existingIndex].qsD4Changed = d4Changed
-      alerts[existingIndex].qsDirectionChanged = directionChanged
-      alerts[existingIndex].qsChangeDirection = changeDirection
-      alerts[existingIndex].qsArrowChangeDirection = arrowChangeDirection
-      alerts[existingIndex].qsChangeTimestamp = Date.now()
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.quadStochD4Signal = alert.d4Signal
+      existing.quadStochD1 = alert.d1
+      existing.quadStochD2 = alert.d2
+      existing.quadStochD3 = alert.d3
+      existing.quadStochD4 = alert.d4
+      existing.d1Direction = alert.d1Direction
+      existing.d2Direction = alert.d2Direction
+      existing.d3Direction = alert.d3Direction
+      existing.d4Direction = alert.d4Direction
+      existing.qsD4Changed = d4Changed
+      existing.qsDirectionChanged = directionChanged
+      existing.qsChangeDirection = changeDirection
+      existing.qsArrowChangeDirection = arrowChangeDirection
+      existing.qsChangeTimestamp = Date.now()
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with D4 signal and values`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1478,8 +1562,8 @@ function processWebhookAlert(alert) {
         d4CrossedAbove25: d4CrossedAbove25,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with D4 signal and values`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with D4 signal and values`)
     }
   } else if (isOctoStochAlert) {
     // Octo Stochastic (8-stoch) alert - store all 8 stochastic data
@@ -1660,63 +1744,63 @@ function processWebhookAlert(alert) {
       d8: alert.d8Direction
     }
     
-    console.log(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D1xD7=${d1CrossD7 || 'none'}, D8 Signal=${alert.d8Signal}`)
+    debugLog(`✅ Octo Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D7=${alert.d7}, D1xD7=${d1CrossD7 || 'none'}, D8 Signal=${alert.d8Signal}`)
     
     // Check and notify trend change for starred symbols
     checkAndNotifyTrendChange(alert.symbol, octoStochData[alert.symbol])
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
       // Update existing alert
-      alerts[existingIndex].octoStochD1 = alert.d1
-      alerts[existingIndex].octoStochD2 = alert.d2
-      alerts[existingIndex].octoStochD3 = alert.d3
-      alerts[existingIndex].octoStochD4 = alert.d4
-      alerts[existingIndex].octoStochD5 = alert.d5
-      alerts[existingIndex].octoStochD6 = alert.d6
-      alerts[existingIndex].octoStochD7 = alert.d7
-      alerts[existingIndex].octoStochD8 = alert.d8
-      alerts[existingIndex].d1Direction = alert.d1Direction
-      alerts[existingIndex].d2Direction = alert.d2Direction
-      alerts[existingIndex].d3Direction = alert.d3Direction
-      alerts[existingIndex].d4Direction = alert.d4Direction
-      alerts[existingIndex].d5Direction = alert.d5Direction
-      alerts[existingIndex].d6Direction = alert.d6Direction
-      alerts[existingIndex].d7Direction = alert.d7Direction
-      alerts[existingIndex].d8Direction = alert.d8Direction
-      alerts[existingIndex].d8Signal = alert.d8Signal
-      alerts[existingIndex].d1d2Cross = alert.d1d2Cross
-      alerts[existingIndex].d1CrossD7 = d1CrossD7
-      alerts[existingIndex].d1SwitchedToUp = d1SwitchedToUp
-      alerts[existingIndex].d1SwitchedToDown = d1SwitchedToDown
-      alerts[existingIndex].d7SwitchedToUp = d7SwitchedToUp
-      alerts[existingIndex].d7SwitchedToDown = d7SwitchedToDown
-      alerts[existingIndex].patternType = patternData[alert.symbol]?.type || alerts[existingIndex].patternType || null
-      alerts[existingIndex].patternValue = patternData[alert.symbol]?.lastValue ?? alerts[existingIndex].patternValue ?? null
-      alerts[existingIndex].patternStartTime = patternData[alert.symbol]?.startTime || alerts[existingIndex].patternStartTime || null
-      alerts[existingIndex].patternCount = patternData[alert.symbol]?.count || alerts[existingIndex].patternCount || 0
-      alerts[existingIndex].patternTrendBreak = patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false
-      alerts[existingIndex].d3BelowLastHL = alert.d3BelowLastHL === 'true' || alert.d3BelowLastHL === true || false
-      alerts[existingIndex].d3AboveLastLH = alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false
-      alerts[existingIndex].d3BelowLastD7HL = alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false
-      alerts[existingIndex].d3AboveLastD7LH = alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false
-      alerts[existingIndex].d3AbovePredictedLH = alert.d3AbovePredictedLH === 'true' || alert.d3AbovePredictedLH === true || false
-      alerts[existingIndex].d7AbovePredictedLH = alert.d7AbovePredictedLH === 'true' || alert.d7AbovePredictedLH === true || false
-      alerts[existingIndex].d3PredictedThirdLH = parseFloat(alert.d3PredictedThirdLH) || null
-      alerts[existingIndex].d7PredictedThirdLH = parseFloat(alert.d7PredictedThirdLH) || null
-      alerts[existingIndex].calculatedTrend = alert.calculatedTrend || null // From Pine Script
-      alerts[existingIndex].ttsMessage = alert.ttsMessage || null // From Pine Script
+      existing.octoStochD1 = alert.d1
+      existing.octoStochD2 = alert.d2
+      existing.octoStochD3 = alert.d3
+      existing.octoStochD4 = alert.d4
+      existing.octoStochD5 = alert.d5
+      existing.octoStochD6 = alert.d6
+      existing.octoStochD7 = alert.d7
+      existing.octoStochD8 = alert.d8
+      existing.d1Direction = alert.d1Direction
+      existing.d2Direction = alert.d2Direction
+      existing.d3Direction = alert.d3Direction
+      existing.d4Direction = alert.d4Direction
+      existing.d5Direction = alert.d5Direction
+      existing.d6Direction = alert.d6Direction
+      existing.d7Direction = alert.d7Direction
+      existing.d8Direction = alert.d8Direction
+      existing.d8Signal = alert.d8Signal
+      existing.d1d2Cross = alert.d1d2Cross
+      existing.d1CrossD7 = d1CrossD7
+      existing.d1SwitchedToUp = d1SwitchedToUp
+      existing.d1SwitchedToDown = d1SwitchedToDown
+      existing.d7SwitchedToUp = d7SwitchedToUp
+      existing.d7SwitchedToDown = d7SwitchedToDown
+      existing.patternType = patternData[alert.symbol]?.type || existing.patternType || null
+      existing.patternValue = patternData[alert.symbol]?.lastValue ?? existing.patternValue ?? null
+      existing.patternStartTime = patternData[alert.symbol]?.startTime || existing.patternStartTime || null
+      existing.patternCount = patternData[alert.symbol]?.count || existing.patternCount || 0
+      existing.patternTrendBreak = patternData[alert.symbol]?.trendBreak || alert.d3TrendBreak === 'true' || alert.d3TrendBreak === true || false
+      existing.d3BelowLastHL = alert.d3BelowLastHL === 'true' || alert.d3BelowLastHL === true || false
+      existing.d3AboveLastLH = alert.d3AboveLastLH === 'true' || alert.d3AboveLastLH === true || false
+      existing.d3BelowLastD7HL = alert.d3BelowLastD7HL === 'true' || alert.d3BelowLastD7HL === true || false
+      existing.d3AboveLastD7LH = alert.d3AboveLastD7LH === 'true' || alert.d3AboveLastD7LH === true || false
+      existing.d3AbovePredictedLH = alert.d3AbovePredictedLH === 'true' || alert.d3AbovePredictedLH === true || false
+      existing.d7AbovePredictedLH = alert.d7AbovePredictedLH === 'true' || alert.d7AbovePredictedLH === true || false
+      existing.d3PredictedThirdLH = parseFloat(alert.d3PredictedThirdLH) || null
+      existing.d7PredictedThirdLH = parseFloat(alert.d7PredictedThirdLH) || null
+      existing.calculatedTrend = alert.calculatedTrend || null // From Pine Script
+      existing.ttsMessage = alert.ttsMessage || null // From Pine Script
       // Update basic info, daily comparison, and volume fields
-      if (alert.price !== undefined) alerts[existingIndex].price = alert.price
-      if (alert.timeframe !== undefined) alerts[existingIndex].timeframe = alert.timeframe
-      if (alert.time !== undefined) alerts[existingIndex].time = alert.time
-      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      if (alert.prevDayVolume !== undefined) alerts[existingIndex].prevDayVolume = alert.prevDayVolume
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
+      if (alert.price !== undefined) existing.price = alert.price
+      if (alert.timeframe !== undefined) existing.timeframe = alert.timeframe
+      if (alert.time !== undefined) existing.time = alert.time
+      if (alert.previousClose !== undefined) existing.previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) existing.changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) existing.volume = alert.volume
+      if (alert.prevDayVolume !== undefined) existing.prevDayVolume = alert.prevDayVolume
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with Octo Stoch data`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1770,8 +1854,8 @@ function processWebhookAlert(alert) {
         timeframe5_8: alert.timeframe5_8,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with Octo Stoch data`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with Octo Stoch data`)
     }
   } else if (isMacdCrossingAlert && !alert.price) {
     // MACD Crossing alert - store crossing signal with timestamp
@@ -1782,18 +1866,18 @@ function processWebhookAlert(alert) {
       macdHistogram: alert.macdHistogram,
       timestamp: Date.now()
     }
-    console.log(`✅ MACD crossing signal stored for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+    debugLog(`✅ MACD crossing signal stored for ${alert.symbol}: ${alert.macdCrossingSignal}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].macdCrossingSignal = alert.macdCrossingSignal
-      alerts[existingIndex].macdCrossingTimestamp = alert.macdCrossingTimestamp
-      if (alert.macd !== undefined) alerts[existingIndex].macd = alert.macd
-      if (alert.macdSignal !== undefined) alerts[existingIndex].macdSignal = alert.macdSignal
-      if (alert.macdHistogram !== undefined) alerts[existingIndex].macdHistogram = alert.macdHistogram
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.macdCrossingSignal = alert.macdCrossingSignal
+      existing.macdCrossingTimestamp = alert.macdCrossingTimestamp
+      if (alert.macd !== undefined) existing.macd = alert.macd
+      if (alert.macdSignal !== undefined) existing.macdSignal = alert.macdSignal
+      if (alert.macdHistogram !== undefined) existing.macdHistogram = alert.macdHistogram
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with MACD crossing signal`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1806,8 +1890,8 @@ function processWebhookAlert(alert) {
         macdHistogram: alert.macdHistogram,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with MACD crossing signal`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with MACD crossing signal`)
     }
   } else if (isDayChangeAlert) {
     // Day script alert - store day change and volume data
@@ -1833,17 +1917,17 @@ function processWebhookAlert(alert) {
       k1: alert.k1,
       timestamp: Date.now()
     }
-    console.log(`✅ Quad Stoch D1/D2 signal stored for ${alert.symbol}: ${alert.quadStochSignal}`)
+    debugLog(`✅ Quad Stoch D1/D2 signal stored for ${alert.symbol}: ${alert.quadStochSignal}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].quadStochSignal = alert.quadStochSignal
-      alerts[existingIndex].quadStochD1 = alert.d1
-      alerts[existingIndex].quadStochD2 = alert.d2
-      alerts[existingIndex].quadStochD4 = alert.d4
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with Quad Stoch signal`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.quadStochSignal = alert.quadStochSignal
+      existing.quadStochD1 = alert.d1
+      existing.quadStochD2 = alert.d2
+      existing.quadStochD4 = alert.d4
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with Quad Stoch signal`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1855,8 +1939,8 @@ function processWebhookAlert(alert) {
         quadStochD4: alert.d4,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with Quad Stoch signal`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with Quad Stoch signal`)
     }
   } else if (isVwapCrossingAlert) {
     // VWAP Crossing alert - store crossing status with timestamp
@@ -1864,14 +1948,14 @@ function processWebhookAlert(alert) {
       crossed: true,
       timestamp: Date.now()
     }
-    console.log(`✅ VWAP crossing stored for ${alert.symbol}`)
+    debugLog(`✅ VWAP crossing stored for ${alert.symbol}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].vwapCrossing = true
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.vwapCrossing = true
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with VWAP crossing`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1880,8 +1964,8 @@ function processWebhookAlert(alert) {
         vwapCrossing: true,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with VWAP crossing`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with VWAP crossing`)
     }
   } else if (isCciAlert) {
     // CCI alert - store CCI crossover data with timestamp
@@ -1897,17 +1981,17 @@ function processWebhookAlert(alert) {
     if (!cciDataStorage) cciDataStorage = {}
     cciDataStorage[alert.symbol] = cciData
     
-    console.log(`✅ CCI data stored for ${alert.symbol}: Crossover=${alert.cciCrossover}, Direction=${alert.cciDirection}, CCI=${alert.cciValue}, MA=${alert.cciMAValue}`)
+    debugLog(`✅ CCI data stored for ${alert.symbol}: Crossover=${alert.cciCrossover}, Direction=${alert.cciDirection}, CCI=${alert.cciValue}, MA=${alert.cciMAValue}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].cciCrossover = cciData.cciCrossover
-      alerts[existingIndex].cciDirection = cciData.cciDirection
-      alerts[existingIndex].cciValue = cciData.cciValue
-      alerts[existingIndex].cciMAValue = cciData.cciMAValue
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with CCI data`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.cciCrossover = cciData.cciCrossover
+      existing.cciDirection = cciData.cciDirection
+      existing.cciValue = cciData.cciValue
+      existing.cciMAValue = cciData.cciMAValue
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with CCI data`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -1920,12 +2004,12 @@ function processWebhookAlert(alert) {
         cciMAValue: cciData.cciMAValue,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with CCI data`)
     }
   } else if (isTriStochAlert) {
     // Tri Stoch: legacy single-TF (k1/k2/k3) or dual-TF (k1A/k1B + stochTimeframeA/B)
-    const existingTriRow = alerts.find(a => a.symbol === alert.symbol)
+    const existingTriRow = getAlertBySymbol(alert.symbol)
     sanitizeTriK1K2Webhook(alert, existingTriRow?.triStoch)
     const dualModes = buildTriDualModePayload(alert)
     let triStochModes = null
@@ -1961,7 +2045,7 @@ function processWebhookAlert(alert) {
           timestamp: Date.now()
         }
       }
-      console.log(`✅ Tri Dual stored for ${alert.symbol}: Interday K1=${alert.k1A} K2=${alert.k2A}, Swing K1=${alert.k1B} K2=${alert.k2B}`)
+      debugLog(`✅ Tri Dual stored for ${alert.symbol}: Interday K1=${alert.k1A} K2=${alert.k2A}, Swing K1=${alert.k1B} K2=${alert.k2B}`)
     } else {
       const triMode = normalizeTriTimeframeMode(alert.stochTimeframe || alert.stochMode || 'Interday')
       triStoch = {
@@ -2002,7 +2086,7 @@ function processWebhookAlert(alert) {
         d2Pattern: triStoch.dtD2Pattern || '', d2PatternValue: triStoch.dtD2PatternValue,
         timestamp: Date.now()
       }
-      console.log(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
+      debugLog(`✅ Tri Stoch stored for ${alert.symbol}: K1=${alert.k1}, K2=${alert.k2}, K3=${alert.k3}`)
     }
 
     const tsTri = Date.now()
@@ -2018,6 +2102,7 @@ function processWebhookAlert(alert) {
       if (triStochK1K2History[alert.symbol].length > 250) {
         triStochK1K2History[alert.symbol] = triStochK1K2History[alert.symbol].slice(-250)
       }
+      triMiniChartCache.delete(alert.symbol)
     }
 
     processTriK2CrossDetection(alert, triStochModes, triStoch, existingTriRow)
@@ -2039,28 +2124,28 @@ function processWebhookAlert(alert) {
       )
     }
 
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].triStoch = triStoch
-      alerts[existingIndex].triStochModes = { ...(alerts[existingIndex].triStochModes || {}), ...triStochModes }
-      if (alert.price) alerts[existingIndex].price = alert.price
-      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-      if (alert.changePreMarket !== undefined) alerts[existingIndex].changePreMarket = alert.changePreMarket
-      if (alert.changePostMarket !== undefined) alerts[existingIndex].changePostMarket = alert.changePostMarket
-      if (alert.sessionPhase !== undefined) alerts[existingIndex].sessionPhase = alert.sessionPhase
-      if (alert.todayRthClose !== undefined) alerts[existingIndex].todayRthClose = alert.todayRthClose
-      if (alert.regClose !== undefined) alerts[existingIndex].regClose = alert.regClose
-      if (alert.extPrice !== undefined) alerts[existingIndex].extPrice = alert.extPrice
-      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      const reverseHlState = computeReverseHlLhState(alerts[existingIndex], alert)
-      if (alert.s1aPattern !== undefined) alerts[existingIndex].s1aPattern = alert.s1aPattern || null
-      if (alert.reverseSignal !== undefined) alerts[existingIndex].reverseSignal = alert.reverseSignal || null
-      Object.assign(alerts[existingIndex], reverseHlState)
-      if (entryUpdate.entrySignal) Object.assign(alerts[existingIndex], entryUpdate)
-      alerts[existingIndex].receivedAt = Date.now()
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.triStoch = triStoch
+      existing.triStochModes = { ...(existing.triStochModes || {}), ...triStochModes }
+      if (alert.price) existing.price = alert.price
+      if (alert.previousClose !== undefined) existing.previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) existing.changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.changePreMarket !== undefined) existing.changePreMarket = alert.changePreMarket
+      if (alert.changePostMarket !== undefined) existing.changePostMarket = alert.changePostMarket
+      if (alert.sessionPhase !== undefined) existing.sessionPhase = alert.sessionPhase
+      if (alert.todayRthClose !== undefined) existing.todayRthClose = alert.todayRthClose
+      if (alert.regClose !== undefined) existing.regClose = alert.regClose
+      if (alert.extPrice !== undefined) existing.extPrice = alert.extPrice
+      if (alert.volume !== undefined) existing.volume = alert.volume
+      const reverseHlState = computeReverseHlLhState(existing, alert)
+      if (alert.s1aPattern !== undefined) existing.s1aPattern = alert.s1aPattern || null
+      if (alert.reverseSignal !== undefined) existing.reverseSignal = alert.reverseSignal || null
+      Object.assign(existing, reverseHlState)
+      if (entryUpdate.entrySignal) Object.assign(existing, entryUpdate)
+      existing.receivedAt = Date.now()
     } else {
-      alerts.unshift({
+      prependAlert({
         symbol: alert.symbol,
         timeframe: alert.timeframe || null,
         price: alert.price || null,
@@ -2081,7 +2166,7 @@ function processWebhookAlert(alert) {
         ...entryUpdate,
         receivedAt: Date.now()
       })
-      console.log(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
+      debugLog(`✅ Created alert row for ${alert.symbol} (Tri Stoch)`)
     }
   } else if (isSoloStochAlert) {
     // Stoch Overview / Detail: same stoch alert, different timeframe (payload.stochType: 'overview' | 'detail')
@@ -2106,13 +2191,13 @@ function processWebhookAlert(alert) {
 
     if (stochType === 'overview') {
       stochOverviewDataStorage[alert.symbol] = stochPayload
-      console.log(`✅ Stoch Overview stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
+      debugLog(`✅ Stoch Overview stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
       // Ensure symbol has an alert row so it appears in the list (Overview/Detail merged on GET /alerts)
-      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-      if (existingIndex !== -1) {
-        alerts[existingIndex].receivedAt = Date.now()
+      const existing = getAlertBySymbol(alert.symbol)
+      if (existing) {
+        existing.receivedAt = Date.now()
       } else {
-        alerts.unshift({
+        prependAlert({
           symbol: alert.symbol,
           timeframe: alert.timeframe || null,
           price: alert.price || null,
@@ -2121,17 +2206,17 @@ function processWebhookAlert(alert) {
           volume: alert.volume || null,
           receivedAt: Date.now()
         })
-        console.log(`✅ Created alert row for ${alert.symbol} (Stoch Overview)`)
+        debugLog(`✅ Created alert row for ${alert.symbol} (Stoch Overview)`)
       }
     } else if (stochType === 'detail') {
       stochDetailDataStorage[alert.symbol] = stochPayload
-      console.log(`✅ Stoch Detail stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
+      debugLog(`✅ Stoch Detail stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}`)
       // Ensure symbol has an alert row so it appears in the list (Overview/Detail merged on GET /alerts)
-      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-      if (existingIndex !== -1) {
-        alerts[existingIndex].receivedAt = Date.now()
+      const existing = getAlertBySymbol(alert.symbol)
+      if (existing) {
+        existing.receivedAt = Date.now()
       } else {
-        alerts.unshift({
+        prependAlert({
           symbol: alert.symbol,
           timeframe: alert.timeframe || null,
           price: alert.price || null,
@@ -2140,30 +2225,30 @@ function processWebhookAlert(alert) {
           volume: alert.volume || null,
           receivedAt: Date.now()
         })
-        console.log(`✅ Created alert row for ${alert.symbol} (Stoch Detail)`)
+        debugLog(`✅ Created alert row for ${alert.symbol} (Stoch Detail)`)
       }
     } else {
       // Legacy Solo Stoch (no stochType): store and update/create alert
       soloStochDataStorage[alert.symbol] = stochPayload
       updateStochSession(alert.symbol, alert.k, d2Value, alert.kDirection, d2Direction)
-      console.log(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
+      debugLog(`✅ Solo Stoch data stored for ${alert.symbol}: K=${alert.k || 'N/A'}, D=${d2Value}, Dir=${d2Direction}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
 
-      const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-      if (existingIndex !== -1) {
-        alerts[existingIndex].soloStochD2 = d2Value
-        alerts[existingIndex].soloStochD2Direction = d2Direction
-        alerts[existingIndex].soloStochD2Pattern = alert.d2Pattern || ''
-        alerts[existingIndex].soloStochD2PatternValue = alert.d2PatternValue || null
-        if (alert.k !== undefined) alerts[existingIndex].k = alert.k
-        if (alert.kDirection !== undefined) alerts[existingIndex].kDirection = alert.kDirection
-        if (alert.d !== undefined) alerts[existingIndex].d = alert.d
-        if (alert.dDirection !== undefined) alerts[existingIndex].dDirection = alert.dDirection
-        if (alert.price) alerts[existingIndex].price = alert.price
-        if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-        if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-        if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-        alerts[existingIndex].receivedAt = Date.now()
-        console.log(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
+      const existing = getAlertBySymbol(alert.symbol)
+      if (existing) {
+        existing.soloStochD2 = d2Value
+        existing.soloStochD2Direction = d2Direction
+        existing.soloStochD2Pattern = alert.d2Pattern || ''
+        existing.soloStochD2PatternValue = alert.d2PatternValue || null
+        if (alert.k !== undefined) existing.k = alert.k
+        if (alert.kDirection !== undefined) existing.kDirection = alert.kDirection
+        if (alert.d !== undefined) existing.d = alert.d
+        if (alert.dDirection !== undefined) existing.dDirection = alert.dDirection
+        if (alert.price) existing.price = alert.price
+        if (alert.previousClose !== undefined) existing.previousClose = alert.previousClose
+        if (alert.changeFromPrevDay !== undefined) existing.changeFromPrevDay = alert.changeFromPrevDay
+        if (alert.volume !== undefined) existing.volume = alert.volume
+        existing.receivedAt = Date.now()
+        debugLog(`✅ Updated existing alert for ${alert.symbol} with Solo Stoch data`)
       } else {
         const newAlert = {
           symbol: alert.symbol,
@@ -2182,8 +2267,8 @@ function processWebhookAlert(alert) {
           dDirection: alert.dDirection || null,
           receivedAt: Date.now()
         }
-        alerts.unshift(newAlert)
-        console.log(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
+        prependAlert(newAlert)
+        debugLog(`✅ Created new alert entry for ${alert.symbol} with Solo Stoch data`)
       }
     }
   } else if (isDualStochAlert) {
@@ -2237,30 +2322,30 @@ function processWebhookAlert(alert) {
           d1Value: d1Value,
           d2Value: d2Value
         }
-        console.log(`📊 Big Trend Day detected for ${alert.symbol} on ${today}: D1=${d1Value.toFixed(2)}, D2=${d2Value.toFixed(2)}`)
+        debugLog(`📊 Big Trend Day detected for ${alert.symbol} on ${today}: D1=${d1Value.toFixed(2)}, D2=${d2Value.toFixed(2)}`)
       }
     }
     updateStochSession(alert.symbol, alert.d1, alert.d2, alert.d1Direction, alert.d2Direction)
-    console.log(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
+    debugLog(`✅ Dual Stoch data stored for ${alert.symbol}: D1=${alert.d1}, D2=${alert.d2}, HLT=${alert.highLevelTrendType || 'None'}, Chg%=${alert.changeFromPrevDay || 'N/A'}, Vol=${alert.volume || 'N/A'}`)
     
     // Update existing alert if it exists, or create new one if it doesn't
-    const existingIndex = alerts.findIndex(a => a.symbol === alert.symbol)
-    if (existingIndex !== -1) {
-      alerts[existingIndex].dualStochD1 = alert.d1
-      alerts[existingIndex].dualStochD1Direction = alert.d1Direction
-      alerts[existingIndex].dualStochD1Pattern = alert.d1Pattern || ''
-      alerts[existingIndex].dualStochD1PatternValue = alert.d1PatternValue || null
-      alerts[existingIndex].dualStochD2 = alert.d2
-      alerts[existingIndex].dualStochD2Direction = alert.d2Direction || 'flat'
-      alerts[existingIndex].dualStochHighLevelTrend = alert.highLevelTrend || false
-      alerts[existingIndex].dualStochHighLevelTrendType = alert.highLevelTrendType || 'None'
-      alerts[existingIndex].dualStochHighLevelTrendDiff = alert.highLevelTrendDiff || 0
-      if (alert.price) alerts[existingIndex].price = alert.price
-      if (alert.previousClose !== undefined) alerts[existingIndex].previousClose = alert.previousClose
-      if (alert.changeFromPrevDay !== undefined) alerts[existingIndex].changeFromPrevDay = alert.changeFromPrevDay
-      if (alert.volume !== undefined) alerts[existingIndex].volume = alert.volume
-      alerts[existingIndex].receivedAt = Date.now()
-      console.log(`✅ Updated existing alert for ${alert.symbol} with Dual Stoch data`)
+    const existing = getAlertBySymbol(alert.symbol)
+    if (existing) {
+      existing.dualStochD1 = alert.d1
+      existing.dualStochD1Direction = alert.d1Direction
+      existing.dualStochD1Pattern = alert.d1Pattern || ''
+      existing.dualStochD1PatternValue = alert.d1PatternValue || null
+      existing.dualStochD2 = alert.d2
+      existing.dualStochD2Direction = alert.d2Direction || 'flat'
+      existing.dualStochHighLevelTrend = alert.highLevelTrend || false
+      existing.dualStochHighLevelTrendType = alert.highLevelTrendType || 'None'
+      existing.dualStochHighLevelTrendDiff = alert.highLevelTrendDiff || 0
+      if (alert.price) existing.price = alert.price
+      if (alert.previousClose !== undefined) existing.previousClose = alert.previousClose
+      if (alert.changeFromPrevDay !== undefined) existing.changeFromPrevDay = alert.changeFromPrevDay
+      if (alert.volume !== undefined) existing.volume = alert.volume
+      existing.receivedAt = Date.now()
+      debugLog(`✅ Updated existing alert for ${alert.symbol} with Dual Stoch data`)
     } else {
       // Create new alert entry if it doesn't exist
       const newAlert = {
@@ -2281,8 +2366,8 @@ function processWebhookAlert(alert) {
         dualStochHighLevelTrendDiff: alert.highLevelTrendDiff || 0,
         receivedAt: Date.now()
       }
-      alerts.unshift(newAlert)
-      console.log(`✅ Created new alert entry for ${alert.symbol} with Dual Stoch data`)
+      prependAlert(newAlert)
+      debugLog(`✅ Created new alert entry for ${alert.symbol} with Dual Stoch data`)
     }
   } else {
     // Main script alert (again.pine) - store ALL records, merge with any existing day data
@@ -2297,7 +2382,7 @@ function processWebhookAlert(alert) {
         macdHistogram: alert.macdHistogram,
         timestamp: alert.macdCrossingTimestamp || Date.now()
       }
-      console.log(`✅ Stored MACD crossing data for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+      debugLog(`✅ Stored MACD crossing data for ${alert.symbol}: ${alert.macdCrossingSignal}`)
     }
     
     // Add day change data if available from Day script
@@ -2392,11 +2477,11 @@ function processWebhookAlert(alert) {
         alertData.ttsMessage = octoStochInfo.ttsMessage || null
         alertData.timeframe1_4 = octoStochInfo.timeframe1_4
         alertData.timeframe5_8 = octoStochInfo.timeframe5_8
-        console.log(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7}, D1xD7=${octoStochInfo.d1CrossD7 || 'none'} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`✅ Merged Octo Stoch data for ${alert.symbol}: D1=${octoStochInfo.d1}, D7=${octoStochInfo.d7}, D1xD7=${octoStochInfo.d1CrossD7 || 'none'} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete octoStochData[alert.symbol]
-        console.log(`⏰ Octo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`⏰ Octo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     }
     // FALLBACK: Check and add Quad Stochastic D4 trend status if active (within last 60 minutes) and no Octo data
@@ -2428,12 +2513,12 @@ function processWebhookAlert(alert) {
           alertData.d1CrossedAbove50 = quadStochD4Info.d1CrossedAbove50
           alertData.d2CrossedAbove50 = quadStochD4Info.d2CrossedAbove50
           alertData.d4CrossedAbove25 = quadStochD4Info.d4CrossedAbove25
-          console.log(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
+          debugLog(`✅ Merged D4 signal for ${alert.symbol}: ${quadStochD4Info.signal}, D4: ${quadStochD4Info.d4} (age: ${ageInMinutes.toFixed(1)} min)`)
         } else {
           // Signal is old, expire it
           delete quadStochD4Data[alert.symbol]
           alertData.quadStochD4Signal = null
-          console.log(`⏰ D4 signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+          debugLog(`⏰ D4 signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
         }
       } else {
         alertData.quadStochD4Signal = null
@@ -2478,12 +2563,12 @@ function processWebhookAlert(alert) {
         if (macdCrossingInfo.macd !== undefined) alertData.macd = macdCrossingInfo.macd
         if (macdCrossingInfo.macdSignal !== undefined) alertData.macdSignal = macdCrossingInfo.macdSignal
         if (macdCrossingInfo.macdHistogram !== undefined) alertData.macdHistogram = macdCrossingInfo.macdHistogram
-        console.log(`✅ Merged MACD crossing signal for ${alert.symbol}: ${macdCrossingInfo.signal} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`✅ Merged MACD crossing signal for ${alert.symbol}: ${macdCrossingInfo.signal} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Signal is old, expire it
         delete macdCrossingData[alert.symbol]
         alertData.macdCrossingSignal = null
-        console.log(`⏰ MACD crossing signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`⏰ MACD crossing signal expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     } else {
       // If no stored MACD crossing data, check if this alert has MACD crossing data
@@ -2493,7 +2578,7 @@ function processWebhookAlert(alert) {
         if (alert.macd !== undefined) alertData.macd = alert.macd
         if (alert.macdSignal !== undefined) alertData.macdSignal = alert.macdSignal
         if (alert.macdHistogram !== undefined) alertData.macdHistogram = alert.macdHistogram
-        console.log(`✅ Using MACD crossing signal from alert for ${alert.symbol}: ${alert.macdCrossingSignal}`)
+        debugLog(`✅ Using MACD crossing signal from alert for ${alert.symbol}: ${alert.macdCrossingSignal}`)
       } else {
         alertData.macdCrossingSignal = null
       }
@@ -2509,11 +2594,11 @@ function processWebhookAlert(alert) {
         alertData.cciDirection = cciInfo.cciDirection
         alertData.cciValue = cciInfo.cciValue
         alertData.cciMAValue = cciInfo.cciMAValue
-        console.log(`✅ Merged CCI data for ${alert.symbol}: Crossover=${cciInfo.cciCrossover}, Direction=${cciInfo.cciDirection}, CCI=${cciInfo.cciValue} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`✅ Merged CCI data for ${alert.symbol}: Crossover=${cciInfo.cciCrossover}, Direction=${cciInfo.cciDirection}, CCI=${cciInfo.cciValue} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete cciDataStorage[alert.symbol]
-        console.log(`⏰ CCI data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`⏰ CCI data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     } else {
       // If no stored CCI data, check if this alert has CCI data
@@ -2522,7 +2607,7 @@ function processWebhookAlert(alert) {
         alertData.cciDirection = alert.cciDirection
         alertData.cciValue = alert.cciValue
         alertData.cciMAValue = alert.cciMAValue
-        console.log(`✅ Using CCI data from alert for ${alert.symbol}: Crossover=${alert.cciCrossover}`)
+        debugLog(`✅ Using CCI data from alert for ${alert.symbol}: Crossover=${alert.cciCrossover}`)
       }
     }
     
@@ -2546,11 +2631,11 @@ function processWebhookAlert(alert) {
         if (soloStochInfo.volume !== undefined && soloStochInfo.volume !== null && alertData.volume === undefined) {
           alertData.volume = soloStochInfo.volume
         }
-        console.log(`✅ Merged Solo Stoch data for ${alert.symbol}: D2=${soloStochInfo.d2}, Dir=${soloStochInfo.d2Direction}, Chg%=${soloStochInfo.changeFromPrevDay || 'N/A'} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`✅ Merged Solo Stoch data for ${alert.symbol}: D2=${soloStochInfo.d2}, Dir=${soloStochInfo.d2Direction}, Chg%=${soloStochInfo.changeFromPrevDay || 'N/A'} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete soloStochDataStorage[alert.symbol]
-        console.log(`⏰ Solo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`⏰ Solo Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     }
     
@@ -2640,11 +2725,11 @@ function processWebhookAlert(alert) {
         if (dualStochInfo.volume !== undefined && dualStochInfo.volume !== null && alertData.volume === undefined) {
           alertData.volume = dualStochInfo.volume
         }
-        console.log(`✅ Merged Dual Stoch data for ${alert.symbol}: D1=${dualStochInfo.d1}, D2=${dualStochInfo.d2}, HLT=${dualStochInfo.highLevelTrendType} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`✅ Merged Dual Stoch data for ${alert.symbol}: D1=${dualStochInfo.d1}, D2=${dualStochInfo.d2}, HLT=${dualStochInfo.highLevelTrendType} (age: ${ageInMinutes.toFixed(1)} min)`)
       } else {
         // Data is old, expire it
         delete dualStochDataStorage[alert.symbol]
-        console.log(`⏰ Dual Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
+        debugLog(`⏰ Dual Stoch data expired for ${alert.symbol} (age: ${ageInMinutes.toFixed(1)} min)`)
       }
     }
     
@@ -2666,19 +2751,11 @@ function processWebhookAlert(alert) {
     }
     
     // Add ALL alerts to the front (don't remove existing ones)
-    alerts.unshift({
+    prependAlert({
       ...alertData,
       receivedAt: Date.now()
     })
-    
-    // Keep alerts within reasonable limit (increase to 5000 for more history)
-    if (alerts.length > 5000) {
-      alerts = alerts.slice(0, 5000)
-    }
   }
-  
-  // Keep only latest 10000 entries in history (prevent memory issues)
-  alertsHistory = alertsHistory.slice(0, 10000)
 
   if (alert.symbol) {
     syncTvSymbolOnAlert(alert.symbol, alert)
@@ -2703,24 +2780,12 @@ function processWebhookAlert(alert) {
 
 // API for frontend - only latest alerts per symbol
 app.get('/alerts', (req, res) => {
-  // Get only the latest alert per symbol
-  const latestAlerts = {}
-  
-  // Go through alerts and keep only the most recent for each symbol
-  alerts.forEach(alert => {
-    if (!alert.symbol) return
-    
-    if (!latestAlerts[alert.symbol] || 
-        (alert.receivedAt > latestAlerts[alert.symbol].receivedAt)) {
-      latestAlerts[alert.symbol] = alert
-    }
-  })
-  
-  // Convert to array and sort by receivedAt (newest first)
-  const result = Object.values(latestAlerts).sort((a, b) => b.receivedAt - a.receivedAt)
+  // O(symbols) via Map instead of scanning full alerts history
+  const result = [...alertsBySymbol.values()].sort((a, b) => b.receivedAt - a.receivedAt)
   
   const STOCH_STORAGE_MAX_AGE_MINUTES = 60
   const now = Date.now()
+  const today = getCurrentDateString()
   
   // Inject sector data and merge triStoch from storage
   result.forEach(alert => {
@@ -2759,7 +2824,7 @@ app.get('/alerts', (req, res) => {
     }
     // Inject stoch session tracker data
     const sess = stochSessionTracker[alert.symbol]
-    if (sess && sess.date === getCurrentDateString()) {
+    if (sess && sess.date === today) {
       alert.stochSession = {
         sessionHigh: sess.sessionHigh,
         sessionLow: sess.sessionLow,
@@ -2777,18 +2842,21 @@ app.get('/alerts', (req, res) => {
         sampleCount: sess.samples.length
       }
     }
-    const triHist = triStochK1K2History[alert.symbol] || []
-    alert.triStochK1MiniChart = buildTriStochSeriesSvg(triHist, 'k1', '#22c55e')
-    alert.triStochK2MiniChart = buildTriStochSeriesSvg(triHist, 'k2', '#f59e0b')
+    const charts = getCachedTriMiniCharts(alert.symbol)
+    alert.triStochK1MiniChart = charts.k1
+    alert.triStochK2MiniChart = charts.k2
     // If triStoch.k2 is missing but history has a recent value, backfill it
     if (alert.triStoch) {
       const k2Backfill = getTriK2Value(alert.triStoch)
-      if (k2Backfill == null && triHist.length > 0) {
-        const lastEntry = triHist[triHist.length - 1]
-        const histK2 = lastEntry && (lastEntry.k2 != null ? lastEntry.k2 : lastEntry.k3)
-        if (histK2 != null) {
-          alert.triStoch.k2 = histK2
-          alert.triStoch.k3 = histK2
+      if (k2Backfill == null) {
+        const triHist = triStochK1K2History[alert.symbol] || []
+        if (triHist.length > 0) {
+          const lastEntry = triHist[triHist.length - 1]
+          const histK2 = lastEntry && (lastEntry.k2 != null ? lastEntry.k2 : lastEntry.k3)
+          if (histK2 != null) {
+            alert.triStoch.k2 = histK2
+            alert.triStoch.k3 = histK2
+          }
         }
       }
     }
@@ -2831,6 +2899,9 @@ app.get('/debug', (req, res) => {
 // New endpoint to reset/clear all alerts
 app.post('/reset-alerts', (req, res) => {
   alerts = []
+  alertsBySymbol.clear()
+  triMiniChartCache.clear()
+  lastSavedStateHashes.clear()
   alertsHistory = []
   dayChangeData = {}
   dayVolumeData = {}
@@ -11108,6 +11179,15 @@ Use this to create a new preset filter button that applies these exact filter se
             : rows;
         }
         
+        let fetchAlertsDebounceTimer = null
+        function scheduleFetchAlerts(delayMs = 300) {
+          if (fetchAlertsDebounceTimer) clearTimeout(fetchAlertsDebounceTimer)
+          fetchAlertsDebounceTimer = setTimeout(() => {
+            fetchAlertsDebounceTimer = null
+            fetchAlerts()
+          }, delayMs)
+        }
+
         async function fetchAlerts() {
           try {
             const response = await fetch('/alerts');
@@ -11201,7 +11281,7 @@ Use this to create a new preset filter button that applies these exact filter se
             }
             
             if (update.type === 'sectors_refreshed') {
-                fetchAlerts();
+                scheduleFetchAlerts(0);
                 return;
             }
 
@@ -11214,7 +11294,7 @@ Use this to create a new preset filter button that applies these exact filter se
             // Not JSON or parse error, continue with normal flow
           }
           
-          fetchAlerts(); // Refresh immediately when new data arrives
+          scheduleFetchAlerts(300); // Debounce bursts of webhooks
           
           // Show brief update indicator
           realtimeIndicator.innerHTML = '<span class="font-terminal text-[9px] animate-pulse">🔄 Updated just now</span>';

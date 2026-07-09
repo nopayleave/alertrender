@@ -31,8 +31,8 @@ colorExLow     = input.color(#f48fb1, title="Oversold (<10)", group="Extreme Col
 colorWarnHigh  = input.color(#f06292, title=">90 turning down", group="Extreme Colors")
 colorWarnLow   = input.color(#4dd0e1, title="<10 turning up", group="Extreme Colors")
 
-grp_table = "Direction Table"
-showTable = input.bool(true, "Show Direction Table", group=grp_table)
+grp_table = "Trend Table"
+showTable = input.bool(true, "Show Trend Table", group=grp_table)
 tablePos  = input.string("top_right", "Position", group=grp_table, options=["top_right", "top_left", "bottom_right", "bottom_left", "top_center", "middle_left", "middle_center", "middle_right", "bottom_center"])
 
 grp_entry = "Entry Signals"
@@ -118,6 +118,13 @@ f_dimHllhBeforeR(label[] lbls, int[] bars, int rBar, color baseCol) =>
             if rBar - b <= rDimBars and rBar - b >= 0
                 f_dimHllhLabel(array.get(lbls, i), baseCol)
                 break
+
+f_trendColor(string lbl) =>
+    lbl == "Bull day" or lbl == "Turn Bull" ? colorExHigh :
+     lbl == "Bear day" or lbl == "Turn Bear" ? colorExLow :
+     lbl == "Possible Bounce" ? colorWarnLow :
+     lbl == "Possible Rally" ? colorWarnHigh :
+     #aaaaaa
 
 tblPosition = tablePos == "top_right" ? position.top_right : tablePos == "top_left" ? position.top_left : tablePos == "bottom_right" ? position.bottom_right : tablePos == "bottom_left" ? position.bottom_left : tablePos == "top_center" ? position.top_center : tablePos == "middle_left" ? position.middle_left : tablePos == "middle_center" ? position.middle_center : tablePos == "middle_right" ? position.middle_right : position.bottom_center
 
@@ -318,16 +325,69 @@ alertcondition(longSet2  and entryAlerts, "Long Signal (Set 2)",  "LONG Set2: S2
 alertcondition(shortSet2 and entryAlerts, "Short Signal (Set 2)", "SHORT Set2: S2A above X, S1A turned down below Z")
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  DIRECTION TABLE — S1A K/D (arrow color matches line)
+//  INTERDAY TREND — K2A symmetric bull/bear day states
+//  Bull: hit 90 = Bull day · drop to 20 = Possible Bounce · hit 10 = Turn Bear
+//  Bear: hit 10 = Bear day · rise to 80 = Possible Rally · hit 90 = Turn Bull
+// ═══════════════════════════════════════════════════════════════════════════════
+var bool interdayHit90 = false
+var bool interdayHit10 = false
+var bool interdayTurnBear = false
+var bool interdayTurnBull = false
+var string interdayTrendLabel = "—"
+
+if timeframe.change("D")
+    interdayHit90 := false
+    interdayHit10 := false
+    interdayTurnBear := false
+    interdayTurnBull := false
+    interdayTrendLabel := "—"
+
+if k2A <= osExtreme
+    if interdayHit90
+        interdayTurnBear := true
+        interdayTurnBull := false
+    interdayHit10 := true
+
+if k2A >= obExtreme
+    if interdayHit10
+        interdayTurnBull := true
+        interdayTurnBear := false
+    interdayHit90 := true
+
+if interdayTurnBear
+    interdayTrendLabel := "Turn Bear"
+else if interdayTurnBull
+    interdayTrendLabel := "Turn Bull"
+else if interdayHit90 and k2A <= osLevel
+    interdayTrendLabel := "Possible Bounce"
+else if interdayHit10 and k2A >= obLevel
+    interdayTrendLabel := "Possible Rally"
+else if interdayHit90
+    interdayTrendLabel := "Bull day"
+else if interdayHit10
+    interdayTrendLabel := "Bear day"
+else
+    interdayTrendLabel := "—"
+
+interdayTrendColor = f_trendColor(interdayTrendLabel)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TREND TABLE — S1A K/D + interday day trend
 // ═══════════════════════════════════════════════════════════════════════════════
 if showTable and barstate.islast
-    var dirTbl = table.new(tblPosition, 2, 3, bgcolor=#000000, border_width=1, border_color=color.new(#ffffff, 80))
-    table.cell(dirTbl, 0, 0, "Source", text_color=#aaaaaa, text_size=size.small)
-    table.cell(dirTbl, 1, 0, "Dir", text_color=#aaaaaa, text_size=size.small)
-    table.cell(dirTbl, 0, 1, "S1AK", text_color=#aaaaaa, text_size=size.normal)
-    table.cell(dirTbl, 1, 1, k1AIsUp ? "▲" : "▼", text_color=k1AColor, text_size=size.large)
-    table.cell(dirTbl, 0, 2, "S1AD", text_color=#aaaaaa, text_size=size.normal)
-    table.cell(dirTbl, 1, 2, d1AIsUp ? "▲" : "▼", text_color=d1AColor, text_size=size.large)
+    var trendTbl = table.new(tblPosition, 2, 4, bgcolor=#000000, border_width=1, border_color=color.new(#ffffff, 80))
+    k1Txt = str.tostring(k1A, "#.0")
+    d1Txt = str.tostring(d1A, "#.0")
+    k1DirColor = k1AIsUp ? color.lime : color.red
+    d1DirColor = d1AIsUp ? color.lime : color.red
+    table.cell(trendTbl, 0, 0, "Source", text_color=#aaaaaa, text_size=size.small)
+    table.cell(trendTbl, 1, 0, "Trend", text_color=#aaaaaa, text_size=size.small)
+    table.cell(trendTbl, 0, 1, "S1AK", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(trendTbl, 1, 1, k1Txt, text_color=k1DirColor, text_size=size.normal)
+    table.cell(trendTbl, 0, 2, "S1AD", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(trendTbl, 1, 2, d1Txt, text_color=d1DirColor, text_size=size.normal)
+    table.cell(trendTbl, 0, 3, "Interday", text_color=#aaaaaa, text_size=size.normal)
+    table.cell(trendTbl, 1, 3, interdayTrendLabel, text_color=interdayTrendColor, text_size=size.normal)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ALERTS
