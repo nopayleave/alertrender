@@ -1,2 +1,18 @@
 .vercel
 data/
+node_modules/
+.DS_Store
+**/.DS_Store
+*.bak
+.env
+.env.*
+!.env.example
+
+# Local-only / not needed for Render deploy
+index_test.js
+check_syntax.js
+local-data-feeder.js
+test-*.js
+current_dashboard.html
+dashboard_output.html
+*.png
